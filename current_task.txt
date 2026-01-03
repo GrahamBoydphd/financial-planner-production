@@ -1,0 +1,56 @@
+260103 - 10:15 overall instructions.
+1) Update the revenue input and treasury management to match the expenses input in terms of pop-up comments under the ? symbol, headings, etc. Perhaps now is a good time to refactor so that we have one library module for the input, re-used by revenue, expenses, and treasury management; and any other ones we later need. Also, in the Advanced Mode for NRIG please align the bottom of the input boxes for alpha, beta, and delta. At the moment the top of the text above the boxes is aligned, but because the alpha text goes over two lines it means the boxes are misaligned. I'd rather the bottom of the boxes is aligned. 
+2) Add a clarification to the entry "Payout Ratio (0-1)" in the dividends input. What is the payout ratio? And, for consistency, let's change this to payout percentage and have them enter a number in the range 0-100%.
+3) Clarify for me what the "+ Add Company" button on the Dashboard page within a Fund panel does. If I click it then it goes to an error page saying "Company not found". Currently there is only one fund, with two companies in it, the Default and a new test company. The same happens for the two bigger blue buttons at the top right, "+ New Fund" and "+ New Company" 
+4) In the "Revolving Credit Facility" please add to the interest rate input two options: adding a monthly or annual interest rate. The frontend to calculate and submit to the backend whichever of the two it needs using the appropriate compounding formula. Please check and confirm that the backend does actually use the correct compounding formula to use the monthly interest rate. 
+
+
+260102-17:57 
+./pack_context.sh "Refactor the code to implement the tasks defined in ARCHITECTURAL_CONTEXT.md Section 3. 
+
+## 3. CURRENT FOCUS: UI/UX POLISH & VALUATION FIXES
+**Task:** Refine frontend presentation, fix valuation bug, and standardize percentage inputs.
+
+### A. Chart & Data Visualization
+1.  **Log Scale:** Default `true`. Helper text: "A log scale is recommended to see large number details, linear to see negative numbers." Add "Note: log scale" to legend.
+2.  **Runway:** Rename to "Runway (Median, P50)" in Monte Carlo mode. Ensure calculation includes Credit Limit.
+3.  **Data Table:** Reorder columns (Month, Rev, OpEx, GP, Net, Cash, Divs, Net Val). Default Currency: "None".
+
+### B. Input Forms
+1.  **Menu Labels:** "Standard averages" -> "Just the averages". "NRIG" -> "Comprehensive volatility".
+2.  **Tooltips:**
+    * **Simple Volatility:** Add info icon + tooltip about min/max %.
+    * **Comprehensive (NRIG):** Add "Tier 1" summary text and "Tier 2" hover tooltips. Update dropdown text (add "more white/black swans").
+3.  **Staffing Form (Percentage Fix):**
+    * **Input:** Change "Annual Increase" to accept percentages (e.g., "3.5" for 3.5%).
+    * **Logic:** Frontend must divide by 100 on Save and multiply by 100 on Edit/Load so the backend always receives/stores the decimal (0.035).
+    * **Tooltip:** "Expected annual salary increase (e.g., 3.5 for 3.5%)."
+
+### C. Valuation Logic
+* **Fix 422:** Ensure `date_applied` defaults to `new Date()` in the payload.
+* **EBITDA:** Ensure frontend toggles labels based on method." \
+frontend/app/plan/[planId]/results/page.tsx \
+frontend/components/CashFlowChart.tsx \
+frontend/components/forms/RevenueForm.tsx \
+frontend/components/forms/ValuationForm.tsx \
+frontend/components/forms/StaffingForm.tsx \
+frontend/lib/api.ts \
+&& python3 builder.py ai_prompt_packet.txt > ui_polish_v2.md
+
+
+260102-18:42
+## 3. CURRENT FOCUS: BUG FIXES (VALUATION & PROJECTION)
+**Task:** Fix broken state connections in the Valuation Form and Projection Time selector.
+
+### A. Valuation Logic (`ValuationForm.tsx`)
+* **Fix 422 Error:** The `saveValuation` payload MUST match the `ValuationAssumption` struct in `backend/src/models.rs`.
+    * Required Fields: `plan_id`, `name` (default "Valuation"), `method` ("revenue" or "ebitda"), `multiplier` (Decimal), `date_applied` (Date).
+* **Fix UI Label:** The "Based on..." text in the KPI card must dynamically switch based on the *saved* method, not just the default.
+
+### B. Projection Time Selector (`ResultsPage.tsx`)
+* **The Bug:** Changing the "Years" dropdown does not update the graph.
+* **The Fix:**
+    1.  Ensure the `timeHorizon` state (or `months`) is passed as a query parameter to `api.getProjection(..., { months: timeHorizon * 12 })`.
+    2.  Add `timeHorizon` to the dependency array of the `useEffect` that fetches the projection.
+    3.  Ensure the backend accepts this `months` parameter and uses it to override the default 60 months.
+ 

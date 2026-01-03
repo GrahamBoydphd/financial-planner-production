@@ -1,0 +1,175 @@
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
+use serde::Deserialize;
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use rust_decimal::Decimal;
+use crate::models::{CapitalInjection, DividendPolicy, CreditFacility};
+use crate::errors::AppError;
+
+// --- CAPITAL INJECTIONS ---
+
+#[derive(Deserialize)]
+pub struct CreateCapitalRequest {
+    pub plan_id: Uuid,
+    pub name: String,
+    pub amount: Decimal,
+    pub month: i32,
+}
+
+pub async fn create_capital_injection(
+    State(pool): State<Pool<Postgres>>,
+    Json(payload): Json<CreateCapitalRequest>,
+) -> Result<Json<CapitalInjection>, AppError> {
+    let item = sqlx::query_as!(
+        CapitalInjection,
+        "INSERT INTO capital_injections (plan_id, name, amount, month) VALUES ($1, $2, $3, $4) RETURNING *",
+        payload.plan_id,
+        payload.name,
+        payload.amount,
+        payload.month
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(item))
+}
+
+pub async fn get_plan_capital_injections(
+    State(pool): State<Pool<Postgres>>,
+    Path(plan_id): Path<Uuid>,
+) -> Result<Json<Vec<CapitalInjection>>, AppError> {
+    let items = sqlx::query_as!(
+        CapitalInjection,
+        "SELECT * FROM capital_injections WHERE plan_id = $1 ORDER BY month ASC",
+        plan_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(items))
+}
+
+pub async fn delete_capital_injection(
+    State(pool): State<Pool<Postgres>>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let result = sqlx::query!("DELETE FROM capital_injections WHERE id = $1", id)
+        .execute(&pool)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Capital injection not found".to_string()));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// --- DIVIDEND POLICY ---
+
+#[derive(Deserialize)]
+pub struct UpsertDividendRequest {
+    pub plan_id: Uuid,
+    pub is_enabled: bool,
+    pub safety_threshold: Decimal,
+    pub payout_ratio: Decimal,
+}
+
+pub async fn upsert_dividend_policy(
+    State(pool): State<Pool<Postgres>>,
+    Json(payload): Json<UpsertDividendRequest>,
+) -> Result<Json<DividendPolicy>, AppError> {
+    // Transaction: Delete existing -> Insert new (Ensures 1 policy per plan)
+    let mut tx = pool.begin().await?;
+
+    sqlx::query!("DELETE FROM dividend_policies WHERE plan_id = $1", payload.plan_id)
+        .execute(&mut *tx)
+        .await?;
+
+    let policy = sqlx::query_as!(
+        DividendPolicy,
+        "INSERT INTO dividend_policies (plan_id, is_enabled, safety_threshold, payout_ratio) VALUES ($1, $2, $3, $4) RETURNING *",
+        payload.plan_id,
+        payload.is_enabled,
+        payload.safety_threshold,
+        payload.payout_ratio
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(Json(policy))
+}
+
+pub async fn get_plan_dividend_policy(
+    State(pool): State<Pool<Postgres>>,
+    Path(plan_id): Path<Uuid>,
+) -> Result<Json<DividendPolicy>, AppError> {
+    let policy = sqlx::query_as!(
+        DividendPolicy,
+        "SELECT * FROM dividend_policies WHERE plan_id = $1",
+        plan_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Dividend policy not found".to_string()))?;
+
+    Ok(Json(policy))
+}
+
+// --- CREDIT FACILITY ---
+
+#[derive(Deserialize)]
+pub struct UpsertCreditRequest {
+    pub plan_id: Uuid,
+    pub facility_limit: Decimal,
+    pub interest_rate: Decimal,
+    pub is_annual_rate: bool,
+}
+
+pub async fn upsert_credit_facility(
+    State(pool): State<Pool<Postgres>>,
+    Json(payload): Json<UpsertCreditRequest>,
+) -> Result<Json<CreditFacility>, AppError> {
+    // Transaction: Delete existing -> Insert new
+    let mut tx = pool.begin().await?;
+
+    sqlx::query!("DELETE FROM credit_facilities WHERE plan_id = $1", payload.plan_id)
+        .execute(&mut *tx)
+        .await?;
+
+    let facility = sqlx::query_as!(
+        CreditFacility,
+        "INSERT INTO credit_facilities (plan_id, facility_limit, interest_rate, is_annual_rate) VALUES ($1, $2, $3, $4) RETURNING *",
+        payload.plan_id,
+        payload.facility_limit,
+        payload.interest_rate,
+        payload.is_annual_rate
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(Json(facility))
+}
+
+pub async fn get_plan_credit_facility(
+    State(pool): State<Pool<Postgres>>,
+    Path(plan_id): Path<Uuid>,
+) -> Result<Json<CreditFacility>, AppError> {
+    let facility = sqlx::query_as!(
+        CreditFacility,
+        "SELECT * FROM credit_facilities WHERE plan_id = $1",
+        plan_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Credit facility not found".to_string()))?;
+
+    Ok(Json(facility))
+}

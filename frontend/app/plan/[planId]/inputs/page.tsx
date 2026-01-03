@@ -1,0 +1,397 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import DeleteButton from '@/components/ui/DeleteButton';
+import { api, RevenueItem, ExpenseItem, FinancialPlan, CapitalInjection, StaffingRole } from '@/lib/api';
+
+// IMPORT ALL FORMS
+import RevenueForm from '@/components/forms/RevenueForm';
+import ExpenseForm from '@/components/forms/ExpenseForm';
+import CapitalGrowthForm from '@/components/forms/CapitalGrowthForm';
+import CapitalForm from '@/components/forms/CapitalForm';
+import DividendForm from '@/components/forms/DividendForm';
+import CreditForm from '@/components/forms/CreditForm';
+import ValuationForm from '@/components/forms/ValuationForm';
+import StaffingForm from '@/components/forms/StaffingForm';
+
+type TabType = 'operations' | 'capital' | 'settings';
+
+export default function InputsPage({ params }: { params: { planId: string } }) {
+  const { planId } = params;
+  const [plan, setPlan] = useState<FinancialPlan | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('operations');
+  
+  // Lists Data
+  const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
+  const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
+  const [staffingRoles, setStaffingRoles] = useState<StaffingRole[]>([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Edit State
+  const [editingRevenue, setEditingRevenue] = useState<RevenueItem | null>(null);
+  const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
+
+  const fetchData = async () => {
+    // Note: We don't set loading=true here to avoid full page flicker on updates
+    // only initial load sets it.
+    try {
+      // 1. Fetch Plan (Critical) - Only if not already loaded or explicit refresh needed
+      if (!plan) {
+        try {
+            const p = await api.getPlan(planId);
+            setPlan(p);
+        } catch (e) {
+            console.error("Failed to load plan", e);
+            setErrorMsg("Plan not found or API error");
+            setLoading(false);
+            return;
+        }
+      }
+
+      // 2. Fetch Other Data (Non-Critical or Partial)
+      const results = await Promise.allSettled([
+        api.getRevenueItems(planId),
+        api.getExpenseItems(planId),
+        api.getCapitalInjections(planId),
+        api.getStaffingRoles(planId)
+      ]);
+
+      // Handle Results
+      if (results[0].status === 'fulfilled') setRevenueItems(results[0].value);
+      if (results[1].status === 'fulfilled') setExpenseItems(results[1].value);
+      if (results[2].status === 'fulfilled') setCapitalItems(results[2].value);
+      
+      if (results[3].status === 'fulfilled') {
+          setStaffingRoles(results[3].value);
+      } else {
+          console.error("Failed to load staffing roles", results[3].reason);
+      }
+
+      setEditingRevenue(null);
+      setEditingExpense(null);
+
+    } catch (error) {
+      console.error("Unexpected error loading inputs", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [planId]);
+
+  // Handlers for StaffingForm
+  const handleSaveRole = async (roleData: Omit<StaffingRole, "id" | "plan_id"> & { id?: string }) => {
+    try {
+        if (roleData.id) {
+           // Update
+           await api.updateStaffingRole({ 
+               ...roleData, 
+               id: roleData.id, 
+               plan_id: planId 
+           } as StaffingRole);
+        } else {
+           // Create
+           await api.createStaffingRole({ 
+               ...roleData, 
+               plan_id: planId 
+           });
+        }
+        await fetchData(); // Refresh data
+    } catch (err) {
+        console.error("Error saving role:", err);
+        throw err; // Let form handle error display
+    }
+  };
+
+  const handleDeleteRole = async (id: string) => {
+    try {
+        await api.deleteStaffingRole(id);
+        await fetchData();
+    } catch (err) {
+        console.error("Error deleting role:", err);
+        throw err;
+    }
+  };
+
+  if (loading) return <Layout>Loading...</Layout>;
+  if (errorMsg || !plan) return <Layout>{errorMsg || "Plan not found"}</Layout>;
+
+  return (
+    <Layout>
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{plan.name}</h1>
+          <p className="text-gray-500 text-sm">Plan ID: {plan.id}</p>
+        </div>
+        <a 
+          href={`/plan/${planId}/results`}
+          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-medium shadow-sm transition-colors"
+        >
+          View Projections &rarr;
+        </a>
+      </div>
+
+      {/* TABS NAVIGATION */}
+      <div className="border-b border-gray-200 mb-8">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('operations')}
+            className={`${
+              activeTab === 'operations'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Operations (P&L)
+          </button>
+
+          <button
+            onClick={() => setActiveTab('capital')}
+            className={`${
+              activeTab === 'capital'
+                ? 'border-green-500 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Capital Structure
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`${
+              activeTab === 'settings'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Treasury & Valuation
+          </button>
+        </nav>
+      </div>
+
+      {/* --- TAB CONTENT: OPERATIONS --- */}
+      {activeTab === 'operations' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+          
+          {/* REVENUE COLUMN */}
+          <section className="space-y-6">
+            <Card id="revenue-form">
+                <h2 className="text-xl font-bold mb-4 text-blue-600 flex items-center gap-2">
+                    Revenue Streams
+                </h2>
+                <RevenueForm 
+                    planId={planId} 
+                    onSuccess={fetchData} 
+                    itemToEdit={editingRevenue}
+                    onCancel={() => setEditingRevenue(null)}
+                />
+            </Card>
+            
+            <div className="space-y-4">
+                {revenueItems.map((item) => (
+                <Card key={item.id} className={`border-l-4 transition-all ${editingRevenue?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-blue-500 hover:shadow-md'}`}>
+                    <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="font-bold text-gray-900">{item.name}</h3>
+                        <p className="text-sm text-gray-600">{item.source} • {item.frequency}</p>
+                        {item.volatility_type !== 'none' && (
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
+                                Risk: {item.volatility_type}
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg">${item.initial_amount.toLocaleString()}</p>
+                        <p className="text-xs font-medium text-green-600">+{item.growth_rate_percent}% / mo</p>
+                    </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+                    <span>Starts Month: {item.start_month}</span>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => {
+                                setEditingRevenue(item);
+                                document.getElementById('revenue-form')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-semibold"
+                        >
+                            Edit
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <DeleteButton onDelete={async () => {
+                            await api.deleteRevenueItem(item.id);
+                            fetchData();
+                        }} />
+                    </div>
+                    </div>
+                </Card>
+                ))}
+                {revenueItems.length === 0 && (
+                    <div className="text-center p-8 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        No revenue streams added yet.
+                    </div>
+                )}
+            </div>
+          </section>
+
+          {/* EXPENSES COLUMN */}
+          <section className="space-y-6">
+            <Card id="expense-form">
+                <h2 className="text-xl font-bold mb-4 text-red-600">Expenses</h2>
+                <ExpenseForm 
+                    planId={planId} 
+                    onSuccess={fetchData} 
+                    itemToEdit={editingExpense}
+                    onCancel={() => setEditingExpense(null)}
+                />
+            </Card>
+
+            <div className="space-y-4">
+                {expenseItems.map((item) => (
+                <Card key={item.id} className={`border-l-4 transition-all ${editingExpense?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-red-500 hover:shadow-md'}`}>
+                    <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="font-bold text-gray-900">{item.name}</h3>
+                        <p className="text-sm text-gray-600">{item.category} • {item.frequency}</p>
+                        {item.volatility_type !== 'none' && (
+                             <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
+                                Risk: {item.volatility_type}
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg">${item.initial_amount.toLocaleString()}</p>
+                        <p className="text-xs font-medium text-red-600">+{item.growth_rate_percent}% / mo</p>
+                    </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+                    <span>Starts Month: {item.start_month}</span>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => {
+                                setEditingExpense(item);
+                                document.getElementById('expense-form')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-semibold"
+                        >
+                            Edit
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <DeleteButton onDelete={async () => {
+                            await api.deleteExpenseItem(item.id);
+                            fetchData();
+                        }} />
+                    </div>
+                    </div>
+                </Card>
+                ))}
+                 {expenseItems.length === 0 && (
+                    <div className="text-center p-8 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        No expenses added yet.
+                    </div>
+                )}
+            </div>
+          </section>
+
+          {/* STAFFING COLUMN (Full Width) */}
+          <div className="col-span-1 lg:col-span-2 mt-8">
+                <StaffingForm 
+                    planId={planId} 
+                    initialRoles={staffingRoles}
+                    onSave={handleSaveRole}
+                    onDelete={handleDeleteRole}
+                />
+            </div>
+        </div>
+      )}
+
+      {/* --- TAB CONTENT: CAPITAL STRUCTURE --- */}
+      {activeTab === 'capital' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+            
+            {/* EQUITY / CAPITAL INJECTIONS */}
+            <section className="space-y-6">
+                <Card>
+                    <h2 className="text-xl font-bold mb-4 text-green-600">Equity & Capital Injections</h2>
+                    <p className="text-sm text-gray-500 mb-6">Add one-time cash injections (e.g. Seed rounds, Owner contributions).</p>
+                    <CapitalForm planId={planId} onSuccess={fetchData} />
+
+                    <div className="mt-6 space-y-3">
+                        {capitalItems.map(c => (
+                            <div key={c.id} className="flex justify-between items-center border border-gray-200 p-3 rounded-lg bg-white hover:border-green-300 transition-colors">
+                                <div>
+                                    <p className="font-semibold text-gray-900">{c.name}</p>
+                                    <p className="text-xs text-gray-500">Month {c.month}</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded">+${c.amount.toLocaleString()}</span>
+                                    <DeleteButton onDelete={async () => {
+                                        await api.deleteCapitalInjection(c.id);
+                                        fetchData();
+                                    }} />
+                                </div>
+                            </div>
+                        ))}
+                         {capitalItems.length === 0 && (
+                            <div className="text-center p-4 text-gray-400 italic text-sm">
+                                No capital injections recorded.
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            </section>
+
+            {/* DEBT & DIVIDENDS */}
+            <section className="space-y-6">
+                <Card>
+                    <h2 className="text-xl font-bold mb-4 text-orange-600">Debt & Credit Facilities</h2>
+                     <p className="text-sm text-gray-500 mb-6">Manage lines of credit, interest rates, and loan terms.</p>
+                    <CreditForm planId={planId} />
+                </Card>
+
+                <Card>
+                    <h2 className="text-xl font-bold mb-4 text-cyan-600">Dividends</h2>
+                    <p className="text-sm text-gray-500 mb-6">Set rules for profit distribution to shareholders.</p>
+                    <DividendForm planId={planId} />
+                </Card>
+            </section>
+        </div>
+      )}
+
+      {/* --- TAB CONTENT: SETTINGS & TREASURY --- */}
+      {activeTab === 'settings' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+             {/* TREASURY */}
+             <section>
+                 <Card>
+                    <h2 className="text-xl font-bold mb-4 text-indigo-600">Treasury Management</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Configure how idle cash is invested. Set a minimum cash buffer and an interest yield for surplus cash.
+                    </p>
+                    <CapitalGrowthForm planId={planId} onSuccess={fetchData} />
+                 </Card>
+            </section>
+
+             {/* VALUATION */}
+             <section>
+                 <Card>
+                    <h2 className="text-xl font-bold mb-4 text-purple-600">Valuation Settings</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Define the multiples (Revenue/EBITDA) used to estimate your company's value over time.
+                    </p>
+                    <ValuationForm planId={planId} onSuccess={fetchData} />
+                 </Card>
+            </section>
+        </div>
+      )}
+    </Layout>
+  );
+}

@@ -1,0 +1,209 @@
+use axum::{
+    extract::{Path, State, Query},
+    http::StatusCode,
+    Json,
+};
+use serde::{Deserialize};
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use crate::models::FinancialPlan;
+use crate::errors::AppError;
+use crate::projection::{generate_simulation, SimulationResult};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+
+#[derive(Deserialize)]
+pub struct CreatePlanRequest {
+    pub company_id: Uuid,
+    pub name: String,
+    pub start_month: String, // YYYY-MM-01
+}
+
+pub async fn create_plan(
+    State(pool): State<Pool<Postgres>>,
+    Json(payload): Json<CreatePlanRequest>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let plan = sqlx::query_as!(
+        FinancialPlan,
+        "INSERT INTO financial_plans (company_id, name, start_month) VALUES ($1, $2, $3) RETURNING *",
+        payload.company_id,
+        payload.name,
+        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap()
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(plan))
+}
+
+pub async fn get_all_plans(
+    State(pool): State<Pool<Postgres>>,
+) -> Result<Json<Vec<FinancialPlan>>, AppError> {
+    let plans = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT * FROM financial_plans ORDER BY created_at DESC"
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(plans))
+}
+
+pub async fn get_plan(
+    State(pool): State<Pool<Postgres>>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let plan = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT * FROM financial_plans WHERE id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Plan not found".to_string()))?;
+
+    Ok(Json(plan))
+}
+
+pub async fn delete_plan(
+    State(pool): State<Pool<Postgres>>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let result = sqlx::query!("DELETE FROM financial_plans WHERE id = $1", id)
+        .execute(&pool)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Plan not found".to_string()));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// --- PROJECTION LOGIC ---
+
+#[derive(Deserialize)]
+pub struct GetProjectionQuery {
+    pub months: Option<i32>,
+    pub initial_cash: Option<Decimal>,
+    pub mode: Option<String>,
+    pub stop_insolvency: Option<bool>, // New Param
+}
+
+pub async fn get_plan_projection(
+    State(pool): State<Pool<Postgres>>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<GetProjectionQuery>,
+) -> Result<Json<SimulationResult>, AppError> {
+    
+    // Fetch Plan Info
+    let plan = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT * FROM financial_plans WHERE id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Plan not found".to_string()))?;
+
+    // Fetch Inputs
+    let revenue_items = sqlx::query_as!(
+        crate::models::RevenueItem,
+        "SELECT * FROM revenue_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let expense_items = sqlx::query_as!(
+        crate::models::ExpenseItem,
+        "SELECT * FROM expense_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let event_shocks = sqlx::query_as!(
+        crate::models::EventShock,
+        "SELECT * FROM event_shocks WHERE plan_id = $1",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let capital_injections = sqlx::query_as!(
+        crate::models::CapitalInjection,
+        "SELECT * FROM capital_injections WHERE plan_id = $1 ORDER BY month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let dividend_policy = sqlx::query_as!(
+        crate::models::DividendPolicy,
+        "SELECT * FROM dividend_policies WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+
+    let credit_facility = sqlx::query_as!(
+        crate::models::CreditFacility,
+        "SELECT * FROM credit_facilities WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+
+    let valuation_assumptions = sqlx::query_as!(
+        crate::models::ValuationAssumption,
+        "SELECT * FROM valuation_assumptions WHERE plan_id = $1 ORDER BY date_applied DESC LIMIT 1",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    // Updated to select specific columns matching StaffingRole struct
+    let staffing_roles = sqlx::query_as!(
+        crate::models::StaffingRole,
+        "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at 
+         FROM staffing_roles WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+// ... previous fetches ...
+    let capital_growth = sqlx::query_as!(
+        crate::models::CapitalGrowthPolicy,
+        "SELECT * FROM capital_growth_policies WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+    
+    // Run Simulation
+    let months = params.months.unwrap_or(60);
+    let initial_cash = params.initial_cash.unwrap_or(Decimal::from_f64(0.0).unwrap());
+    let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
+    let stop_insolvency = params.stop_insolvency.unwrap_or(false);
+
+    let result = generate_simulation(
+        plan.start_month,
+        months,
+        initial_cash,
+        &revenue_items,
+        &expense_items,
+        &event_shocks,
+        &capital_injections,
+        &dividend_policy,
+        &credit_facility,
+        &capital_growth, 
+        &staffing_roles,
+        &valuation_assumptions,
+        use_monte_carlo,
+        stop_insolvency // Pass it down
+    );
+
+    Ok(Json(result))
+}
