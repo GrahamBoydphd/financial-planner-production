@@ -11,7 +11,7 @@ import RevenueForm from '@/components/forms/RevenueForm';
 import ExpenseForm from '@/components/forms/ExpenseForm';
 import CapitalGrowthForm from '@/components/forms/CapitalGrowthForm';
 import CapitalForm from '@/components/forms/CapitalForm';
-import CapitalList from '@/components/lists/CapitalList'; // Make sure this path matches where you saved CapitalList.tsx
+import CapitalList from '@/components/forms/CapitalList'; // Make sure this path matches where you saved CapitalList.tsx
 import DividendForm from '@/components/forms/DividendForm';
 import CreditForm from '@/components/forms/CreditForm';
 import ValuationForm from '@/components/forms/ValuationForm';
