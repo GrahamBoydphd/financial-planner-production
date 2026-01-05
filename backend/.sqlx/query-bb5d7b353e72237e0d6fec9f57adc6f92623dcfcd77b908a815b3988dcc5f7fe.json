@@ -1,0 +1,147 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE revenue_items SET\n            name = $1, source = $2, start_month = $3, end_month = $4,\n            initial_amount = $5, growth_rate_percent = $6, frequency = $7, cost_of_revenue_percent = $8,\n            volatility_type = $9, vol_min = $10, vol_max = $11, vol_intervals = $12,\n            vol_mean = $13, vol_scale = $14, vol_freedom = $15, vol_alpha = $16, vol_beta = $17\n        WHERE id = $18\n        RETURNING *\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "end_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "initial_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "growth_rate_percent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "frequency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "volatility_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "vol_min",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "vol_max",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "vol_intervals",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "vol_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "vol_scale",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "vol_freedom",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 16,
+        "name": "vol_alpha",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 17,
+        "name": "vol_beta",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 18,
+        "name": "cost_of_revenue_percent",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Numeric",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "bb5d7b353e72237e0d6fec9f57adc6f92623dcfcd77b908a815b3988dcc5f7fe"
+}

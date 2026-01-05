@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, plan_id, name, shock_month, impact_type, impact_value, duration_months FROM event_shocks WHERE plan_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "shock_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "impact_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "impact_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "duration_months",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7b9f4c9c8ac226635706c8cc67b55e8eff19be398d1cef8936586dc77e8103a9"
+}
