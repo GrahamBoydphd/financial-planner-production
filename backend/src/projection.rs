@@ -22,6 +22,7 @@ pub struct MonthlyData {
     pub dividend_paid: Decimal,
     pub cumulative_dividends: Decimal,
     pub cumulative_external_capital: Decimal,
+    pub cumulative_pool_received: Decimal, // Added field
     pub current_debt: Decimal,
     pub total_value: Decimal,
     pub is_insolvent: bool, 
@@ -43,6 +44,8 @@ pub struct SimulationResult {
     pub p90_value: Option<Vec<Decimal>>, 
     pub p100_value: Option<Vec<Decimal>>, 
 
+    pub p50_pool_cumulative: Option<Vec<Decimal>>, // Added field for P50 Pool Data
+
     pub deterministic_runway: Option<i32>,
     pub deterministic_valuation: Decimal,
 
@@ -59,6 +62,20 @@ struct ItemState {
     is_active: bool,
 }
 
+// Helper struct for Breadth-First Simulation
+struct TrajectoryState {
+    current_cash: Decimal,
+    cum_external_cap: Decimal,
+    cum_dividends: Decimal,
+    cum_pool_received: Decimal, // Added field
+    pending_interest: Decimal,
+    is_insolvent: bool,
+    revenue_states: HashMap<Uuid, ItemState>,
+    expense_states: HashMap<Uuid, ItemState>,
+    cap_growth_sampler: Option<GrowthSampler>,
+    history: Vec<MonthlyData>,
+}
+
 fn calculate_runway(cash: Decimal, last_month_net_income: Decimal) -> Option<i32> {
     if cash < dec!(0.0) { return Some(0); }
     if last_month_net_income >= dec!(0.0) { return None; }
@@ -67,6 +84,47 @@ fn calculate_runway(cash: Decimal, last_month_net_income: Decimal) -> Option<i32
     Some((cash / burn).floor().to_i32().unwrap_or(0))
 }
 
+// Helper to create samplers (avoids code duplication)
+fn create_sampler(
+    force_deterministic: bool,
+    v_type: Option<&String>, 
+    rate: Decimal, 
+    min: Option<Decimal>, 
+    max: Option<Decimal>, 
+    intv: Option<i32>, 
+    scale: Option<Decimal>, 
+    free: Option<Decimal>,
+    alpha: Option<Decimal>, 
+    beta: Option<Decimal>
+) -> GrowthSampler {
+    let avg = rate.to_f64().unwrap_or(0.0);
+    if force_deterministic {
+        return GrowthSampler::new(VolatilityModel::None { fixed_rate: avg });
+    }
+    let model = match v_type.map(|s| s.as_str()) {
+        Some("flat") => VolatilityModel::Flat {
+            average: avg,
+            min: min.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            max: max.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            intervals: intv.unwrap_or(1),
+        },
+        Some("student_t") => VolatilityModel::StudentsT {
+            mean: avg,
+            scale: scale.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            freedom: free.unwrap_or(dec!(5.0)).to_f64().unwrap_or(5.0),
+        },
+        Some("nrig") => VolatilityModel::NRIG {
+            alpha: alpha.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
+            beta: beta.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            delta: scale.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
+            mu: avg, 
+        },
+        _ => VolatilityModel::None { fixed_rate: avg },
+    };
+    GrowthSampler::new(model)
+}
+
+// Depth-First Simulation (Legacy/Deterministic)
 fn run_iteration(
     start_month: NaiveDate,
     months: i32,
@@ -89,71 +147,14 @@ fn run_iteration(
     let mut cum_dividends = dec!(0.0);
     let mut pending_interest = dec!(0.0);
     let mut is_insolvent = false;
+    let mut cumulative_pool_received = dec!(0.0); // Initialize to 0.0
 
     let mut revenue_states: HashMap<Uuid, ItemState> = HashMap::new();
     let mut expense_states: HashMap<Uuid, ItemState> = HashMap::new();
 
-    let build_sampler = |v_type: Option<&String>, rate: Decimal, 
-                         min: Option<Decimal>, max: Option<Decimal>, intv: Option<i32>, 
-                         scale: Option<Decimal>, free: Option<Decimal>,
-                         alpha: Option<Decimal>, beta: Option<Decimal>| -> GrowthSampler {
-        
-        let avg = rate.to_f64().unwrap_or(0.0);
-        if force_deterministic {
-            return GrowthSampler::new(VolatilityModel::None { fixed_rate: avg });
-        }
-        let model = match v_type.map(|s| s.as_str()) {
-            Some("flat") => VolatilityModel::Flat {
-                average: avg,
-                min: min.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                max: max.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                intervals: intv.unwrap_or(1),
-            },
-            Some("student_t") => VolatilityModel::StudentsT {
-                mean: avg,
-                scale: scale.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                freedom: free.unwrap_or(dec!(5.0)).to_f64().unwrap_or(5.0),
-            },
-            Some("nrig") => VolatilityModel::NRIG {
-                alpha: alpha.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
-                beta: beta.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                delta: scale.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
-                mu: avg, 
-            },
-            _ => VolatilityModel::None { fixed_rate: avg },
-        };
-        GrowthSampler::new(model)
-    };
-
     let mut cap_growth_sampler = if let Some(policy) = capital_growth_policy {
-        let v_type = policy.volatility_type.as_ref();
-        let avg = policy.vol_mean.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0);
-        
-        let model = if force_deterministic {
-             VolatilityModel::None { fixed_rate: avg }
-        } else {
-             match v_type.map(|s| s.as_str()) {
-                Some("flat") => VolatilityModel::Flat {
-                    average: avg,
-                    min: policy.vol_min.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                    max: policy.vol_max.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                    intervals: policy.vol_intervals.unwrap_or(1),
-                },
-                Some("student_t") => VolatilityModel::StudentsT {
-                    mean: avg,
-                    scale: policy.vol_scale.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                    freedom: policy.vol_freedom.unwrap_or(dec!(5.0)).to_f64().unwrap_or(5.0),
-                },
-                Some("nrig") => VolatilityModel::NRIG {
-                    alpha: policy.vol_alpha.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
-                    beta: policy.vol_beta.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-                    delta: policy.vol_scale.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
-                    mu: avg, 
-                },
-                _ => VolatilityModel::None { fixed_rate: avg },
-            }
-        };
-        Some(GrowthSampler::new(model))
+        Some(create_sampler(force_deterministic, policy.volatility_type.as_ref(), policy.vol_mean.unwrap_or(dec!(0.0)), 
+            policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
     } else {
         None
     };
@@ -162,18 +163,16 @@ fn run_iteration(
         revenue_states.insert(item.id, ItemState {
             current_value: item.initial_amount,
             is_active: false,
-            sampler: build_sampler(item.volatility_type.as_ref(), item.growth_rate_percent, 
-                item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom,
-                item.vol_alpha, item.vol_beta)
+            sampler: create_sampler(force_deterministic, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
         });
     }
     for item in expense_items {
         expense_states.insert(item.id, ItemState {
             current_value: item.initial_amount,
             is_active: false,
-            sampler: build_sampler(item.volatility_type.as_ref(), item.growth_rate_percent, 
-                item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom,
-                item.vol_alpha, item.vol_beta)
+            sampler: create_sampler(force_deterministic, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
         });
     }
 
@@ -243,36 +242,27 @@ fn run_iteration(
                 }
             }
 
-            // --- STAFFING COSTS (SOPHISTICATED) ---
             for role in staffing_roles {
                 if m >= role.start_month {
-                    // 1. Determine Headcount based on Hiring Plan
                     let current_headcount = match role.hiring_plan.as_str() {
                         "monthly_rate" => {
-                            let months_active = m - role.start_month; // 0-indexed relative to start
-                            let rate = role.hiring_rate.unwrap_or(1).max(1); // Avoid div by zero
-                            // Example: Rate 1. Month 0 -> 1 + 0 = 1. Month 1 -> 1 + 1 = 2.
+                            let months_active = m - role.start_month;
+                            let rate = role.hiring_rate.unwrap_or(1).max(1);
                             let hired = 1 + (months_active / rate);
                             hired.min(role.target_count)
                         },
-                        _ => role.target_count, // "fixed_count"
+                        _ => role.target_count,
                     };
 
                     if current_headcount > 0 {
-                        // 2. Determine Salary Inflation (Based on Plan Start)
-                        // Task Instruction: "based on how many years have passed since the plan start"
-                        // m=1 is start. m=13 is start of year 2 (1 year passed).
                         let years_passed = (m - 1) / 12;
-                        
                         let mut current_annual_salary = role.annual_salary;
                         if years_passed > 0 {
                              let multiplier = dec!(1.0) + role.annual_increase;
-                             // Simple power loop for Decimal
                              for _ in 0..years_passed {
                                  current_annual_salary *= multiplier;
                              }
                         }
-                        
                         let monthly_cost = (current_annual_salary * Decimal::from(current_headcount)) / dec!(12.0);
                         monthly_opex += monthly_cost;
                     }
@@ -293,7 +283,6 @@ fn run_iteration(
         }
 
         let monthly_interest = pending_interest; 
-        
         let gross_profit = monthly_rev - monthly_cogs;
         let total_expenses = monthly_opex + monthly_interest;
         let net_income = gross_profit - total_expenses;
@@ -353,12 +342,292 @@ fn run_iteration(
             dividend_paid: dividend_paid,
             cumulative_dividends: cum_dividends,
             cumulative_external_capital: cum_external_cap,
+            cumulative_pool_received: cumulative_pool_received,
             current_debt: current_debt,
             total_value: current_cash + cum_dividends,
             is_insolvent,
         });
     }
     history
+}
+
+// Breadth-First Simulation (Monte Carlo with Pooling)
+fn run_monte_carlo_breadth_first(
+    start_month: NaiveDate,
+    months: i32,
+    initial_cash: Decimal,
+    revenue_items: &[RevenueItem],
+    expense_items: &[ExpenseItem],
+    event_shocks: &[EventShock],
+    capital_injections: &[CapitalInjection],
+    dividend_policy: &Option<DividendPolicy>,
+    credit_facility: &Option<CreditFacility>,
+    capital_growth_policy: &Option<CapitalGrowthPolicy>,
+    staffing_roles: &[StaffingRole],
+    stop_on_insolvency: bool,
+    pooling_fraction: Decimal,
+) -> Vec<Vec<MonthlyData>> {
+
+    let iterations = 1000;
+    let mut trajectories = Vec::with_capacity(iterations);
+
+    // 1. Initialize Trajectories
+    let mut shock_map: HashMap<i32, Vec<&EventShock>> = HashMap::new();
+    for shock in event_shocks { shock_map.entry(shock.shock_month).or_default().push(shock); }
+
+    let mut injection_map: HashMap<i32, Decimal> = HashMap::new();
+    for cap in capital_injections { *injection_map.entry(cap.month).or_default() += cap.amount; }
+
+    let credit_floor = if let Some(f) = credit_facility { -f.facility_limit } else { dec!(0.0) };
+
+    for _ in 0..iterations {
+        let mut current_cash = initial_cash;
+        let mut cum_external_cap = initial_cash;
+        
+        if let Some(pre_seed) = injection_map.get(&0) {
+            current_cash += pre_seed;
+            cum_external_cap += pre_seed;
+        }
+
+        let mut revenue_states = HashMap::new();
+        for item in revenue_items {
+            revenue_states.insert(item.id, ItemState {
+                current_value: item.initial_amount,
+                is_active: false,
+                sampler: create_sampler(false, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                    item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
+            });
+        }
+
+        let mut expense_states = HashMap::new();
+        for item in expense_items {
+            expense_states.insert(item.id, ItemState {
+                current_value: item.initial_amount,
+                is_active: false,
+                sampler: create_sampler(false, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                    item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
+            });
+        }
+
+        let cap_growth_sampler = if let Some(policy) = capital_growth_policy {
+            Some(create_sampler(false, policy.volatility_type.as_ref(), policy.vol_mean.unwrap_or(dec!(0.0)), 
+                policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
+        } else {
+            None
+        };
+
+        trajectories.push(TrajectoryState {
+            current_cash,
+            cum_external_cap,
+            cum_dividends: dec!(0.0),
+            cum_pool_received: dec!(0.0), // Initialize
+            pending_interest: dec!(0.0),
+            is_insolvent: false,
+            revenue_states,
+            expense_states,
+            cap_growth_sampler,
+            history: Vec::with_capacity(months as usize),
+        });
+    }
+
+    // 2. Breadth-First Loop
+    for m in 1..=months {
+        let current_date = start_month.checked_add_months(chrono::Months::new((m - 1) as u32)).unwrap_or(start_month);
+        let date_str = current_date.format("%Y-%m-%d").to_string();
+
+        let mut monthly_pool = dec!(0.0);
+        let mut trajectory_financials = Vec::with_capacity(iterations);
+
+        // Phase 1: Calculate Financials & Pool Contribution
+        for state in trajectories.iter_mut() {
+            if stop_on_insolvency && state.current_cash < credit_floor {
+                state.is_insolvent = true;
+            }
+
+            let mut monthly_rev = dec!(0.0);
+            let mut monthly_cogs = dec!(0.0);
+            let mut monthly_opex = dec!(0.0);
+
+            if !state.is_insolvent {
+                // Revenue
+                for item in revenue_items {
+                    let s = state.revenue_states.get_mut(&item.id).unwrap();
+                    if m == item.start_month { s.is_active = true; s.current_value = item.initial_amount; }
+                    else if let Some(end) = item.end_month { if m > end { s.is_active = false; } }
+
+                    if s.is_active {
+                        if item.frequency == "One-time" && m != item.start_month { continue; }
+                        if m > item.start_month {
+                            let rate = s.sampler.sample();
+                            s.current_value *= dec!(1.0) + rate / dec!(100.0);
+                        }
+                        let item_rev = s.current_value;
+                        monthly_rev += item_rev;
+                        if let Some(cogs_pct) = item.cost_of_revenue_percent {
+                            monthly_cogs += item_rev * (cogs_pct / dec!(100.0));
+                        }
+                    }
+                }
+
+                // Expenses
+                for item in expense_items {
+                    let s = state.expense_states.get_mut(&item.id).unwrap();
+                    if m == item.start_month { s.is_active = true; s.current_value = item.initial_amount; }
+                    else if let Some(end) = item.end_month { if m > end { s.is_active = false; } }
+
+                    if s.is_active {
+                        if item.frequency == "One-time" && m != item.start_month { continue; }
+                        if m > item.start_month {
+                            let rate = s.sampler.sample();
+                            s.current_value *= dec!(1.0) + rate / dec!(100.0);
+                        }
+                        let mut amt = s.current_value;
+                        if let Some(pct) = item.pct_of_revenue { amt += monthly_rev * (pct / dec!(100.0)); }
+                        monthly_opex += amt;
+                    }
+                }
+
+                // Staffing
+                for role in staffing_roles {
+                    if m >= role.start_month {
+                        let current_headcount = match role.hiring_plan.as_str() {
+                            "monthly_rate" => {
+                                let months_active = m - role.start_month;
+                                let rate = role.hiring_rate.unwrap_or(1).max(1);
+                                let hired = 1 + (months_active / rate);
+                                hired.min(role.target_count)
+                            },
+                            _ => role.target_count,
+                        };
+
+                        if current_headcount > 0 {
+                            let years_passed = (m - 1) / 12;
+                            let mut current_annual_salary = role.annual_salary;
+                            if years_passed > 0 {
+                                 let multiplier = dec!(1.0) + role.annual_increase;
+                                 for _ in 0..years_passed {
+                                     current_annual_salary *= multiplier;
+                                 }
+                            }
+                            let monthly_cost = (current_annual_salary * Decimal::from(current_headcount)) / dec!(12.0);
+                            monthly_opex += monthly_cost;
+                        }
+                    }
+                }
+
+                // Shocks
+                if let Some(shocks) = shock_map.get(&m) {
+                    for shock in shocks {
+                        let mult = dec!(1.0) + (shock.impact_value / dec!(100.0));
+                        match shock.impact_type.as_str() {
+                            "revenue" => { monthly_rev *= mult; monthly_cogs *= mult; },
+                            "expense" | "opex" => monthly_opex *= mult,
+                            "cogs" => monthly_cogs *= mult,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            let monthly_interest = state.pending_interest;
+            let gross_profit = monthly_rev - monthly_cogs;
+            let total_expenses = monthly_opex + monthly_interest;
+            let net_income = gross_profit - total_expenses;
+
+            // Pooling Logic
+            let mut contribution = dec!(0.0);
+            if pooling_fraction > dec!(0.0) && net_income > dec!(0.0) {
+                contribution = net_income * pooling_fraction;
+                monthly_pool += contribution;
+            }
+
+            // Update Cash (Pre-Pool Distribution)
+            state.current_cash += net_income - contribution;
+
+            // Store intermediate results
+            trajectory_financials.push((monthly_rev, monthly_cogs, gross_profit, monthly_opex, monthly_interest, net_income, contribution));
+        }
+
+        // Phase 2: Distribute Pool & Finalize
+        let pool_share = if iterations > 0 { monthly_pool / Decimal::from(iterations) } else { dec!(0.0) };
+
+        for (i, state) in trajectories.iter_mut().enumerate() {
+            let (rev, cogs, gp, opex, interest, net_income, contribution) = trajectory_financials[i];
+            
+            // Receive Share
+            state.current_cash += pool_share;
+            state.cum_pool_received += pool_share; // Update cumulative pool
+            
+            // Adjusted Net Income for reporting (Net Income - Contribution + Share)
+            // This ensures Cash Flow Waterfall makes sense: Cash Start + Adjusted Net Income = Cash End
+            let adjusted_net_income = net_income - contribution + pool_share;
+
+            // Capital Injections
+            if let Some(injection) = injection_map.get(&m) {
+                state.current_cash += injection;
+                state.cum_external_cap += injection;
+                if state.current_cash >= credit_floor {
+                    state.is_insolvent = false;
+                }
+            }
+
+            // Dividends
+            let mut dividend_paid = dec!(0.0);
+            if !state.is_insolvent {
+                if let Some(policy) = dividend_policy {
+                    if policy.is_enabled {
+                        let surplus = state.current_cash - policy.safety_threshold;
+                        if surplus > dec!(0.0) {
+                            dividend_paid = surplus * (policy.payout_ratio / dec!(100.0));
+                            state.current_cash -= dividend_paid;
+                            state.cum_dividends += dividend_paid;
+                        }
+                    }
+                }
+            }
+
+            // Capital Growth
+            if state.current_cash > dec!(0.0) {
+                if let Some(sampler) = &mut state.cap_growth_sampler {
+                    let growth_rate = sampler.sample();
+                    let multiplier = dec!(1.0) + (growth_rate / dec!(100.0));
+                    state.current_cash *= multiplier;
+                }
+            }
+
+            // Debt Interest for Next Month
+            state.pending_interest = dec!(0.0);
+            let mut current_debt = dec!(0.0);
+            if state.current_cash < dec!(0.0) {
+                current_debt = state.current_cash.abs();
+                if let Some(facility) = credit_facility {
+                    let rate = if facility.is_annual_rate { facility.interest_rate / dec!(12.0) } else { facility.interest_rate };
+                    state.pending_interest = current_debt * (rate / dec!(100.0));
+                }
+            }
+
+            state.history.push(MonthlyData {
+                month_index: m,
+                date: date_str.clone(),
+                revenue: rev,
+                cogs: cogs,
+                gross_profit: gp,
+                opex: opex,
+                interest_expense: interest,
+                net_income: adjusted_net_income, // Reflects pooling
+                cash_balance: state.current_cash,
+                dividend_paid,
+                cumulative_dividends: state.cum_dividends,
+                cumulative_external_capital: state.cum_external_cap,
+                cumulative_pool_received: state.cum_pool_received, // Added field
+                current_debt,
+                total_value: state.current_cash + state.cum_dividends,
+                is_insolvent: state.is_insolvent,
+            });
+        }
+    }
+
+    trajectories.into_iter().map(|t| t.history).collect()
 }
 
 pub fn generate_simulation(
@@ -375,10 +644,11 @@ pub fn generate_simulation(
     staffing_roles: &[StaffingRole],
     valuation_assumptions: &[ValuationAssumption],
     use_monte_carlo: bool,
-    stop_on_insolvency: bool
+    stop_on_insolvency: bool,
+    pooling_fraction: Decimal, // New Parameter
 ) -> SimulationResult {
 
-    // 1. DETERMINISTIC RUN
+    // 1. DETERMINISTIC RUN (Base Case - No Pooling)
     let deterministic_run = run_iteration(start_month, months, initial_cash, revenue_items, expense_items, event_shocks, capital_injections, dividend_policy, credit_facility, capital_growth_policy, staffing_roles, true, stop_on_insolvency);
     let labels: Vec<String> = deterministic_run.iter().map(|d| d.date.clone()).collect();
     
@@ -415,16 +685,18 @@ pub fn generate_simulation(
     let mut p100_value = None;
     let mut p50_valuation = None;
     let mut p50_runway = None;
+    
+    let mut p50_pool_cumulative = None; // Initialize P50 Pool
 
     if use_monte_carlo {
-        let iterations = 1000;
-        let mut full_runs: Vec<Vec<MonthlyData>> = Vec::with_capacity(iterations);
+        // Use Breadth-First for Monte Carlo to support Pooling
+        let mut full_runs = run_monte_carlo_breadth_first(
+            start_month, months, initial_cash, revenue_items, expense_items, event_shocks, 
+            capital_injections, dividend_policy, credit_facility, capital_growth_policy, 
+            staffing_roles, stop_on_insolvency, pooling_fraction
+        );
 
-        for _ in 0..iterations {
-            let run = run_iteration(start_month, months, initial_cash, revenue_items, expense_items, event_shocks, capital_injections, dividend_policy, credit_facility, capital_growth_policy, staffing_roles, false, stop_on_insolvency);
-            full_runs.push(run);
-        }
-
+        let iterations = full_runs.len();
         let mut p0 = Vec::with_capacity(months as usize);
         let mut p10 = Vec::with_capacity(months as usize);
         let mut p25 = Vec::with_capacity(months as usize);
@@ -432,6 +704,8 @@ pub fn generate_simulation(
         let mut p75 = Vec::with_capacity(months as usize);
         let mut p90 = Vec::with_capacity(months as usize);
         let mut p100 = Vec::with_capacity(months as usize);
+        
+        let mut p50_pool = Vec::with_capacity(months as usize); // Vector for P50 Pool
 
         for m in 0..(months as usize) {
             let mut values: Vec<Decimal> = full_runs.iter().map(|r| r[m].total_value).collect();
@@ -450,6 +724,11 @@ pub fn generate_simulation(
             p75.push(values[idx_75]);
             p90.push(values[idx_90]);
             p100.push(values[iterations - 1]);
+
+            // Calculate P50 Pool Cumulative
+            let mut pool_values: Vec<Decimal> = full_runs.iter().map(|r| r[m].cumulative_pool_received).collect();
+            pool_values.sort();
+            p50_pool.push(pool_values[idx_50]);
         }
 
         p0_value = Some(p0);
@@ -459,6 +738,8 @@ pub fn generate_simulation(
         p75_value = Some(p75);
         p90_value = Some(p90);
         p100_value = Some(p100);
+        
+        p50_pool_cumulative = Some(p50_pool); // Store P50 Pool
 
         full_runs.sort_by(|a, b| {
             let val_a = a.last().unwrap().total_value;
@@ -472,8 +753,12 @@ pub fn generate_simulation(
 
         p50_valuation = Some(calc_val(median_last));
         p50_runway = calculate_runway(median_last.cash_balance, median_last.net_income);
+        
+        // Populate single_run_data with the median run so frontend can visualize details (like pool)
+        single_run_data = Some(median_run.clone());
 
     } else {
+        // Single Stochastic Run (No Pooling)
         let single_run = run_iteration(start_month, months, initial_cash, revenue_items, expense_items, event_shocks, capital_injections, dividend_policy, credit_facility, capital_growth_policy, staffing_roles, false, stop_on_insolvency);
         
         single_run_value = Some(single_run.iter().map(|d| d.total_value).collect());
@@ -492,6 +777,7 @@ pub fn generate_simulation(
         single_run_data, 
         single_run_value,
         p0_value, p10_value, p25_value, p50_value, p75_value, p90_value, p100_value,
+        p50_pool_cumulative, // Include in result
         deterministic_runway, deterministic_valuation,
         single_run_runway, single_run_valuation,
         p50_runway, p50_valuation,

@@ -24,6 +24,14 @@ export interface FinancialPlan {
   name: string;
   start_month: string;
   initial_cash: number;
+  pooling_fraction: number;
+}
+
+export interface UpdatePlanRequest {
+  name?: string;
+  start_month?: string;
+  initial_cash?: number;
+  pooling_fraction?: number;
 }
 
 export interface RevenueItem {
@@ -142,6 +150,7 @@ export interface MonthlyData {
   dividend_paid: number | string;
   cumulative_dividends: number | string;
   cumulative_external_capital: number | string;
+  cumulative_pool_received: number | string; // Added field
   current_debt: number | string;
   total_value: number | string;
   is_insolvent: boolean;
@@ -161,6 +170,8 @@ export interface SimulationResult {
   p75_value?: (number | string)[];
   p90_value?: (number | string)[];
   p100_value?: (number | string)[];
+
+  p50_pool_cumulative?: (number | string)[]; // Added field
 
   deterministic_runway?: number;
   deterministic_valuation: number | string;
@@ -191,6 +202,8 @@ export const api = {
   getPlan: async (id: string) => (await axios.get<FinancialPlan>(`${API_URL}/api/plans/${id}`)).data,
   createPlan: async (company_id: string, name: string, start_month: string) => 
     (await axios.post<FinancialPlan>(`${API_URL}/api/plans`, { company_id, name, start_month })).data,
+  updatePlan: async (id: string, updates: UpdatePlanRequest) => 
+    (await axios.put<FinancialPlan>(`${API_URL}/api/plans/${id}`, updates)).data,
   getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 
     (await axios.get<SimulationResult>(`${API_URL}/api/plans/${planId}/projection`, { params })).data,
 

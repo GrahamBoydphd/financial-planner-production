@@ -7,24 +7,17 @@ PROMPT_FILE="ai_prompt_packet.txt"
 RESPONSE_FILE="ai_solution.md"
 
 # 2. Parse Arguments
-if [ "$#" -lt 2 ]; then
-    echo "Usage: ./do_task.sh \"Task Description\" file1 file2 ..."
-    exit 1
-fi
-
 TASK="$1"
 shift
 TARGET_FILES="$@"
 
 # 3. Create Branch
-# Checks if branch exists or creates it safely
-git checkout -b "$BRANCH_NAME" 2>/dev/null || echo "Switched to branch: $BRANCH_NAME"
-echo "Branch '$BRANCH_NAME' created/active."
+git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout -b "$BRANCH_NAME"
+echo "Branch '$BRANCH_NAME' created."
 
 # 4. Generate Solution
 echo "Packaging context..."
-
-./pack_context.sh "$TASK" $TARGET_FILES 
+./pack_context.sh "$TASK" $TARGET_FILES > "$PROMPT_FILE"
 
 if [ $? -ne 0 ]; then
     echo "Packaging failed."
@@ -42,18 +35,20 @@ fi
 echo "✅ AI response saved to: $RESPONSE_FILE"
 
 # ---------------------------------------------------------
-# 5. Interactive Review & Apply
+# 5. Interactive Review & Apply (The Missing Part)
 # ---------------------------------------------------------
 
 echo "---------------------------------------------------"
 echo "Please review '$RESPONSE_FILE' now."
 echo "---------------------------------------------------"
 
+# Loop to force a valid Y/N answer
 while true; do
     read -p "Do you want to apply these changes to the code? (y/n): " yn
     case $yn in
         [Yy]* ) 
             echo "Applying changes..."
+            # Check if apply.py exists
             if [ -f "apply.py" ]; then
                 python3 apply.py "$RESPONSE_FILE"
                 echo "Done! Check your files."

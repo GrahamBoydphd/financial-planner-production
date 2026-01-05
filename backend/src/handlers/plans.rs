@@ -11,12 +11,20 @@ use crate::errors::AppError;
 use crate::projection::{generate_simulation, SimulationResult};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
+use chrono::NaiveDate;
 
 #[derive(Deserialize)]
 pub struct CreatePlanRequest {
     pub company_id: Uuid,
     pub name: String,
     pub start_month: String, // YYYY-MM-01
+}
+
+#[derive(Deserialize)]
+pub struct UpdatePlanRequest {
+    pub name: Option<String>,
+    pub start_month: Option<String>,
+    pub pooling_fraction: Option<Decimal>,
 }
 
 pub async fn create_plan(
@@ -32,6 +40,37 @@ pub async fn create_plan(
     )
     .fetch_one(&pool)
     .await?;
+
+    Ok(Json(plan))
+}
+
+pub async fn update_plan(
+    State(pool): State<Pool<Postgres>>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdatePlanRequest>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let start_date = payload.start_month
+        .as_deref()
+        .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+        .flatten();
+
+    let plan = sqlx::query_as!(
+        FinancialPlan,
+        "UPDATE financial_plans 
+         SET name = COALESCE($1, name), 
+             start_month = COALESCE($2, start_month), 
+             pooling_fraction = COALESCE($3, pooling_fraction),
+             updated_at = NOW() 
+         WHERE id = $4 
+         RETURNING *",
+        payload.name,
+        start_date,
+        payload.pooling_fraction,
+        id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
     Ok(Json(plan))
 }
@@ -87,7 +126,7 @@ pub struct GetProjectionQuery {
     pub months: Option<i32>,
     pub initial_cash: Option<Decimal>,
     pub mode: Option<String>,
-    pub stop_insolvency: Option<bool>, // New Param
+    pub stop_insolvency: Option<bool>,
 }
 
 pub async fn get_plan_projection(
@@ -163,7 +202,6 @@ pub async fn get_plan_projection(
     .fetch_all(&pool)
     .await?;
 
-    // Updated to select specific columns matching StaffingRole struct
     let staffing_roles = sqlx::query_as!(
         crate::models::StaffingRole,
         "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at 
@@ -173,7 +211,6 @@ pub async fn get_plan_projection(
     .fetch_all(&pool)
     .await?;
 
-// ... previous fetches ...
     let capital_growth = sqlx::query_as!(
         crate::models::CapitalGrowthPolicy,
         "SELECT * FROM capital_growth_policies WHERE plan_id = $1",
@@ -202,7 +239,8 @@ pub async fn get_plan_projection(
         &staffing_roles,
         &valuation_assumptions,
         use_monte_carlo,
-        stop_insolvency // Pass it down
+        stop_insolvency,
+        plan.pooling_fraction // Pass pooling fraction
     );
 
     Ok(Json(result))

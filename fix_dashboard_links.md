@@ -1,3 +1,5 @@
+🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
+<file path='frontend/app/page.tsx'>
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -142,3 +144,5 @@ export default function Dashboard() {
     </Layout>
   );
 }
+</file>
+

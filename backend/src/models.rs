@@ -35,6 +35,7 @@ pub struct FinancialPlan {
     pub start_month: NaiveDate,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

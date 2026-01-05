@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
@@ -10,7 +11,7 @@ interface Props {
 export default function DividendForm({ planId }: Props) {
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState('');
-  const [ratio, setRatio] = useState('');
+  const [ratio, setRatio] = useState(''); // Stored as 0-100 string
 
   useEffect(() => {
     let active = true;
@@ -18,7 +19,8 @@ export default function DividendForm({ planId }: Props) {
         if(!active) return;
         setEnabled(d.is_enabled);
         setThreshold(d.safety_threshold.toString());
-        setRatio(d.payout_ratio.toString());
+        // Convert 0-1 ratio to 0-100 percentage
+        setRatio((d.payout_ratio * 100).toString());
     }).catch(() => {});
     return () => { active = false; };
   }, [planId]);
@@ -28,7 +30,8 @@ export default function DividendForm({ planId }: Props) {
         plan_id: planId,
         is_enabled: enabled,
         safety_threshold: Number(threshold),
-        payout_ratio: Number(ratio)
+        // Convert 0-100 percentage to 0-1 ratio
+        payout_ratio: Number(ratio) / 100
     });
     alert("Dividend policy saved");
   };
@@ -49,8 +52,11 @@ export default function DividendForm({ planId }: Props) {
                     <input type="number" className="w-full border p-1 rounded" value={threshold} onChange={e => setThreshold(e.target.value)} />
                 </div>
                 <div>
-                    <label className="text-xs text-gray-500">Payout Ratio (0-1)</label>
-                    <input type="number" step="0.01" className="w-full border p-1 rounded" value={ratio} onChange={e => setRatio(e.target.value)} />
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                        Payout Percentage (0-100)
+                        <Tooltip content="% of surplus cash distributed." />
+                    </label>
+                    <input type="number" step="0.1" className="w-full border p-1 rounded" value={ratio} onChange={e => setRatio(e.target.value)} />
                 </div>
             </div>
         )}

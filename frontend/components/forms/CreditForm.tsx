@@ -10,6 +10,7 @@ interface Props {
 export default function CreditForm({ planId }: Props) {
   const [limit, setLimit] = useState('');
   const [rate, setRate] = useState('');
+  const [isAnnual, setIsAnnual] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -17,6 +18,9 @@ export default function CreditForm({ planId }: Props) {
         if(!active) return;
         setLimit(c.facility_limit.toString());
         setRate(c.interest_rate.toString());
+        if (c.is_annual_rate !== undefined) {
+            setIsAnnual(c.is_annual_rate);
+        }
     }).catch(() => {});
     return () => { active = false; };
   }, [planId]);
@@ -26,7 +30,7 @@ export default function CreditForm({ planId }: Props) {
         plan_id: planId,
         facility_limit: Number(limit),
         interest_rate: Number(rate),
-        is_annual_rate: true // Defaulting to annual for simplicity
+        is_annual_rate: isAnnual
     });
     alert("Credit facility saved");
   };
@@ -44,6 +48,29 @@ export default function CreditForm({ planId }: Props) {
                 <input type="number" step="0.1" className="w-full border p-1 rounded" value={rate} onChange={e => setRate(e.target.value)} />
             </div>
         </div>
+        
+        <div className="flex items-center gap-4 text-xs text-gray-600">
+            <span className="font-semibold">Rate Type:</span>
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input 
+                    type="radio" 
+                    name="rateType" 
+                    checked={isAnnual} 
+                    onChange={() => setIsAnnual(true)} 
+                />
+                Annual (APR)
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input 
+                    type="radio" 
+                    name="rateType" 
+                    checked={!isAnnual} 
+                    onChange={() => setIsAnnual(false)} 
+                />
+                Monthly
+            </label>
+        </div>
+
         <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1 rounded text-sm font-bold">Update Facility</button>
     </div>
   );

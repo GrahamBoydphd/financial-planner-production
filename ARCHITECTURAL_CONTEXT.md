@@ -21,24 +21,31 @@
     * Fan Charts (`CashFlowChart.tsx`) visualize the P5-P95 spread.
     * Supports both Logarithmic and Linear scales.
 
-## 3. CURRENT FOCUS: REFACTORING & DASHBOARD FIXES
-**Task:** Unify volatility inputs, fix dashboard navigation, and polish Dividend/Credit forms.
+## 3. CURRENT FOCUS: NON-ERGODICITY MODULE (BREADTH-FIRST REFACTOR)
+**Task:** Implement "Fractional Profit Pooling" to correct for non-ergodicity, requiring a rewrite of the simulation engine from Depth-First to Breadth-First.
 
-### A. Shared Components (`VolatilityInputs.tsx`)
-* **Refactor:** Extract volatility fields (Type, Alpha, Beta, etc.) from Revenue/Expense/Treasury forms into `components/forms/shared/VolatilityInputs.tsx`.
-* **UI:** Ensure input boxes in "Advanced Mode" are bottom-aligned (`flex items-end`).
-* **Tooltips:** Standardize all help text across the platform.
+### A. Database & Models
+* **New Field:** `pooling_fraction` (Decimal, Default 0.0) in `financial_plans` table.
+* **Struct:** Update `FinancialPlan` in `backend/src/models.rs`.
 
-### B. Dashboard & Navigation
-* **Fix Buttons:**
-    * `+ New Fund`: Open Fund Creation Modal or link to `/fund/new`.
-    * `+ New Company` (Global): Link to `/company/new` (require Fund selection).
-    * `+ Add Company` (Inside Fund Card): Link to `/company/new?fundId=...`.
-* **Error Handling:** Prevent "Company not found" 404s on creation buttons.
+### B. Simulation Engine Rewrite (`backend/src/projection.rs`)
+* **Current Logic (Depth-First):** `for trajectory in 0..I { for month in 0..M { ... } }` -> **INCORRECT** for pooling.
+* **New Logic (Breadth-First):**
+    1. Initialize Vector of `TrajectoryState` size I (e.g., 1000).
+    2. `for month in 0..M`:
+        * `pool_this_month = 0.0`
+        * **Phase 1 (Calculate):** Iterate all I states. Calculate Net Income.
+            * If `Income > 0`: `contribution = Income * pooling_fraction`.
+            * `pool_this_month += contribution`.
+            * `state.cash += Income - contribution`.
+            * Else: `state.cash += Income`.
+        * **Phase 2 (Distribute):** `share = pool_this_month / I`.
+        * Iterate all I states: `state.cash += share`. `state.total_pool_received += share`.
+    3. **Aggregation:** Once month loop finishes, compile stats (P50, P90) from the vector of states.
 
-### C. Specific Form Polish
-* **Dividends:** Input as Percentage (0-100), store as Ratio (0-1). Tooltip: "% of surplus cash distributed."
-* **Credit:** Add Toggle: "Annual Rate (APR)" vs "Monthly Rate". Frontend sends `is_annual_rate` bool.
+### C. Frontend
+* **UI:** Add Slider "Non-Ergodicity Correction" (0-100%) in `AdvancedSettings` or similar.
+* **Chart:** Add "Accumulated Pool Share" to the breakdown if possible, or just ensure Cash Balance reflects the smoothing.
 
 ## 4. NEXT UP (PENDING)
 * User Authentication.

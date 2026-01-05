@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post, delete}, // Removed 'put' (it is used as a method, not a function)
+    routing::{get, post, put, delete},
     Router,
 };
 use tower_http::cors::{CorsLayer, Any};
@@ -47,7 +47,7 @@ async fn main() {
         
         // Plans
         .route("/api/plans", post(handlers::plans::create_plan).get(handlers::plans::get_all_plans))
-        .route("/api/plans/:id", get(handlers::plans::get_plan).delete(handlers::plans::delete_plan))
+        .route("/api/plans/:id", get(handlers::plans::get_plan).put(handlers::plans::update_plan).delete(handlers::plans::delete_plan))
         .route("/api/plans/:id/projection", get(handlers::plans::get_plan_projection))
         
         // Revenue (Create, List, Delete+Edit)

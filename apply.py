@@ -24,6 +24,7 @@ def apply_changes(response_file):
 
     for file_path, file_content in matches:
         # Clean up: Remove leading/trailing newlines from the content
+        # This handles the newline usually present after <file ...>
         clean_content = file_content.strip() + "\n"
         
         # Security: Ensure we aren't writing outside the repo
@@ -31,8 +32,10 @@ def apply_changes(response_file):
             print(f"⛔ SKIPPING suspicious path: {file_path}")
             continue
 
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        # Ensure directory exists (only if file is in a subdirectory)
+        directory = os.path.dirname(file_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
 
         print(f"📝 Writing to: {file_path}")
         with open(file_path, 'w') as f:

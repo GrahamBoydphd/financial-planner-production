@@ -60,8 +60,9 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
   const datasets = [];
 
   // --- 0. DETERMINE SOURCE DATA ---
+  // We use single_run_data if available (even in MC mode, it now holds the median run)
   let sourceData: MonthlyData[] = data.deterministic_data;
-  if (mode === 'single' && data.single_run_data) {
+  if ((mode === 'single' || mode === 'monte_carlo') && data.single_run_data) {
     sourceData = data.single_run_data;
   }
 
@@ -312,6 +313,31 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
       pointStyle: 'line', 
       order: 40, 
     });
+  }
+
+  // --- 4. Accumulated Pool (Shared Logic) ---
+  // We check sourceData (which is now populated with median run in MC mode)
+  const poolData = sourceData.map(d => {
+      const val = Number(d.cumulative_pool_received || 0);
+      return (isLog && val <= 100) ? 100 : val;
+  });
+  
+  // Only render if there is non-zero data (or if we are in MC mode and expect it, but checking data is safer)
+  const hasPool = poolData.some(v => v > (isLog ? 101 : 1));
+
+  if (hasPool) {
+      datasets.push({
+          label: 'Accumulated Pool',
+          data: poolData,
+          borderColor: 'rgb(245, 158, 11)', // Amber-500
+          borderDash: [5, 5], // Dotted
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          pointStyle: 'line',
+          fill: false,
+          order: 7, // Layer above revenue/costs but below main lines
+      });
   }
 
   // --- SCALING LOGIC: "Snap-to-Grid" Cap ---
