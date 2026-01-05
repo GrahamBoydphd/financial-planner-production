@@ -1,102 +1,98 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '@/lib/api';
-import VolatilityInputs from './shared/VolatilityInputs';
 
 interface Props {
   planId: string;
   onSuccess: () => void;
 }
 
-export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
-  const [volType, setVolType] = useState('none');
-  
-  // Flat / Student-T / NRIG Params
-  const [mean, setMean] = useState('');     // Mean / Mu
-  const [volMin, setVolMin] = useState(''); // Min
-  const [volMax, setVolMax] = useState(''); // Max
-  const [volIntervals, setVolIntervals] = useState('');
-  
-  // Specific NRIG / Student-T Params
-  const [alpha, setAlpha] = useState('');
-  const [beta, setBeta] = useState('');
-  const [scale, setScale] = useState(''); // Delta / Scale
-  const [freedom, setFreedom] = useState('');
+export default function CapitalForm({ planId, onSuccess }: Props) {
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [month, setMonth] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // UI State
-  const [isAdvanced, setIsAdvanced] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !amount || !month) return;
 
-  useEffect(() => {
-    let active = true;
-    api.getCapitalGrowth(planId).then(p => {
-      if (!active) return;
-      const vType = p.volatility_type || 'none';
-      setVolType(vType);
-      setMean(p.vol_mean !== undefined ? p.vol_mean.toString() : '');
-      setVolMin(p.vol_min !== undefined ? p.vol_min.toString() : '');
-      setVolMax(p.vol_max !== undefined ? p.vol_max.toString() : '');
-      setVolIntervals(p.vol_intervals !== undefined ? p.vol_intervals.toString() : '');
-      
-      setAlpha(p.vol_alpha !== undefined ? p.vol_alpha.toString() : '');
-      setBeta(p.vol_beta !== undefined ? p.vol_beta.toString() : '');
-      setScale(p.vol_scale !== undefined ? p.vol_scale.toString() : '');
-      setFreedom(p.vol_freedom !== undefined ? p.vol_freedom.toString() : '');
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [planId]);
+    setIsSubmitting(true);
+    try {
+      await api.createCapitalInjection({
+        plan_id: planId, // Ensure snake_case if your backend expects it
+        name,
+        amount: Number(amount),
+        month: Number(month)
+      });
 
-  const handleSave = async () => {
-    await api.upsertCapitalGrowth({
-        plan_id: planId,
-        volatility_type: volType as any,
-        
-        // Common / Student T / NRIG
-        vol_mean: mean ? Number(mean) : undefined,
-        
-        // Flat Only
-        vol_min: volType === 'flat' && volMin ? Number(volMin) : undefined,
-        vol_max: volType === 'flat' && volMax ? Number(volMax) : undefined,
-        vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
-        
-        // NRIG Only
-        vol_alpha: volType === 'nrig' && alpha ? Number(alpha) : undefined,
-        vol_beta: volType === 'nrig' && beta ? Number(beta) : undefined,
-        vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? Number(scale) : undefined, 
-        vol_freedom: volType === 'student_t' && freedom ? Number(freedom) : undefined,
-    });
-    onSuccess();
+      // Reset form on success
+      setName('');
+      setAmount('');
+      setMonth('');
+      onSuccess();
+    } catch (error) {
+      console.error("Failed to add capital injection", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="space-y-3">
-        <div className="flex justify-between items-center">
-            <label className="text-xs text-gray-500 block">Investment Strategy (Risk Model)</label>
+    <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="font-bold text-gray-800 text-sm">Add New Injection</h3>
+        <span className="text-xs text-gray-400">Fixed Amount</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+        {/* Name Input */}
+        <div className="md:col-span-5">
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Source Name</label>
+          <input 
+            className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition" 
+            placeholder="e.g. Seed Round, Founder Cash" 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+          />
         </div>
 
-        {/* SHARED VOLATILITY COMPONENT */}
-        <VolatilityInputs 
-            volType={volType} setVolType={setVolType}
-            volMean={mean} setVolMean={setMean}
-            volMin={volMin} setVolMin={setVolMin}
-            volMax={volMax} setVolMax={setVolMax}
-            volIntervals={volIntervals} setVolIntervals={setVolIntervals}
-            volScale={scale} setVolScale={setScale}
-            volFreedom={freedom} setVolFreedom={setFreedom}
-            volAlpha={alpha} setVolAlpha={setAlpha}
-            volBeta={beta} setVolBeta={setBeta}
-            isAdvanced={isAdvanced} setIsAdvanced={setIsAdvanced}
-            meanLabel="Expected Monthly Return (Mean %)"
-            alwaysShowMean={true}
-        />
+        {/* Amount Input */}
+        <div className="md:col-span-4">
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Amount ($)</label>
+          <input 
+            type="number" 
+            min="0"
+            step="1000"
+            className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition" 
+            placeholder="0.00" 
+            value={amount} 
+            onChange={e => setAmount(e.target.value)} 
+          />
+        </div>
 
-        {volType !== 'none' && (
-             <p className="text-xs text-gray-400 mt-1">
-                Calculated on positive cash balance at month end.
-             </p>
-        )}
+        {/* Month Input */}
+        <div className="md:col-span-3">
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Month</label>
+          <input 
+            type="number" 
+            min="1"
+            max="120"
+            className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition" 
+            placeholder="1" 
+            value={month} 
+            onChange={e => setMonth(e.target.value)} 
+          />
+        </div>
+      </div>
 
-        <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1 rounded text-sm font-bold mt-2">Update Investment Policy</button>
-    </div>
+      <button 
+        disabled={isSubmitting || !name || !amount}
+        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-md text-sm font-bold transition-colors flex justify-center items-center gap-2"
+      >
+        {isSubmitting ? 'Adding...' : 'Add Capital Injection'}
+      </button>
+    </form>
   );
 }

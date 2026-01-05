@@ -11,6 +11,7 @@ import RevenueForm from '@/components/forms/RevenueForm';
 import ExpenseForm from '@/components/forms/ExpenseForm';
 import CapitalGrowthForm from '@/components/forms/CapitalGrowthForm';
 import CapitalForm from '@/components/forms/CapitalForm';
+import CapitalList from '@/components/lists/CapitalList'; // Make sure this path matches where you saved CapitalList.tsx
 import DividendForm from '@/components/forms/DividendForm';
 import CreditForm from '@/components/forms/CreditForm';
 import ValuationForm from '@/components/forms/ValuationForm';
@@ -322,30 +323,12 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                 <Card>
                     <h2 className="text-xl font-bold mb-4 text-green-600">Equity & Capital Injections</h2>
                     <p className="text-sm text-gray-500 mb-6">Add one-time cash injections (e.g. Seed rounds, Owner contributions).</p>
+                    
+                    {/* INPUT FORM */}
                     <CapitalForm planId={planId} onSuccess={fetchData} />
 
-                    <div className="mt-6 space-y-3">
-                        {capitalItems.map(c => (
-                            <div key={c.id} className="flex justify-between items-center border border-gray-200 p-3 rounded-lg bg-white hover:border-green-300 transition-colors">
-                                <div>
-                                    <p className="font-semibold text-gray-900">{c.name}</p>
-                                    <p className="text-xs text-gray-500">Month {c.month}</p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded">+${c.amount.toLocaleString()}</span>
-                                    <DeleteButton onDelete={async () => {
-                                        await api.deleteCapitalInjection(c.id);
-                                        fetchData();
-                                    }} />
-                                </div>
-                            </div>
-                        ))}
-                         {capitalItems.length === 0 && (
-                            <div className="text-center p-4 text-gray-400 italic text-sm">
-                                No capital injections recorded.
-                            </div>
-                        )}
-                    </div>
+                    {/* LIST OF ITEMS */}
+                    <CapitalList items={capitalItems} onDelete={fetchData} />
                 </Card>
             </section>
 

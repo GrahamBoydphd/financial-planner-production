@@ -14,6 +14,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NODE_ENV production
 
+# --- ADD THIS SECTION ---
+# This allows us to pass the URL in from docker-compose.yml
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# ------------------------
+
 # Build the Next.js app
 RUN npm run build
 
