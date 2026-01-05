@@ -25,13 +25,13 @@ services:
 
   # 3. Frontend
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     restart: always
     ports:
       - "3000:3000"
-    environment:
-      # In Docker-to-Docker, we talk to the service name 'backend'
-      NEXT_PUBLIC_API_URL: http://backend:8000/api 
       # Note: For client-side browser access, this might need to be your public domain later.
 
 volumes:
