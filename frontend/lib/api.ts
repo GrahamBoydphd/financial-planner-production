@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // If the environment variable is set (Production), use it.
 // Otherwise, fall back to localhost (Development).
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // --- INTERFACES ---
 export interface Fund {

@@ -1,3 +1,66 @@
+<system_context>
+You are an expert Rust/TypeScript developer.
+Strictly follow the architectural guidelines below.
+CRITICAL OUTPUT RULES:
+1. When providing code, output the FULL FILE content. Do not use placeholders like '// ... rest of code'.
+2. Wrap every file in XML tags: <file path='path/to/file.ext'>FULL CODE</file>.
+</system_context>
+
+<architectural_guidelines>
+# ARCHITECTURAL_CONTEXT.md
+# Current Status: BUILD PHASE - UI & VISUALIZATION
+# Last Updated: January 6, 2026
+
+## 1. PROJECT GOAL
+**Objective:** Build a financial simulation engine capable of non-ergodic (Monte Carlo) analysis for startups.
+**Core Philosophy:** Avoid "average of averages." Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+
+## 2. ESTABLISHED CONSTRAINTS (DO NOT CHANGE)
+* **Tech Stack:**
+    * **Backend:** Rust (Axum, SQLx, Tokio).
+    * **Database:** PostgreSQL (SQLx for compile-time checked queries).
+    * **Frontend:** Next.js (TypeScript, React, Tailwind CSS).
+    * **Math:** `rust_decimal` for all currency calculations. No floating point money.
+* **Core Engine (`backend/src/projection.rs`):**
+    * The simulation loop calculates month-by-month cash flow.
+    * It handles: Revenue, COGS, OpEx, Capital Injections, Dividends, and Credit Facilities.
+    * **Monte Carlo:** Runs 1000+ iterations if enabled, calculating percentiles (P5, P50, P95).
+    * **Logic:** Insolvency logic stops simulation if cash < -credit_limit.
+* **Visualization:**
+    * Fan Charts (`CashFlowChart.tsx`) visualize the P5-P95 spread.
+    * Supports both Logarithmic and Linear scales.
+
+## 3. CURRENT FOCUS: UI LOGIC REFINEMENT
+**Task:** Improve Dashboard UX by conditionally hiding irrelevant controls.
+
+### Dynamic Control Visibility
+* **The Issue:** The "Ergodicity Correction" (Pooling) slider is currently visible for all simulation types.
+* **The Logic:** This parameter *only* applies to Non-Ergodic (Monte Carlo) simulations where volatility is being dampened. In deterministic/standard / single company models, it does nothing.
+* **Requirement:**
+    * **Watch State:** Track the selected `simulation_type` (e.g., 'standard' vs 'monte_carlo').
+    * **Conditional Render:** Wrap the Slider component in a check.
+    * **Behavior:**
+        * If `Monte Carlo` -> **SHOW** Slider.
+        * If `Standard (Average) /Safe/Single Path (Volatile)` -> **HIDE** Slider.
+
+## 4. NEXT UP (PENDING)
+* User Authentication (Login/Signup).
+* PDF Export of Simulation Results.
+</architectural_guidelines>
+
+<task_instruction>
+Update 'frontend/app/plan/[planId]/results/page.tsx' to conditionally hide the Ergodicity Slider.
+
+REQUIREMENTS:
+1. Locate the 'Non-Ergodicity Slider' div (it has the label 'Non-Ergodicity' and an input type='range').
+2. Wrap this entire div in a conditional check so it only renders when 'simMode' equals 'monte_carlo'.
+   - Code pattern: {simMode === 'monte_carlo' && ( <div ...> ... </div> )}
+3. Do not change the logic inside the slider, just visibility.
+4. Keep the slider state and handlers intact.
+</task_instruction>
+
+<source_code>
+--- START FILE: frontend/app/plan/[planId]/results/page.tsx ---
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -406,30 +469,28 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               </div>
 
               {/* Non-Ergodicity Slider */}
-              {simMode === 'monte_carlo' && (
-                <div className="flex flex-col justify-center border-l pl-4 w-40">
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Non-Ergodicity</span>
-                        {updatingPooling ? (
-                            <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
-                        ) : (
-                            <span className="text-xs font-bold text-blue-600">{poolingFraction}%</span>
-                        )}
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      step="1"
-                      value={poolingFraction}
-                      onChange={(e) => setPoolingFraction(Number(e.target.value))}
-                      onMouseUp={handlePoolingSave}
-                      onTouchEnd={handlePoolingSave}
-                      disabled={updatingPooling || loading}
-                      className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer ${updatingPooling || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    />
-                </div>
-              )}
+              <div className="flex flex-col justify-center border-l pl-4 w-40">
+                  <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Non-Ergodicity</span>
+                      {updatingPooling ? (
+                          <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
+                      ) : (
+                          <span className="text-xs font-bold text-blue-600">{poolingFraction}%</span>
+                      )}
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    step="1"
+                    value={poolingFraction}
+                    onChange={(e) => setPoolingFraction(Number(e.target.value))}
+                    onMouseUp={handlePoolingSave}
+                    onTouchEnd={handlePoolingSave}
+                    disabled={updatingPooling || loading}
+                    className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer ${updatingPooling || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  />
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -647,3 +708,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     </Layout>
   );
 }
+--- END FILE: frontend/app/plan/[planId]/results/page.tsx ---
+
+</source_code>

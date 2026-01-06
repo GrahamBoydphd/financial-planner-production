@@ -1,5 +1,5 @@
 services:
-  # 1. Database
+  # 1. Database (UNCHANGED)
   db:
     image: postgres:15-alpine
     restart: always
@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data_prod:/var/lib/postgresql/data
 
@@ -20,19 +22,34 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       RUST_LOG: info
       PORT: 8000
-    ports:
-      - "8000:8000"
+    # REMOVED "ports" section. Only Caddy talks to it now.
 
   # 3. Frontend
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        # UPDATED: Now points to the domain, not the IP
+        NEXT_PUBLIC_API_URL: https://planner.evolutesix.com
+    restart: always
+    # REMOVED "ports" section. Only Caddy talks to it now.
+
+  # 4. Caddy (NEW SERVICE)
+  caddy:
+    image: caddy:2-alpine
     restart: always
     ports:
-      - "3000:3000"
-      # Note: For client-side browser access, this might need to be your public domain later.
+      - "80:80"    # HTTP (redirects to HTTPS)
+      - "443:443"  # HTTPS
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
 
 volumes:
   db_data_prod:
+  caddy_data:    # Stores SSL certs
+  caddy_config:

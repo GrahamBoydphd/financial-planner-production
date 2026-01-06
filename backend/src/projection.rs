@@ -22,7 +22,7 @@ pub struct MonthlyData {
     pub dividend_paid: Decimal,
     pub cumulative_dividends: Decimal,
     pub cumulative_external_capital: Decimal,
-    pub cumulative_pool_received: Decimal, // Added field
+    pub cumulative_pool_received: Decimal, 
     pub current_debt: Decimal,
     pub total_value: Decimal,
     pub is_insolvent: bool, 
@@ -44,7 +44,7 @@ pub struct SimulationResult {
     pub p90_value: Option<Vec<Decimal>>, 
     pub p100_value: Option<Vec<Decimal>>, 
 
-    pub p50_pool_cumulative: Option<Vec<Decimal>>, // Added field for P50 Pool Data
+    pub p50_pool_cumulative: Option<Vec<Decimal>>, 
 
     pub deterministic_runway: Option<i32>,
     pub deterministic_valuation: Decimal,
@@ -67,7 +67,7 @@ struct TrajectoryState {
     current_cash: Decimal,
     cum_external_cap: Decimal,
     cum_dividends: Decimal,
-    cum_pool_received: Decimal, // Added field
+    cum_pool_received: Decimal, 
     pending_interest: Decimal,
     is_insolvent: bool,
     revenue_states: HashMap<Uuid, ItemState>,
@@ -147,7 +147,7 @@ fn run_iteration(
     let mut cum_dividends = dec!(0.0);
     let mut pending_interest = dec!(0.0);
     let mut is_insolvent = false;
-    let mut cumulative_pool_received = dec!(0.0); // Initialize to 0.0
+    let mut cumulative_pool_received = dec!(0.0); 
 
     let mut revenue_states: HashMap<Uuid, ItemState> = HashMap::new();
     let mut expense_states: HashMap<Uuid, ItemState> = HashMap::new();
@@ -420,7 +420,7 @@ fn run_monte_carlo_breadth_first(
             current_cash,
             cum_external_cap,
             cum_dividends: dec!(0.0),
-            cum_pool_received: dec!(0.0), // Initialize
+            cum_pool_received: dec!(0.0), 
             pending_interest: dec!(0.0),
             is_insolvent: false,
             revenue_states,
@@ -436,6 +436,7 @@ fn run_monte_carlo_breadth_first(
         let date_str = current_date.format("%Y-%m-%d").to_string();
 
         let mut monthly_pool = dec!(0.0);
+        // Store intermediate results: (rev, cogs, gp, opex, interest, op_profit, contribution, inv_gain)
         let mut trajectory_financials = Vec::with_capacity(iterations);
 
         // Phase 1: Calculate Financials & Pool Contribution
@@ -532,37 +533,52 @@ fn run_monte_carlo_breadth_first(
             let monthly_interest = state.pending_interest;
             let gross_profit = monthly_rev - monthly_cogs;
             let total_expenses = monthly_opex + monthly_interest;
-            let net_income = gross_profit - total_expenses;
+            let operating_profit = gross_profit - total_expenses;
 
-            // Pooling Logic
+            // 1. Update Cash with Operating Flow
+            state.current_cash += operating_profit;
+
+            // 2. Calculate Investment Result (Treasury)
+            let mut investment_gain = dec!(0.0);
+            if state.current_cash > dec!(0.0) {
+                if let Some(sampler) = &mut state.cap_growth_sampler {
+                    let growth_rate = sampler.sample();
+                    investment_gain = state.current_cash * (growth_rate / dec!(100.0));
+                }
+            }
+            // 3. Update Cash with Investment Flow
+            state.current_cash += investment_gain;
+
+            // 4. Pooling Logic
             let mut contribution = dec!(0.0);
-            if pooling_fraction > dec!(0.0) && net_income > dec!(0.0) {
-                contribution = net_income * pooling_fraction;
+            if pooling_fraction > dec!(0.0) {
+                // Poolable Income = Max(0, OpProfit) + Max(0, InvGain)
+                let op_gain = if operating_profit > dec!(0.0) { operating_profit } else { dec!(0.0) };
+                let inv_gain = if investment_gain > dec!(0.0) { investment_gain } else { dec!(0.0) };
+                let poolable_income = op_gain + inv_gain;
+                
+                contribution = poolable_income * pooling_fraction;
                 monthly_pool += contribution;
             }
 
-            // Update Cash (Pre-Pool Distribution)
-            state.current_cash += net_income - contribution;
+            // 5. Subtract Pool Contribution
+            state.current_cash -= contribution;
 
             // Store intermediate results
-            trajectory_financials.push((monthly_rev, monthly_cogs, gross_profit, monthly_opex, monthly_interest, net_income, contribution));
+            trajectory_financials.push((monthly_rev, monthly_cogs, gross_profit, monthly_opex, monthly_interest, operating_profit, contribution, investment_gain));
         }
 
         // Phase 2: Distribute Pool & Finalize
         let pool_share = if iterations > 0 { monthly_pool / Decimal::from(iterations) } else { dec!(0.0) };
 
         for (i, state) in trajectories.iter_mut().enumerate() {
-            let (rev, cogs, gp, opex, interest, net_income, contribution) = trajectory_financials[i];
+            let (rev, cogs, gp, opex, interest, op_profit, contribution, inv_gain) = trajectory_financials[i];
             
-            // Receive Share
+            // 6. Receive Share
             state.current_cash += pool_share;
-            state.cum_pool_received += pool_share; // Update cumulative pool
+            state.cum_pool_received += pool_share; 
             
-            // Adjusted Net Income for reporting (Net Income - Contribution + Share)
-            // This ensures Cash Flow Waterfall makes sense: Cash Start + Adjusted Net Income = Cash End
-            let adjusted_net_income = net_income - contribution + pool_share;
-
-            // Capital Injections
+            // 7. Capital Injections
             if let Some(injection) = injection_map.get(&m) {
                 state.current_cash += injection;
                 state.cum_external_cap += injection;
@@ -571,7 +587,7 @@ fn run_monte_carlo_breadth_first(
                 }
             }
 
-            // Dividends
+            // 8. Dividends
             let mut dividend_paid = dec!(0.0);
             if !state.is_insolvent {
                 if let Some(policy) = dividend_policy {
@@ -586,15 +602,6 @@ fn run_monte_carlo_breadth_first(
                 }
             }
 
-            // Capital Growth
-            if state.current_cash > dec!(0.0) {
-                if let Some(sampler) = &mut state.cap_growth_sampler {
-                    let growth_rate = sampler.sample();
-                    let multiplier = dec!(1.0) + (growth_rate / dec!(100.0));
-                    state.current_cash *= multiplier;
-                }
-            }
-
             // Debt Interest for Next Month
             state.pending_interest = dec!(0.0);
             let mut current_debt = dec!(0.0);
@@ -606,6 +613,9 @@ fn run_monte_carlo_breadth_first(
                 }
             }
 
+            // Adjusted Net Income for reporting (Includes Op, Inv, and Pooling effects)
+            let adjusted_net_income = op_profit + inv_gain - contribution + pool_share;
+
             state.history.push(MonthlyData {
                 month_index: m,
                 date: date_str.clone(),
@@ -614,12 +624,12 @@ fn run_monte_carlo_breadth_first(
                 gross_profit: gp,
                 opex: opex,
                 interest_expense: interest,
-                net_income: adjusted_net_income, // Reflects pooling
+                net_income: adjusted_net_income, 
                 cash_balance: state.current_cash,
                 dividend_paid,
                 cumulative_dividends: state.cum_dividends,
                 cumulative_external_capital: state.cum_external_cap,
-                cumulative_pool_received: state.cum_pool_received, // Added field
+                cumulative_pool_received: state.cum_pool_received, 
                 current_debt,
                 total_value: state.current_cash + state.cum_dividends,
                 is_insolvent: state.is_insolvent,
@@ -645,7 +655,7 @@ pub fn generate_simulation(
     valuation_assumptions: &[ValuationAssumption],
     use_monte_carlo: bool,
     stop_on_insolvency: bool,
-    pooling_fraction: Decimal, // New Parameter
+    pooling_fraction: Decimal, 
 ) -> SimulationResult {
 
     // 1. DETERMINISTIC RUN (Base Case - No Pooling)
@@ -686,7 +696,7 @@ pub fn generate_simulation(
     let mut p50_valuation = None;
     let mut p50_runway = None;
     
-    let mut p50_pool_cumulative = None; // Initialize P50 Pool
+    let mut p50_pool_cumulative = None; 
 
     if use_monte_carlo {
         // Use Breadth-First for Monte Carlo to support Pooling
@@ -705,7 +715,7 @@ pub fn generate_simulation(
         let mut p90 = Vec::with_capacity(months as usize);
         let mut p100 = Vec::with_capacity(months as usize);
         
-        let mut p50_pool = Vec::with_capacity(months as usize); // Vector for P50 Pool
+        let mut p50_pool = Vec::with_capacity(months as usize); 
 
         for m in 0..(months as usize) {
             let mut values: Vec<Decimal> = full_runs.iter().map(|r| r[m].total_value).collect();
@@ -739,7 +749,7 @@ pub fn generate_simulation(
         p90_value = Some(p90);
         p100_value = Some(p100);
         
-        p50_pool_cumulative = Some(p50_pool); // Store P50 Pool
+        p50_pool_cumulative = Some(p50_pool); 
 
         full_runs.sort_by(|a, b| {
             let val_a = a.last().unwrap().total_value;
@@ -777,7 +787,7 @@ pub fn generate_simulation(
         single_run_data, 
         single_run_value,
         p0_value, p10_value, p25_value, p50_value, p75_value, p90_value, p100_value,
-        p50_pool_cumulative, // Include in result
+        p50_pool_cumulative, 
         deterministic_runway, deterministic_valuation,
         single_run_runway, single_run_valuation,
         p50_runway, p50_valuation,
