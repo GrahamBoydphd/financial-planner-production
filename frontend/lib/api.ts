@@ -242,8 +242,8 @@ export const api = {
     return (await apiClient.post<AuthResponse>('/api/auth/login', payload)).data;
   },
   
-  register: async (username: string, email: string, password: string, full_name: string) => {
-    const payload = { username, email, password, full_name };
+  register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
+    const payload = { username, email, password, full_name, company_name };
     return (await apiClient.post<AuthResponse>('/api/auth/register', payload)).data;
   },
 

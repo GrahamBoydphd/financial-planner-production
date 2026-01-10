@@ -19,6 +19,7 @@ export interface RegisterPayload {
   email: string;
   password: string;
   full_name: string;
+  company_name: string;
 }
 
 interface AuthContextType {
@@ -83,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (payload: RegisterPayload) => {
     try {
-      const response = await api.register(payload.username, payload.email, payload.password, payload.full_name);
+      const response = await api.register(payload.username, payload.email, payload.password, payload.full_name, payload.company_name);
       const newToken = response.token;
       
       // Use full_name from response if available, otherwise fallback to username
