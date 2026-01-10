@@ -12,6 +12,7 @@ use crate::projection::{generate_simulation, SimulationResult};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use chrono::NaiveDate;
+use std::str::FromStr;
 
 #[derive(Deserialize)]
 pub struct CreatePlanRequest {
@@ -25,6 +26,7 @@ pub struct UpdatePlanRequest {
     pub name: Option<String>,
     pub start_month: Option<String>,
     pub pooling_fraction: Option<Decimal>,
+    pub initial_cash: Option<String>,
 }
 
 pub async fn create_plan(
@@ -57,18 +59,25 @@ pub async fn update_plan(
         .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
         .flatten();
 
+    let initial_cash = payload.initial_cash
+        .as_deref()
+        .map(|s| Decimal::from_str(s).ok())
+        .flatten();
+
     let plan = sqlx::query_as!(
         FinancialPlan,
         "UPDATE financial_plans 
          SET name = COALESCE($1, name), 
              start_month = COALESCE($2, start_month), 
              pooling_fraction = COALESCE($3, pooling_fraction),
+             initial_cash = COALESCE($4, initial_cash),
              updated_at = NOW() 
-         WHERE id = $4 AND tenant_id = $5
+         WHERE id = $5 AND tenant_id = $6
          RETURNING *",
         payload.name,
         start_date,
         payload.pooling_fraction,
+        initial_cash,
         id,
         claims.tenant_id
     )
@@ -145,6 +154,12 @@ pub async fn get_plan_projection(
     Query(params): Query<GetProjectionQuery>,
 ) -> Result<Json<SimulationResult>, AppError> {
     
+    // DoS Protection: Check months limit
+    let months = params.months.unwrap_or(60);
+    if months > 1200 {
+        return Err(AppError::ValidationError("Simulation limited to 100 years (1200 months)".into()));
+    }
+
     // Fetch Plan Info
     let plan = sqlx::query_as!(
         FinancialPlan,
@@ -231,7 +246,6 @@ pub async fn get_plan_projection(
     .await.ok().flatten();
     
     // Run Simulation
-    let months = params.months.unwrap_or(60);
     let initial_cash = params.initial_cash.unwrap_or(Decimal::from_f64(0.0).unwrap());
     let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
     let stop_insolvency = params.stop_insolvency.unwrap_or(false);

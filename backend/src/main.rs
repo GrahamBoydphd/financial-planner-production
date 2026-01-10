@@ -16,6 +16,8 @@ mod projection;
 mod distributions;
 mod middleware;
 
+use crate::handlers::{valuation, events};
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -96,7 +98,13 @@ async fn main() {
 
         // Valuation
         .route("/api/valuation", post(handlers::valuation::create_valuation_assumption))
+        .route("/api/valuation/:id", get(handlers::valuation::get_valuation_assumption).put(handlers::valuation::update_valuation_assumption).delete(handlers::valuation::delete_valuation_assumption))
         .route("/api/plans/:id/valuation", get(handlers::valuation::get_valuation_assumptions))
+
+        // Events
+        .route("/api/events", post(handlers::events::create_event_shock))
+        .route("/api/events/:id", get(handlers::events::get_event_shock).delete(handlers::events::delete_event_shock))
+        .route("/api/plans/:id/events", get(handlers::events::get_plan_event_shocks))
 
         // Staffing
         .route("/api/staffing", post(handlers::staffing::create_staffing_role))

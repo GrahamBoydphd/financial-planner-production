@@ -8,20 +8,6 @@
         "type": "tabs",
         "children": [
           {
-            "id": "a5f6c97b88dd1f7e",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Backend to Frontend handover packets.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Backend to Frontend handover packets"
-            }
-          },
-          {
             "id": "1ea0f42a5c201b57",
             "type": "leaf",
             "state": {
@@ -55,62 +41,6 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ARCHITECT_FE.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "ARCHITECT_FE"
-            }
-          },
-          {
-            "id": "678a465abb3bed27",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "FRONTEND_ANCHOR.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "FRONTEND_ANCHOR"
-            }
-          },
-          {
-            "id": "0ce664a25765f160",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "ARCHITECTURAL_CONTEXT_CLI.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "ARCHITECTURAL_CONTEXT_CLI"
-            }
-          },
-          {
-            "id": "4ad6801a799857b7",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "FE_Prompts.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "FE_Prompts"
-            }
-          },
-          {
-            "id": "6346a8da742e79c9",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
                 "file": "COMMAND_LOG.md",
                 "mode": "source",
                 "source": false
@@ -120,7 +50,7 @@
             }
           }
         ],
-        "currentTab": 7
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -282,12 +212,12 @@
       "bases:Create new base": false
     }
   },
-  "active": "6346a8da742e79c9",
+  "active": "a7d334899caf750b",
   "lastOpenFiles": [
     "Backend to Frontend handover packets.md",
     "FE_Prompts.md",
-    "Context_History.md",
     "COMMAND_LOG.md",
+    "Context_History.md",
     "Tools_Manifest.md",
     "STRATEGIST.md",
     "ARCHITECT_FE.md",

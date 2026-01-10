@@ -29,7 +29,8 @@ export default function StructurePage() {
     <Layout>
       <div className="space-y-8">
         <h1 className="text-3xl font-bold">Portfolio Structure</h1>
-        <p className="text-xs text-gray-400 font-mono">Note that multiple funds investing in multiple companies has not yet been implemented. Each company can be a member of one fund only, which is the best approach for systemic regenerative investing, where the investing fund is the holding company for all members of the system.</p>
+        <p className="text-s text-gray-400 font-mono">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p> <p></p>
+        <p className="text-s text-gray-400 font-mono">Note that multiple funds investing in multiple companies has not yet been implemented. Each company can be a member of one fund only, which is the best approach for systemic regenerative investing, where the investing fund is the holding company for all members of the system.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           

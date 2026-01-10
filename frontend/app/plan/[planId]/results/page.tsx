@@ -127,9 +127,11 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [projection, setProjection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updatingPooling, setUpdatingPooling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
    
   // Financial State
   const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
+  const [initialCash, setInitialCash] = useState("0");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [dividendPolicy, setDividendPolicy] = useState<DividendPolicy | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -169,8 +171,10 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const p = await api.getPlan(planId);
         setPlan(p);
+        setInitialCash(p.initial_cash || "0");
         // Sync slider with DB state on reload
         setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
         
@@ -207,7 +211,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         const proj = await api.getProjection(planId, {
            mode: backendMode,
            stop_insolvency: stopInsolvency,
-           initial_cash: p.initial_cash, // Pass initial cash from plan
+           initial_cash: Number(p.initial_cash || 0),
            months: years * 12 // FIX: Pass months based on years selector
         });
 
@@ -260,6 +264,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
       } catch (e) {
         console.error(e);
+        setError(e instanceof Error ? e.message : String(e));
       } finally {
         setLoading(false);
         setUpdatingPooling(false);
@@ -274,7 +279,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     await api.createCapitalInjection({
       plan_id: planId,
       name: newCapName,
-      amount: Number(newCapAmount),
+      amount: parseFloat(newCapAmount).toFixed(2),
       month: Number(newCapMonth || 0)
     });
     setNewCapName(''); setNewCapAmount(''); setNewCapMonth('');
@@ -290,8 +295,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     await api.upsertDividends({
       plan_id: planId,
       is_enabled: divEnabled,
-      safety_threshold: Number(divThreshold),
-      payout_ratio: Number(divRatio)
+      safety_threshold: divThreshold,
+      payout_ratio: (Number(divRatio) / 100).toString()
     });
     setRefreshTrigger(n => n + 1);
   };
@@ -299,8 +304,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const handleSaveCredit = async () => {
     await api.upsertCredit({
       plan_id: planId,
-      facility_limit: Number(creditLimit),
-      interest_rate: Number(creditRate),
+      facility_limit: creditLimit,
+      interest_rate: creditRate,
       is_annual_rate: creditIsAnnual
     });
     setRefreshTrigger(n => n + 1);
@@ -311,7 +316,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
       plan_id: planId,
       name: 'Valuation',
       method: valuationMethod,
-      multiplier: Number(valMultiple),
+      multiplier: valMultiple,
       date_applied: new Date().toISOString().split('T')[0] // Fix 422
     });
     setRefreshTrigger(n => n + 1);
@@ -322,7 +327,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     setUpdatingPooling(true);
     try {
         // Strictly await the update before triggering refresh
-        await api.updatePlan(planId, { pooling_fraction: poolingFraction / 100.0 });
+        await api.updatePlan(planId, { pooling_fraction: (poolingFraction / 100.0).toString() });
         
         // Trigger refresh, set loading to true to bridge gap until useEffect runs
         setLoading(true);
@@ -441,6 +446,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         </div>
       </div>
 
+      {error && <div className="bg-red-50 text-red-600 p-4 rounded mb-4 border border-red-200">Simulation Error: {error}</div>}
+
       {loading ? (
         <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
       ) : projection && (
@@ -534,6 +541,12 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
             <Card>
               <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
+              
+              <div className="bg-green-50 border border-green-200 text-green-800 p-2 rounded mb-4 text-sm flex justify-between items-center">
+                <span className="font-medium">Opening Balance (Day 0):</span>
+                <span className="font-bold">{fmt(initialCash)}</span>
+              </div>
+
               <div className="space-y-2 mb-4 h-24 overflow-y-auto">
                 {capitalItems.length === 0 && <p className="text-sm text-gray-400 italic">No external capital.</p>}
                 {capitalItems.map(c => (

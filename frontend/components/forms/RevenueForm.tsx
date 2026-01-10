@@ -34,6 +34,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
   // UI State for Simple/Advanced Mode
   const [isAdvanced, setIsAdvanced] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
 
   // --- EFFECT: POPULATE FORM ON EDIT ---
   useEffect(() => {
@@ -77,42 +78,58 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
     setVolMin(''); setVolMax(''); setVolIntervals('');
     setVolMean(''); setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
     setIsAdvanced(false);
+    setErrors([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !amount) return;
+    setErrors([]);
 
-    const payload = {
-      plan_id: planId,
-      name,
-      source,
-      initial_amount: Number(amount),
-      growth_rate_percent: Number(growth),
-      start_month: Number(startMonth),
-      end_month: endMonth ? Number(endMonth) : undefined,
-      frequency: freq,
-      cost_of_revenue_percent: cogsPercent ? Number(cogsPercent) : undefined,
-      
-      volatility_type: volType !== 'none' ? volType as any : undefined,
-      vol_min: volType === 'flat' && volMin ? Number(volMin) : undefined,
-      vol_max: volType === 'flat' && volMax ? Number(volMax) : undefined,
-      vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
-      vol_mean: volMean ? Number(volMean) : undefined,
-      vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? Number(volScale) : undefined,
-      vol_freedom: volType === 'student_t' && volFreedom ? Number(volFreedom) : undefined,
-      vol_alpha: volType === 'nrig' && volAlpha ? Number(volAlpha) : undefined,
-      vol_beta: volType === 'nrig' && volBeta ? Number(volBeta) : undefined,
-    };
-
-    if (itemToEdit) {
-      await api.updateRevenueItem(itemToEdit.id, payload);
-    } else {
-      await api.createRevenueItem(payload);
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
+    
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
     }
 
-    clearForm();
-    onSuccess(); 
+    try {
+        const payload = {
+            plan_id: planId,
+            name,
+            source,
+            initial_amount: amount, // Send as string
+            growth_rate_percent: growth, // Send as string
+            start_month: Number(startMonth), // Int
+            end_month: endMonth ? Number(endMonth) : undefined, // Int
+            frequency: freq,
+            cost_of_revenue_percent: cogsPercent ? cogsPercent : undefined, // String
+            
+            volatility_type: volType !== 'none' ? volType as any : undefined,
+            vol_min: volType === 'flat' && volMin ? volMin : undefined, // String
+            vol_max: volType === 'flat' && volMax ? volMax : undefined, // String
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined, // Int
+            vol_mean: volMean ? volMean : undefined, // String
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? volScale : undefined, // String
+            vol_freedom: volType === 'student_t' && volFreedom ? volFreedom : undefined, // String
+            vol_alpha: volType === 'nrig' && volAlpha ? volAlpha : undefined, // String
+            vol_beta: volType === 'nrig' && volBeta ? volBeta : undefined, // String
+        };
+
+        if (itemToEdit) {
+            await api.updateRevenueItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createRevenueItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess(); 
+    } catch (err) {
+        console.error(err);
+        setErrors(["Failed to save revenue item. Please check your inputs."]);
+    }
   };
 
   return (
@@ -123,6 +140,13 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
             <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
          )}
       </div>
+
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

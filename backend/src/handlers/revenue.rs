@@ -51,6 +51,25 @@ pub async fn create_revenue_item(
         return Err(AppError::NotFound("Financial plan not found".to_string()));
     }
 
+    // Strict Input Validation
+    let valid_frequencies = ["monthly", "quarterly", "annually", "one_time"];
+    if !valid_frequencies.contains(&payload.frequency.as_str()) {
+        return Err(AppError::ValidationError(format!(
+            "Invalid frequency: '{}'. Must be one of: {:?}", 
+            payload.frequency, valid_frequencies
+        )));
+    }
+
+    if let Some(ref vt) = payload.volatility_type {
+        let valid_vol_types = ["normal", "student_t", "nrig"];
+        if !valid_vol_types.contains(&vt.as_str()) {
+            return Err(AppError::ValidationError(format!(
+                "Invalid volatility_type: '{}'. Must be one of: {:?}", 
+                vt, valid_vol_types
+            )));
+        }
+    }
+
     let item = sqlx::query_as!(
         RevenueItem,
         r#"
@@ -67,7 +86,8 @@ pub async fn create_revenue_item(
         payload.vol_mean, payload.vol_scale, payload.vol_freedom, payload.vol_alpha, payload.vol_beta
     )
     .fetch_one(&pool)
-    .await?;
+    .await
+    .map_err(|e| AppError::ValidationError(format!("Database insert failed: {}", e)))?;
 
     Ok(Json(item))
 }
@@ -100,6 +120,25 @@ pub async fn update_revenue_item(
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateRevenueRequest>,
 ) -> Result<Json<RevenueItem>, AppError> {
+    // Strict Input Validation for Update
+    let valid_frequencies = ["monthly", "quarterly", "annually", "one_time"];
+    if !valid_frequencies.contains(&payload.frequency.as_str()) {
+        return Err(AppError::ValidationError(format!(
+            "Invalid frequency: '{}'. Must be one of: {:?}", 
+            payload.frequency, valid_frequencies
+        )));
+    }
+
+    if let Some(ref vt) = payload.volatility_type {
+        let valid_vol_types = ["normal", "student_t", "nrig"];
+        if !valid_vol_types.contains(&vt.as_str()) {
+            return Err(AppError::ValidationError(format!(
+                "Invalid volatility_type: '{}'. Must be one of: {:?}", 
+                vt, valid_vol_types
+            )));
+        }
+    }
+
     let item = sqlx::query_as!(
         RevenueItem,
         r#"
@@ -120,7 +159,8 @@ pub async fn update_revenue_item(
         claims.tenant_id
     )
     .fetch_one(&pool)
-    .await?;
+    .await
+    .map_err(|e| AppError::ValidationError(format!("Database update failed: {}", e)))?;
 
     Ok(Json(item))
 }

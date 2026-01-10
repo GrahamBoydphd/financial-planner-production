@@ -266,3 +266,6 @@ If the Frontend sees these errors, here is what they mean:
 - **500 Internal Server Error:**
     
     - **Cause:** Database Constraint Violation. Usually happens if you try to create a User with a duplicate Email.
+
+
+

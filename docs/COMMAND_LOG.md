@@ -115,6 +115,47 @@ git status
     
 - **If it says `On branch cloud-v1-release`:** You are on the release branch.
 
+### The Correct, Safe Sequence
+
+**1. Save your work (Commit)** Do this _before_ moving. This saves the AI's changes into the current `ai-fix` branch.
+
+Bash
+
+```
+git add .
+git commit -m "Implement Auth Handlers (AI)"
+```
+
+**2. Switch to the target** Now move to your main feature branch.
+
+Bash
+
+```
+git checkout feature/user-layer-v2
+```
+
+**3. Update the target** Since you just made a new commit in step 1, your `feature` branch is now one step behind. Pull that commit in.
+
+Bash
+
+```
+git merge ai-fix-20260110124148
+```
+
+_(Note: Use the branch name you were just on. You can find it with `git branch` if you forgot)._
+
+**4. The Great Purge** Now that `feature/user-layer-v2` has everything safely committed, kill the clutter.
+
+Bash
+
+```
+git branch | grep "ai-fix-" | xargs git branch -D
+```
+
+**Now you are clean, saved, and on the right branch.**
+
+
+
 
 
 ## SQLX

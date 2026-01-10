@@ -101,18 +101,18 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             volatility_type: volType as any,
             
             // Common / Student T / NRIG
-            vol_mean: mean ? Number(mean) : undefined,
+            vol_mean: mean || undefined,
             
             // Flat Only
-            vol_min: volType === 'flat' && volMin ? Number(volMin) : undefined,
-            vol_max: volType === 'flat' && volMax ? Number(volMax) : undefined,
+            vol_min: volType === 'flat' && volMin ? volMin : undefined,
+            vol_max: volType === 'flat' && volMax ? volMax : undefined,
             vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
             
             // NRIG Only
-            vol_alpha: volType === 'nrig' && alpha ? Number(alpha) : undefined,
-            vol_beta: volType === 'nrig' && beta ? Number(beta) : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? Number(scale) : undefined, 
-            vol_freedom: volType === 'student_t' && freedom ? Number(freedom) : undefined,
+            vol_alpha: volType === 'nrig' && alpha ? alpha : undefined,
+            vol_beta: volType === 'nrig' && beta ? beta : undefined,
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? scale : undefined, 
+            vol_freedom: volType === 'student_t' && freedom ? freedom : undefined,
         };
 
         await api.upsertCapitalGrowth(payload);

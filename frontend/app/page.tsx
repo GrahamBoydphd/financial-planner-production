@@ -77,6 +77,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <p className="text-s text-gray-400 font-mono">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p> <p></p>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {funds.map((fund) => {
           // Find companies belonging to this fund

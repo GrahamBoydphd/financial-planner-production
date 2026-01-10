@@ -58,6 +58,7 @@ pub struct FinancialPlan {
     pub start_month: NaiveDate,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub initial_cash: Decimal,
     pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
     pub tenant_id: Uuid,
 }

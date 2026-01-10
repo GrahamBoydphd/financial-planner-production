@@ -33,7 +33,7 @@ export default function DividendForm({ planId }: Props) {
         setEnabled(d.is_enabled);
         setThreshold(d.safety_threshold.toString());
         // Convert 0-1 ratio to 0-100 percentage
-        const ratioPct = (d.payout_ratio * 100).toString();
+        const ratioPct = (Number(d.payout_ratio) * 100).toString();
         setRatio(ratioPct);
         setSavedPolicy({ enabled: d.is_enabled, threshold: d.safety_threshold.toString(), ratio: ratioPct });
     }).catch(() => {});
