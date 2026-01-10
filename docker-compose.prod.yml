@@ -22,6 +22,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       RUST_LOG: info
       PORT: 8000
+      JWT_SECRET: ${JWT_SECRET}  # <--- Add this line here
     # REMOVED "ports" section. Only Caddy talks to it now.
 
   # 3. Frontend
