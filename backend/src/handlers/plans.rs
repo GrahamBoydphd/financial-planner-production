@@ -64,7 +64,7 @@ pub async fn update_plan(
         .map(|s| Decimal::from_str(s).ok())
         .flatten();
 
-    let plan = sqlx::query_as!(
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
         "UPDATE financial_plans 
          SET name = COALESCE($1, name), 
@@ -82,8 +82,9 @@ pub async fn update_plan(
         claims.tenant_id
     )
     .fetch_optional(&pool)
-    .await?
-    .ok_or(AppError::NotFound("Plan not found".to_string()))?;
+    .await?;
+
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
     Ok(Json(plan))
 }
@@ -108,15 +109,16 @@ pub async fn get_plan(
     Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<FinancialPlan>, AppError> {
-    let plan = sqlx::query_as!(
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
         "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
     )
     .fetch_optional(&pool)
-    .await?
-    .ok_or(AppError::NotFound("Plan not found".to_string()))?;
+    .await?;
+
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
     Ok(Json(plan))
 }
@@ -126,7 +128,7 @@ pub async fn delete_plan(
     Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    let result = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
+    let result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
         .execute(&pool)
         .await?;
 
@@ -161,15 +163,16 @@ pub async fn get_plan_projection(
     }
 
     // Fetch Plan Info
-    let plan = sqlx::query_as!(
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
         "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
     )
     .fetch_optional(&pool)
-    .await?
-    .ok_or(AppError::NotFound("Plan not found".to_string()))?;
+    .await?;
+
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
     // Fetch Inputs
     let revenue_items = sqlx::query_as!(
@@ -204,7 +207,7 @@ pub async fn get_plan_projection(
     .fetch_all(&pool)
     .await?;
 
-    let dividend_policy = sqlx::query_as!(
+    let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
         crate::models::DividendPolicy,
         "SELECT * FROM dividend_policies WHERE plan_id = $1",
         id
@@ -212,7 +215,7 @@ pub async fn get_plan_projection(
     .fetch_optional(&pool)
     .await.ok().flatten();
 
-    let credit_facility = sqlx::query_as!(
+    let credit_facility: Option<crate::models::CreditFacility> = sqlx::query_as!(
         crate::models::CreditFacility,
         "SELECT * FROM credit_facilities WHERE plan_id = $1",
         id
@@ -237,7 +240,7 @@ pub async fn get_plan_projection(
     .fetch_all(&pool)
     .await?;
 
-    let capital_growth = sqlx::query_as!(
+    let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
         crate::models::CapitalGrowthPolicy,
         "SELECT * FROM capital_growth_policies WHERE plan_id = $1",
         id

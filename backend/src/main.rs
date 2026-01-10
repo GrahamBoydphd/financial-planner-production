@@ -97,9 +97,8 @@ async fn main() {
         .route("/api/plans/:id/capital-growth", get(handlers::capital_growth::get_capital_growth))
 
         // Valuation
-        .route("/api/valuation", post(handlers::valuation::create_valuation_assumption))
-        .route("/api/valuation/:id", get(handlers::valuation::get_valuation_assumption).put(handlers::valuation::update_valuation_assumption).delete(handlers::valuation::delete_valuation_assumption))
-        .route("/api/plans/:id/valuation", get(handlers::valuation::get_valuation_assumptions))
+        .route("/api/valuation", post(handlers::valuation::upsert_valuation_assumption))
+        .route("/api/plans/:id/valuation", get(handlers::valuation::get_valuation_assumption))
 
         // Events
         .route("/api/events", post(handlers::events::create_event_shock))

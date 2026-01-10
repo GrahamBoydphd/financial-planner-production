@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, user_id, name, created_at FROM funds ORDER BY created_at DESC",
+  "query": "SELECT id, tenant_id, user_id, name, created_at FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -10,29 +10,37 @@
       },
       {
         "ordinal": 1,
-        "name": "user_id",
+        "name": "tenant_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "295cdbfc090b65c5ee6adac22fe341bf4b5eb430ee7815b308806ddf7b78f45a"
+  "hash": "608e1595550889327d412b8d2af21b3004ab06a1c44ca0acd119680ed82c760b"
 }

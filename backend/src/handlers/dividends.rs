@@ -35,7 +35,7 @@ pub async fn upsert_dividend_policy(
 
     let mut tx = pool.begin().await?;
 
-    sqlx::query!("DELETE FROM dividend_policies WHERE plan_id = $1", payload.plan_id)
+    let _result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM dividend_policies WHERE plan_id = $1", payload.plan_id)
         .execute(&mut *tx)
         .await?;
 
@@ -60,15 +60,16 @@ pub async fn get_dividend_policy(
     Extension(claims): Extension<Claims>,
     Path(plan_id): Path<Uuid>,
 ) -> Result<Json<DividendPolicy>, AppError> {
-    let policy = sqlx::query_as!(
+    let policy: Option<DividendPolicy> = sqlx::query_as!(
         DividendPolicy,
         "SELECT * FROM dividend_policies WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
         plan_id,
         claims.tenant_id
     )
     .fetch_optional(&pool)
-    .await?
-    .ok_or(AppError::NotFound("Dividend policy not found".to_string()))?;
+    .await?;
+
+    let policy = policy.ok_or(AppError::NotFound("Dividend policy not found".to_string()))?;
 
     Ok(Json(policy))
 }

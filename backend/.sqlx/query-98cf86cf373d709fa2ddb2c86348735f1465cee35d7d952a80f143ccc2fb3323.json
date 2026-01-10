@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO valuation_assumptions (plan_id, name, method, multiplier, date_applied) VALUES ($1, $2, $3, $4, $5) RETURNING id, plan_id, name, method, multiplier, date_applied",
+  "query": "SELECT id, plan_id, name, shock_month, impact_type, impact_value, duration_months FROM event_shocks WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
   "describe": {
     "columns": [
       {
@@ -20,27 +20,29 @@
       },
       {
         "ordinal": 3,
-        "name": "method",
-        "type_info": "Text"
+        "name": "shock_month",
+        "type_info": "Int4"
       },
       {
         "ordinal": 4,
-        "name": "multiplier",
-        "type_info": "Numeric"
+        "name": "impact_type",
+        "type_info": "Text"
       },
       {
         "ordinal": 5,
-        "name": "date_applied",
-        "type_info": "Date"
+        "name": "impact_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "duration_months",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Text",
-        "Numeric",
-        "Date"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -49,8 +51,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "019667c4ffdebd19d5c37d176dae7d4305c3110c19e45ead7ad9892e499b616f"
+  "hash": "98cf86cf373d709fa2ddb2c86348735f1465cee35d7d952a80f143ccc2fb3323"
 }

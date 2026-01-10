@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM financial_plans ORDER BY created_at DESC",
+  "query": "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING *",
   "describe": {
     "columns": [
       {
@@ -37,12 +37,29 @@
         "ordinal": 6,
         "name": "pooling_fraction",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "initial_cash",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text",
+        "Date",
+        "Uuid"
+      ]
     },
     "nullable": [
+      false,
+      false,
       false,
       false,
       false,
@@ -52,5 +69,5 @@
       false
     ]
   },
-  "hash": "47c9844b064b560bdeed51c7a93390c713bbc05b643f30fe41fe1b655a7e52e9"
+  "hash": "490be8e57ae2efa0aec964bfd4e3c01d79f4cf454e781f8e71d7b9abefe6e18a"
 }

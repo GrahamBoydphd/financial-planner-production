@@ -39,7 +39,7 @@ pub async fn create_revenue_item(
     Json(payload): Json<CreateRevenueRequest>,
 ) -> Result<Json<RevenueItem>, AppError> {
     // Verify plan ownership
-    let plan_exists = sqlx::query!(
+    let plan_exists: Option<_> = sqlx::query!(
         "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
         payload.plan_id,
         claims.tenant_id
@@ -170,7 +170,7 @@ pub async fn delete_revenue_item(
     Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    let result = sqlx::query!(
+    let result: sqlx::postgres::PgQueryResult = sqlx::query!(
         "DELETE FROM revenue_items WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)", 
         id,
         claims.tenant_id

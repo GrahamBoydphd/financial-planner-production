@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO credit_facilities (plan_id, facility_limit, interest_rate, is_annual_rate) VALUES ($1, $2, $3, $4) RETURNING *",
+  "query": "INSERT INTO credit_facilities (plan_id, facility_limit, interest_rate) VALUES ($1, $2, $3) RETURNING *",
   "describe": {
     "columns": [
       {
@@ -33,8 +33,7 @@
       "Left": [
         "Uuid",
         "Numeric",
-        "Numeric",
-        "Bool"
+        "Numeric"
       ]
     },
     "nullable": [
@@ -45,5 +44,5 @@
       false
     ]
   },
-  "hash": "52c8f69b632855895a13af44209f1e64da0af3c3da77faced6ccee0bc0408495"
+  "hash": "cd18c58251caaab7f3c14f19ef5fbeb39f52fb70eac3b194e2c8789bf2b51bf9"
 }
