@@ -6,19 +6,22 @@ use axum::{
 use serde_json::json;
 
 pub enum AppError {
-    InternalServerError,
-    // CRITICAL FIX: Changed from 'NotFound' to 'NotFound(String)'
+    InternalServerError(String),
     NotFound(String),
-    BadRequest(String), 
+    BadRequest(String),
+    AuthError(String),
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error".to_string()),
-            // CRITICAL FIX: Use the string passed to NotFound
+            AppError::InternalServerError(inner) => {
+                eprintln!("Internal Server Error: {}", inner);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error".to_string())
+            }
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::AuthError(msg) => (StatusCode::UNAUTHORIZED, msg),
         };
 
         let body = Json(json!({
@@ -31,7 +34,6 @@ impl IntoResponse for AppError {
 
 impl From<sqlx::Error> for AppError {
     fn from(err: sqlx::Error) -> Self {
-        eprintln!("Database error: {:?}", err);
-        AppError::InternalServerError
+        AppError::InternalServerError(err.to_string())
     }
 }

@@ -1,0 +1,246 @@
+.
+├── app
+│   ├── company
+│   │   └── [companyId]
+│   │       ├── ClientPage.tsx
+│   │       └── page.tsx
+│   ├── fund
+│   │   └── [fundId]
+│   │       ├── ClientPage.tsx
+│   │       └── page.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── plan
+│   │   └── [planId]
+│   │       ├── inputs
+│   │       │   ├── ClientPage.tsx
+│   │       │   └── page.tsx
+│   │       └── results
+│   │           ├── ClientPage.tsx
+│   │           └── page.tsx
+│   └── structure
+│       └── page.tsx
+├── components
+│   ├── CashFlowChart.tsx
+│   ├── forms
+│   │   ├── CapitalForm.tsx
+│   │   ├── CapitalGrowthForm.tsx
+│   │   ├── CapitalList.tsx
+│   │   ├── CompanyForm.tsx
+│   │   ├── CreditForm.tsx
+│   │   ├── DividendForm.tsx
+│   │   ├── ExpenseForm.tsx
+│   │   ├── FundForm.tsx
+│   │   ├── PlanForm.tsx
+│   │   ├── RevenueForm.tsx
+│   │   ├── shared
+│   │   │   └── VolatilityInputs.tsx
+│   │   ├── StaffingForm.tsx
+│   │   └── ValuationForm.tsx
+│   ├── Layout.tsx
+│   └── ui
+│       ├── Button.tsx
+│       ├── Card.tsx
+│       ├── DeleteButton.tsx
+│       └── Tooltip.tsx
+├── Dockerfile
+├── .env.local
+├── frontend.log
+├── .gitignore
+├── lib
+│   ├── api.ts
+│   └── presets.ts
+├── .next
+│   ├── app-build-manifest.json
+│   ├── build-manifest.json
+│   ├── cache
+│   │   ├── swc
+│   │   │   └── plugins
+│   │   │       └── v7_linux_x86_64_0.106.15
+│   │   └── webpack
+│   │       ├── client-development
+│   │       │   ├── 0.pack.gz
+│   │       │   ├── 10.pack.gz
+│   │       │   ├── 11.pack.gz
+│   │       │   ├── 12.pack.gz
+│   │       │   ├── 13.pack.gz
+│   │       │   ├── 14.pack.gz
+│   │       │   ├── 15.pack.gz
+│   │       │   ├── 16.pack.gz
+│   │       │   ├── 17.pack.gz
+│   │       │   ├── 1.pack.gz
+│   │       │   ├── 2.pack.gz
+│   │       │   ├── 3.pack.gz
+│   │       │   ├── 4.pack.gz
+│   │       │   ├── 5.pack.gz
+│   │       │   ├── 6.pack.gz
+│   │       │   ├── 7.pack.gz
+│   │       │   ├── 8.pack.gz
+│   │       │   ├── 9.pack.gz
+│   │       │   ├── index.pack.gz
+│   │       │   └── index.pack.gz.old
+│   │       └── server-development
+│   │           ├── 0.pack.gz
+│   │           ├── 10.pack.gz
+│   │           ├── 11.pack.gz
+│   │           ├── 12.pack.gz
+│   │           ├── 13.pack.gz
+│   │           ├── 1.pack.gz
+│   │           ├── 2.pack.gz
+│   │           ├── 3.pack.gz
+│   │           ├── 4.pack.gz
+│   │           ├── 5.pack.gz
+│   │           ├── 6.pack.gz
+│   │           ├── 7.pack.gz
+│   │           ├── 8.pack.gz
+│   │           ├── 9.pack.gz
+│   │           ├── index.pack.gz
+│   │           └── index.pack.gz.old
+│   ├── package.json
+│   ├── react-loadable-manifest.json
+│   ├── server
+│   │   ├── app
+│   │   │   ├── company
+│   │   │   │   └── [companyId]
+│   │   │   │       ├── page_client-reference-manifest.js
+│   │   │   │       └── page.js
+│   │   │   ├── page_client-reference-manifest.js
+│   │   │   ├── page.js
+│   │   │   ├── plan
+│   │   │   │   └── [planId]
+│   │   │   │       ├── inputs
+│   │   │   │       │   ├── page_client-reference-manifest.js
+│   │   │   │       │   └── page.js
+│   │   │   │       └── results
+│   │   │   │           ├── page_client-reference-manifest.js
+│   │   │   │           └── page.js
+│   │   │   └── structure
+│   │   │       ├── page_client-reference-manifest.js
+│   │   │       └── page.js
+│   │   ├── app-paths-manifest.json
+│   │   ├── interception-route-rewrite-manifest.js
+│   │   ├── middleware-build-manifest.js
+│   │   ├── middleware-manifest.json
+│   │   ├── middleware-react-loadable-manifest.js
+│   │   ├── next-font-manifest.js
+│   │   ├── next-font-manifest.json
+│   │   ├── pages-manifest.json
+│   │   ├── server-reference-manifest.js
+│   │   ├── server-reference-manifest.json
+│   │   ├── vendor-chunks
+│   │   │   ├── asynckit.js
+│   │   │   ├── axios.js
+│   │   │   ├── call-bind-apply-helpers.js
+│   │   │   ├── chart.js.js
+│   │   │   ├── combined-stream.js
+│   │   │   ├── debug.js
+│   │   │   ├── delayed-stream.js
+│   │   │   ├── dunder-proto.js
+│   │   │   ├── es-define-property.js
+│   │   │   ├── es-errors.js
+│   │   │   ├── es-object-atoms.js
+│   │   │   ├── es-set-tostringtag.js
+│   │   │   ├── follow-redirects.js
+│   │   │   ├── form-data.js
+│   │   │   ├── function-bind.js
+│   │   │   ├── get-intrinsic.js
+│   │   │   ├── get-proto.js
+│   │   │   ├── gopd.js
+│   │   │   ├── has-flag.js
+│   │   │   ├── hasown.js
+│   │   │   ├── has-symbols.js
+│   │   │   ├── has-tostringtag.js
+│   │   │   ├── @kurkle.js
+│   │   │   ├── lucide-react.js
+│   │   │   ├── math-intrinsics.js
+│   │   │   ├── mime-db.js
+│   │   │   ├── mime-types.js
+│   │   │   ├── ms.js
+│   │   │   ├── next.js
+│   │   │   ├── proxy-from-env.js
+│   │   │   ├── react-chartjs-2.js
+│   │   │   ├── supports-color.js
+│   │   │   └── @swc.js
+│   │   └── webpack-runtime.js
+│   ├── static
+│   │   ├── chunks
+│   │   │   ├── app
+│   │   │   │   ├── company
+│   │   │   │   │   └── [companyId]
+│   │   │   │   │       └── page.js
+│   │   │   │   ├── layout.js
+│   │   │   │   ├── page.js
+│   │   │   │   ├── plan
+│   │   │   │   │   └── [planId]
+│   │   │   │   │       ├── inputs
+│   │   │   │   │       │   └── page.js
+│   │   │   │   │       └── results
+│   │   │   │   │           └── page.js
+│   │   │   │   └── structure
+│   │   │   │       └── page.js
+│   │   │   ├── app-pages-internals.js
+│   │   │   ├── main-app.js
+│   │   │   ├── polyfills.js
+│   │   │   └── webpack.js
+│   │   ├── css
+│   │   │   └── app
+│   │   │       └── layout.css
+│   │   ├── development
+│   │   │   ├── _buildManifest.js
+│   │   │   └── _ssgManifest.js
+│   │   ├── media
+│   │   │   ├── 19cfc7226ec3afaa-s.woff2
+│   │   │   ├── 21350d82a1f187e9-s.woff2
+│   │   │   ├── 8e9860b6e62d6359-s.woff2
+│   │   │   ├── ba9851c3c22cd980-s.woff2
+│   │   │   ├── c5fe6dc8356a8c31-s.woff2
+│   │   │   ├── df0a9ae256c0569c-s.woff2
+│   │   │   └── e4af272ccee01ff0-s.p.woff2
+│   │   └── webpack
+│   │       ├── 096c8baa8d1a7f10.webpack.hot-update.json
+│   │       ├── 41a3b7f4b7fbb4db.webpack.hot-update.json
+│   │       ├── 633457081244afec._.hot-update.json
+│   │       ├── 7f40284f0c7f7ea1.webpack.hot-update.json
+│   │       ├── a1e4cf80c0021227.webpack.hot-update.json
+│   │       ├── app
+│   │       │   ├── company
+│   │       │   │   └── [companyId]
+│   │       │   │       └── page.096c8baa8d1a7f10.hot-update.js
+│   │       │   ├── layout.096c8baa8d1a7f10.hot-update.js
+│   │       │   └── layout.b84a9cdcbee5cfb1.hot-update.js
+│   │       ├── b84a9cdcbee5cfb1.webpack.hot-update.json
+│   │       ├── f894b9e56fd612cb.webpack.hot-update.json
+│   │       ├── webpack.096c8baa8d1a7f10.hot-update.js
+│   │       ├── webpack.41a3b7f4b7fbb4db.hot-update.js
+│   │       ├── webpack.7f40284f0c7f7ea1.hot-update.js
+│   │       ├── webpack.a1e4cf80c0021227.hot-update.js
+│   │       ├── webpack.b84a9cdcbee5cfb1.hot-update.js
+│   │       └── webpack.f894b9e56fd612cb.hot-update.js
+│   ├── trace
+│   └── types
+│       ├── app
+│       │   ├── company
+│       │   │   └── [companyId]
+│       │   │       └── page.ts
+│       │   ├── layout.ts
+│       │   ├── page.ts
+│       │   ├── plan
+│       │   │   └── [planId]
+│       │   │       ├── inputs
+│       │   │       │   └── page.ts
+│       │   │       └── results
+│       │   │           └── page.ts
+│       │   └── structure
+│       │       └── page.ts
+│       └── package.json
+├── next.config.js
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.js
+├── tailwind.config.ts
+├── tree.txt
+└── tsconfig.json
+
+61 directories, 183 files

@@ -4,6 +4,27 @@ use uuid::Uuid;
 use chrono::{NaiveDate, DateTime, Utc};
 use rust_decimal::Decimal;
 
+// --- Phase 0: Multi-Tenancy & Auth ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Tenant {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub full_name: String,
+    pub tenant_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
 // --- Phase 3: Portfolio Structure ---
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -12,6 +33,7 @@ pub struct Fund {
     pub user_id: Uuid,
     pub name: String,
     pub created_at: DateTime<Utc>,
+    pub tenant_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -23,6 +45,7 @@ pub struct Company {
     pub industry: Option<String>,
     pub business_model: Option<String>,
     pub technology: Option<String>,
+    pub tenant_id: Uuid,
 }
 
 // --- Phase 1 & 2: Financial Models ---
@@ -36,6 +59,7 @@ pub struct FinancialPlan {
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
     pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
+    pub tenant_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -181,4 +205,34 @@ pub struct StaffingRole {
     
     pub annual_increase: Decimal,
     pub created_at: DateTime<Utc>,
+}
+
+// --- Auth DTOs ---
+
+#[derive(Deserialize, Debug)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+    pub full_name: String,
+    pub email: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user_id: Uuid,
+    pub tenant_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub tenant_id: uuid::Uuid,
+    pub exp: usize,
 }

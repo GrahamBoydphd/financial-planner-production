@@ -59,7 +59,7 @@ export default function StructurePage() {
           <div className="space-y-4">
             <Card>
               <h2 className="text-xl font-bold mb-4">2. Create Company</h2>
-              <CompanyForm onSuccess={fetchData} />
+              <CompanyForm onSuccess={fetchData} funds={funds} />
             </Card>
 
             <div className="bg-white rounded shadow p-4">

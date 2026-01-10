@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
-export default function FundForm({ onSuccess }: { onSuccess: () => void }) {
+export default function FundForm({ onSuccess }: { onSuccess?: () => void }) {
   const [name, setName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Use a placeholder user_id since we don't have auth yet
-      await api.createFund(name, '00000000-0000-0000-0000-000000000000');
+      // Removed placeholder user_id, relying on Auth header
+      await api.createFund(name);
       setName('');
-      onSuccess();
+      onSuccess?.();
     } catch (err) {
       console.error(err);
       alert('Failed to create fund');

@@ -1,0 +1,308 @@
+{
+  "main": {
+    "id": "980a53fd0719eeee",
+    "type": "split",
+    "children": [
+      {
+        "id": "a183fae9bd229bfa",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a5f6c97b88dd1f7e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Backend to Frontend handover packets.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Backend to Frontend handover packets"
+            }
+          },
+          {
+            "id": "1ea0f42a5c201b57",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Tools_Manifest.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Tools_Manifest"
+            }
+          },
+          {
+            "id": "30cecb97a8670314",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "STRATEGIST.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "STRATEGIST"
+            }
+          },
+          {
+            "id": "a7d334899caf750b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "ARCHITECT_FE.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ARCHITECT_FE"
+            }
+          },
+          {
+            "id": "678a465abb3bed27",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "FRONTEND_ANCHOR.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "FRONTEND_ANCHOR"
+            }
+          },
+          {
+            "id": "0ce664a25765f160",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "ARCHITECTURAL_CONTEXT_CLI.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ARCHITECTURAL_CONTEXT_CLI"
+            }
+          },
+          {
+            "id": "4ad6801a799857b7",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "FE_Prompts.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "FE_Prompts"
+            }
+          },
+          {
+            "id": "6346a8da742e79c9",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "COMMAND_LOG.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "COMMAND_LOG"
+            }
+          }
+        ],
+        "currentTab": 7
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "6beafdf972283d8b",
+    "type": "split",
+    "children": [
+      {
+        "id": "0a14d8701c11384e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "dbef393f2f07cd21",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "987d408fab647e10",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "02212a1c83467c80",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "7493bb2c0cb9c95d",
+    "type": "split",
+    "children": [
+      {
+        "id": "e5bd3546356001d9",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c2ae0fa833dfae4d",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "ARCHITECT_BE.md.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for ARCHITECT_BE.md"
+            }
+          },
+          {
+            "id": "ff88fa59e31736c0",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "ARCHITECT_BE.md.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from ARCHITECT_BE.md"
+            }
+          },
+          {
+            "id": "6f7f29e58aa137c1",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "b2361022c89390b8",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "344776922a6d2723",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "ARCHITECT_BE.md.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of ARCHITECT_BE.md"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "6346a8da742e79c9",
+  "lastOpenFiles": [
+    "Backend to Frontend handover packets.md",
+    "FE_Prompts.md",
+    "Context_History.md",
+    "COMMAND_LOG.md",
+    "Tools_Manifest.md",
+    "STRATEGIST.md",
+    "ARCHITECT_FE.md",
+    "ARCHITECT_BE.md",
+    "BACKEND_ANCHOR.md",
+    "ARCHITECTURAL_CONTEXT_CLI.md",
+    "FRONTEND_ANCHOR.md",
+    "ROADMAP.md",
+    "Toplevel_Plan_to_the_full_Ergodic_Simulation.md",
+    "Untitled",
+    "autopsy_userlayer1.md",
+    "audit_MVP_freeze_auth-check.md",
+    "audit_baseline.md",
+    "ARCHITECTURAL_CONTEXT_PRODUCTION.md",
+    "PRODUCTION_LEARNINGS_V1.md",
+    "ai_solution.md"
+  ]
+}

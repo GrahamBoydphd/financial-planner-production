@@ -1,12 +1,12 @@
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, State, Query, Extension},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
-use crate::models::FinancialPlan;
+use crate::models::{FinancialPlan, Claims};
 use crate::errors::AppError;
 use crate::projection::{generate_simulation, SimulationResult};
 use rust_decimal::Decimal;
@@ -29,14 +29,16 @@ pub struct UpdatePlanRequest {
 
 pub async fn create_plan(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Json(payload): Json<CreatePlanRequest>,
 ) -> Result<Json<FinancialPlan>, AppError> {
     let plan = sqlx::query_as!(
         FinancialPlan,
-        "INSERT INTO financial_plans (company_id, name, start_month) VALUES ($1, $2, $3) RETURNING *",
+        "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING *",
         payload.company_id,
         payload.name,
-        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap()
+        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
+        claims.tenant_id
     )
     .fetch_one(&pool)
     .await?;
@@ -46,6 +48,7 @@ pub async fn create_plan(
 
 pub async fn update_plan(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdatePlanRequest>,
 ) -> Result<Json<FinancialPlan>, AppError> {
@@ -61,12 +64,13 @@ pub async fn update_plan(
              start_month = COALESCE($2, start_month), 
              pooling_fraction = COALESCE($3, pooling_fraction),
              updated_at = NOW() 
-         WHERE id = $4 
+         WHERE id = $4 AND tenant_id = $5
          RETURNING *",
         payload.name,
         start_date,
         payload.pooling_fraction,
-        id
+        id,
+        claims.tenant_id
     )
     .fetch_optional(&pool)
     .await?
@@ -77,10 +81,12 @@ pub async fn update_plan(
 
 pub async fn get_all_plans(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<FinancialPlan>>, AppError> {
     let plans = sqlx::query_as!(
         FinancialPlan,
-        "SELECT * FROM financial_plans ORDER BY created_at DESC"
+        "SELECT * FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
+        claims.tenant_id
     )
     .fetch_all(&pool)
     .await?;
@@ -90,12 +96,14 @@ pub async fn get_all_plans(
 
 pub async fn get_plan(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<FinancialPlan>, AppError> {
     let plan = sqlx::query_as!(
         FinancialPlan,
-        "SELECT * FROM financial_plans WHERE id = $1",
-        id
+        "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
     )
     .fetch_optional(&pool)
     .await?
@@ -106,9 +114,10 @@ pub async fn get_plan(
 
 pub async fn delete_plan(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    let result = sqlx::query!("DELETE FROM financial_plans WHERE id = $1", id)
+    let result = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
         .execute(&pool)
         .await?;
 
@@ -131,6 +140,7 @@ pub struct GetProjectionQuery {
 
 pub async fn get_plan_projection(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
     Query(params): Query<GetProjectionQuery>,
 ) -> Result<Json<SimulationResult>, AppError> {
@@ -138,8 +148,9 @@ pub async fn get_plan_projection(
     // Fetch Plan Info
     let plan = sqlx::query_as!(
         FinancialPlan,
-        "SELECT * FROM financial_plans WHERE id = $1",
-        id
+        "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
     )
     .fetch_optional(&pool)
     .await?

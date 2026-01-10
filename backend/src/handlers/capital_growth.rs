@@ -1,12 +1,13 @@
 use axum::{
     extract::{Path, State},
+    Extension,
     Json,
 };
 use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use rust_decimal::Decimal;
-use crate::models::CapitalGrowthPolicy;
+use crate::models::{CapitalGrowthPolicy, Claims};
 use crate::errors::AppError;
 
 #[derive(Deserialize)]
@@ -25,8 +26,19 @@ pub struct UpsertGrowthRequest {
 
 pub async fn upsert_capital_growth(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Json(payload): Json<UpsertGrowthRequest>,
 ) -> Result<Json<CapitalGrowthPolicy>, AppError> {
+    // Verify plan ownership first
+    let _plan = sqlx::query!(
+        "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        payload.plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Financial plan not found".to_string()))?;
+
     let mut tx = pool.begin().await?;
 
     // Delete existing
@@ -66,12 +78,18 @@ pub async fn upsert_capital_growth(
 
 pub async fn get_capital_growth(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(plan_id): Path<Uuid>,
 ) -> Result<Json<CapitalGrowthPolicy>, AppError> {
     let policy = sqlx::query_as!(
         CapitalGrowthPolicy,
-        "SELECT * FROM capital_growth_policies WHERE plan_id = $1",
-        plan_id
+        r#"
+        SELECT * FROM capital_growth_policies 
+        WHERE plan_id = $1 
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
+        "#,
+        plan_id,
+        claims.tenant_id
     )
     .fetch_optional(&pool)
     .await?

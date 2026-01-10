@@ -3,22 +3,25 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     Json,
+    Extension,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::{Company, CreateCompanyRequest};
+use crate::models::{Company, CreateCompanyRequest, Claims};
 use crate::errors::AppError;
 
 // 1. GET ALL COMPANIES
 pub async fn get_companies(
     State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<Company>>, AppError> {
-    // RESTORED: Selecting V2 fields (business_model, industry, technology)
     let companies = sqlx::query_as!(
         Company,
-        "SELECT id, fund_id, name, created_at, business_model, industry, technology 
+        "SELECT id, tenant_id, fund_id, name, created_at, business_model, industry, technology 
          FROM companies 
-         ORDER BY created_at DESC"
+         WHERE tenant_id = $1
+         ORDER BY created_at DESC",
+        claims.tenant_id
     )
     .fetch_all(&pool)
     .await?;
@@ -29,15 +32,16 @@ pub async fn get_companies(
 // 2. GET SINGLE COMPANY
 pub async fn get_company(
     State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Company>, AppError> {
-    // RESTORED: Selecting V2 fields
     let company = sqlx::query_as!(
         Company,
-        "SELECT id, fund_id, name, created_at, business_model, industry, technology 
+        "SELECT id, tenant_id, fund_id, name, created_at, business_model, industry, technology 
          FROM companies 
-         WHERE id = $1",
-        id
+         WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
     )
     .fetch_one(&pool)
     .await?;
@@ -48,14 +52,15 @@ pub async fn get_company(
 // 3. CREATE COMPANY
 pub async fn create_company(
     State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateCompanyRequest>,
 ) -> Result<Json<Company>, AppError> {
-    // RESTORED: Inserting and Returning V2 fields
     let company = sqlx::query_as!(
         Company,
-        "INSERT INTO companies (fund_id, name, business_model, industry, technology) 
-         VALUES ($1, $2, $3, $4, $5) 
-         RETURNING id, fund_id, name, created_at, business_model, industry, technology",
+        "INSERT INTO companies (tenant_id, fund_id, name, business_model, industry, technology) 
+         VALUES ($1, $2, $3, $4, $5, $6) 
+         RETURNING id, tenant_id, fund_id, name, created_at, business_model, industry, technology",
+        claims.tenant_id,
         payload.fund_id,
         payload.name,
         payload.business_model,
@@ -68,12 +73,13 @@ pub async fn create_company(
     Ok(Json(company))
 }
 
-// 4. DELETE COMPANY (The new feature for today)
+// 4. DELETE COMPANY
 pub async fn delete_company(
     State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    let result = sqlx::query!("DELETE FROM companies WHERE id = $1", id)
+    let result = sqlx::query!("DELETE FROM companies WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
         .execute(&pool)
         .await;
 

@@ -3,32 +3,28 @@ import { api, Company, FinancialPlan } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
 interface PlanFormProps {
+  companies: Company[];
   onSuccess: () => void;
   initialData?: FinancialPlan;
 }
 
-export default function PlanForm({ onSuccess, initialData }: PlanFormProps) {
+export default function PlanForm({ companies, onSuccess, initialData }: PlanFormProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [startMonth, setStartMonth] = useState(initialData?.start_month || '');
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState(initialData?.company_id || '');
   
   // Pooling fraction state (0-100 for UI, mapped to 0.0-1.0 for API)
+  // Only relevant for updates, as createPlan doesn't accept it.
   const [poolingFraction, setPoolingFraction] = useState<number>(
-    initialData?.pooling_fraction ? initialData.pooling_fraction * 100 : 0
+    initialData?.pooling_fraction ? parseFloat(initialData.pooling_fraction) * 100 : 0
   );
-
-  useEffect(() => {
-    // Fetch companies for the dropdown
-    api.getCompanies().then(setCompanies).catch(console.error);
-  }, []);
 
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
       setStartMonth(initialData.start_month);
       setSelectedCompany(initialData.company_id);
-      setPoolingFraction((initialData.pooling_fraction || 0) * 100);
+      setPoolingFraction(initialData.pooling_fraction ? parseFloat(initialData.pooling_fraction) * 100 : 0);
     }
   }, [initialData]);
 
@@ -38,13 +34,14 @@ export default function PlanForm({ onSuccess, initialData }: PlanFormProps) {
     
     try {
       if (initialData) {
+        // Update Mode: Can send pooling_fraction
         await api.updatePlan(initialData.id, {
           name,
           start_month: startMonth,
-          pooling_fraction: poolingFraction / 100,
+          pooling_fraction: (poolingFraction / 100).toString(),
         });
       } else {
-        // Create currently uses default pooling (0.0)
+        // Create Mode: Strict payload { company_id, name, start_month }
         await api.createPlan(selectedCompany, name, startMonth);
       }
       
@@ -52,6 +49,7 @@ export default function PlanForm({ onSuccess, initialData }: PlanFormProps) {
         setName('');
         setStartMonth('');
         setPoolingFraction(0);
+        setSelectedCompany('');
       }
       onSuccess();
     } catch (err) {
@@ -99,30 +97,33 @@ export default function PlanForm({ onSuccess, initialData }: PlanFormProps) {
         />
       </div>
 
-      {/* Non-Ergodicity Correction Slider */}
-      <div>
-        <div className="flex justify-between items-center mb-1">
-          <label 
-            className="block text-sm font-medium cursor-help underline decoration-dotted"
-            title="Strength of the correction factor for non-ergodicity. Pooling this fraction of profits reduces variance across the ensemble."
-          >
-            Non-Ergodicity Correction
-          </label>
-          <span className="text-sm font-mono text-gray-700">{poolingFraction.toFixed(0)}%</span>
+      {/* Non-Ergodicity Correction Slider - Only show in Update mode or if we decide to chain calls later. 
+          For now, hiding in Create mode to strictly follow API payload rules. */}
+      {initialData && (
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label 
+              className="block text-sm font-medium cursor-help underline decoration-dotted"
+              title="Strength of the correction factor for non-ergodicity. Pooling this fraction of profits reduces variance across the ensemble."
+            >
+              Non-Ergodicity Correction
+            </label>
+            <span className="text-sm font-mono text-gray-700">{poolingFraction.toFixed(0)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={poolingFraction}
+            onChange={(e) => setPoolingFraction(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Pooling profits reduces variance (risk) at the cost of potential upside outliers.
+          </p>
         </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          value={poolingFraction}
-          onChange={(e) => setPoolingFraction(Number(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Pooling profits reduces variance (risk) at the cost of potential upside outliers.
-        </p>
-      </div>
+      )}
 
       <Button type="submit" disabled={!selectedCompany}>
         {initialData ? 'Update Plan' : 'Create Plan'}

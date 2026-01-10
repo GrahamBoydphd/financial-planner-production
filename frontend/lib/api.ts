@@ -4,7 +4,56 @@ import axios from 'axios';
 // Otherwise, fall back to localhost (Development).
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// --- AXIOS INSTANCE (Auth Injection) ---
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor: Inject Token
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Handle 401 & Debug 422
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Debugging 422 errors
+      if (error.response.status === 422) {
+        console.error("DEBUG 422 DETAIL:", error.response.data);
+      }
+
+      if (error.response.status === 401) {
+        // Token expired or invalid
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          // Optional: Redirect to login if not already there
+          // window.location.href = '/login'; 
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // --- INTERFACES ---
+export interface AuthResponse {
+  token: string;
+}
+
 export interface Fund {
   id: string;
   name: string;
@@ -25,15 +74,15 @@ export interface FinancialPlan {
   company_id: string;
   name: string;
   start_month: string;
-  initial_cash: number;
-  pooling_fraction: number;
+  initial_cash: string;
+  pooling_fraction: string;
 }
 
 export interface UpdatePlanRequest {
   name?: string;
   start_month?: string;
-  initial_cash?: number;
-  pooling_fraction?: number;
+  initial_cash?: string;
+  pooling_fraction?: string;
 }
 
 export interface RevenueItem {
@@ -41,21 +90,21 @@ export interface RevenueItem {
   plan_id: string;
   name: string;
   source: string;
-  initial_amount: number;
-  growth_rate_percent: number;
+  initial_amount: string;
+  growth_rate_percent: string;
   start_month: number;
   end_month?: number;
   frequency: string;
-  cost_of_revenue_percent?: number;
+  cost_of_revenue_percent?: string;
   volatility_type?: string;
-  vol_min?: number;
-  vol_max?: number;
+  vol_min?: string;
+  vol_max?: string;
   vol_intervals?: number;
-  vol_mean?: number;
-  vol_scale?: number;
-  vol_freedom?: number;
-  vol_alpha?: number;
-  vol_beta?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
 }
 
 export interface ExpenseItem {
@@ -63,42 +112,42 @@ export interface ExpenseItem {
   plan_id: string;
   name: string;
   category: string;
-  initial_amount: number;
-  growth_rate_percent: number;
+  initial_amount: string;
+  growth_rate_percent: string;
   start_month: number;
   end_month?: number;
   frequency: string;
-  pct_of_revenue?: number;
+  pct_of_revenue?: string;
   volatility_type?: string;
-  vol_min?: number;
-  vol_max?: number;
+  vol_min?: string;
+  vol_max?: string;
   vol_intervals?: number;
-  vol_mean?: number;
-  vol_scale?: number;
-  vol_freedom?: number;
-  vol_alpha?: number;
-  vol_beta?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
 }
 
 export interface CapitalGrowthPolicy {
   id: string;
   plan_id: string;
   volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
-  vol_min?: number;
-  vol_max?: number;
+  vol_min?: string;
+  vol_max?: string;
   vol_intervals?: number;
-  vol_mean?: number;
-  vol_scale?: number;
-  vol_freedom?: number;
-  vol_alpha?: number;
-  vol_beta?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
 }
 
 export interface CapitalInjection {
   id: string;
   plan_id: string;
   name: string;
-  amount: number;
+  amount: string; // Strict Type: String for Decimal precision
   month: number;
 }
 
@@ -106,15 +155,15 @@ export interface DividendPolicy {
   id: string;
   plan_id: string;
   is_enabled: boolean;
-  safety_threshold: number;
-  payout_ratio: number;
+  safety_threshold: string;
+  payout_ratio: string;
 }
 
 export interface CreditFacility {
   id: string;
   plan_id: string;
-  facility_limit: number;
-  interest_rate: number;
+  facility_limit: string;
+  interest_rate: string;
   is_annual_rate: boolean;
 }
 
@@ -123,7 +172,7 @@ export interface ValuationAssumption {
   plan_id: string;
   name: string;
   method: 'revenue' | 'ebitda';
-  multiplier: number;
+  multiplier: string;
   date_applied: string;
 }
 
@@ -131,30 +180,30 @@ export interface StaffingRole {
   id: string;
   plan_id: string;
   role_name: string;
-  annual_salary: number;
+  annual_salary: string;
   start_month: number;
-  target_count: number; // Renamed from count
-  hiring_plan: 'fixed_count' | 'monthly_rate'; // New
-  hiring_rate?: number; // New
-  annual_increase: number;
+  target_count: number; 
+  hiring_plan: 'fixed_count' | 'monthly_rate'; 
+  hiring_rate?: string; 
+  annual_increase: string;
 }
 
 export interface MonthlyData {
   month_index: number;
   date: string;
-  revenue: number | string;
-  cogs: number | string;
-  gross_profit: number | string;
-  opex: number | string;
-  interest_expense: number | string;
-  net_income: number | string;
-  cash_balance: number | string;
-  dividend_paid: number | string;
-  cumulative_dividends: number | string;
-  cumulative_external_capital: number | string;
-  cumulative_pool_received: number | string; // Added field
-  current_debt: number | string;
-  total_value: number | string;
+  revenue: string;
+  cogs: string;
+  gross_profit: string;
+  opex: string;
+  interest_expense: string;
+  net_income: string;
+  cash_balance: string;
+  dividend_paid: string;
+  cumulative_dividends: string;
+  cumulative_external_capital: string;
+  cumulative_pool_received: string; 
+  current_debt: string;
+  total_value: string;
   is_insolvent: boolean;
 }
 
@@ -163,109 +212,116 @@ export interface SimulationResult {
   valuation_method: string;
   deterministic_data: MonthlyData[];
   single_run_data?: MonthlyData[];
-  single_run_value?: (number | string)[];
+  single_run_value?: string[];
 
-  p0_value?: (number | string)[];
-  p10_value?: (number | string)[];
-  p25_value?: (number | string)[];
-  p50_value?: (number | string)[];
-  p75_value?: (number | string)[];
-  p90_value?: (number | string)[];
-  p100_value?: (number | string)[];
+  p0_value?: string[];
+  p10_value?: string[];
+  p25_value?: string[];
+  p50_value?: string[];
+  p75_value?: string[];
+  p90_value?: string[];
+  p100_value?: string[];
 
-  p50_pool_cumulative?: (number | string)[]; // Added field
+  p50_pool_cumulative?: string[]; 
 
   deterministic_runway?: number;
-  deterministic_valuation: number | string;
+  deterministic_valuation: string;
 
   single_run_runway?: number;
-  single_run_valuation?: number | string;
+  single_run_valuation?: string;
 
   p50_runway?: number;
-  p50_valuation?: number | string;
+  p50_valuation?: string;
 }
 
 // --- API OBJECT ---
 export const api = {
+  // AUTH
+  login: async (username: string, password: string) => {
+    const payload = { username, password };
+    return (await apiClient.post<AuthResponse>('/api/auth/login', payload)).data;
+  },
+  
+  register: async (username: string, email: string, password: string, full_name: string) => {
+    const payload = { username, email, password, full_name };
+    return (await apiClient.post<AuthResponse>('/api/auth/register', payload)).data;
+  },
+
   // FUNDS
-  getFunds: async () => (await axios.get<Fund[]>(`${API_URL}/api/funds`)).data,
-  getFund: async (id: string) => (await axios.get<Fund>(`${API_URL}/api/funds/${id}`)).data,
-  createFund: async (name: string, user_id: string) => 
-    (await axios.post<Fund>(`${API_URL}/api/funds`, { name, user_id })).data,
+  getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
+  getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
+  createFund: async (name: string) => 
+    (await apiClient.post<Fund>('/api/funds', { name })).data,
+  deleteFund: async (id: string) => {
+    await apiClient.delete(`/api/funds/${id}`);
+  },
 
   // COMPANIES
-  getCompanies: async () => (await axios.get<Company[]>(`${API_URL}/api/companies`)).data,
-  getCompany: async (id: string) => (await axios.get<Company>(`${API_URL}/api/companies/${id}`)).data,
+  getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
+  getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
   createCompany: async (name: string, fund_id: string, industry?: string, business_model?: string, technology?: string) => 
-    (await axios.post<Company>(`${API_URL}/api/companies`, { name, fund_id, industry, business_model, technology })).data,
+    (await apiClient.post<Company>('/api/companies', { name, fund_id, industry, business_model, technology })).data,
+  deleteCompany: async (id: string) => {
+    await apiClient.delete(`/api/companies/${id}`);
+  },  
 
   // PLANS
-  getPlans: async () => (await axios.get<FinancialPlan[]>(`${API_URL}/api/plans`)).data,
-  getPlan: async (id: string) => (await axios.get<FinancialPlan>(`${API_URL}/api/plans/${id}`)).data,
+  getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
+  getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
+  // STRICT PAYLOAD: { company_id, name, start_month }
   createPlan: async (company_id: string, name: string, start_month: string) => 
-    (await axios.post<FinancialPlan>(`${API_URL}/api/plans`, { company_id, name, start_month })).data,
+    (await apiClient.post<FinancialPlan>('/api/plans', { company_id, name, start_month })).data,
   updatePlan: async (id: string, updates: UpdatePlanRequest) => 
-    (await axios.put<FinancialPlan>(`${API_URL}/api/plans/${id}`, updates)).data,
+    (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
   getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 
-    (await axios.get<SimulationResult>(`${API_URL}/api/plans/${planId}/projection`, { params })).data,
+    (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
 
   // REVENUE
-  getRevenueItems: async (planId: string) => (await axios.get<RevenueItem[]>(`${API_URL}/api/plans/${planId}/revenue`)).data,
-  createRevenueItem: async (item: Omit<RevenueItem, 'id'>) => (await axios.post<RevenueItem>(`${API_URL}/api/revenue`, item)).data,
-  updateRevenueItem: async (id: string, item: Partial<RevenueItem>) => (await axios.put<RevenueItem>(`${API_URL}/api/revenue/${id}`, item)).data,
-  deleteRevenueItem: async (id: string) => (await axios.delete(`${API_URL}/api/revenue/${id}`)),
+  getRevenueItems: async (planId: string) => (await apiClient.get<RevenueItem[]>(`/api/plans/${planId}/revenue`)).data,
+  createRevenueItem: async (item: Omit<RevenueItem, 'id'>) => (await apiClient.post<RevenueItem>('/api/revenue', item)).data,
+  updateRevenueItem: async (id: string, item: Partial<RevenueItem>) => (await apiClient.put<RevenueItem>(`/api/revenue/${id}`, item)).data,
+  deleteRevenueItem: async (id: string) => (await apiClient.delete(`/api/revenue/${id}`)),
 
   // EXPENSES
-  getExpenseItems: async (planId: string) => (await axios.get<ExpenseItem[]>(`${API_URL}/api/plans/${planId}/expenses`)).data,
-  createExpenseItem: async (item: Omit<ExpenseItem, 'id'>) => (await axios.post<ExpenseItem>(`${API_URL}/api/expenses`, item)).data,
-  updateExpenseItem: async (id: string, item: Partial<ExpenseItem>) => (await axios.put<ExpenseItem>(`${API_URL}/api/expenses/${id}`, item)).data,
-  deleteExpenseItem: async (id: string) => (await axios.delete(`${API_URL}/api/expenses/${id}`)),
+  getExpenseItems: async (planId: string) => (await apiClient.get<ExpenseItem[]>(`/api/plans/${planId}/expenses`)).data,
+  createExpenseItem: async (item: Omit<ExpenseItem, 'id'>) => (await apiClient.post<ExpenseItem>('/api/expenses', item)).data,
+  updateExpenseItem: async (id: string, item: Partial<ExpenseItem>) => (await apiClient.put<ExpenseItem>(`/api/expenses/${id}`, item)).data,
+  deleteExpenseItem: async (id: string) => (await apiClient.delete(`/api/expenses/${id}`)),
 
   // STAFFING
-  getStaffingRoles: async (planId: string) => (await axios.get<StaffingRole[]>(`${API_URL}/api/plans/${planId}/staffing`)).data,
-  createStaffingRole: async (role: Omit<StaffingRole, 'id'>) => (await axios.post<StaffingRole>(`${API_URL}/api/staffing`, role)).data,
-  updateStaffingRole: async (role: Omit<StaffingRole, 'plan_id'> & { plan_id?: string }) => (await axios.put<StaffingRole>(`${API_URL}/api/staffing/${role.id}`, role)).data,
-  deleteStaffingRole: async (id: string) => (await axios.delete(`${API_URL}/api/staffing/${id}`)).data,
+  getStaffingRoles: async (planId: string) => (await apiClient.get<StaffingRole[]>(`/api/plans/${planId}/staffing`)).data,
+  createStaffingRole: async (role: Omit<StaffingRole, 'id'>) => (await apiClient.post<StaffingRole>('/api/staffing', role)).data,
+  updateStaffingRole: async (role: Omit<StaffingRole, 'plan_id'> & { plan_id?: string }) => (await apiClient.put<StaffingRole>(`/api/staffing/${role.id}`, role)).data,
+  deleteStaffingRole: async (id: string) => (await apiClient.delete(`/api/staffing/${id}`)).data,
 
   // CAPITAL GROWTH (Treasury)
-  getCapitalGrowth: async (planId: string) => (await axios.get<CapitalGrowthPolicy>(`${API_URL}/api/plans/${planId}/capital-growth`)).data,
+  getCapitalGrowth: async (planId: string) => (await apiClient.get<CapitalGrowthPolicy>(`/api/plans/${planId}/capital-growth`)).data,
   upsertCapitalGrowth: async (item: Omit<CapitalGrowthPolicy, 'id'>) => 
-    (await axios.post<CapitalGrowthPolicy>(`${API_URL}/api/capital-growth`, item)).data,
+    (await apiClient.post<CapitalGrowthPolicy>('/api/capital-growth', item)).data,
 
   // CAPITAL INJECTIONS
   getCapitalInjections: async (planId: string) => 
-    (await axios.get<CapitalInjection[]>(`${API_URL}/api/plans/${planId}/capital`)).data,
+    (await apiClient.get<CapitalInjection[]>(`/api/plans/${planId}/capital`)).data,
   createCapitalInjection: async (item: Omit<CapitalInjection, 'id'>) => 
-    (await axios.post<CapitalInjection>(`${API_URL}/api/capital`, item)).data,
+    (await apiClient.post<CapitalInjection>('/api/capital', item)).data,
   deleteCapitalInjection: async (id: string) => 
-    (await axios.delete(`${API_URL}/api/capital/${id}`)),
+    (await apiClient.delete(`/api/capital/${id}`)),
 
   // DIVIDENDS
   getDividends: async (planId: string) => 
-    (await axios.get<DividendPolicy>(`${API_URL}/api/plans/${planId}/dividends`)).data,
+    (await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`)).data,
   upsertDividends: async (item: Omit<DividendPolicy, 'id'>) => 
-    (await axios.post<DividendPolicy>(`${API_URL}/api/dividends`, item)).data,
+    (await apiClient.post<DividendPolicy>('/api/dividends', item)).data,
 
   // CREDIT
   getCredit: async (planId: string) => 
-    (await axios.get<CreditFacility>(`${API_URL}/api/plans/${planId}/credit`)).data,
+    (await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`)).data,
   upsertCredit: async (item: Omit<CreditFacility, 'id'>) => 
-    (await axios.post<CreditFacility>(`${API_URL}/api/credit`, item)).data,
+    (await apiClient.post<CreditFacility>('/api/credit', item)).data,
 
   // VALUATION
   getValuation: async (planId: string) => 
-    (await axios.get<ValuationAssumption[]>(`${API_URL}/api/plans/${planId}/valuation`)).data,
-  createValuation: async (item: { plan_id: string, name: string, method: string, multiplier: number, date_applied: string }) => 
-    (await axios.post(`${API_URL}/api/valuation`, item)).data,
-    
-  // --- DELETE METHODS ---
-  deleteFund: async (id: string) => {
-    const res = await fetch(`${API_URL}/api/funds/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete fund');
-  },
-
-  deleteCompany: async (id: string) => {
-    const res = await fetch(`${API_URL}/api/companies/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete company');
-  },  
+    (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
+  createValuation: async (item: { plan_id: string, name: string, method: string, multiplier: string, date_applied: string }) => 
+    (await apiClient.post('/api/valuation', item)).data,
 };

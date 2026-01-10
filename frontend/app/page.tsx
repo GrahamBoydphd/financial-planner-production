@@ -1,16 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import DeleteButton from '@/components/ui/DeleteButton';
 import { api, Fund, Company } from '@/lib/api';
-import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Dashboard() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   const [funds, setFunds] = useState<Fund[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   const fetchData = async () => {
     try {
@@ -23,16 +34,19 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated]);
 
   // Helper: Delete Fund
   const handleDeleteFund = async (fundId: string) => {
+    if (!confirm('Are you sure you want to delete this fund?')) return;
     try {
       await api.deleteFund(fundId);
       fetchData(); // Refresh list
@@ -41,37 +55,24 @@ export default function Dashboard() {
     }
   };
 
-  // Helper: Delete Company
-  const handleDeleteCompany = async (companyId: string) => {
-    if(!confirm("Are you sure? This will delete all financial plans associated with this company.")) return;
-    
-    try {
-      await api.deleteCompany(companyId);
-      fetchData(); // Refresh list
-    } catch (error) {
-      console.error(error);
-      alert('Failed to delete company.');
-    }
-  };
-
-  if (loading) return <Layout>Loading...</Layout>;
+  if (authLoading || !isAuthenticated || dataLoading) return <Layout>Loading...</Layout>;
 
   return (
     <Layout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="space-x-4">
+        <div className="flex gap-4">
           <Link 
-            href="/structure"
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
+            href="/structure" 
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
           >
-            + New Fund
+            New Fund
           </Link>
           <Link 
-            href="/structure"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+            href="/structure" 
+            className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors text-sm font-medium"
           >
-            + New Company
+            New Company
           </Link>
         </div>
       </div>
@@ -99,15 +100,20 @@ export default function Dashboard() {
                   <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
                   
                   {fundCompanies.length > 0 ? (
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                       {fundCompanies.map((company) => (
-                        <li key={company.id} className="group flex justify-between items-center bg-gray-50 p-3 rounded-md hover:bg-blue-50 transition-colors border border-gray-100">
-                          <Link href={`/company/${company.id}`} className="font-medium text-blue-600 hover:underline">
-                            {company.name}
+                        <li key={company.id}>
+                          <Link 
+                            href={`/company/${company.id}`}
+                            className="block p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-gray-700 group-hover:text-indigo-700">
+                                {company.name}
+                              </span>
+                              <span className="text-gray-400 group-hover:text-indigo-400 text-sm">View &rarr;</span>
+                            </div>
                           </Link>
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                             <DeleteButton onDelete={() => handleDeleteCompany(company.id)} />
-                          </div>
                         </li>
                       ))}
                     </ul>
@@ -118,11 +124,14 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {/* FOOTER */}
-                <div className="mt-6 pt-4 border-t border-gray-100 text-right">
-                   <Link href="/structure" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-                      + Add Company
-                   </Link>
+                {/* ADD COMPANY LINK */}
+                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                  <Link 
+                    href="/structure" 
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
+                  >
+                    <span className="mr-1">+</span> Add Company
+                  </Link>
                 </div>
               </Card>
             </div>
@@ -134,9 +143,14 @@ export default function Dashboard() {
         <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
           <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
           <p className="text-gray-400 mt-2">Get started by creating your first fund.</p>
-          <Link href="/structure" className="inline-block mt-4 text-indigo-600 font-bold hover:underline">
-            Create Fund &rarr;
-          </Link>
+          <div className="mt-6">
+             <Link 
+                href="/structure" 
+                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
+              >
+                Create Fund
+              </Link>
+          </div>
         </div>
       )}
     </Layout>

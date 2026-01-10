@@ -14,6 +14,12 @@ uuid = { version = "1.8.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 rust_decimal = { version = "1.35.0", features = ["serde"] }
 rust_decimal_macros = "1.35.0"
-tower-http = { version = "0.5.2", features = ["cors"] }
+tower-http = { version = "0.5.2", features = ["cors", "trace"] }
 rand = "0.8"
 rand_distr = "0.4"
+argon2 = "0.5"
+jsonwebtoken = "9.3"
+axum-extra = { version = "0.9", features = ["typed-header"] }
+validator = { version = "0.18", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

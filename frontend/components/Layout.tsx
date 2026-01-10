@@ -1,7 +1,11 @@
-// frontend/components/Layout.tsx
+"use client";
+
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, logout } = useAuth();
+
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="bg-white shadow-sm border-b">
@@ -15,9 +19,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Link href="/" className="border-transparent text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   Dashboard
                 </Link>
-                <Link href="/structure" className="border-transparent text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"> Structure (Funds & Companies) 
+                <Link href="/structure" className="border-transparent text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                  Structure (Funds & Companies)
                 </Link>
               </div>
+            </div>
+            <div className="flex items-center">
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-700">
+                    Welcome, {user?.username}
+                  </span>
+                  <button 
+                    onClick={logout}
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">Not Logged In</span>
+              )}
             </div>
           </div>
         </div>

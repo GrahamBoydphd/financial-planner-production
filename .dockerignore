@@ -1,0 +1,19 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+npm-debug.log
+
+# Next.js
+.next
+out
+build
+
+# Rust
+target
+**/*.rs.bk
+
+# Env
+.env

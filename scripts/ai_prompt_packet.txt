@@ -7,707 +7,329 @@ CRITICAL OUTPUT RULES:
 </system_context>
 
 <architectural_guidelines>
-# ARCHITECTURAL_CONTEXT.md
-# Current Status: BUILD PHASE - UI & VISUALIZATION
-# Last Updated: January 6, 2026
+
+
+# ARCHITECTURAL_CONTEXT_CLI.md
+# Status: UNIVERSAL CONSTITUTION (Read by every agent)
+# Role: Immutable Constraints & Patterns
 
 ## 1. PROJECT GOAL
-**Objective:** Build a financial simulation engine capable of non-ergodic (Monte Carlo) analysis for startups.
-**Core Philosophy:** Avoid "average of averages." Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
+**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Identity:** Username-based (No PII/Email required for MVP).
 
-## 2. ESTABLISHED CONSTRAINTS (DO NOT CHANGE)
-* **Tech Stack:**
-    * **Backend:** Rust (Axum, SQLx, Tokio).
-    * **Database:** PostgreSQL (SQLx for compile-time checked queries).
-    * **Frontend:** Next.js (TypeScript, React, Tailwind CSS).
-    * **Math:** `rust_decimal` for all currency calculations. No floating point money.
-* **Core Engine (`backend/src/projection.rs`):**
-    * The simulation loop calculates month-by-month cash flow.
-    * It handles: Revenue, COGS, OpEx, Capital Injections, Dividends, and Credit Facilities.
-    * **Monte Carlo:** Runs 1000+ iterations if enabled, calculating percentiles (P5, P50, P95).
-    * **Logic:** Insolvency logic stops simulation if cash < -credit_limit.
-* **Visualization:**
-    * Fan Charts (`CashFlowChart.tsx`) visualize the P5-P95 spread.
-    * Supports both Logarithmic and Linear scales.
+## 2. TECHNOLOGY STACK (Immutable)
+* **Backend:**
+    * **Language:** Rust (Edition 2021).
+    * **Web Framework:** `axum` (with `tokio`).
+    * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
+    * **Math:** `rust_decimal` for ALL currency/rates. `f64` is **BANNED** for money.
+    * **Serialization:** `serde` / `serde_json`.
+* **Frontend:**
+    * **Framework:** Next.js 14+ (App Router).
+    * **Language:** TypeScript.
+    * **Styling:** Tailwind CSS (Utility classes).
+    * **HTTP Client:** Axios (via `lib/api.ts`).
+    * **Visualization:** Chart.js (`react-chartjs-2`).
 
-## 3. CURRENT FOCUS: UI LOGIC REFINEMENT
-**Task:** Improve Dashboard UX by conditionally hiding irrelevant controls.
+## 3.1. CORE ENGINE LOGIC (`backend/src/projection.rs`)
+* **Mechanism:** Breadth-First Traversal (Time-step based).
+* **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.
+* **Monte Carlo:** Runs 1000+ iterations (if enabled). Calculates percentiles (P5, P50, P95).
+* **Insolvency:** Logic stops simulation trajectory if `cash < -credit_limit`.
 
-### Dynamic Control Visibility
-* **The Issue:** The "Ergodicity Correction" (Pooling) slider is currently visible for all simulation types.
-* **The Logic:** This parameter *only* applies to Non-Ergodic (Monte Carlo) simulations where volatility is being dampened. In deterministic/standard / single company models, it does nothing.
-* **Requirement:**
-    * **Watch State:** Track the selected `simulation_type` (e.g., 'standard' vs 'monte_carlo').
-    * **Conditional Render:** Wrap the Slider component in a check.
-    * **Behavior:**
-        * If `Monte Carlo` -> **SHOW** Slider.
-        * If `Standard (Average) /Safe/Single Path (Volatile)` -> **HIDE** Slider.
+## 3.2. CORE PATTERNS (The "Local Customs")
+* **Backend API:**
+    * **Injection:** Always inject DB pool via `State(pool): State<Pool<Postgres>>`.
+    * **Errors:** Handlers return `Result<Json<T>, AppError>`. Never return raw Results.
+    * **Structure:** No generic "Envelope" wrapper. Return the struct/vector directly.
+* **Frontend Data:**
+    * **Fetching:** Use `useEffect` + `api.ts` (Axios wrapper).
+    * **State:** Local State preferred. No Redux/Zustand unless specified.
+    * **Ids:** Treat all IDs as strings on the Frontend; `Uuid` on the Backend.
 
-## 4. NEXT UP (PENDING)
-* User Authentication (Login/Signup).
-* PDF Export of Simulation Results.
-</architectural_guidelines>
+## 4. DIRECTORY MAP & TOOLING
+* **Backend Structure:**
+    * `backend/src/handlers/` -> All API route logic (grouped by resource).
+    * `backend/src/models.rs` -> shared Structs and DB schemas.
+    * `backend/migrations/` -> SQLx migration files (SQL).
+* **Frontend Structure:**
+    * `frontend/app/` -> Next.js Pages and Layouts.
+    * `frontend/lib/api.ts` -> Central Axios client.
+    * `frontend/components/` -> UI elements (Tailwind).
+* **Migration Command:**
+    * Use `sqlx migrate add <name>` to create.
+    * Use `sqlx migrate run` to apply (automated in `main.rs`, but good to know).
+
+## 5. THE "IRON LAWS" (Stage 3 Strictness)
+* **Tenant Isolation:**
+    * **Strict Rule:** Every business entity (Fund, Company) MUST belong to a `tenant_id`.
+    * **Query Rule:** Every SQL `SELECT`, `UPDATE`, or `DELETE` must explicitly filter `WHERE tenant_id = $1`.
+    * **Injection:** `tenant_id` comes from the JWT Claims (Extension), NEVER from the user request body.
+* **Code Style:**
+    * **Database/API:** `snake_case` (e.g., `growth_rate`, `tenant_id`).
+    * **Rust Structs:** `PascalCase` (Internal Type Names).
+    * **TS Interfaces:** Match the API (`snake_case`). Do not map to camelCase.
+
+## 6. UNIVERSAL BUILDER PROTOCOL
+* **File Operations:**
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
+    * Do not use placeholders like `// ... existing code ...`.
+* **Testing:**
+    * If `last_error.log` is provided, priority #1 is fixing that error.
+* **Dependencies:**
+    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.</architectural_guidelines>
 
 <task_instruction>
-Update 'frontend/app/plan/[planId]/results/page.tsx' to conditionally hide the Ergodicity Slider.
-
-REQUIREMENTS:
-1. Locate the 'Non-Ergodicity Slider' div (it has the label 'Non-Ergodicity' and an input type='range').
-2. Wrap this entire div in a conditional check so it only renders when 'simMode' equals 'monte_carlo'.
-   - Code pattern: {simMode === 'monte_carlo' && ( <div ...> ... </div> )}
-3. Do not change the logic inside the slider, just visibility.
-4. Keep the slider state and handlers intact.
+CONTEXT: Restore Dashboard to hierarchical navigation (Funds -> Companies).
+ACTION:
+1. Update 'frontend/app/page.tsx':
+   - Remove all form imports (PlanForm, CompanyForm).
+   - Fetch 'funds' and 'companies' on mount.
+   - Layout:
+     - Header: 'Dashboard' with two buttons: 'New Fund' and 'New Company' (both linking to '/structure').
+     - Main Content: Map through Funds.
+     - For each Fund, create a Card.
+     - Inside the Card, filter companies belonging to that fund.
+     - Render companies as Links: <Link href={`/company/${company.id}`}>.
+     - If a company is clicked, it navigates to the detailed company page.
+CONSTRAINTS: Restore the clean, navigation-focused interface.
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/app/plan/[planId]/results/page.tsx ---
+--- START FILE: frontend/app/page.tsx ---
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
-import CashFlowChart from '@/components/CashFlowChart';
-import Button from '@/components/ui/Button';
-import { api, FinancialPlan, CapitalInjection, DividendPolicy, CreditFacility, ValuationAssumption } from '@/lib/api';
+import DeleteButton from '@/components/ui/DeleteButton';
+import { api, Fund, Company } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
-// --- COMPONENT: KPI CARDS ---
-interface KPIProps {
-  simMode: string;
-  projection: any;
-  creditLimit: string;
-  stopInsolvency: boolean;
-  currency: string;
-  valuationMethod: string;
-}
+export default function Dashboard() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
 
-const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, valuationMethod }: KPIProps) => {
-    if (!projection) return null;
+  const [funds, setFunds] = useState<Fund[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
-    // Helper to format with currency
-    const fmt = (n: any) => 
-        `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-
-    const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
-    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1] || lastData;
-
-    let totalVal = lastData.total_value;
-    let valuation = projection.deterministic_valuation;
-    let subtitle = 'Deterministic Average';
-    let insolvencyMonth = -1;
-    let runwayVal: number | string = 'Infinite';
-
-    const checkInsolvency = (dataArray: any[]) => {
-        if (!dataArray) return -1;
-        const idx = dataArray.findIndex(m => m.is_insolvent || Number(m.cash_balance) < -(Number(creditLimit) || 0));
-        return idx !== -1 ? dataArray[idx].month_index : -1;
-    };
-
-    // RUNWAY CALCULATION HELPER
-    const calculateRunway = (cash: number, netIncome: number) => {
-        if (netIncome >= 0) return 'Infinite';
-        const burn = -netIncome;
-        const available = cash + Number(creditLimit);
-        if (available <= 0) return 0;
-        return Math.floor(available / burn);
-    };
-
-    if (simMode === 'single') {
-        totalVal = singleLastData.total_value;
-        valuation = projection.single_run_valuation;
-        subtitle = 'Single Run Result';
-        if (projection.single_run_data) {
-            insolvencyMonth = checkInsolvency(projection.single_run_data);
-            runwayVal = calculateRunway(Number(singleLastData.cash_balance), Number(singleLastData.net_income));
-        }
-    } else if (simMode === 'monte_carlo') {
-        totalVal = projection.p50_value?.[projection.p50_value.length - 1] || 0;
-        valuation = projection.p50_valuation;
-        subtitle = 'Median (P50)';
-        runwayVal = projection.p50_runway ?? 'Infinite';
-        
-    } else {
-        // Standard
-        insolvencyMonth = checkInsolvency(projection.deterministic_data);
-        runwayVal = calculateRunway(Number(lastData.cash_balance), Number(lastData.net_income));
-    }
-
-    const p90Val = projection.p90_value?.[projection.p90_value.length - 1] || 0;
-
-    return (
-      <>
-        <Card className="text-center border-b-4 border-gray-500 mb-4">
-          <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value (Cash+Divs)</h3>
-          <p className={`text-2xl font-bold ${totalVal < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-            {fmt(totalVal)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-        </Card>
-
-        {simMode === 'monte_carlo' && (
-          <Card className="text-center border-b-4 border-blue-600 mb-4">
-            <h3 className="text-blue-700 text-xs uppercase font-bold">Upside (P90)</h3>
-            <p className={`text-2xl font-bold ${p90Val < 0 ? 'text-red-600' : 'text-blue-700'}`}>
-              {fmt(p90Val)}
-            </p>
-          </Card>
-        )}
-
-        <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">Valuation (Est)</h3>
-            <p className="text-2xl font-bold text-green-600">{fmt(valuation)}</p>
-            <p className="text-xs text-gray-400 mt-1">
-                {valuationMethod === 'ebitda' ? 'Based on EBITDA' : 'Based on Final Revenue'}
-            </p>
-        </Card>
-        
-        <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">
-                {simMode === 'monte_carlo' ? 'Runway (Median, P50)' : 'Runway'}
-            </h3>
-            {insolvencyMonth !== -1 ? (
-                <div className="text-red-600">
-                    <p className="text-xl font-bold">Insolvent in Month {insolvencyMonth}</p>
-                    <p className="text-xs mt-1">
-                        {stopInsolvency ? 'Trading Stopped' : 'Showing fantasy projection'}
-                    </p>
-                </div>
-            ) : runwayVal === 0 ? (
-                <p className="text-2xl font-bold text-red-600">Insolvent (0 Mo)</p>
-            ) : runwayVal !== 'Infinite' ? (
-                <p className="text-2xl font-bold text-purple-600">{runwayVal} Mo</p>
-            ) : (
-                <p className="text-2xl font-bold text-purple-600">Infinite</p>
-            )}
-        </Card>
-      </>
-    );
-};
-
-// --- MAIN PAGE COMPONENT ---
-export default function ResultsPage({ params }: { params: { planId: string } }) {
-  const { planId } = params;
-  const [plan, setPlan] = useState<FinancialPlan | null>(null);
-  const [projection, setProjection] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [updatingPooling, setUpdatingPooling] = useState(false);
-   
-  // Financial State
-  const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [dividendPolicy, setDividendPolicy] = useState<DividendPolicy | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [creditFacility, setCreditFacility] = useState<CreditFacility | null>(null);
-   
-  // Forms State
-  const [newCapName, setNewCapName] = useState('');
-  const [newCapAmount, setNewCapAmount] = useState('');
-  const [newCapMonth, setNewCapMonth] = useState('');
-
-  const [divEnabled, setDivEnabled] = useState(false);
-  const [divThreshold, setDivThreshold] = useState('50000');
-  const [divRatio, setDivRatio] = useState('20');
-
-  const [creditLimit, setCreditLimit] = useState('0');
-  const [creditRate, setCreditRate] = useState('10');
-  const [creditIsAnnual, setCreditIsAnnual] = useState(true);
-
-  const [valMultiple, setValMultiple] = useState('5'); 
-  const [valuationMethod, setValuationMethod] = useState('revenue');
-
-  // Controls
-  const [years, setYears] = useState(5);
-  const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
-  const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
-  const [stopInsolvency, setStopInsolvency] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
-  // Non-Ergodicity State
-  const [poolingFraction, setPoolingFraction] = useState(0);
-  
-  // UI Settings
-  const [currency, setCurrency] = useState(''); // Default None
-
-  // --- DATA LOADING ---
   useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const p = await api.getPlan(planId);
-        setPlan(p);
-        // Sync slider with DB state on reload
-        setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
-        
-        const caps = await api.getCapitalInjections(planId);
-        setCapitalItems(caps);
-        
-        try {
-          const div = await api.getDividends(planId);
-          setDividendPolicy(div);
-          setDivEnabled(div.is_enabled);
-          setDivThreshold(div.safety_threshold.toString());
-          setDivRatio(div.payout_ratio.toString());
-        } catch { /* No policy set */ }
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
-        try {
-          const cred = await api.getCredit(planId);
-          setCreditFacility(cred);
-          setCreditLimit(cred.facility_limit.toString());
-          setCreditRate(cred.interest_rate.toString());
-          setCreditIsAnnual(cred.is_annual_rate);
-        } catch { /* No credit set */ }
-
-        try {
-          const vals = await api.getValuation(planId);
-          if (vals && vals.length > 0) {
-             const latest = vals[vals.length - 1];
-             setValMultiple(latest.multiplier.toString());
-             setValuationMethod(latest.method);
-          }
-        } catch { /* No valuation set */ }
-
-        // Use standard or monte_carlo depending on UI
-        const backendMode = simMode === 'monte_carlo' ? 'monte_carlo' : 'single';
-        const proj = await api.getProjection(planId, {
-           mode: backendMode,
-           stop_insolvency: stopInsolvency,
-           initial_cash: p.initial_cash, // Pass initial cash from plan
-           months: years * 12 // FIX: Pass months based on years selector
-        });
-
-        if (proj.valuation_method) {
-            setValuationMethod(proj.valuation_method);
-        }
-        
-        // --- DATA MAPPING FOR TABLE ---
-        let sourceData = proj.deterministic_data;
-        if (backendMode === 'single' && proj.single_run_data) {
-           sourceData = proj.single_run_data;
-        }
-
-        const tableData = sourceData.map((m: any, i: number) => {
-           let cumulative_pool_received = m.cumulative_pool_received;
-           let total_value = m.total_value;
-           let cash_balance = m.cash_balance;
-
-           // If Monte Carlo, override specific columns with P50 data to match chart
-           if (simMode === 'monte_carlo') {
-               if (proj.p50_pool_cumulative && proj.p50_pool_cumulative[i] !== undefined) {
-                   cumulative_pool_received = proj.p50_pool_cumulative[i];
-               }
-               if (proj.p50_value && proj.p50_value[i] !== undefined) {
-                   total_value = proj.p50_value[i];
-                   // Derive cash balance to keep row consistent: Cash = Total - Divs
-                   // We use the median run's dividends as the approximation for P50 dividends
-                   cash_balance = Number(total_value) - Number(m.cumulative_dividends);
-               }
-           }
-
-           return {
-               month_index: m.month_index,
-               date: m.date,
-               revenue: m.revenue,
-               cogs: m.cogs,
-               gross_profit: m.gross_profit,
-               opex: m.opex,
-               net_income: m.net_income,
-               cumulative_pool_received, // Overridden if MC
-               cash_balance, // Overridden if MC
-               total_value, // Overridden if MC
-               dividend_paid: m.dividend_paid,
-               is_insolvent: m.is_insolvent
-           };
-        });
-        
-        (proj as any).cash_flow_data = tableData;
-        setProjection(proj);
-
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-        setUpdatingPooling(false);
-      }
-    };
-    load();
-  }, [planId, years, simMode, stopInsolvency, refreshTrigger]); 
-
-  // --- 3. HANDLERS ---
-  const handleAddCapital = async () => {
-    if (!newCapName || !newCapAmount) return;
-    await api.createCapitalInjection({
-      plan_id: planId,
-      name: newCapName,
-      amount: Number(newCapAmount),
-      month: Number(newCapMonth || 0)
-    });
-    setNewCapName(''); setNewCapAmount(''); setNewCapMonth('');
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleDeleteCapital = async (id: string) => {
-    await api.deleteCapitalInjection(id);
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveDividends = async () => {
-    await api.upsertDividends({
-      plan_id: planId,
-      is_enabled: divEnabled,
-      safety_threshold: Number(divThreshold),
-      payout_ratio: Number(divRatio)
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveCredit = async () => {
-    await api.upsertCredit({
-      plan_id: planId,
-      facility_limit: Number(creditLimit),
-      interest_rate: Number(creditRate),
-      is_annual_rate: creditIsAnnual
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveValuation = async () => {
-    await api.createValuation({
-      plan_id: planId,
-      name: 'Valuation',
-      method: valuationMethod,
-      multiplier: Number(valMultiple),
-      date_applied: new Date().toISOString().split('T')[0] // Fix 422
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handlePoolingSave = async () => {
-    if (!plan) return;
-    setUpdatingPooling(true);
+  const fetchData = async () => {
     try {
-        // Strictly await the update before triggering refresh
-        await api.updatePlan(planId, { pooling_fraction: poolingFraction / 100.0 });
-        
-        // Trigger refresh, set loading to true to bridge gap until useEffect runs
-        setLoading(true);
-        setRefreshTrigger(n => n + 1);
-    } catch (e) {
-        console.error("Failed to update pooling fraction", e);
-        setUpdatingPooling(false);
-        setLoading(false);
+      const [fundsData, companiesData] = await Promise.all([
+        api.getFunds(),
+        api.getCompanies()
+      ]);
+      setFunds(fundsData);
+      setCompanies(companiesData);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setDataLoading(false);
     }
   };
 
-  // Helper
-  const fmt = (n: any) => 
-    `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated]);
 
-  if (!plan) return <Layout>Loading...</Layout>;
+  // Helper: Delete Fund
+  const handleDeleteFund = async (fundId: string) => {
+    if (!confirm('Are you sure you want to delete this fund?')) return;
+    try {
+      await api.deleteFund(fundId);
+      fetchData(); // Refresh list
+    } catch (error) {
+      alert('Could not delete fund. It might contain companies.');
+    }
+  };
+
+  if (authLoading || !isAuthenticated || dataLoading) return <Layout>Loading...</Layout>;
 
   return (
     <Layout>
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
-          <p className="text-gray-500">Financial Simulation Engine v2.0</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-white p-2 rounded shadow flex flex-wrap items-center gap-4">
-              <select 
-                className="border rounded p-1 text-sm bg-white"
-                value={years}
-                onChange={(e) => setYears(Number(e.target.value))}
-              >
-                {[1, 2, 3, 5, 10, 20, 50, 100].map(y => <option key={y} value={y}>{y} Years</option>)}
-              </select>
-
-              <div className="flex items-center gap-2 border-l pl-4">
-                <input 
-                  type="checkbox" id="logScale" 
-                  checked={isLogScale} onChange={(e) => setIsLogScale(e.target.checked)}
-                  className="rounded text-blue-600"
-                />
-                <label htmlFor="logScale" className="text-sm font-medium cursor-pointer">Log Scale</label>
-              </div>
-
-              <div className="flex items-center gap-2 border-l pl-4">
-                <select 
-                  className="border rounded p-1 text-sm font-bold text-blue-800 bg-blue-50"
-                  value={simMode}
-                  onChange={(e) => setSimMode(e.target.value as any)}
-                >
-                  <option value="standard">Standard (Average)</option>
-                  <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Monte Carlo (1000 Runs)</option>
-                </select>
-              </div>
-
-              {/* Currency Selector */}
-              <div className="flex items-center gap-2 border-l pl-4">
-                  <span className="text-xs text-gray-500">Currency:</span>
-                  <select 
-                    className="border rounded p-1 text-sm font-bold"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                      <option value="">None</option>
-                      <option value="$">$</option>
-                      <option value="€">€</option>
-                      <option value="£">£</option>
-                      <option value="¥">¥</option>
-                  </select>
-              </div>
-
-              {/* Insolvency Checkbox */}
-              <div className="flex items-center gap-2 border-l pl-4">
-                <input 
-                  type="checkbox" id="stopInsolvency" 
-                  checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
-                  className="rounded text-red-600"
-                />
-                <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop on Insolvency</label>
-              </div>
-
-              {/* Non-Ergodicity Slider */}
-              <div className="flex flex-col justify-center border-l pl-4 w-40">
-                  <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Non-Ergodicity</span>
-                      {updatingPooling ? (
-                          <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
-                      ) : (
-                          <span className="text-xs font-bold text-blue-600">{poolingFraction}%</span>
-                      )}
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    step="1"
-                    value={poolingFraction}
-                    onChange={(e) => setPoolingFraction(Number(e.target.value))}
-                    onMouseUp={handlePoolingSave}
-                    onTouchEnd={handlePoolingSave}
-                    disabled={updatingPooling || loading}
-                    className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer ${updatingPooling || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  />
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              {simMode === 'single' && (
-                 <Button variant="secondary" onClick={() => setRefreshTrigger(n => n + 1)}>Recalculate 🎲</Button>
-              )}
-              <a href={`/plan/${planId}/inputs`} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium">Edit Revenue/Cost</a>
-            </div>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex gap-4">
+          <Link 
+            href="/structure" 
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
+          >
+            New Fund
+          </Link>
+          <Link 
+            href="/structure" 
+            className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors text-sm font-medium"
+          >
+            New Company
+          </Link>
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
-      ) : projection && (
-        <div className="space-y-8">
-          
-          {simMode === 'single' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-700">Deterministic (Average)</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {funds.map((fund) => {
+          // Find companies belonging to this fund
+          const fundCompanies = companies.filter(c => c.fund_id === fund.id);
+
+          return (
+            <div key={fund.id} className="flex flex-col h-full">
+              <Card className="flex-1 flex flex-col border-t-4 border-t-indigo-500 hover:shadow-lg transition-shadow">
+                
+                {/* FUND HEADER */}
+                <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800">{fund.name}</h2>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
+                  </div>
+                  <DeleteButton onDelete={() => handleDeleteFund(fund.id)} />
                 </div>
-                <div className="h-80">
-                  <CashFlowChart 
-                    data={projection} 
-                    isLog={isLogScale} 
-                    mode="standard" 
-                    creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
-                  />
+
+                {/* COMPANIES LIST */}
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
+                  
+                  {fundCompanies.length > 0 ? (
+                    <ul className="space-y-2">
+                      {fundCompanies.map((company) => (
+                        <li key={company.id}>
+                          <Link 
+                            href={`/company/${company.id}`}
+                            className="block p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-gray-700 group-hover:text-indigo-700">
+                                {company.name}
+                              </span>
+                              <span className="text-gray-400 group-hover:text-indigo-400 text-sm">View &rarr;</span>
+                            </div>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
+                      No companies yet.
+                    </div>
+                  )}
+                </div>
+
+                {/* ADD COMPANY LINK */}
+                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                  <Link 
+                    href="/structure" 
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
+                  >
+                    <span className="mr-1">+</span> Add Company
+                  </Link>
                 </div>
               </Card>
-              <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-blue-700">Volatile (Single Run)</h2>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Stochastic</span>
-                </div>
-                <div className="h-80">
-                  <CashFlowChart 
-                    data={projection} 
-                    isLog={isLogScale} 
-                    mode="single" 
-                    creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
-                  />
-                </div>
-              </Card>
             </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-grow">
-                <Card className="h-full">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">Total Value Forecast</h2>
-                    {simMode === 'monte_carlo' && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Fan Chart Active</span>}
-                  </div>
-                  <div className="h-96">
-                    <CashFlowChart 
-                      data={projection} 
-                      isLog={isLogScale} 
-                      mode={simMode} 
-                      creditLimit={Number(creditLimit)}
-                      currencySymbol={currency}
-                    />
-                  </div>
-                </Card>
-              </div>
-              <div className="w-full lg:w-64 flex-shrink-0">
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                   <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {simMode === 'single' && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
-            </div>
-          )}
-
-          {/* --- INLINED GRID TO FIX FOCUS LOSS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Valuation Model</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">
-                    {valuationMethod === 'ebitda' ? 'EBITDA Multiple (x)' : 'Revenue Multiple (x)'}
-                  </label>
-                  <input type="number" step="0.1" className="border p-1 w-full text-sm rounded" 
-                    value={valMultiple} onChange={e => setValMultiple(e.target.value)} 
-                    placeholder="e.g. 5.0"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 italic">
-                  Valuation = Annual {valuationMethod === 'ebitda' ? 'EBITDA' : 'Revenue'} × Multiple
-                </div>
-                <button onClick={handleSaveValuation} className="w-full bg-blue-600 text-white text-sm py-1 rounded">Set Valuation</button>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
-              <div className="space-y-2 mb-4 h-24 overflow-y-auto">
-                {capitalItems.length === 0 && <p className="text-sm text-gray-400 italic">No external capital.</p>}
-                {capitalItems.map(c => (
-                  <div key={c.id} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
-                    <div>
-                      <span className="font-bold block">{c.name}</span>
-                      <span className="text-xs text-gray-500">Month {c.month}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-green-700">{fmt(c.amount)}</span>
-                      <button onClick={() => handleDeleteCapital(c.id)} className="text-red-400 hover:text-red-600">×</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Name" className="border p-1 text-xs rounded col-span-2" 
-                  value={newCapName} onChange={e => setNewCapName(e.target.value)} />
-                <input type="number" placeholder="$" className="border p-1 text-xs rounded" 
-                  value={newCapAmount} onChange={e => setNewCapAmount(e.target.value)} />
-                <input type="number" placeholder="Mo" className="border p-1 text-xs rounded" 
-                  value={newCapMonth} onChange={e => setNewCapMonth(e.target.value)} />
-                <button onClick={handleAddCapital} className="bg-gray-700 text-white text-xs py-1 rounded col-span-2">Add</button>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Dividend Policy</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Enable?</label>
-                  <input type="checkbox" checked={divEnabled} onChange={e => setDivEnabled(e.target.checked)} className="h-4 w-4" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Safety Threshold ($)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={divThreshold} onChange={e => setDivThreshold(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Payout Ratio (%)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={divRatio} onChange={e => setDivRatio(e.target.value)} />
-                </div>
-                <button onClick={handleSaveDividends} className="w-full bg-green-600 text-white text-sm py-1 rounded">Update</button>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Credit / Overdraft</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">Limit ($)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Rate (%)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={creditRate} onChange={e => setCreditRate(e.target.value)} />
-                </div>
-                <div className="flex gap-2 text-xs">
-                  <label className="flex items-center gap-1">
-                    <input type="radio" checked={creditIsAnnual} onChange={() => setCreditIsAnnual(true)} /> Annual
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="radio" checked={!creditIsAnnual} onChange={() => setCreditIsAnnual(false)} /> Monthly
-                  </label>
-                </div>
-                <button onClick={handleSaveCredit} className="w-full bg-purple-600 text-white text-sm py-1 rounded">Set</button>
-              </div>
-            </Card>
+          );
+        })}
+      </div>
+      
+      {funds.length === 0 && (
+        <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+          <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
+          <p className="text-gray-400 mt-2">Get started by creating your first fund.</p>
+          <div className="mt-6">
+             <Link 
+                href="/structure" 
+                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
+              >
+                Create Fund
+              </Link>
           </div>
-
-          <Card className="overflow-x-auto max-h-96">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">Most typical (median) outcome</h3>
-            <table className="min-w-full text-xs text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3">Month</th>
-                  <th className="px-4 py-3">Revenue</th>
-                  <th className="px-4 py-3">Gross Profit</th>
-                  <th className="px-4 py-3">OpEx</th>
-                  <th className="px-4 py-3">Net Income</th>
-                  <th className="px-4 py-3 text-orange-600">Pool Received</th>
-                  <th className="px-4 py-3 text-gray-900 font-bold">Cash Bal</th>
-                  <th className="px-4 py-3 text-green-600">Dividends</th>
-                  <th className="px-4 py-3 text-blue-700 font-bold">Net Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(projection as any).cash_flow_data.map((row: any) => (
-                  <tr key={row.month_index} className={`border-b hover:bg-gray-50 ${row.is_insolvent ? 'bg-red-50' : 'bg-white'}`}>
-                    <td className="px-4 py-2 font-medium">{row.month_index}</td>
-                    <td className="px-4 py-2">{fmt(row.revenue)}</td>
-                    <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
-                    <td className="px-4 py-2">{fmt(row.opex)}</td>
-                    <td className={`px-4 py-2 ${row.net_income < 0 ? 'text-red-500' : 'text-green-600'}`}>{fmt(row.net_income)}</td>
-                    <td className="px-4 py-2 text-orange-600">{fmt(row.cumulative_pool_received)}</td>
-                    <td className={`px-4 py-2 font-bold ${row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmt(row.cash_balance)}</td>
-                    <td className="px-4 py-2 text-green-600">{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
-                    <td className={`px-4 py-2 font-bold ${row.total_value < 0 ? 'text-red-600' : 'text-blue-700'}`}>
-                      {fmt(row.total_value)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
         </div>
       )}
     </Layout>
   );
 }
---- END FILE: frontend/app/plan/[planId]/results/page.tsx ---
+--- END FILE: frontend/app/page.tsx ---
+
+--- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
+
+
+# ARCHITECTURAL_CONTEXT_CLI.md
+# Status: UNIVERSAL CONSTITUTION (Read by every agent)
+# Role: Immutable Constraints & Patterns
+
+## 1. PROJECT GOAL
+**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
+**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Identity:** Username-based (No PII/Email required for MVP).
+
+## 2. TECHNOLOGY STACK (Immutable)
+* **Backend:**
+    * **Language:** Rust (Edition 2021).
+    * **Web Framework:** `axum` (with `tokio`).
+    * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
+    * **Math:** `rust_decimal` for ALL currency/rates. `f64` is **BANNED** for money.
+    * **Serialization:** `serde` / `serde_json`.
+* **Frontend:**
+    * **Framework:** Next.js 14+ (App Router).
+    * **Language:** TypeScript.
+    * **Styling:** Tailwind CSS (Utility classes).
+    * **HTTP Client:** Axios (via `lib/api.ts`).
+    * **Visualization:** Chart.js (`react-chartjs-2`).
+
+## 3.1. CORE ENGINE LOGIC (`backend/src/projection.rs`)
+* **Mechanism:** Breadth-First Traversal (Time-step based).
+* **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.
+* **Monte Carlo:** Runs 1000+ iterations (if enabled). Calculates percentiles (P5, P50, P95).
+* **Insolvency:** Logic stops simulation trajectory if `cash < -credit_limit`.
+
+## 3.2. CORE PATTERNS (The "Local Customs")
+* **Backend API:**
+    * **Injection:** Always inject DB pool via `State(pool): State<Pool<Postgres>>`.
+    * **Errors:** Handlers return `Result<Json<T>, AppError>`. Never return raw Results.
+    * **Structure:** No generic "Envelope" wrapper. Return the struct/vector directly.
+* **Frontend Data:**
+    * **Fetching:** Use `useEffect` + `api.ts` (Axios wrapper).
+    * **State:** Local State preferred. No Redux/Zustand unless specified.
+    * **Ids:** Treat all IDs as strings on the Frontend; `Uuid` on the Backend.
+
+## 4. DIRECTORY MAP & TOOLING
+* **Backend Structure:**
+    * `backend/src/handlers/` -> All API route logic (grouped by resource).
+    * `backend/src/models.rs` -> shared Structs and DB schemas.
+    * `backend/migrations/` -> SQLx migration files (SQL).
+* **Frontend Structure:**
+    * `frontend/app/` -> Next.js Pages and Layouts.
+    * `frontend/lib/api.ts` -> Central Axios client.
+    * `frontend/components/` -> UI elements (Tailwind).
+* **Migration Command:**
+    * Use `sqlx migrate add <name>` to create.
+    * Use `sqlx migrate run` to apply (automated in `main.rs`, but good to know).
+
+## 5. THE "IRON LAWS" (Stage 3 Strictness)
+* **Tenant Isolation:**
+    * **Strict Rule:** Every business entity (Fund, Company) MUST belong to a `tenant_id`.
+    * **Query Rule:** Every SQL `SELECT`, `UPDATE`, or `DELETE` must explicitly filter `WHERE tenant_id = $1`.
+    * **Injection:** `tenant_id` comes from the JWT Claims (Extension), NEVER from the user request body.
+* **Code Style:**
+    * **Database/API:** `snake_case` (e.g., `growth_rate`, `tenant_id`).
+    * **Rust Structs:** `PascalCase` (Internal Type Names).
+    * **TS Interfaces:** Match the API (`snake_case`). Do not map to camelCase.
+
+## 6. UNIVERSAL BUILDER PROTOCOL
+* **File Operations:**
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
+    * Do not use placeholders like `// ... existing code ...`.
+* **Testing:**
+    * If `last_error.log` is provided, priority #1 is fixing that error.
+* **Dependencies:**
+    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.--- END FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 
 </source_code>

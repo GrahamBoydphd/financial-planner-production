@@ -1,12 +1,12 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Extension},
     Json,
 };
 use serde::Deserialize;
 use uuid::Uuid;
 use sqlx::{Pool, Postgres};
 use rust_decimal::Decimal;
-use crate::models::StaffingRole;
+use crate::models::{StaffingRole, Claims};
 use crate::errors::AppError;
 
 #[derive(Deserialize)]
@@ -15,9 +15,9 @@ pub struct CreateStaffingRoleRequest {
     pub role_name: String,
     pub annual_salary: Decimal,
     pub start_month: i32,
-    pub target_count: i32, // Renamed from count
-    pub hiring_plan: String, // New field
-    pub hiring_rate: Option<i32>, // New field
+    pub target_count: i32,
+    pub hiring_plan: String,
+    pub hiring_rate: Option<i32>,
     pub annual_increase: Decimal,
 }
 
@@ -26,14 +26,15 @@ pub struct UpdateStaffingRoleRequest {
     pub role_name: Option<String>,
     pub annual_salary: Option<Decimal>,
     pub start_month: Option<i32>,
-    pub target_count: Option<i32>, // Renamed from count
-    pub hiring_plan: Option<String>, // New field
-    pub hiring_rate: Option<i32>, // New field
+    pub target_count: Option<i32>,
+    pub hiring_plan: Option<String>,
+    pub hiring_rate: Option<i32>,
     pub annual_increase: Option<Decimal>,
 }
 
 pub async fn get_staffing_roles(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(plan_id): Path<Uuid>,
 ) -> Result<Json<Vec<StaffingRole>>, AppError> {
     let roles = sqlx::query_as!(
@@ -41,8 +42,10 @@ pub async fn get_staffing_roles(
         "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at 
          FROM staffing_roles 
          WHERE plan_id = $1 
+         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
          ORDER BY start_month ASC",
-        plan_id
+        plan_id,
+        claims.tenant_id
     )
     .fetch_all(&pool)
     .await?;
@@ -52,10 +55,22 @@ pub async fn get_staffing_roles(
 
 pub async fn create_staffing_role(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateStaffingRoleRequest>,
 ) -> Result<Json<StaffingRole>, AppError> {
-    // Removed created_at from INSERT columns and VALUES.
-    // The database will handle the default timestamp.
+    // Verify plan ownership
+    let plan_exists = sqlx::query!(
+        "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        payload.plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    if plan_exists.is_none() {
+        return Err(AppError::NotFound("Financial plan not found".into()));
+    }
+
     let role = sqlx::query_as!(
         StaffingRole,
         "INSERT INTO staffing_roles (plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase) 
@@ -78,10 +93,10 @@ pub async fn create_staffing_role(
 
 pub async fn update_staffing_role(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateStaffingRoleRequest>,
 ) -> Result<Json<StaffingRole>, AppError> {
-    // Added created_at to the RETURNING clause so the StaffingRole struct can be fully populated.
     let role = sqlx::query_as!(
         StaffingRole,
         "UPDATE staffing_roles SET
@@ -93,6 +108,7 @@ pub async fn update_staffing_role(
             hiring_rate = COALESCE($6, hiring_rate),
             annual_increase = COALESCE($7, annual_increase)
          WHERE id = $8
+         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)
          RETURNING id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at",
         payload.role_name,
         payload.annual_salary,
@@ -101,7 +117,8 @@ pub async fn update_staffing_role(
         payload.hiring_plan,
         payload.hiring_rate,
         payload.annual_increase,
-        id
+        id,
+        claims.tenant_id
     )
     .fetch_one(&pool)
     .await?;
@@ -111,10 +128,22 @@ pub async fn update_staffing_role(
 
 pub async fn delete_staffing_role(
     State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    sqlx::query!("DELETE FROM staffing_roles WHERE id = $1", id)
-        .execute(&pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM staffing_roles 
+         WHERE id = $1 
+         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)", 
+        id,
+        claims.tenant_id
+    )
+    .execute(&pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Staffing role not found".into()));
+    }
+
     Ok(())
 }
