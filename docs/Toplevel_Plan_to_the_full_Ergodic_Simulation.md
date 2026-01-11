@@ -83,6 +83,12 @@ To support B2B sales (e.g., selling to a VC firm) while allowing granular billin
     - **Logic:** We will not ask for a credit card. The backend already defaults new Tenants to `tier: "free"` and `token_balance: 0`.
         
     - **UI:** The registration flow is frictionless.
+    - **Tiers:** 
+	    - Free version (Company+Investor functionality)
+		- Company paid tier (Silver) (Can't be chosen, "Coming soon")
+		- Company paid tier (Gold) (Can't be chosen, "Coming soon")
+		- Investor (Includes Company) (Silver) (Can't be chosen, "Coming soon")
+		- Investor (Includes Company) (Gold) (Can't be chosen, "Coming soon")
 
 - The "Simulation Data" Layer (The Work): These tables represent **the startups being modeled**.
 - **`companies` Table:** This is the simulation subject (e.g., "New Startup Ltd").
@@ -133,10 +139,35 @@ We prepared the database for "Usage-Based Billing" (Monte Carlo simulations cost
 Implement the clean version on the cloud.
 Improve the clean version with better guidance to the user.
 
+
+### Still to add in
+- Descriptive text panel next to the login / registration card.
+- Email the results to user's email. 
+- Make a copy of the current scenario (i.e., business plan) to ease users making modifications to just some items while retaining the previous for comparison.
+- 
+
+
 ## Stage 4
 
-### Company-Level Simulation 
+## Company-Level Simulation 
 - Include the degree of non-ergodicity at time T as the ABS(Monte Carlo P50 value - standard value) at the end of the time period. 
+
+### Shocks
+- Some shocks only for the paid version.
+	- Shock design: a tick box to activate. Choose probability distribution per year with one-sided or two-sided options, and probability distribution for the scale of the shock and clear guidance, , 
+- Standard shocks (free version) (Company+Investor functionality)
+	- Unspecific shock. 
+	- Marketing
+	- Staffing
+- Company paid tier (Silver)
+	- 
+- Company paid tier (Gold)
+	- 
+- Investor (Includes Company) (Silver)
+	- 
+- Investor (Includes Company) (Gold)
+	- 
+
 #### Multi-Fund Structure (The "Clean Break")
 We paused this earlier. Now that the simulation kernel is stable, we could return to the database refactor to allow a **Company to belong to multiple Funds** (Many-to-Many). 
 - **Why:** This is essential for the "Structure" page to truly reflect complex ownership (e.g., Company A is owned by Fund X and Fund Y).

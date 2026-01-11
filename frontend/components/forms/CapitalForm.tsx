@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
@@ -96,7 +97,10 @@ export default function CapitalForm({ planId, onSuccess }: Props) {
 
         {/* Amount Input */}
         <div className="md:col-span-4">
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Amount ($) <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+            Amount ($) <span className="text-red-500">*</span>
+            <Tooltip content="Amount of capital injection." />
+          </label>
           <input 
             type="number" 
             min="0"
@@ -118,7 +122,10 @@ export default function CapitalForm({ planId, onSuccess }: Props) {
 
         {/* Month Input */}
         <div className="md:col-span-3">
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Month <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+            Month <span className="text-red-500">*</span>
+            <Tooltip content="Month in which capital is injected." />
+          </label>
           <input 
             type="number" 
             min="1"

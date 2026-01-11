@@ -3,11 +3,11 @@
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 
-| Step | Location | Command | Purpose |
-| :--- | :--- | :--- | :--- |
-| 1 | Laptop | `git add . && git commit -m "msg"` | Save changes. |
-| 2 | Laptop | `git push origin cloud-v1-release` | Upload to GitHub. |
-| 3 | Laptop | `./scripts/trigger-update.sh` | **Magic Button.** Triggers the server to pull & rebuild. |
+| Step | Location | Command                            | Purpose                                                  |
+| :--- | :------- | :--------------------------------- | :------------------------------------------------------- |
+| 1    | Laptop   | `git add . && git commit -m "msg"` | Save changes.                                            |
+| 2    | Laptop   | `git push origin cloud-v1-release` | Upload to GitHub.                                        |
+| 3    | Laptop   | `./scripts/trigger-update.sh`      | **Magic Button.** Triggers the server to pull & rebuild. |
 
 ## 2. Debugging (If Deployment Fails)
 **Goal:** Check why the site is down.
@@ -18,6 +18,30 @@
 | `cd ~/app`                                                    | Server   | Go to project folder.                             |
 | `docker compose -f docker-compose.prod.yml logs -f --tail=50` | Server   | View live logs for all services (Backend/Caddy).  |
 | `docker stats`                                                | Server   | Check if RAM is full (Rust compilation is heavy). |
+
+# Deployment workflow V2
+### 🛠️ The Deployment Command Registry
+
+|**Category**|**Command**|**Purpose**|
+|---|---|---|
+|**Git & Code**|`git pull origin feature/user-layer-v2`|Syncs server code with your laptop's "Source of Truth."|
+|**The "Nuclear" Option**|`docker compose -f docker-compose.prod.yml down -v`|**Wipes everything.** Stops containers and deletes the DB volume.|
+|**Build & Launch**|`docker compose -f docker-compose.prod.yml up -d`|Builds/Starts containers in the background (detached mode).|
+|**Build & Launch**|`docker compose -f docker-compose.prod.yml build frontend`|Forces a fresh compilation of the Next.js frontend code.|
+|**Environment**|`docker compose -f docker-compose.prod.yml up -d --force-recreate backend`|Forces the backend to "inhale" new `.env` changes.|
+|**Migrations**|`set -a && source .env && set +a`|Loads `.env` variables into the current terminal session.|
+|**Migrations**|`docker run --rm --network app_default -v "$(pwd)/backend/migrations:/migrations" -e DATABASE_URL="..." rust:latest bash -c "..."`|The "Toolbox" command to run migrations from outside the slim container.|
+|**Verification**|`docker compose -f docker-compose.prod.yml exec db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "\dt"`|Lists all database tables to verify migrations worked.|
+|**Verification**|`docker compose -f docker-compose.prod.yml exec backend env \| grep JWT`|Confirms the security "Pipe" is delivering the `JWT_SECRET`.|
+|**Monitoring**|`docker compose -f docker-compose.prod.yml logs -f backend`|Streams live logs (useful for debugging registration/login).|
+|**System Health**|`docker stats`|Monitors CPU/RAM/Network usage of all running containers.|
+
+---
+
+### 💡 Pro-Tip for the Future
+
+Keep that **`docker-compose.prod.yml`** file in your Git repo exactly as we left it (with the `JWT_SECRET: ${JWT_SECRET}` mapping). As long as that "Pipe" exists in the YAML file and the "Value" exists in your server's `.env`, your deployments will be smooth from here on out.
+
 
 ## 3. One-Time Setup Commands (Reference)
 These were used to set up the environment and are rarely needed now.
