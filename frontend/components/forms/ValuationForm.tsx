@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
@@ -106,7 +107,10 @@ export default function ValuationForm({ planId, onSuccess }: Props) {
         <div className="grid grid-cols-1 gap-4">
             {method === 'revenue' && (
                 <div>
-                    <label className="text-xs text-gray-500">Revenue Multiple (x)</label>
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                        Revenue Multiple (x)
+                        <Tooltip content="Multiple applied to revenue for valuation." />
+                    </label>
                     <input 
                         type="number" 
                         step="0.1" 
@@ -123,7 +127,10 @@ export default function ValuationForm({ planId, onSuccess }: Props) {
             )}
             {method === 'ebitda' && (
                 <div>
-                    <label className="text-xs text-gray-500">EBITDA Multiple (x)</label>
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                        EBITDA Multiple (x)
+                        <Tooltip content="Multiple applied to EBITDA for valuation." />
+                    </label>
                     <input 
                         type="number" 
                         step="0.1" 

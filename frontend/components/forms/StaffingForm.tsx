@@ -245,7 +245,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
               <div className="space-y-2">
                 <label htmlFor="hiring_plan" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                   Hiring Plan
-                  <Tooltip content="How employees are added over time." />
+                  <Tooltip content="How employees are added over time (Fixed Count or Monthly Rate)." />
                 </label>
                 <div className="relative">
                   <Briefcase className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />

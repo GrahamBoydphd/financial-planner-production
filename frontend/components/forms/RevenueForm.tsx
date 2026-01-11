@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api, RevenueItem } from '@/lib/api';
 import VolatilityInputs from './shared/VolatilityInputs';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
@@ -170,11 +171,17 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Growth Rate (%/mo)</label>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Growth Rate (%/mo)
+            <Tooltip content="Monthly growth rate percentage." />
+          </label>
           <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={growth} onChange={e => setGrowth(e.target.value)} />
         </div>
         <div>
-            <label className="text-xs text-gray-500">Cost of Rev (%)</label>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              Cost of Rev (%)
+              <Tooltip content="Cost of revenue percentage." />
+            </label>
             <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} />
         </div>
       </div>

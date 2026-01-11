@@ -85,7 +85,10 @@ export default function DividendForm({ planId }: Props) {
         {enabled && (
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="text-xs text-gray-500 font-medium">Safety Threshold ($) <span className="text-red-500">*</span></label>
+                    <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                        Safety Threshold ($) <span className="text-red-500">*</span>
+                        <Tooltip content="Minimum cash balance required before dividends are paid." />
+                    </label>
                     <input 
                         type="number" 
                         className={`w-full border p-1 rounded ${errors.threshold ? 'border-red-500' : 'border-gray-300'}`}
@@ -97,7 +100,7 @@ export default function DividendForm({ planId }: Props) {
                 <div>
                     <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                         Payout Percentage (0-100) <span className="text-red-500">*</span>
-                        <Tooltip content="% of surplus cash distributed." />
+                        <Tooltip content="Percentage of surplus cash distributed as dividends (0-100)." />
                     </label>
                     <input 
                         type="number" 

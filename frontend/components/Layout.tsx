@@ -22,6 +22,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Link href="/structure" className="border-transparent text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   Structure (Funds & Companies)
                 </Link>
+                <Link 
+                  href="/help" 
+                  className="border-transparent text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Help
+                </Link>
               </div>
             </div>
             <div className="flex items-center">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
@@ -74,7 +75,10 @@ export default function CreditForm({ planId }: Props) {
         
         <div className="grid grid-cols-2 gap-4">
             <div>
-                <label className="text-xs text-gray-500 font-medium">Max Limit ($) <span className="text-red-500">*</span></label>
+                <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                    Max Limit ($) <span className="text-red-500">*</span>
+                    <Tooltip content="Maximum credit facility limit." />
+                </label>
                 <input 
                     type="number" 
                     className={`w-full border p-1 rounded ${errors.limit ? 'border-red-500' : 'border-gray-300'}`}
@@ -84,7 +88,10 @@ export default function CreditForm({ planId }: Props) {
                 {errors.limit && <p className="text-red-500 text-[10px] mt-1">{errors.limit}</p>}
             </div>
             <div>
-                <label className="text-xs text-gray-500 font-medium">Interest Rate (%) <span className="text-red-500">*</span></label>
+                <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                    Interest Rate (%) <span className="text-red-500">*</span>
+                    <Tooltip content="Interest rate on the credit facility." />
+                </label>
                 <input 
                     type="number" 
                     step="0.1" 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
+import InfoTag from '@/components/ui/InfoTag';
 
 interface Props {
   planId: string;
@@ -190,7 +191,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
                  {!isAdvanced && volType === 'nrig' && (
                      <div className="space-y-3">
                          <div>
-                             <label className="text-xs text-gray-500 block">Likelyhood of outliers (tail weight)</label>
+                             <div className="flex items-center mb-1">
+                                <label className="text-xs text-gray-500">Likelyhood of outliers (tail weight)</label>
+                                <InfoTag content="Controls likelihood of extreme events. High = predictable, Low = more outliers." />
+                             </div>
                              <select 
                                 className={`w-full border p-1 rounded text-xs ${errors.alpha ? 'border-red-500' : ''}`} 
                                 value={alpha} 
@@ -206,7 +210,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
                          </div>
 
                          <div>
-                             <label className="text-xs text-gray-500 block">Volatility imbalance (downside / upside tail is fatter)</label>
+                             <div className="flex items-center mb-1">
+                                <label className="text-xs text-gray-500">Volatility imbalance (downside / upside tail is fatter)</label>
+                                <InfoTag content="Controls skewness. Balances risk towards upside or downside." />
+                             </div>
                              <select 
                                 className={`w-full border p-1 rounded text-xs ${errors.beta ? 'border-red-500' : ''}`} 
                                 value={beta} 
@@ -222,7 +229,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
                          </div>
 
                          <div>
-                             <label className="text-xs text-gray-500 block">Delta/Scale (Volatility)</label>
+                             <div className="flex items-center mb-1">
+                                <label className="text-xs text-gray-500">Delta/Scale (Volatility)</label>
+                                <InfoTag content="Scales volatility. High = volatile, Low = stable." />
+                             </div>
                              <select 
                                 className={`w-full border p-1 rounded text-xs ${errors.scale ? 'border-red-500' : ''}`} 
                                 value={scale} 
@@ -305,7 +315,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
                         {volType === 'nrig' && (
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                    <label className="text-xs text-gray-400">Likelyhood of outliers (Alpha)</label>
+                                    <div className="flex items-center mb-1">
+                                        <label className="text-xs text-gray-400">Likelyhood of outliers (Alpha)</label>
+                                        <InfoTag content="Controls likelihood of extreme events. High = predictable, Low = more outliers." />
+                                    </div>
                                     <input 
                                         className={`w-full border p-1 ${errors.alpha ? 'border-red-500' : ''}`} 
                                         value={alpha} 
@@ -315,7 +328,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
                                     {errors.alpha && <p className="text-red-500 text-xs">{errors.alpha}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400">Imbalance (Beta)</label>
+                                    <div className="flex items-center mb-1">
+                                        <label className="text-xs text-gray-400">Imbalance (Beta)</label>
+                                        <InfoTag content="Controls skewness. Balances risk towards upside or downside." />
+                                    </div>
                                     <input 
                                         className={`w-full border p-1 ${errors.beta ? 'border-red-500' : ''}`} 
                                         value={beta} 
@@ -325,7 +341,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
                                     {errors.beta && <p className="text-red-500 text-xs">{errors.beta}</p>}
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400">Delta (Scale)</label>
+                                    <div className="flex items-center mb-1">
+                                        <label className="text-xs text-gray-400">Delta (Scale)</label>
+                                        <InfoTag content="Scales volatility. High = volatile, Low = stable." />
+                                    </div>
                                     <input 
                                         className={`w-full border p-1 ${errors.scale ? 'border-red-500' : ''}`} 
                                         value={scale} 

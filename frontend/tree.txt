@@ -9,21 +9,29 @@
 │   │       ├── ClientPage.tsx
 │   │       └── page.tsx
 │   ├── globals.css
+│   ├── help
+│   │   └── page.tsx
 │   ├── layout.tsx
+│   ├── login
+│   │   └── page.tsx
 │   ├── page.tsx
 │   ├── plan
 │   │   └── [planId]
 │   │       ├── inputs
 │   │       │   ├── ClientPage.tsx
 │   │       │   └── page.tsx
+│   │       ├── page.tsx
 │   │       └── results
 │   │           ├── ClientPage.tsx
 │   │           └── page.tsx
+│   ├── register
+│   │   └── page.tsx
 │   └── structure
 │       └── page.tsx
 ├── components
 │   ├── CashFlowChart.tsx
 │   ├── forms
+│   │   ├── AuthForm.tsx
 │   │   ├── CapitalForm.tsx
 │   │   ├── CapitalGrowthForm.tsx
 │   │   ├── CapitalList.tsx
@@ -39,11 +47,15 @@
 │   │   ├── StaffingForm.tsx
 │   │   └── ValuationForm.tsx
 │   ├── Layout.tsx
+│   ├── Navbar.tsx
 │   └── ui
 │       ├── Button.tsx
 │       ├── Card.tsx
 │       ├── DeleteButton.tsx
+│       ├── InfoTag.tsx
 │       └── Tooltip.tsx
+├── context
+│   └── AuthContext.tsx
 ├── Dockerfile
 ├── .env.local
 ├── frontend.log
@@ -58,6 +70,7 @@
 │   │   ├── swc
 │   │   │   └── plugins
 │   │   │       └── v7_linux_x86_64_0.106.15
+│   │   ├── .tsbuildinfo
 │   │   └── webpack
 │   │       ├── client-development
 │   │       │   ├── 0.pack.gz
@@ -69,6 +82,7 @@
 │   │       │   ├── 15.pack.gz
 │   │       │   ├── 16.pack.gz
 │   │       │   ├── 17.pack.gz
+│   │       │   ├── 18.pack.gz
 │   │       │   ├── 1.pack.gz
 │   │       │   ├── 2.pack.gz
 │   │       │   ├── 3.pack.gz
@@ -80,23 +94,55 @@
 │   │       │   ├── 9.pack.gz
 │   │       │   ├── index.pack.gz
 │   │       │   └── index.pack.gz.old
-│   │       └── server-development
-│   │           ├── 0.pack.gz
-│   │           ├── 10.pack.gz
-│   │           ├── 11.pack.gz
-│   │           ├── 12.pack.gz
-│   │           ├── 13.pack.gz
-│   │           ├── 1.pack.gz
-│   │           ├── 2.pack.gz
-│   │           ├── 3.pack.gz
-│   │           ├── 4.pack.gz
-│   │           ├── 5.pack.gz
-│   │           ├── 6.pack.gz
-│   │           ├── 7.pack.gz
-│   │           ├── 8.pack.gz
-│   │           ├── 9.pack.gz
-│   │           ├── index.pack.gz
-│   │           └── index.pack.gz.old
+│   │       ├── client-development-fallback
+│   │       │   ├── 0.pack.gz
+│   │       │   └── index.pack.gz
+│   │       ├── client-production
+│   │       │   ├── 0.pack
+│   │       │   ├── 10.pack
+│   │       │   ├── 11.pack
+│   │       │   ├── 12.pack
+│   │       │   ├── 1.pack
+│   │       │   ├── 2.pack
+│   │       │   ├── 3.pack
+│   │       │   ├── 4.pack
+│   │       │   ├── 5.pack
+│   │       │   ├── 6.pack
+│   │       │   ├── 7.pack
+│   │       │   ├── 8.pack
+│   │       │   ├── 9.pack
+│   │       │   ├── index.pack
+│   │       │   └── index.pack.old
+│   │       ├── edge-server-production
+│   │       │   ├── 0.pack
+│   │       │   └── index.pack
+│   │       ├── server-development
+│   │       │   ├── 0.pack.gz
+│   │       │   ├── 10.pack.gz
+│   │       │   ├── 11.pack.gz
+│   │       │   ├── 12.pack.gz
+│   │       │   ├── 13.pack.gz
+│   │       │   ├── 14.pack.gz
+│   │       │   ├── 15.pack.gz
+│   │       │   ├── 1.pack.gz
+│   │       │   ├── 2.pack.gz
+│   │       │   ├── 3.pack.gz
+│   │       │   ├── 4.pack.gz
+│   │       │   ├── 5.pack.gz
+│   │       │   ├── 6.pack.gz
+│   │       │   ├── 7.pack.gz
+│   │       │   ├── 8.pack.gz
+│   │       │   ├── 9.pack.gz
+│   │       │   ├── index.pack.gz
+│   │       │   └── index.pack.gz.old
+│   │       └── server-production
+│   │           ├── 0.pack
+│   │           ├── 1.pack
+│   │           ├── 2.pack
+│   │           ├── 3.pack
+│   │           ├── 4.pack
+│   │           ├── index.pack
+│   │           └── index.pack.old
 │   ├── package.json
 │   ├── react-loadable-manifest.json
 │   ├── server
@@ -105,14 +151,14 @@
 │   │   │   │   └── [companyId]
 │   │   │   │       ├── page_client-reference-manifest.js
 │   │   │   │       └── page.js
+│   │   │   ├── help
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   └── page.js
 │   │   │   ├── page_client-reference-manifest.js
 │   │   │   ├── page.js
 │   │   │   ├── plan
 │   │   │   │   └── [planId]
-│   │   │   │       ├── inputs
-│   │   │   │       │   ├── page_client-reference-manifest.js
-│   │   │   │       │   └── page.js
-│   │   │   │       └── results
+│   │   │   │       └── inputs
 │   │   │   │           ├── page_client-reference-manifest.js
 │   │   │   │           └── page.js
 │   │   │   └── structure
@@ -132,7 +178,6 @@
 │   │   │   ├── asynckit.js
 │   │   │   ├── axios.js
 │   │   │   ├── call-bind-apply-helpers.js
-│   │   │   ├── chart.js.js
 │   │   │   ├── combined-stream.js
 │   │   │   ├── debug.js
 │   │   │   ├── delayed-stream.js
@@ -151,7 +196,6 @@
 │   │   │   ├── hasown.js
 │   │   │   ├── has-symbols.js
 │   │   │   ├── has-tostringtag.js
-│   │   │   ├── @kurkle.js
 │   │   │   ├── lucide-react.js
 │   │   │   ├── math-intrinsics.js
 │   │   │   ├── mime-db.js
@@ -159,7 +203,6 @@
 │   │   │   ├── ms.js
 │   │   │   ├── next.js
 │   │   │   ├── proxy-from-env.js
-│   │   │   ├── react-chartjs-2.js
 │   │   │   ├── supports-color.js
 │   │   │   └── @swc.js
 │   │   └── webpack-runtime.js
@@ -169,13 +212,13 @@
 │   │   │   │   ├── company
 │   │   │   │   │   └── [companyId]
 │   │   │   │   │       └── page.js
+│   │   │   │   ├── help
+│   │   │   │   │   └── page.js
 │   │   │   │   ├── layout.js
 │   │   │   │   ├── page.js
 │   │   │   │   ├── plan
 │   │   │   │   │   └── [planId]
-│   │   │   │   │       ├── inputs
-│   │   │   │   │       │   └── page.js
-│   │   │   │   │       └── results
+│   │   │   │   │       └── inputs
 │   │   │   │   │           └── page.js
 │   │   │   │   └── structure
 │   │   │   │       └── page.js
@@ -198,38 +241,44 @@
 │   │   │   ├── df0a9ae256c0569c-s.woff2
 │   │   │   └── e4af272ccee01ff0-s.p.woff2
 │   │   └── webpack
-│   │       ├── 096c8baa8d1a7f10.webpack.hot-update.json
-│   │       ├── 41a3b7f4b7fbb4db.webpack.hot-update.json
+│   │       ├── 11baa42b380e5cfa.webpack.hot-update.json
+│   │       ├── 25b2eda73952d7f3.webpack.hot-update.json
+│   │       ├── 306adfd3e685ed6d.webpack.hot-update.json
 │   │       ├── 633457081244afec._.hot-update.json
-│   │       ├── 7f40284f0c7f7ea1.webpack.hot-update.json
-│   │       ├── a1e4cf80c0021227.webpack.hot-update.json
+│   │       ├── 70eb0d091f55cced.webpack.hot-update.json
+│   │       ├── 8407b5754bcd5c5a.webpack.hot-update.json
 │   │       ├── app
-│   │       │   ├── company
-│   │       │   │   └── [companyId]
-│   │       │   │       └── page.096c8baa8d1a7f10.hot-update.js
-│   │       │   ├── layout.096c8baa8d1a7f10.hot-update.js
-│   │       │   └── layout.b84a9cdcbee5cfb1.hot-update.js
-│   │       ├── b84a9cdcbee5cfb1.webpack.hot-update.json
-│   │       ├── f894b9e56fd612cb.webpack.hot-update.json
-│   │       ├── webpack.096c8baa8d1a7f10.hot-update.js
-│   │       ├── webpack.41a3b7f4b7fbb4db.hot-update.js
-│   │       ├── webpack.7f40284f0c7f7ea1.hot-update.js
-│   │       ├── webpack.a1e4cf80c0021227.hot-update.js
-│   │       ├── webpack.b84a9cdcbee5cfb1.hot-update.js
-│   │       └── webpack.f894b9e56fd612cb.hot-update.js
+│   │       │   ├── layout.25b2eda73952d7f3.hot-update.js
+│   │       │   ├── layout.8407b5754bcd5c5a.hot-update.js
+│   │       │   ├── layout.bdf2428e0ef511ae.hot-update.js
+│   │       │   ├── layout.f14a4b1f6e87e0d6.hot-update.js
+│   │       │   └── layout.ff0a0a381eb50015.hot-update.js
+│   │       ├── b3d41cb6ce84dadf.webpack.hot-update.json
+│   │       ├── bdf2428e0ef511ae.webpack.hot-update.json
+│   │       ├── f14a4b1f6e87e0d6.webpack.hot-update.json
+│   │       ├── ff0a0a381eb50015.webpack.hot-update.json
+│   │       ├── webpack.11baa42b380e5cfa.hot-update.js
+│   │       ├── webpack.25b2eda73952d7f3.hot-update.js
+│   │       ├── webpack.306adfd3e685ed6d.hot-update.js
+│   │       ├── webpack.70eb0d091f55cced.hot-update.js
+│   │       ├── webpack.8407b5754bcd5c5a.hot-update.js
+│   │       ├── webpack.b3d41cb6ce84dadf.hot-update.js
+│   │       ├── webpack.bdf2428e0ef511ae.hot-update.js
+│   │       ├── webpack.f14a4b1f6e87e0d6.hot-update.js
+│   │       └── webpack.ff0a0a381eb50015.hot-update.js
 │   ├── trace
 │   └── types
 │       ├── app
 │       │   ├── company
 │       │   │   └── [companyId]
 │       │   │       └── page.ts
+│       │   ├── help
+│       │   │   └── page.ts
 │       │   ├── layout.ts
 │       │   ├── page.ts
 │       │   ├── plan
 │       │   │   └── [planId]
-│       │   │       ├── inputs
-│       │   │       │   └── page.ts
-│       │   │       └── results
+│       │   │       └── inputs
 │       │   │           └── page.ts
 │       │   └── structure
 │       │       └── page.ts
@@ -243,4 +292,4 @@
 ├── tree.txt
 └── tsconfig.json
 
-61 directories, 183 files
+67 directories, 226 files
