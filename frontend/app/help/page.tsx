@@ -118,6 +118,7 @@ export default function HelpPage() {
       {/* Sidebar Navigation */}
       <aside className="w-64 bg-white border-r border-gray-200 hidden lg:block fixed h-full overflow-y-auto top-0 left-0 z-10">
         <div className="p-6">
+          <img src="/logo.png" alt="Logo" className="h-10 w-auto mb-6 block px-4" />
           <h1 className="text-2xl font-bold text-indigo-600 mb-8">Help Center</h1>
           <nav className="space-y-1">
             <a href="#intro" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Introduction</a>
