@@ -62,6 +62,16 @@
               "icon": "lucide-file",
               "title": "Toplevel_Plan_to_the_full_Ergodic_Simulation"
             }
+          },
+          {
+            "id": "27955679181a5d70",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
           }
         ],
         "currentTab": 2
@@ -228,11 +238,11 @@
   },
   "active": "a7d334899caf750b",
   "lastOpenFiles": [
+    "COMMAND_LOG.md",
     "USER_MANUAL_TECHNICAL_REF.md",
     "Handoffs_Depolyment_Historical.md",
     "FE_Handoffs.md",
     "Toplevel_Plan_to_the_full_Ergodic_Simulation.md",
-    "COMMAND_LOG.md",
     "Tools_Manifest.md",
     "Backend to Frontend handover packets.md",
     "FE_Prompts.md",

@@ -9,10 +9,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
               <Link href="/" className="flex-shrink-0 flex items-center font-bold text-xl text-blue-600">
+                <img src="/logo.png" alt="Evolutesix Logo" className="h-8 w-auto mr-3" />
                 Financial Planner
               </Link>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -52,7 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </nav>
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[92rem] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
     </div>

@@ -76,7 +76,15 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4">
+      
+      {/* Branding Logo */}
+      <img 
+        src="/logo.png" 
+        alt="Logo" 
+        className="h-16 w-auto mb-8 mx-auto block" 
+      />
+
       <div className="flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-md md:flex-row">
         
         {/* Left Column: Marketing & Disclaimer (Visible on md+) */}

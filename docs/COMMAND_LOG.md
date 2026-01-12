@@ -3,11 +3,11 @@
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 
-| Step | Location | Command                            | Purpose                                                  |
-| :--- | :------- | :--------------------------------- | :------------------------------------------------------- |
-| 1    | Laptop   | `git add . && git commit -m "msg"` | Save changes.                                            |
-| 2    | Laptop   | `git push origin cloud-v1-release` | Upload to GitHub.                                        |
-| 3    | Laptop   | `./scripts/trigger-update.sh`      | **Magic Button.** Triggers the server to pull & rebuild. |
+| Step | Location | Command                                   | Purpose                                                  |
+| :--- | :------- | :---------------------------------------- | :------------------------------------------------------- |
+| 1    | Laptop   | `git add . && git commit -m "msg"`        | Save changes.                                            |
+| 2    | Laptop   | `git push origin cloud-v1-release`        | Upload to GitHub.                                        |
+| 3    | Laptop   | `./scripts/trigger-update.sh branch_name` | **Magic Button.** Triggers the server to pull & rebuild. |
 
 ## 2. Debugging (If Deployment Fails)
 **Goal:** Check why the site is down.
