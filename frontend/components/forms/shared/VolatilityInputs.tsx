@@ -68,7 +68,7 @@ export default function VolatilityInputs({
           <div>
               <label className="text-xs text-gray-500">Model Type</label>
               <select className="w-full border p-1 rounded text-xs" value={volType} onChange={e => setVolType(e.target.value)}>
-                  <option value="none">Just the averages</option>
+                  <option value="none" disabled hidden>-- Select Risk Model --</option>
                   <option value="flat">Simple volatility (min/max)</option>
                   <option value="nrig">Comprehensive volatility</option>
                   <option value="student_t">Student's t distribution</option>

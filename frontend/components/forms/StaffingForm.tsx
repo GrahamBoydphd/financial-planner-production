@@ -74,7 +74,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
       annual_salary: role.annual_salary.toString(),
       start_month: role.start_month,
       target_count: role.target_count,
-      hiring_plan: role.hiring_plan,
+      hiring_plan: role.hiring_plan as "fixed_count" | "monthly_rate",
       hiring_rate: role.hiring_rate ? Number(role.hiring_rate) : undefined,
       // Convert decimal (0.03) to percentage (3.0) for editing
       annual_increase: ((Number(role.annual_increase) || 0) * 100).toString()
@@ -149,8 +149,9 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
       const salaryVal = parseFloat(currentRole.annual_salary || "0")
       const salaryPayload = salaryVal.toFixed(2) // "50000.00"
 
+      // Annual Increase: User enters "3.5" (%), we send "0.035"
       const increaseVal = parseFloat(currentRole.annual_increase || "0")
-      const increasePayload = (increaseVal / 100).toString() // "0.03"
+      const increasePayload = (increaseVal / 100).toString() 
 
       const roleData = {
         role_name: currentRole.role_name!,

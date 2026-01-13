@@ -233,7 +233,7 @@ pub async fn get_plan_projection(
 
     let staffing_roles = sqlx::query_as!(
         crate::models::StaffingRole,
-        "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at 
+        "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at 
          FROM staffing_roles WHERE plan_id = $1 ORDER BY start_month ASC",
         id
     )
@@ -242,7 +242,7 @@ pub async fn get_plan_projection(
 
     let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
         crate::models::CapitalGrowthPolicy,
-        "SELECT * FROM capital_growth_policies WHERE plan_id = $1",
+        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent FROM capital_growth_policies WHERE plan_id = $1",
         id
     )
     .fetch_optional(&pool)

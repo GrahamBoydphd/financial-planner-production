@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at \n         FROM staffing_roles WHERE plan_id = $1 ORDER BY start_month ASC",
+  "query": "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at \n         FROM staffing_roles WHERE plan_id = $1 ORDER BY start_month ASC",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "annual_increase",
+        "name": "annual_increase_percent",
         "type_info": "Numeric"
       },
       {
@@ -72,5 +72,5 @@
       false
     ]
   },
-  "hash": "337bedffb58d30d7b5fe3369819a895775fdddf455e9c1eeb7963f974a05be82"
+  "hash": "16521ffd5bd15667c1c2beaf6457f4ed7bcec0214ffefd142a2e3d4e459551d9"
 }

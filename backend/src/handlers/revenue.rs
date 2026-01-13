@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::models::{RevenueItem, Claims};
 use crate::errors::AppError;
 use rust_decimal::Decimal;
+use std::str::FromStr;
 
 #[derive(Deserialize)]
 pub struct CreateRevenueRequest {
@@ -18,19 +19,40 @@ pub struct CreateRevenueRequest {
     pub source: String,
     pub start_month: i32,
     pub end_month: Option<i32>,
-    pub initial_amount: Decimal,
-    pub growth_rate_percent: Decimal,
+    pub initial_amount: String,
+    pub growth_rate_percent: String,
     pub frequency: String,
-    pub cost_of_revenue_percent: Option<Decimal>,
+    pub cost_of_revenue_percent: Option<String>,
     pub volatility_type: Option<String>,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
+    pub vol_min: Option<String>,
+    pub vol_max: Option<String>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
+    pub vol_mean: Option<String>,
+    pub vol_scale: Option<String>,
+    pub vol_freedom: Option<String>,
+    pub vol_alpha: Option<String>,
+    pub vol_beta: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateRevenueRequest {
+    pub name: String,
+    pub source: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: String,
+    pub growth_rate_percent: String,
+    pub frequency: String,
+    pub cost_of_revenue_percent: Option<String>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<String>,
+    pub vol_max: Option<String>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<String>,
+    pub vol_scale: Option<String>,
+    pub vol_freedom: Option<String>,
+    pub vol_alpha: Option<String>,
+    pub vol_beta: Option<String>,
 }
 
 pub async fn create_revenue_item(
@@ -38,6 +60,54 @@ pub async fn create_revenue_item(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateRevenueRequest>,
 ) -> Result<Json<RevenueItem>, AppError> {
+    // Parse Decimals from Strings
+    let initial_amount = Decimal::from_str(&payload.initial_amount)
+        .map_err(|_| AppError::ValidationError("Invalid format for initial_amount".to_string()))?;
+    
+    let growth_rate_percent = Decimal::from_str(&payload.growth_rate_percent)
+        .map_err(|_| AppError::ValidationError("Invalid format for growth_rate_percent".to_string()))?;
+
+    let cost_of_revenue_percent = match &payload.cost_of_revenue_percent {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for cost_of_revenue_percent".to_string()))?),
+        None => None,
+    };
+
+    // Allow negative values for volatility bounds
+    let vol_min = match &payload.vol_min {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_min".to_string()))?),
+        None => None,
+    };
+
+    let vol_max = match &payload.vol_max {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_max".to_string()))?),
+        None => None,
+    };
+
+    let vol_mean = match &payload.vol_mean {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_mean".to_string()))?),
+        None => None,
+    };
+
+    let vol_scale = match &payload.vol_scale {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_scale".to_string()))?),
+        None => None,
+    };
+
+    let vol_freedom = match &payload.vol_freedom {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_freedom".to_string()))?),
+        None => None,
+    };
+
+    let vol_alpha = match &payload.vol_alpha {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_alpha".to_string()))?),
+        None => None,
+    };
+
+    let vol_beta = match &payload.vol_beta {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_beta".to_string()))?),
+        None => None,
+    };
+
     // Verify plan ownership
     let plan_exists: Option<_> = sqlx::query!(
         "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
@@ -52,6 +122,11 @@ pub async fn create_revenue_item(
     }
 
     // Strict Input Validation
+    // Only initial_amount must be non-negative
+    if initial_amount < Decimal::ZERO {
+        return Err(AppError::ValidationError("Initial amount must be non-negative".to_string()));
+    }
+
     let valid_frequencies = ["monthly", "quarterly", "annually", "one_time"];
     if !valid_frequencies.contains(&payload.frequency.as_str()) {
         return Err(AppError::ValidationError(format!(
@@ -61,7 +136,7 @@ pub async fn create_revenue_item(
     }
 
     if let Some(ref vt) = payload.volatility_type {
-        let valid_vol_types = ["normal", "student_t", "nrig"];
+        let valid_vol_types = ["normal", "student_t", "nrig", "flat"];
         if !valid_vol_types.contains(&vt.as_str()) {
             return Err(AppError::ValidationError(format!(
                 "Invalid volatility_type: '{}'. Must be one of: {:?}", 
@@ -81,9 +156,9 @@ pub async fn create_revenue_item(
         RETURNING *
         "#,
         payload.plan_id, payload.name, payload.source, payload.start_month, payload.end_month, 
-        payload.initial_amount, payload.growth_rate_percent, payload.frequency, payload.cost_of_revenue_percent,
-        payload.volatility_type, payload.vol_min, payload.vol_max, payload.vol_intervals,
-        payload.vol_mean, payload.vol_scale, payload.vol_freedom, payload.vol_alpha, payload.vol_beta
+        initial_amount, growth_rate_percent, payload.frequency, cost_of_revenue_percent,
+        payload.volatility_type, vol_min, vol_max, payload.vol_intervals,
+        vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
     )
     .fetch_one(&pool)
     .await
@@ -118,9 +193,62 @@ pub async fn update_revenue_item(
     State(pool): State<Pool<Postgres>>,
     Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
-    Json(payload): Json<CreateRevenueRequest>,
+    Json(payload): Json<UpdateRevenueRequest>,
 ) -> Result<Json<RevenueItem>, AppError> {
+    // Parse Decimals from Strings
+    let initial_amount = Decimal::from_str(&payload.initial_amount)
+        .map_err(|_| AppError::ValidationError("Invalid format for initial_amount".to_string()))?;
+    
+    let growth_rate_percent = Decimal::from_str(&payload.growth_rate_percent)
+        .map_err(|_| AppError::ValidationError("Invalid format for growth_rate_percent".to_string()))?;
+
+    let cost_of_revenue_percent = match &payload.cost_of_revenue_percent {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for cost_of_revenue_percent".to_string()))?),
+        None => None,
+    };
+
+    // Allow negative values for volatility bounds
+    let vol_min = match &payload.vol_min {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_min".to_string()))?),
+        None => None,
+    };
+
+    let vol_max = match &payload.vol_max {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_max".to_string()))?),
+        None => None,
+    };
+
+    let vol_mean = match &payload.vol_mean {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_mean".to_string()))?),
+        None => None,
+    };
+
+    let vol_scale = match &payload.vol_scale {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_scale".to_string()))?),
+        None => None,
+    };
+
+    let vol_freedom = match &payload.vol_freedom {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_freedom".to_string()))?),
+        None => None,
+    };
+
+    let vol_alpha = match &payload.vol_alpha {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_alpha".to_string()))?),
+        None => None,
+    };
+
+    let vol_beta = match &payload.vol_beta {
+        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_beta".to_string()))?),
+        None => None,
+    };
+
     // Strict Input Validation for Update
+    // Only initial_amount must be non-negative
+    if initial_amount < Decimal::ZERO {
+        return Err(AppError::ValidationError("Initial amount must be non-negative".to_string()));
+    }
+
     let valid_frequencies = ["monthly", "quarterly", "annually", "one_time"];
     if !valid_frequencies.contains(&payload.frequency.as_str()) {
         return Err(AppError::ValidationError(format!(
@@ -130,7 +258,7 @@ pub async fn update_revenue_item(
     }
 
     if let Some(ref vt) = payload.volatility_type {
-        let valid_vol_types = ["normal", "student_t", "nrig"];
+        let valid_vol_types = ["normal", "student_t", "nrig", "flat"];
         if !valid_vol_types.contains(&vt.as_str()) {
             return Err(AppError::ValidationError(format!(
                 "Invalid volatility_type: '{}'. Must be one of: {:?}", 
@@ -152,9 +280,9 @@ pub async fn update_revenue_item(
         RETURNING *
         "#,
         payload.name, payload.source, payload.start_month, payload.end_month, 
-        payload.initial_amount, payload.growth_rate_percent, payload.frequency, payload.cost_of_revenue_percent,
-        payload.volatility_type, payload.vol_min, payload.vol_max, payload.vol_intervals,
-        payload.vol_mean, payload.vol_scale, payload.vol_freedom, payload.vol_alpha, payload.vol_beta,
+        initial_amount, growth_rate_percent, payload.frequency, cost_of_revenue_percent,
+        payload.volatility_type, vol_min, vol_max, payload.vol_intervals,
+        vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
         id,
         claims.tenant_id
     )

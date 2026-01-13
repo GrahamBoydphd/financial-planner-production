@@ -67,7 +67,7 @@ export default function ValuationForm({ planId, onSuccess }: Props) {
             plan_id: planId,
             name: 'Valuation',
             method: method,
-            multiplier: method === 'revenue' ? revenueMultiple : ebitdaMultiple,
+            multiplier: method === 'revenue' ? String(revenueMultiple) : String(ebitdaMultiple),
             date_applied: new Date().toISOString().split('T')[0]
         };
         await api.createValuation(payload);

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO staffing_roles (plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase) \n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \n         RETURNING id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase, created_at",
+  "query": "INSERT INTO staffing_roles (plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent) \n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \n         RETURNING id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "annual_increase",
+        "name": "annual_increase_percent",
         "type_info": "Numeric"
       },
       {
@@ -79,5 +79,5 @@
       false
     ]
   },
-  "hash": "a91fe4b4ac8465e8eb37bbd3c07d333a046607c3c56f2ac1142eb58b9b69c7f4"
+  "hash": "898bb2d087add25d6c181482f9ccc7442cc5fe6a1dbcaf9bed89472acc976808"
 }

@@ -7,6 +7,7 @@ use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use rust_decimal::Decimal;
+use std::str::FromStr;
 use crate::models::{CapitalGrowthPolicy, Claims};
 use crate::errors::AppError;
 
@@ -14,14 +15,24 @@ use crate::errors::AppError;
 pub struct UpsertGrowthRequest {
     pub plan_id: Uuid,
     pub volatility_type: String,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
+    pub growth_rate_percent: Option<String>,
+    pub vol_min: Option<String>,
+    pub vol_max: Option<String>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
+    pub vol_mean: Option<String>,
+    pub vol_scale: Option<String>,
+    pub vol_freedom: Option<String>,
+    pub vol_alpha: Option<String>,
+    pub vol_beta: Option<String>,
+}
+
+fn parse_decimal(opt: Option<String>) -> Result<Option<Decimal>, AppError> {
+    match opt {
+        Some(s) if !s.trim().is_empty() => {
+            Decimal::from_str(&s).map(Some).map_err(|_| AppError::ValidationError("Invalid decimal format".to_string()))
+        }
+        _ => Ok(None),
+    }
 }
 
 pub async fn upsert_capital_growth(
@@ -39,6 +50,18 @@ pub async fn upsert_capital_growth(
     .await?
     .ok_or_else(|| AppError::NotFound("Financial plan not found".to_string()))?;
 
+    // Parse decimals manually
+    // growth_rate_percent is NOT NULL in DB, so default to 0 if missing
+    let growth_rate = parse_decimal(payload.growth_rate_percent)?.unwrap_or(Decimal::from(0));
+    
+    let vol_min = parse_decimal(payload.vol_min)?;
+    let vol_max = parse_decimal(payload.vol_max)?;
+    let vol_mean = parse_decimal(payload.vol_mean)?;
+    let vol_scale = parse_decimal(payload.vol_scale)?;
+    let vol_freedom = parse_decimal(payload.vol_freedom)?;
+    let vol_alpha = parse_decimal(payload.vol_alpha)?;
+    let vol_beta = parse_decimal(payload.vol_beta)?;
+
     let mut tx = pool.begin().await?;
 
     // Delete existing
@@ -51,22 +74,23 @@ pub async fn upsert_capital_growth(
         CapitalGrowthPolicy,
         r#"
         INSERT INTO capital_growth_policies (
-            plan_id, volatility_type, vol_min, vol_max, vol_intervals, 
+            plan_id, volatility_type, growth_rate_percent, vol_min, vol_max, vol_intervals, 
             vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
         "#,
         payload.plan_id,
         payload.volatility_type,
-        payload.vol_min,
-        payload.vol_max,
+        growth_rate,
+        vol_min,
+        vol_max,
         payload.vol_intervals,
-        payload.vol_mean,
-        payload.vol_scale,
-        payload.vol_freedom,
-        payload.vol_alpha,
-        payload.vol_beta
+        vol_mean,
+        vol_scale,
+        vol_freedom,
+        vol_alpha,
+        vol_beta
     )
     .fetch_one(&mut *tx)
     .await?;
