@@ -14,12 +14,12 @@ interface Props {
 
 export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
   const [name, setName] = useState('');
-  const [source, setSource] = useState('Sales');
+  const [source, setSource] = useState('sales');
   const [amount, setAmount] = useState('');
   const [growth, setGrowth] = useState('0');
   const [startMonth, setStartMonth] = useState('1');
   const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('Monthly');
+  const [freq, setFreq] = useState('monthly');
   const [cogsPercent, setCogsPercent] = useState('');
 
   // Volatility
@@ -68,12 +68,12 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
   const clearForm = () => {
     setName('');
-    setSource('Sales');
+    setSource('sales');
     setAmount('');
     setGrowth('0');
     setStartMonth('1');
     setEndMonth('');
-    setFreq('Monthly');
+    setFreq('monthly');
     setCogsPercent('');
     setVolType('none');
     setVolMin(''); setVolMax(''); setVolIntervals('');
@@ -100,23 +100,23 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
         const payload = {
             plan_id: planId,
             name,
-            source,
-            initial_amount: amount, // Send as string
-            growth_rate_percent: growth, // Send as string
-            start_month: Number(startMonth), // Int
-            end_month: endMonth ? Number(endMonth) : undefined, // Int
-            frequency: freq,
-            cost_of_revenue_percent: cogsPercent ? cogsPercent : undefined, // String
+            source: source.toLowerCase(),
+            initial_amount: String(amount),
+            growth_rate_percent: String(growth),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
+            frequency: freq.toLowerCase(),
+            cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
             
             volatility_type: volType !== 'none' ? volType as any : undefined,
-            vol_min: volType === 'flat' && volMin ? volMin : undefined, // String
-            vol_max: volType === 'flat' && volMax ? volMax : undefined, // String
-            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined, // Int
-            vol_mean: volMean ? volMean : undefined, // String
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? volScale : undefined, // String
-            vol_freedom: volType === 'student_t' && volFreedom ? volFreedom : undefined, // String
-            vol_alpha: volType === 'nrig' && volAlpha ? volAlpha : undefined, // String
-            vol_beta: volType === 'nrig' && volBeta ? volBeta : undefined, // String
+            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
+            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
+            vol_mean: volMean ? String(volMean) : undefined,
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
+            vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
+            vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
+            vol_beta: volType === 'nrig' && volBeta ? String(volBeta) : undefined,
         };
 
         if (itemToEdit) {
@@ -157,10 +157,10 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
         <div>
           <label className="text-xs text-gray-500">Source Type</label>
           <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
-            <option>Sales</option>
-            <option>Subscription</option>
-            <option>Service</option>
-            <option>Other</option>
+            <option value="sales">Sales</option>
+            <option value="subscription">Subscription</option>
+            <option value="service">Service</option>
+            <option value="other">Other</option>
           </select>
         </div>
       </div>
@@ -190,10 +190,10 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
         <div>
           <label className="text-xs text-gray-500">Frequency</label>
           <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-            <option>Monthly</option>
-            <option>One-time</option>
-            <option>Quarterly</option>
-            <option>Annually</option>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
           </select>
         </div>
         <div>
@@ -201,8 +201,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
           <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-500">End Month (Opt)</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
         </div>
       </div>
 

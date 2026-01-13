@@ -81,365 +81,881 @@ CRITICAL OUTPUT RULES:
     * Do not add new crates/packages unless explicitly instructed by the Architect prompt.</architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Branding the Help Center Sidebar.
-ACTION: 
-1. Update 'frontend/app/help/page.tsx':
-   - Locate the sidebar navigation block (likely the left column).
-   - Insert the logo (src='/logo.png') at the very top of the sidebar.
-   - Logo Styling: Use 'h-10 w-auto mb-6 block px-4' to ensure it aligns with the sidebar padding and the 'Help Center' heading.
-CONSTRAINTS: Ensure the logo scales correctly and does not push the navigation links off-screen on smaller desktop resolutions.
+CONTEXT: Fix Staffing Anniversary and Field Name in Projection. ACTION: In 'backend/src/projection.rs', update both staffing loops. 1) Change 'role.annual_increase' to 'role.annual_increase_percent'. 2) Ensure years_passed is calculated as '(m - role.start_month) / 12'. CONSTRAINTS: Math must continue to divide by 100.
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/app/help/page.tsx ---
-import React from 'react';
+--- START FILE: backend/src/projection.rs ---
+use crate::models::{RevenueItem, ExpenseItem, EventShock, ValuationAssumption, CapitalInjection, DividendPolicy, CreditFacility, CapitalGrowthPolicy, StaffingRole};
+use crate::distributions::{GrowthSampler, VolatilityModel};
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use chrono::{NaiveDate};
+use uuid::Uuid;
+use rust_decimal::prelude::ToPrimitive;
 
-// --- DATA DEFINITIONS (From USER_MANUAL_TECHNICAL_REF.md) ---
-
-const staffingData = [
-  { label: "Role Name", purpose: "Title of the position (e.g., 'Sales Rep', 'Developer').", rules: "Required, must not be empty." },
-  { label: "Annual Salary", purpose: "Base annual salary per person in this role.", rules: "Required, must be a valid number." },
-  { label: "Hiring Plan", purpose: "How employees are added over time (Fixed Count or Monthly Rate).", rules: "Select: 'fixed_count' or 'monthly_rate'." },
-  { label: "Target Headcount", purpose: "Maximum number of people to hire for this role.", rules: "Required, integer >= 1." },
-  { label: "Hiring Pace", purpose: "Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly).", rules: "Required if 'monthly_rate', integer >= 1." },
-  { label: "Start Month", purpose: "Month number (1-60) when hiring begins.", rules: "Required, integer 1-60." },
-  { label: "Annual Increase (%)", purpose: "Expected annual salary increase (e.g., 3.5 for 3.5%).", rules: "Optional, 0-100." },
-];
-
-const revenueData = [
-  { label: "Name", purpose: "Name of the revenue stream (e.g., SaaS Subs).", rules: "Required, must not be empty." },
-  { label: "Source Type", purpose: "Category of revenue (e.g., Sales, Subscription).", rules: "Select: Sales, Subscription, Service, Other." },
-  { label: "Initial Amount ($)", purpose: "Starting revenue amount.", rules: "Required number." },
-  { label: "Growth Rate (%/mo)", purpose: "Monthly growth rate percentage.", rules: "Optional number." },
-  { label: "Cost of Rev (%)", purpose: "Cost of revenue percentage.", rules: "Optional number." },
-  { label: "Frequency", purpose: "How often revenue is recognized.", rules: "Select: Monthly, One-time, Quarterly, Annually." },
-  { label: "Start Month", purpose: "Month in which revenue stream begins.", rules: "Required number." },
-  { label: "End Month (Opt)", purpose: "Month in which revenue stream ends.", rules: "Optional number." },
-  { label: "Model Type", purpose: "Type of volatility model to apply.", rules: "Averages, Simple, NRIG, or Student-T." },
-  { label: "Mean / Drift", purpose: "Expected Monthly Return.", rules: "Optional number." },
-  { label: "Min %", purpose: "Minimum percentage deviation (Flat).", rules: "Required if Simple, < Max %." },
-  { label: "Max %", purpose: "Maximum percentage deviation (Flat).", rules: "Required if Simple, > Min %." },
-  { label: "Steps", purpose: "Number of intervals between min and max (Flat).", rules: "Required if Simple." },
-  { label: "Scale (Vol)", purpose: "Volatility Scale (Student-T).", rules: "Required if Student-T." },
-  { label: "Freedom (Deg)", purpose: "Degrees of freedom (Student-T).", rules: "Required if Student-T." },
-  { label: "Likelyhood (Alpha)", purpose: "Tail Weight (NRIG).", rules: "Required if NRIG." },
-  { label: "Skew (Beta)", purpose: "Imbalance (NRIG).", rules: "Required if NRIG." },
-  { label: "Scale (Delta)", purpose: "Volatility Scale (NRIG).", rules: "Required if NRIG." },
-];
-
-const expenseData = [
-  { label: "Name", purpose: "Name of the expense item (e.g., Salaries).", rules: "Required, must not be empty." },
-  { label: "Category", purpose: "Category of expense (e.g., OpEx, CapEx).", rules: "Select: OpEx, CapEx, Payroll, Marketing." },
-  { label: "Initial Amount ($)", purpose: "Starting expense amount.", rules: "Required number." },
-  { label: "Growth Rate (%/mo)", purpose: "Monthly growth rate percentage.", rules: "Optional number." },
-  { label: "% of Revenue", purpose: "Percentage of revenue tied to expense.", rules: "Optional number." },
-  { label: "Frequency", purpose: "How often expense is incurred.", rules: "Select: Monthly, One-time, Quarterly, Annually." },
-  { label: "Start Month", purpose: "Month in which expense begins.", rules: "Required number." },
-  { label: "End Month (Opt)", purpose: "Month in which expense ends.", rules: "Optional number." },
-  { label: "Volatility Inputs", purpose: "Same model options as Revenue.", rules: "See Revenue Volatility." },
-];
-
-const capitalData = [
-  { label: "Source Name", purpose: "Name of the capital source (e.g., Seed Round).", rules: "Required, must not be empty." },
-  { label: "Amount ($)", purpose: "Amount of capital injection.", rules: "Required number." },
-  { label: "Month", purpose: "Month in which capital is injected.", rules: "Required integer 1-120." },
-];
-
-const capitalGrowthData = [
-  { label: "Model Type", purpose: "Type of volatility model to apply.", rules: "Selection required." },
-  { label: "Expected Return", purpose: "Expected monthly return percentage.", rules: "Required number." },
-  { label: "Volatility Params", purpose: "Min/Max (Simple) or Distribution params.", rules: "Dependent on Model Type." },
-];
-
-const dividendData = [
-  { label: "Enable Dividends", purpose: "Toggle dividends payout.", rules: "Boolean." },
-  { label: "Safety Threshold ($)", purpose: "Minimum cash balance required before dividends are paid.", rules: "Required number." },
-  { label: "Payout Percentage", purpose: "Percentage of surplus cash distributed as dividends.", rules: "Required number 0-100." },
-];
-
-const creditData = [
-  { label: "Max Limit ($)", purpose: "Maximum credit facility limit.", rules: "Required number." },
-  { label: "Interest Rate (%)", purpose: "Interest rate on the credit facility.", rules: "Required number." },
-  { label: "Rate Type", purpose: "Annual (APR) or Monthly.", rules: "Boolean." },
-];
-
-const valuationData = [
-  { label: "Valuation Method", purpose: "Method used for valuation.", rules: "Revenue Multiple or EBITDA Multiple." },
-  { label: "Revenue Multiple (x)", purpose: "Multiple applied to revenue.", rules: "Required if Revenue Method." },
-  { label: "EBITDA Multiple (x)", purpose: "Multiple applied to EBITDA.", rules: "Required if EBITDA Method." },
-];
-
-const authData = [
-  { label: "Username", purpose: "Required Username.", rules: "Required." },
-  { label: "Email", purpose: "Required Email.", rules: "Required." },
-  { label: "Full Name", purpose: "Required Full Name.", rules: "Required." },
-  { label: "Company Name", purpose: "Organization Name.", rules: "Required (unless Student)." },
-  { label: "Password", purpose: "Required Password.", rules: "Required." },
-  { label: "Student / Individual", purpose: "Toggle for individual bypass.", rules: "Boolean." },
-];
-
-// --- COMPONENTS ---
-
-const TableSection = ({ title, id, data }: { title: string, id: string, data: any[] }) => (
-  <div id={id} className="scroll-mt-24 mb-10">
-    <h4 className="text-md font-bold text-gray-900 mb-4 uppercase tracking-wide border-l-4 border-indigo-500 pl-3">{title}</h4>
-    <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-      <table className="min-w-full divide-y divide-gray-300">
-        <thead className="bg-gray-50">
-          <tr>
-            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500 sm:pl-6">Label</th>
-            <th scope="col" className="px-3 py-3.5 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Purpose</th>
-            <th scope="col" className="px-3 py-3.5 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Validation</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
-          {data.map((row, idx) => (
-            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{row.label}</td>
-              <td className="px-3 py-4 text-sm text-gray-600">{row.purpose}</td>
-              <td className="px-3 py-4 text-sm text-gray-500 italic">{row.rules}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-);
-
-export default function HelpPage() {
-  return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden lg:block fixed h-full overflow-y-auto top-0 left-0 z-10">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-indigo-600 mb-8">Help Center</h1>
-          <nav className="space-y-1">
-            <a href="#intro" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Introduction</a>
-            <a href="#hierarchy" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">The Hierarchy</a>
-            <a href="#best-practices" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Best Practices</a>
-            
-            <div className="h-6"></div>
-            <p className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Technical Appendix</p>
-            <a href="#glossary" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Input Glossary</a>
-            <a href="#sim-params" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Simulation Parameters</a>
-            <a href="#ui-logic" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">UI Logic</a>
-          </nav>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 lg:ml-64 p-8 lg:p-12">
-        <div className="max-w-5xl mx-auto space-y-16">
-          
-          {/* Alpha Disclaimer */}
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md shadow-sm">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-bold text-yellow-800">Alpha Release Warning</h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    This software is in Alpha. Financial models are probabilistic estimations, not guarantees. 
-                    Results should be used for strategic planning and scenario analysis only, not as tax or investment advice.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Introduction */}
-          <section id="intro" className="scroll-mt-24">
-            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-6">Antifragile Financial Modeling</h1>
-            <div className="prose prose-indigo text-gray-600 max-w-none">
-              <p className="text-xl leading-relaxed">
-                Traditional spreadsheets assume averages. Reality is volatile. Our engine prioritizes 
-                <span className="font-bold text-gray-900"> "Correctness over Convenience"</span> by modeling 
-                non-ergodic path dependence—meaning the order of events matters.
-              </p>
-              <p className="mt-4">
-                A 50% drop followed by a 50% gain leaves you with 75% of your starting capital, not 100%. 
-                We simulate thousands of trajectories to show you the probability of ruin, not just the average outcome.
-                This approach helps you build an "Antifragile" strategy that can withstand and potentially benefit from volatility.
-              </p>
-            </div>
-          </section>
-
-          {/* Hierarchy */}
-          <section id="hierarchy" className="scroll-mt-24">
-            <div className="border-b border-gray-200 pb-4 mb-8">
-              <h2 className="text-3xl font-bold text-gray-900">The Hierarchy</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="text-4xl mb-4">🏛️</div>
-                <h3 className="text-lg font-bold text-gray-900">Fund</h3>
-                <p className="mt-2 text-sm text-gray-500">The top-level container. Represents your investment firm or holding entity. Invests in the Company.</p>
-              </div>
-              <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="text-4xl mb-4">🏢</div>
-                <h3 className="text-lg font-bold text-gray-900">Company</h3>
-                <p className="mt-2 text-sm text-gray-500">A specific business entity. Contains historical data and settings; and prediction parameters for future scenarios. Needs multiple plans in order to navigate into the future.</p>
-              </div>
-              <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="text-4xl mb-4">📄</div>
-                <h3 className="text-lg font-bold text-gray-900">Plans</h3>
-                <p className="mt-2 text-sm text-gray-500">A specific business plan scenario (e.g., "Series A Base") for the company.</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Best Practices */}
-          <section id="best-practices" className="scroll-mt-24">
-            <div className="border-b border-gray-200 pb-4 mb-8">
-              <h2 className="text-3xl font-bold text-gray-900">Best Practices</h2>
-            </div>
-            
-            <div className="space-y-12">
-              <div>
-                <h3 className="text-xl font-bold text-indigo-600 mb-3">1. The Three-Tier Approach</h3>
-                <p className="text-gray-700 mb-4">
-                  Don't rely on a single number. We recommend creating three distinct Plans for every Company:
-                </p>
-                <ul className="list-disc pl-5 space-y-2 text-gray-600">
-                  <li><strong>Base Case (P50):</strong> Your honest expectation. Standard growth, standard churn.</li>
-                  <li><strong>Optimistic (P90):</strong> Everything goes right. Higher viral coefficient, lower costs.</li>
-                  <li><strong>Stress Test (P5):</strong> The "Black Swan" scenario. Use NRIG volatility with fat tails to model market crashes or funding dry-ups.</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-bold text-indigo-600 mb-3">2. Iterative Modeling & The Liquidity Gap</h3>
-                <p className="text-gray-700 mb-4">
-                  Financial modeling is a loop, not a line. Use the simulation results to find your breaking point.
-                </p>
-                <ol className="list-decimal pl-5 space-y-2 text-gray-600">
-                  <li>Run the simulation (1000+ iterations).</li>
-                  <li>Check the <strong>Cash Balance</strong> chart. Look for the <strong>P5 (5th Percentile)</strong> line.</li>
-                  <li>Identify the "Liquidity Gap"—the month where the P5 line dips below zero.</li>
-                  <li>Return to the <strong>Capital</strong> form and inject a bridge round or credit facility one month prior to the gap.</li>
-                  <li>Re-run to verify survival.</li>
-                </ol>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-bold text-indigo-600 mb-3">3. Volatility Tuning</h3>
-                <p className="text-gray-700 mb-4">
-                  Not all risk is created equal. Choose the right distribution for your stage:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-indigo-50 p-4 rounded-lg">
-                    <h4 className="font-bold text-indigo-900">NRIG (Normal-Inverse-Gamma)</h4>
-                    <p className="text-sm text-indigo-800 mt-1">Best for <strong>Early-Stage Startups</strong>. Models "Boom or Bust" scenarios with heavy tails (extreme outcomes are more likely).</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-bold text-gray-900">Student-T</h4>
-                    <p className="text-sm text-gray-800 mt-1">Best for <strong>Mature / Public Markets</strong>. Models standard market variance with adjustable degrees of freedom.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Technical Appendix */}
-          <section id="technical-appendix" className="pt-10 border-t-4 border-gray-200">
-            <h2 className="text-3xl font-bold text-gray-900 mb-10">Technical Appendix</h2>
-
-            {/* Glossary */}
-            <div id="glossary" className="scroll-mt-24">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6">1. Input Field Glossary</h3>
-              <TableSection title="Staffing Form" id="staffing" data={staffingData} />
-              <TableSection title="Revenue Form" id="revenue" data={revenueData} />
-              <TableSection title="Expense Form" id="expense" data={expenseData} />
-              <TableSection title="Capital Injection" id="capital" data={capitalData} />
-              <TableSection title="Capital Growth Policy" id="capital-growth" data={capitalGrowthData} />
-              <TableSection title="Dividends" id="dividends" data={dividendData} />
-              <TableSection title="Credit Facility" id="credit" data={creditData} />
-              <TableSection title="Valuation" id="valuation" data={valuationData} />
-              <TableSection title="Authentication" id="auth" data={authData} />
-            </div>
-
-            {/* Simulation Parameters */}
-            <div id="sim-params" className="scroll-mt-24 mt-16">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6">2. Simulation Parameters</h3>
-              <div className="prose prose-indigo text-gray-600 max-w-none space-y-8">
-                <p>
-                  The simulation allows you to model financial performance under different conditions. Volatility can be included for Revenue, Expenses and Capital Growth.
-                </p>
-                
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-lg font-bold text-gray-900">Deterministic</h4>
-                  <p className="mt-2">The simulation runs without any volatility. This is the most basic form of modelling that gives you an idea of what to expect without accounting for any unexpected conditions.</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-lg font-bold text-gray-900">NRIG (Normal-Inverse-Gamma)</h4>
-                  <p className="mt-2">Used for "Comprehensive Volatility". Captures heavy tails and skewness.</p>
-                  <ul className="mt-4 list-disc pl-5 space-y-1">
-                    <li><strong>Alpha (Likelihood):</strong> Affects the likelihood of extreme events. Lower values = fatter tails (higher risk of extreme events).</li>
-                    <li><strong>Beta (Skew):</strong> Controls asymmetry. Skew risk towards upside (positive shocks) or downside.</li>
-                    <li><strong>Delta (Scale):</strong> Base volatility scale. Higher values = higher variance.</li>
-                  </ul>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-lg font-bold text-gray-900">Student-T</h4>
-                  <p className="mt-2">A robust alternative to Normal distribution, handling outliers via degrees of freedom.</p>
-                  <ul className="mt-4 list-disc pl-5 space-y-1">
-                    <li><strong>Scale:</strong> Spread of the distribution. Higher values = higher volatility.</li>
-                    <li><strong>Freedom (Degrees):</strong> Controls tail thickness. Lower values (3-5) = fatter tails. Higher values converge to Normal distribution.</li>
-                  </ul>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-lg font-bold text-gray-900">Flat / Simple</h4>
-                  <p className="mt-2">Uniform distribution between a defined Minimum and Maximum percentage deviation.</p>
-                  <ul className="mt-4 list-disc pl-5 space-y-1">
-                    <li><strong>Min %:</strong> Maximum downside deviation in a single month.</li>
-                    <li><strong>Max %:</strong> Maximum upside deviation in a single month.</li>
-                    <li><strong>Steps:</strong> Granularity of the random walk.</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* UI Logic */}
-            <div id="ui-logic" className="scroll-mt-24 mt-16 mb-20">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6">3. UI Logic</h3>
-              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-8">
-                <h4 className="text-xl font-bold text-gray-900 mb-4">"Student / Individual" Bypass</h4>
-                <p className="text-gray-700 mb-4">
-                  To facilitate access for students and individual researchers who do not belong to a corporate entity, the registration form includes a specific bypass logic.
-                </p>
-                <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                  <ul className="space-y-3 text-sm text-gray-600">
-                    <li className="flex items-start">
-                      <span className="flex-shrink-0 h-5 w-5 text-indigo-500">✓</span>
-                      <span className="ml-2">When checked, the <strong>Company / Organization Name</strong> field is immediately disabled.</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="flex-shrink-0 h-5 w-5 text-indigo-500">✓</span>
-                      <span className="ml-2">The value is programmatically set to <code>"Individual"</code>.</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="flex-shrink-0 h-5 w-5 text-indigo-500">✓</span>
-                      <span className="ml-2">This allows the user to bypass strict organization name validation while maintaining data integrity in the backend.</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-          </section>
-
-        </div>
-      </main>
-    </div>
-  );
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonthlyData {
+    pub month_index: i32,
+    pub date: String,
+    pub revenue: Decimal,
+    pub cogs: Decimal,
+    pub gross_profit: Decimal,
+    pub opex: Decimal,
+    pub interest_expense: Decimal,
+    pub net_income: Decimal,
+    pub cash_balance: Decimal,
+    pub dividend_paid: Decimal,
+    pub cumulative_dividends: Decimal,
+    pub cumulative_external_capital: Decimal,
+    pub cumulative_pool_received: Decimal, 
+    pub current_debt: Decimal,
+    pub total_value: Decimal,
+    pub is_insolvent: bool, 
 }
---- END FILE: frontend/app/help/page.tsx ---
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SimulationResult {
+    pub labels: Vec<String>,
+    pub valuation_method: String,
+    pub deterministic_data: Vec<MonthlyData>,
+    pub single_run_data: Option<Vec<MonthlyData>>, 
+    pub single_run_value: Option<Vec<Decimal>>,
+
+    pub p0_value: Option<Vec<Decimal>>,
+    pub p10_value: Option<Vec<Decimal>>, 
+    pub p25_value: Option<Vec<Decimal>>, 
+    pub p50_value: Option<Vec<Decimal>>, 
+    pub p75_value: Option<Vec<Decimal>>, 
+    pub p90_value: Option<Vec<Decimal>>, 
+    pub p100_value: Option<Vec<Decimal>>, 
+
+    pub p50_pool_cumulative: Option<Vec<Decimal>>, 
+
+    pub deterministic_runway: Option<i32>,
+    pub deterministic_valuation: Decimal,
+
+    pub single_run_runway: Option<i32>,
+    pub single_run_valuation: Option<Decimal>,
+
+    pub p50_runway: Option<i32>,
+    pub p50_valuation: Option<Decimal>,
+}
+
+struct ItemState {
+    current_value: Decimal,
+    sampler: GrowthSampler,
+    is_active: bool,
+}
+
+// Helper struct for Breadth-First Simulation
+struct TrajectoryState {
+    current_cash: Decimal,
+    cum_external_cap: Decimal,
+    cum_dividends: Decimal,
+    cum_pool_received: Decimal, 
+    pending_interest: Decimal,
+    is_insolvent: bool,
+    revenue_states: HashMap<Uuid, ItemState>,
+    expense_states: HashMap<Uuid, ItemState>,
+    cap_growth_sampler: Option<GrowthSampler>,
+    history: Vec<MonthlyData>,
+}
+
+fn calculate_runway(cash: Decimal, last_month_net_income: Decimal) -> Option<i32> {
+    if cash < dec!(0.0) { return Some(0); }
+    if last_month_net_income >= dec!(0.0) { return None; }
+    let burn = -last_month_net_income;
+    if burn == dec!(0.0) { return None; }
+    Some((cash / burn).floor().to_i32().unwrap_or(0))
+}
+
+// Helper to create samplers (avoids code duplication)
+fn create_sampler(
+    force_deterministic: bool,
+    v_type: Option<&String>, 
+    rate: Decimal, 
+    min: Option<Decimal>, 
+    max: Option<Decimal>, 
+    intv: Option<i32>, 
+    scale: Option<Decimal>, 
+    free: Option<Decimal>,
+    alpha: Option<Decimal>, 
+    beta: Option<Decimal>
+) -> GrowthSampler {
+    let avg = rate.to_f64().unwrap_or(0.0);
+    if force_deterministic {
+        return GrowthSampler::new(VolatilityModel::None { fixed_rate: avg });
+    }
+    let model = match v_type.map(|s| s.as_str()) {
+        Some("flat") => VolatilityModel::Flat {
+            average: avg,
+            // Use rate as default if min/max are missing to prevent 0-growth bug
+            min: min.unwrap_or(rate).to_f64().unwrap_or(0.0),
+            max: max.unwrap_or(rate).to_f64().unwrap_or(0.0),
+            intervals: intv.unwrap_or(1),
+        },
+        Some("student_t") => VolatilityModel::StudentsT {
+            mean: avg,
+            scale: scale.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            freedom: free.unwrap_or(dec!(5.0)).to_f64().unwrap_or(5.0),
+        },
+        Some("nrig") => VolatilityModel::NRIG {
+            alpha: alpha.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
+            beta: beta.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            delta: scale.unwrap_or(dec!(1.0)).to_f64().unwrap_or(1.0),
+            mu: avg, 
+        },
+        _ => VolatilityModel::None { fixed_rate: avg },
+    };
+    GrowthSampler::new(model)
+}
+
+// Depth-First Simulation (Legacy/Deterministic)
+fn run_iteration(
+    start_month: NaiveDate,
+    months: i32,
+    initial_cash: Decimal,
+    revenue_items: &[RevenueItem],
+    expense_items: &[ExpenseItem],
+    event_shocks: &[EventShock],
+    capital_injections: &[CapitalInjection],
+    dividend_policy: &Option<DividendPolicy>,
+    credit_facility: &Option<CreditFacility>,
+    capital_growth_policy: &Option<CapitalGrowthPolicy>,
+    staffing_roles: &[StaffingRole],
+    force_deterministic: bool,
+    stop_on_insolvency: bool,
+) -> Vec<MonthlyData> {
+    
+    let mut history = Vec::with_capacity(months as usize);
+    let mut current_cash = initial_cash; 
+    let mut cum_external_cap = initial_cash; 
+    let mut cum_dividends = dec!(0.0);
+    let mut pending_interest = dec!(0.0);
+    let mut is_insolvent = false;
+    let mut cumulative_pool_received = dec!(0.0); 
+
+    let mut revenue_states: HashMap<Uuid, ItemState> = HashMap::new();
+    let mut expense_states: HashMap<Uuid, ItemState> = HashMap::new();
+
+    let mut cap_growth_sampler = if let Some(policy) = capital_growth_policy {
+        Some(create_sampler(force_deterministic, policy.volatility_type.as_ref(), policy.growth_rate_percent.unwrap_or(dec!(0.0)), 
+            policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
+    } else {
+        None
+    };
+
+    for item in revenue_items {
+        revenue_states.insert(item.id, ItemState {
+            current_value: item.initial_amount,
+            is_active: false,
+            sampler: create_sampler(force_deterministic, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
+        });
+    }
+    for item in expense_items {
+        expense_states.insert(item.id, ItemState {
+            current_value: item.initial_amount,
+            is_active: false,
+            sampler: create_sampler(force_deterministic, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
+        });
+    }
+
+    let mut shock_map: HashMap<i32, Vec<&EventShock>> = HashMap::new();
+    for shock in event_shocks { shock_map.entry(shock.shock_month).or_default().push(shock); }
+
+    let mut injection_map: HashMap<i32, Decimal> = HashMap::new();
+    for cap in capital_injections { *injection_map.entry(cap.month).or_default() += cap.amount; }
+
+    if let Some(pre_seed) = injection_map.get(&0) {
+        current_cash += pre_seed;
+        cum_external_cap += pre_seed;
+    }
+
+    let credit_floor = if let Some(f) = credit_facility {
+        -f.facility_limit
+    } else {
+        dec!(0.0)
+    };
+
+    for m in 1..=months {
+        let current_date = start_month.checked_add_months(chrono::Months::new((m - 1) as u32)).unwrap_or(start_month);
+        let date_str = current_date.format("%Y-%m-%d").to_string();
+
+        if stop_on_insolvency && current_cash < credit_floor {
+            is_insolvent = true;
+        }
+
+        let mut monthly_rev = dec!(0.0);
+        let mut monthly_cogs = dec!(0.0);
+        let mut monthly_opex = dec!(0.0);
+
+        if !is_insolvent {
+            for item in revenue_items {
+                let state = revenue_states.get_mut(&item.id).unwrap();
+                if m == item.start_month { state.is_active = true; state.current_value = item.initial_amount; }
+                else if let Some(end) = item.end_month { if m > end { state.is_active = false; } }
+
+                if state.is_active {
+                    if item.frequency == "One-time" && m != item.start_month { continue; }
+                    if m > item.start_month {
+                        let rate = state.sampler.sample();
+                        state.current_value *= dec!(1.0) + rate / dec!(100.0);
+                    }
+                    let item_rev = state.current_value;
+                    monthly_rev += item_rev;
+                    if let Some(cogs_pct) = item.cost_of_revenue_percent {
+                        monthly_cogs += item_rev * (cogs_pct / dec!(100.0));
+                    }
+                }
+            }
+
+            for item in expense_items {
+                let state = expense_states.get_mut(&item.id).unwrap();
+                if m == item.start_month { state.is_active = true; state.current_value = item.initial_amount; }
+                else if let Some(end) = item.end_month { if m > end { state.is_active = false; } }
+
+                if state.is_active {
+                    if item.frequency == "One-time" && m != item.start_month { continue; }
+                    if m > item.start_month {
+                        let rate = state.sampler.sample();
+                        state.current_value *= dec!(1.0) + rate / dec!(100.0);
+                    }
+                    let mut amt = state.current_value;
+                    if let Some(pct) = item.pct_of_revenue { amt += monthly_rev * (pct / dec!(100.0)); }
+                    monthly_opex += amt;
+                }
+            }
+
+            for role in staffing_roles {
+                if m >= role.start_month {
+                    let current_headcount = match role.hiring_plan.as_str() {
+                        "monthly_rate" => {
+                            let months_active = m - role.start_month;
+                            let rate = role.hiring_rate.unwrap_or(1).max(1);
+                            let hired = 1 + (months_active / rate);
+                            hired.min(role.target_count)
+                        },
+                        _ => role.target_count,
+                    };
+
+                    if current_headcount > 0 {
+                        let years_passed = (m - role.start_month) / 12;
+                        let mut current_annual_salary = role.annual_salary;
+                        if years_passed > 0 {
+                             let multiplier = dec!(1.0) + (role.annual_increase_percent / dec!(100.0));
+                             for _ in 0..years_passed {
+                                 current_annual_salary *= multiplier;
+                             }
+                        }
+                        let monthly_cost = (current_annual_salary * Decimal::from(current_headcount)) / dec!(12.0);
+                        monthly_opex += monthly_cost;
+                    }
+                }
+            }
+
+            if let Some(shocks) = shock_map.get(&m) {
+                for shock in shocks {
+                    let mult = dec!(1.0) + (shock.impact_value / dec!(100.0));
+                    match shock.impact_type.as_str() {
+                        "revenue" => { monthly_rev *= mult; monthly_cogs *= mult; },
+                        "expense" | "opex" => monthly_opex *= mult,
+                        "cogs" => monthly_cogs *= mult,
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        let monthly_interest = pending_interest; 
+        let gross_profit = monthly_rev - monthly_cogs;
+        let total_expenses = monthly_opex + monthly_interest;
+        let net_income = gross_profit - total_expenses;
+        
+        current_cash += net_income;
+
+        if let Some(injection) = injection_map.get(&m) {
+            current_cash += injection;
+            cum_external_cap += injection;
+            if current_cash >= credit_floor {
+                is_insolvent = false;
+            }
+        }
+
+        let mut dividend_paid = dec!(0.0);
+        if !is_insolvent {
+            if let Some(policy) = dividend_policy {
+                if policy.is_enabled {
+                    let surplus = current_cash - policy.safety_threshold;
+                    if surplus > dec!(0.0) {
+                        dividend_paid = surplus * (policy.payout_ratio / dec!(100.0));
+                        current_cash -= dividend_paid;
+                        cum_dividends += dividend_paid;
+                    }
+                }
+            }
+        }
+
+        if current_cash > dec!(0.0) {
+            if let Some(sampler) = &mut cap_growth_sampler {
+                let growth_rate = sampler.sample(); 
+                let multiplier = dec!(1.0) + (growth_rate / dec!(100.0));
+                current_cash *= multiplier;
+            }
+        }
+
+        pending_interest = dec!(0.0); 
+        let mut current_debt = dec!(0.0); 
+        if current_cash < dec!(0.0) {
+            current_debt = current_cash.abs();
+            if let Some(facility) = credit_facility {
+                let rate = if facility.is_annual_rate { facility.interest_rate / dec!(12.0) } else { facility.interest_rate };
+                pending_interest = current_debt * (rate / dec!(100.0));
+            }
+        }
+
+        history.push(MonthlyData {
+            month_index: m,
+            date: date_str,
+            revenue: monthly_rev,
+            cogs: monthly_cogs,
+            gross_profit: gross_profit,
+            opex: monthly_opex,
+            interest_expense: monthly_interest,
+            net_income: net_income,
+            cash_balance: current_cash,
+            dividend_paid: dividend_paid,
+            cumulative_dividends: cum_dividends,
+            cumulative_external_capital: cum_external_cap,
+            cumulative_pool_received: cumulative_pool_received,
+            current_debt: current_debt,
+            total_value: current_cash + cum_dividends,
+            is_insolvent,
+        });
+    }
+    history
+}
+
+// Breadth-First Simulation (Monte Carlo with Pooling)
+fn run_monte_carlo_breadth_first(
+    start_month: NaiveDate,
+    months: i32,
+    initial_cash: Decimal,
+    revenue_items: &[RevenueItem],
+    expense_items: &[ExpenseItem],
+    event_shocks: &[EventShock],
+    capital_injections: &[CapitalInjection],
+    dividend_policy: &Option<DividendPolicy>,
+    credit_facility: &Option<CreditFacility>,
+    capital_growth_policy: &Option<CapitalGrowthPolicy>,
+    staffing_roles: &[StaffingRole],
+    stop_on_insolvency: bool,
+    pooling_fraction: Decimal,
+) -> Vec<Vec<MonthlyData>> {
+
+    let iterations = 1000;
+    let mut trajectories = Vec::with_capacity(iterations);
+
+    // 1. Initialize Trajectories
+    let mut shock_map: HashMap<i32, Vec<&EventShock>> = HashMap::new();
+    for shock in event_shocks { shock_map.entry(shock.shock_month).or_default().push(shock); }
+
+    let mut injection_map: HashMap<i32, Decimal> = HashMap::new();
+    for cap in capital_injections { *injection_map.entry(cap.month).or_default() += cap.amount; }
+
+    let credit_floor = if let Some(f) = credit_facility { -f.facility_limit } else { dec!(0.0) };
+
+    for _ in 0..iterations {
+        let mut current_cash = initial_cash;
+        let mut cum_external_cap = initial_cash;
+        
+        if let Some(pre_seed) = injection_map.get(&0) {
+            current_cash += pre_seed;
+            cum_external_cap += pre_seed;
+        }
+
+        let mut revenue_states = HashMap::new();
+        for item in revenue_items {
+            revenue_states.insert(item.id, ItemState {
+                current_value: item.initial_amount,
+                is_active: false,
+                sampler: create_sampler(false, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                    item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
+            });
+        }
+
+        let mut expense_states = HashMap::new();
+        for item in expense_items {
+            expense_states.insert(item.id, ItemState {
+                current_value: item.initial_amount,
+                is_active: false,
+                sampler: create_sampler(false, item.volatility_type.as_ref(), item.growth_rate_percent, 
+                    item.vol_min, item.vol_max, item.vol_intervals, item.vol_scale, item.vol_freedom, item.vol_alpha, item.vol_beta)
+            });
+        }
+
+        let cap_growth_sampler = if let Some(policy) = capital_growth_policy {
+            Some(create_sampler(false, policy.volatility_type.as_ref(), policy.growth_rate_percent.unwrap_or(dec!(0.0)), 
+                policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
+        } else {
+            None
+        };
+
+        trajectories.push(TrajectoryState {
+            current_cash,
+            cum_external_cap,
+            cum_dividends: dec!(0.0),
+            cum_pool_received: dec!(0.0), 
+            pending_interest: dec!(0.0),
+            is_insolvent: false,
+            revenue_states,
+            expense_states,
+            cap_growth_sampler,
+            history: Vec::with_capacity(months as usize),
+        });
+    }
+
+    // 2. Breadth-First Loop
+    for m in 1..=months {
+        let current_date = start_month.checked_add_months(chrono::Months::new((m - 1) as u32)).unwrap_or(start_month);
+        let date_str = current_date.format("%Y-%m-%d").to_string();
+
+        let mut monthly_pool = dec!(0.0);
+        // Store intermediate results: (rev, cogs, gp, opex, interest, op_profit, contribution, inv_gain)
+        let mut trajectory_financials = Vec::with_capacity(iterations);
+
+        // Phase 1: Calculate Financials & Pool Contribution
+        for state in trajectories.iter_mut() {
+            if stop_on_insolvency && state.current_cash < credit_floor {
+                state.is_insolvent = true;
+            }
+
+            let mut monthly_rev = dec!(0.0);
+            let mut monthly_cogs = dec!(0.0);
+            let mut monthly_opex = dec!(0.0);
+
+            if !state.is_insolvent {
+                // Revenue
+                for item in revenue_items {
+                    let s = state.revenue_states.get_mut(&item.id).unwrap();
+                    if m == item.start_month { s.is_active = true; s.current_value = item.initial_amount; }
+                    else if let Some(end) = item.end_month { if m > end { s.is_active = false; } }
+
+                    if s.is_active {
+                        if item.frequency == "One-time" && m != item.start_month { continue; }
+                        if m > item.start_month {
+                            let rate = s.sampler.sample();
+                            s.current_value *= dec!(1.0) + rate / dec!(100.0);
+                        }
+                        let item_rev = s.current_value;
+                        monthly_rev += item_rev;
+                        if let Some(cogs_pct) = item.cost_of_revenue_percent {
+                            monthly_cogs += item_rev * (cogs_pct / dec!(100.0));
+                        }
+                    }
+                }
+
+                // Expenses
+                for item in expense_items {
+                    let s = state.expense_states.get_mut(&item.id).unwrap();
+                    if m == item.start_month { s.is_active = true; s.current_value = item.initial_amount; }
+                    else if let Some(end) = item.end_month { if m > end { s.is_active = false; } }
+
+                    if s.is_active {
+                        if item.frequency == "One-time" && m != item.start_month { continue; }
+                        if m > item.start_month {
+                            let rate = s.sampler.sample();
+                            s.current_value *= dec!(1.0) + rate / dec!(100.0);
+                        }
+                        let mut amt = s.current_value;
+                        if let Some(pct) = item.pct_of_revenue { amt += monthly_rev * (pct / dec!(100.0)); }
+                        monthly_opex += amt;
+                    }
+                }
+
+                // Staffing
+                for role in staffing_roles {
+                    if m >= role.start_month {
+                        let current_headcount = match role.hiring_plan.as_str() {
+                            "monthly_rate" => {
+                                let months_active = m - role.start_month;
+                                let rate = role.hiring_rate.unwrap_or(1).max(1);
+                                let hired = 1 + (months_active / rate);
+                                hired.min(role.target_count)
+                            },
+                            _ => role.target_count,
+                        };
+
+                        if current_headcount > 0 {
+                            let years_passed = (m - role.start_month) / 12;
+                            let mut current_annual_salary = role.annual_salary;
+                            if years_passed > 0 {
+                                 let multiplier = dec!(1.0) + (role.annual_increase_percent / dec!(100.0));
+                                 for _ in 0..years_passed {
+                                     current_annual_salary *= multiplier;
+                                 }
+                            }
+                            let monthly_cost = (current_annual_salary * Decimal::from(current_headcount)) / dec!(12.0);
+                            monthly_opex += monthly_cost;
+                        }
+                    }
+                }
+
+                // Shocks
+                if let Some(shocks) = shock_map.get(&m) {
+                    for shock in shocks {
+                        let mult = dec!(1.0) + (shock.impact_value / dec!(100.0));
+                        match shock.impact_type.as_str() {
+                            "revenue" => { monthly_rev *= mult; monthly_cogs *= mult; },
+                            "expense" | "opex" => monthly_opex *= mult,
+                            "cogs" => monthly_cogs *= mult,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            let monthly_interest = state.pending_interest;
+            let gross_profit = monthly_rev - monthly_cogs;
+            let total_expenses = monthly_opex + monthly_interest;
+            let operating_profit = gross_profit - total_expenses;
+
+            // 1. Update Cash with Operating Flow
+            state.current_cash += operating_profit;
+
+            // 2. Calculate Investment Result (Treasury)
+            let mut investment_gain = dec!(0.0);
+            if state.current_cash > dec!(0.0) {
+                if let Some(sampler) = &mut state.cap_growth_sampler {
+                    let growth_rate = sampler.sample();
+                    investment_gain = state.current_cash * (growth_rate / dec!(100.0));
+                }
+            }
+            // 3. Update Cash with Investment Flow
+            state.current_cash += investment_gain;
+
+            // 4. Pooling Logic
+            let mut contribution = dec!(0.0);
+            if pooling_fraction > dec!(0.0) {
+                // Poolable Income = Max(0, OpProfit) + Max(0, InvGain)
+                let op_gain = if operating_profit > dec!(0.0) { operating_profit } else { dec!(0.0) };
+                let inv_gain = if investment_gain > dec!(0.0) { investment_gain } else { dec!(0.0) };
+                let poolable_income = op_gain + inv_gain;
+                
+                contribution = poolable_income * pooling_fraction;
+                monthly_pool += contribution;
+            }
+
+            // 5. Subtract Pool Contribution
+            state.current_cash -= contribution;
+
+            // Store intermediate results
+            trajectory_financials.push((monthly_rev, monthly_cogs, gross_profit, monthly_opex, monthly_interest, operating_profit, contribution, investment_gain));
+        }
+
+        // Phase 2: Distribute Pool & Finalize
+        let pool_share = if iterations > 0 { monthly_pool / Decimal::from(iterations) } else { dec!(0.0) };
+
+        for (i, state) in trajectories.iter_mut().enumerate() {
+            let (rev, cogs, gp, opex, interest, op_profit, contribution, inv_gain) = trajectory_financials[i];
+            
+            // 6. Receive Share
+            state.current_cash += pool_share;
+            state.cum_pool_received += pool_share; 
+            
+            // 7. Capital Injections
+            if let Some(injection) = injection_map.get(&m) {
+                state.current_cash += injection;
+                state.cum_external_cap += injection;
+                if state.current_cash >= credit_floor {
+                    state.is_insolvent = false;
+                }
+            }
+
+            // 8. Dividends
+            let mut dividend_paid = dec!(0.0);
+            if !state.is_insolvent {
+                if let Some(policy) = dividend_policy {
+                    if policy.is_enabled {
+                        let surplus = state.current_cash - policy.safety_threshold;
+                        if surplus > dec!(0.0) {
+                            dividend_paid = surplus * (policy.payout_ratio / dec!(100.0));
+                            state.current_cash -= dividend_paid;
+                            state.cum_dividends += dividend_paid;
+                        }
+                    }
+                }
+            }
+
+            // Debt Interest for Next Month
+            state.pending_interest = dec!(0.0);
+            let mut current_debt = dec!(0.0);
+            if state.current_cash < dec!(0.0) {
+                current_debt = state.current_cash.abs();
+                if let Some(facility) = credit_facility {
+                    let rate = if facility.is_annual_rate { facility.interest_rate / dec!(12.0) } else { facility.interest_rate };
+                    state.pending_interest = current_debt * (rate / dec!(100.0));
+                }
+            }
+
+            // Adjusted Net Income for reporting (Includes Op, Inv, and Pooling effects)
+            let adjusted_net_income = op_profit + inv_gain - contribution + pool_share;
+
+            state.history.push(MonthlyData {
+                month_index: m,
+                date: date_str.clone(),
+                revenue: rev,
+                cogs: cogs,
+                gross_profit: gp,
+                opex: opex,
+                interest_expense: interest,
+                net_income: adjusted_net_income, 
+                cash_balance: state.current_cash,
+                dividend_paid,
+                cumulative_dividends: state.cum_dividends,
+                cumulative_external_capital: state.cum_external_cap,
+                cumulative_pool_received: state.cum_pool_received, 
+                current_debt,
+                total_value: state.current_cash + state.cum_dividends,
+                is_insolvent: state.is_insolvent,
+            });
+        }
+    }
+
+    trajectories.into_iter().map(|t| t.history).collect()
+}
+
+pub fn generate_simulation(
+    start_month: NaiveDate,
+    months: i32,
+    initial_cash: Decimal,
+    revenue_items: &[RevenueItem],
+    expense_items: &[ExpenseItem],
+    event_shocks: &[EventShock],
+    capital_injections: &[CapitalInjection],
+    dividend_policy: &Option<DividendPolicy>,
+    credit_facility: &Option<CreditFacility>,
+    capital_growth_policy: &Option<CapitalGrowthPolicy>,
+    staffing_roles: &[StaffingRole],
+    valuation_assumptions: &[ValuationAssumption],
+    use_monte_carlo: bool,
+    stop_on_insolvency: bool,
+    pooling_fraction: Decimal, 
+) -> SimulationResult {
+
+    // 1. DETERMINISTIC RUN (Base Case - No Pooling)
+    let deterministic_run = run_iteration(start_month, months, initial_cash, revenue_items, expense_items, event_shocks, capital_injections, dividend_policy, credit_facility, capital_growth_policy, staffing_roles, true, stop_on_insolvency);
+    let labels: Vec<String> = deterministic_run.iter().map(|d| d.date.clone()).collect();
+    
+    let val_assum = valuation_assumptions.first();
+    let val_mult = val_assum.map(|v| v.multiplier).unwrap_or(dec!(5.0));
+    let val_method = val_assum.map(|v| v.method.as_str()).unwrap_or("revenue");
+
+    let calc_val = |data: &MonthlyData| -> Decimal {
+        match val_method {
+            "ebitda" => {
+                let ebitda = data.net_income + data.interest_expense;
+                ebitda * dec!(12.0) * val_mult 
+            },
+            _ => data.revenue * dec!(12.0) * val_mult, 
+        }
+    };
+
+    let det_last = deterministic_run.last().unwrap();
+    let deterministic_valuation = calc_val(det_last);
+    let deterministic_runway = calculate_runway(det_last.cash_balance, det_last.net_income);
+
+    // 2. STOCHASTIC RUNS
+    let mut single_run_data = None;
+    let mut single_run_value = None;
+    let mut single_run_valuation = None;
+    let mut single_run_runway = None;
+
+    let mut p0_value = None;
+    let mut p10_value = None;
+    let mut p25_value = None;
+    let mut p50_value = None;
+    let mut p75_value = None;
+    let mut p90_value = None;
+    let mut p100_value = None;
+    let mut p50_valuation = None;
+    let mut p50_runway = None;
+    
+    let mut p50_pool_cumulative = None; 
+
+    if use_monte_carlo {
+        // Use Breadth-First for Monte Carlo to support Pooling
+        let mut full_runs = run_monte_carlo_breadth_first(
+            start_month, months, initial_cash, revenue_items, expense_items, event_shocks, 
+            capital_injections, dividend_policy, credit_facility, capital_growth_policy, 
+            staffing_roles, stop_on_insolvency, pooling_fraction
+        );
+
+        let iterations = full_runs.len();
+        let mut p0 = Vec::with_capacity(months as usize);
+        let mut p10 = Vec::with_capacity(months as usize);
+        let mut p25 = Vec::with_capacity(months as usize);
+        let mut p50 = Vec::with_capacity(months as usize);
+        let mut p75 = Vec::with_capacity(months as usize);
+        let mut p90 = Vec::with_capacity(months as usize);
+        let mut p100 = Vec::with_capacity(months as usize);
+        
+        let mut p50_pool = Vec::with_capacity(months as usize); 
+
+        for m in 0..(months as usize) {
+            let mut values: Vec<Decimal> = full_runs.iter().map(|r| r[m].total_value).collect();
+            values.sort();
+
+            let idx_10 = (iterations as f64 * 0.10) as usize;
+            let idx_25 = (iterations as f64 * 0.25) as usize;
+            let idx_50 = (iterations as f64 * 0.50) as usize;
+            let idx_75 = (iterations as f64 * 0.75) as usize;
+            let idx_90 = (iterations as f64 * 0.90) as usize;
+            
+            p0.push(values[0]);
+            p10.push(values[idx_10]);
+            p25.push(values[idx_25]);
+            p50.push(values[idx_50]);
+            p75.push(values[idx_75]);
+            p90.push(values[idx_90]);
+            p100.push(values[iterations - 1]);
+
+            // Calculate P50 Pool Cumulative
+            let mut pool_values: Vec<Decimal> = full_runs.iter().map(|r| r[m].cumulative_pool_received).collect();
+            pool_values.sort();
+            p50_pool.push(pool_values[idx_50]);
+        }
+
+        p0_value = Some(p0);
+        p10_value = Some(p10);
+        p25_value = Some(p25);
+        p50_value = Some(p50);
+        p75_value = Some(p75);
+        p90_value = Some(p90);
+        p100_value = Some(p100);
+        
+        p50_pool_cumulative = Some(p50_pool); 
+
+        full_runs.sort_by(|a, b| {
+            let val_a = a.last().unwrap().total_value;
+            let val_b = b.last().unwrap().total_value;
+            val_a.partial_cmp(&val_b).unwrap()
+        });
+
+        let median_run_idx = (iterations as f64 * 0.50) as usize;
+        let median_run = &full_runs[median_run_idx];
+        let median_last = median_run.last().unwrap();
+
+        p50_valuation = Some(calc_val(median_last));
+        p50_runway = calculate_runway(median_last.cash_balance, median_last.net_income);
+        
+        // Populate single_run_data with the median run so frontend can visualize details (like pool)
+        single_run_data = Some(median_run.clone());
+
+    } else {
+        // Single Stochastic Run (No Pooling)
+        let single_run = run_iteration(start_month, months, initial_cash, revenue_items, expense_items, event_shocks, capital_injections, dividend_policy, credit_facility, capital_growth_policy, staffing_roles, false, stop_on_insolvency);
+        
+        single_run_value = Some(single_run.iter().map(|d| d.total_value).collect());
+        
+        let s_last = single_run.last().unwrap();
+        single_run_valuation = Some(calc_val(s_last));
+        single_run_runway = calculate_runway(s_last.cash_balance, s_last.net_income);
+        
+        single_run_data = Some(single_run);
+    }
+
+    SimulationResult {
+        labels,
+        valuation_method: val_method.to_string(),
+        deterministic_data: deterministic_run,
+        single_run_data, 
+        single_run_value,
+        p0_value, p10_value, p25_value, p50_value, p75_value, p90_value, p100_value,
+        p50_pool_cumulative, 
+        deterministic_runway, deterministic_valuation,
+        single_run_runway, single_run_valuation,
+        p50_runway, p50_valuation,
+    }
+}
+--- END FILE: backend/src/projection.rs ---
+
+--- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
+
+
+# ARCHITECTURAL_CONTEXT_CLI.md
+# Status: UNIVERSAL CONSTITUTION (Read by every agent)
+# Role: Immutable Constraints & Patterns
+
+## 1. PROJECT GOAL
+**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
+**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Identity:** Username-based (No PII/Email required for MVP).
+
+## 2. TECHNOLOGY STACK (Immutable)
+* **Backend:**
+    * **Language:** Rust (Edition 2021).
+    * **Web Framework:** `axum` (with `tokio`).
+    * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
+    * **Math:** `rust_decimal` for ALL currency/rates. `f64` is **BANNED** for money.
+    * **Serialization:** `serde` / `serde_json`.
+* **Frontend:**
+    * **Framework:** Next.js 14+ (App Router).
+    * **Language:** TypeScript.
+    * **Styling:** Tailwind CSS (Utility classes).
+    * **HTTP Client:** Axios (via `lib/api.ts`).
+    * **Visualization:** Chart.js (`react-chartjs-2`).
+
+## 3.1. CORE ENGINE LOGIC (`backend/src/projection.rs`)
+* **Mechanism:** Breadth-First Traversal (Time-step based).
+* **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.
+* **Monte Carlo:** Runs 1000+ iterations (if enabled). Calculates percentiles (P5, P50, P95).
+* **Insolvency:** Logic stops simulation trajectory if `cash < -credit_limit`.
+
+## 3.2. CORE PATTERNS (The "Local Customs")
+* **Backend API:**
+    * **Injection:** Always inject DB pool via `State(pool): State<Pool<Postgres>>`.
+    * **Errors:** Handlers return `Result<Json<T>, AppError>`. Never return raw Results.
+    * **Structure:** No generic "Envelope" wrapper. Return the struct/vector directly.
+* **Frontend Data:**
+    * **Fetching:** Use `useEffect` + `api.ts` (Axios wrapper).
+    * **State:** Local State preferred. No Redux/Zustand unless specified.
+    * **Ids:** Treat all IDs as strings on the Frontend; `Uuid` on the Backend.
+
+## 4. DIRECTORY MAP & TOOLING
+* **Backend Structure:**
+    * `backend/src/handlers/` -> All API route logic (grouped by resource).
+    * `backend/src/models.rs` -> shared Structs and DB schemas.
+    * `backend/migrations/` -> SQLx migration files (SQL).
+* **Frontend Structure:**
+    * `frontend/app/` -> Next.js Pages and Layouts.
+    * `frontend/lib/api.ts` -> Central Axios client.
+    * `frontend/components/` -> UI elements (Tailwind).
+* **Migration Command:**
+    * Use `sqlx migrate add <name>` to create.
+    * Use `sqlx migrate run` to apply (automated in `main.rs`, but good to know).
+
+## 5. THE "IRON LAWS" (Stage 3 Strictness)
+* **Tenant Isolation:**
+    * **Strict Rule:** Every business entity (Fund, Company) MUST belong to a `tenant_id`.
+    * **Query Rule:** Every SQL `SELECT`, `UPDATE`, or `DELETE` must explicitly filter `WHERE tenant_id = $1`.
+    * **Injection:** `tenant_id` comes from the JWT Claims (Extension), NEVER from the user request body.
+* **Code Style:**
+    * **Database/API:** `snake_case` (e.g., `growth_rate`, `tenant_id`).
+    * **Rust Structs:** `PascalCase` (Internal Type Names).
+    * **TS Interfaces:** Match the API (`snake_case`). Do not map to camelCase.
+
+## 6. UNIVERSAL BUILDER PROTOCOL
+* **File Operations:**
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
+    * Do not use placeholders like `// ... existing code ...`.
+* **Testing:**
+    * If `last_error.log` is provided, priority #1 is fixing that error.
+* **Dependencies:**
+    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.--- END FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 
 </source_code>

@@ -171,6 +171,7 @@ pub struct CapitalGrowthPolicy {
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub growth_rate_percent: Option<Decimal>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -204,7 +205,7 @@ pub struct StaffingRole {
     pub hiring_plan: String, // "fixed_count" or "monthly_rate"
     pub hiring_rate: Option<i32>, // e.g., 1 = hire every month, 2 = hire every 2 months
     
-    pub annual_increase: Decimal,
+    pub annual_increase_percent: Decimal,
     pub created_at: DateTime<Utc>,
 }
 

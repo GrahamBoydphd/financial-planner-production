@@ -14,12 +14,12 @@ interface Props {
 
 export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('OpEx');
+  const [category, setCategory] = useState('opex');
   const [amount, setAmount] = useState('');
   const [growth, setGrowth] = useState('0');
   const [startMonth, setStartMonth] = useState('1');
   const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('Monthly');
+  const [freq, setFreq] = useState('monthly');
   const [pctRevenue, setPctRevenue] = useState('');
 
   // Volatility
@@ -66,12 +66,12 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
 
   const clearForm = () => {
     setName('');
-    setCategory('OpEx');
+    setCategory('opex');
     setAmount('');
     setGrowth('0');
     setStartMonth('1');
     setEndMonth('');
-    setFreq('Monthly');
+    setFreq('monthly');
     setPctRevenue('');
     setVolType('none');
     setVolMin(''); setVolMax(''); setVolIntervals('');
@@ -99,22 +99,22 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
             plan_id: planId,
             name,
             category,
-            initial_amount: amount, // Send as string
-            growth_rate_percent: growth, // Send as string
-            start_month: Number(startMonth), // Int
-            end_month: endMonth ? Number(endMonth) : undefined, // Int
+            initial_amount: String(amount),
+            growth_rate_percent: String(growth),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
             frequency: freq,
-            pct_of_revenue: pctRevenue ? pctRevenue : undefined, // String
+            pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
 
             volatility_type: volType !== 'none' ? volType as any : undefined,
-            vol_min: volType === 'flat' && volMin ? volMin : undefined, // String
-            vol_max: volType === 'flat' && volMax ? volMax : undefined, // String
-            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined, // Int
-            vol_mean: volMean ? volMean : undefined, // String
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? volScale : undefined, // String
-            vol_freedom: volType === 'student_t' && volFreedom ? volFreedom : undefined, // String
-            vol_alpha: volType === 'nrig' && volAlpha ? volAlpha : undefined, // String
-            vol_beta: volType === 'nrig' && volBeta ? volBeta : undefined, // String
+            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
+            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
+            vol_mean: volMean ? String(volMean) : undefined,
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
+            vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
+            vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
+            vol_beta: volType === 'nrig' && volBeta ? String(volBeta) : undefined,
         };
 
         if (itemToEdit) {
@@ -155,10 +155,10 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
         <div>
           <label className="text-xs text-gray-500">Category</label>
           <select className="w-full border p-2 rounded text-sm" value={category} onChange={e => setCategory(e.target.value)}>
-            <option>OpEx</option>
-            <option>CapEx</option>
-            <option>Payroll</option>
-            <option>Marketing</option>
+            <option value="opex">OpEx</option>
+            <option value="capex">CapEx</option>
+            <option value="payroll">Payroll</option>
+            <option value="marketing">Marketing</option>
           </select>
         </div>
       </div>
@@ -188,10 +188,10 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
         <div>
           <label className="text-xs text-gray-500">Frequency</label>
           <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-            <option>Monthly</option>
-            <option>One-time</option>
-            <option>Quarterly</option>
-            <option>Annually</option>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
           </select>
         </div>
         <div>
@@ -199,8 +199,8 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
           <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-500">End Month (Opt)</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
         </div>
       </div>
 

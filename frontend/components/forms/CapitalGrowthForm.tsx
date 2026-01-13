@@ -26,7 +26,7 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
   const [volType, setVolType] = useState('none');
   
   // Flat / Student-T / NRIG Params
-  const [mean, setMean] = useState('');     // Mean / Mu
+  const [mean, setMean] = useState('');     // Mean / Mu / Growth Rate
   const [volMin, setVolMin] = useState(''); // Min
   const [volMax, setVolMax] = useState(''); // Max
   const [volIntervals, setVolIntervals] = useState('');
@@ -50,9 +50,13 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
       if (!active) return;
       setSavedConfig(p); // Store initial fetched config as "Active"
 
-      const vType = p.volatility_type || 'none';
+      const vType = (p.volatility_type || 'none').toLowerCase();
       setVolType(vType);
-      setMean(p.vol_mean !== undefined ? p.vol_mean.toString() : '');
+      
+      // Handle rename: growth_rate_percent takes precedence, fallback to vol_mean
+      const valMean = p.growth_rate_percent !== undefined ? p.growth_rate_percent : p.vol_mean;
+      setMean(valMean !== undefined ? valMean.toString() : '');
+
       setVolMin(p.vol_min !== undefined ? p.vol_min.toString() : '');
       setVolMax(p.vol_max !== undefined ? p.vol_max.toString() : '');
       setVolIntervals(p.vol_intervals !== undefined ? p.vol_intervals.toString() : '');
@@ -99,21 +103,22 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
     try {
         const payload = {
             plan_id: planId,
-            volatility_type: volType as any,
+            volatility_type: volType.toLowerCase() as any,
             
             // Common / Student T / NRIG
-            vol_mean: mean || undefined,
+            // RENAMED: vol_mean -> growth_rate_percent
+            growth_rate_percent: mean ? String(mean) : undefined,
             
             // Flat Only
-            vol_min: volType === 'flat' && volMin ? volMin : undefined,
-            vol_max: volType === 'flat' && volMax ? volMax : undefined,
+            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
+            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
             vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
             
             // NRIG Only
-            vol_alpha: volType === 'nrig' && alpha ? alpha : undefined,
-            vol_beta: volType === 'nrig' && beta ? beta : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? scale : undefined, 
-            vol_freedom: volType === 'student_t' && freedom ? freedom : undefined,
+            vol_alpha: volType === 'nrig' && alpha ? String(alpha) : undefined,
+            vol_beta: volType === 'nrig' && beta ? String(beta) : undefined,
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? String(scale) : undefined, 
+            vol_freedom: volType === 'student_t' && freedom ? String(freedom) : undefined,
         };
 
         await api.upsertCapitalGrowth(payload);
@@ -132,11 +137,13 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
   // Render Summary Card Content
   const renderActiveStrategy = () => {
     if (!savedConfig) return "Loading...";
-    const type = savedConfig.volatility_type || 'none';
+    const type = (savedConfig.volatility_type || 'none').toLowerCase();
     
     if (type === 'none') return "Standard (No Volatility)";
 
-    let details = `Mean: ${savedConfig.vol_mean}%`;
+    // Handle rename in display
+    const valMean = savedConfig.growth_rate_percent ?? savedConfig.vol_mean;
+    let details = `Mean: ${valMean}%`;
     
     if (type === 'flat') {
         details += `, Range: ${savedConfig.vol_min}% to ${savedConfig.vol_max}%`;
@@ -163,7 +170,7 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
 
         <div>
             <select className="w-full border p-2 rounded text-sm" value={volType} onChange={e => setVolType(e.target.value)}>
-                <option value="none">Standard averages</option>
+                <option value="none" disabled hidden>-- Select Risk Model --</option>
                 <option value="flat">Simple volatility (min/max)</option>
                 <option value="nrig">Comprehensive volatility</option>
                 <option value="student_t">Student's t distribution</option>

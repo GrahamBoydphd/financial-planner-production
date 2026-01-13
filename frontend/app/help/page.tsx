@@ -233,18 +233,44 @@ export default function HelpPage() {
               </div>
 
               <div>
-                <h3 className="text-xl font-bold text-indigo-600 mb-3">3. Volatility Tuning</h3>
+                <h3 className="text-xl font-bold text-indigo-600 mb-3">3. The Starter Strategy</h3>
                 <p className="text-gray-700 mb-4">
-                  Not all risk is created equal. Choose the right distribution for your stage:
+                  If you are unsure where to begin, we recommend starting with <strong>Flat Volatility</strong>. This establishes a baseline range without the complexity of heavy-tailed distributions.
+                </p>
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm max-w-md">
+                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-2">Starter Configuration</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li><strong>Model Type:</strong> Simple / Flat</li>
+                    <li><strong>Mean / Drift:</strong> 1.34% <span className="text-gray-400">(Average Monthly Growth)</span></li>
+                    <li><strong>Min %:</strong> -30.00% <span className="text-gray-400">(Worst Month)</span></li>
+                    <li><strong>Max %:</strong> 32.68% <span className="text-gray-400">(Best Month)</span></li>
+                    <li><strong>Steps:</strong> 2</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-indigo-600 mb-3">4. Advanced Modeling Examples</h3>
+                <p className="text-gray-700 mb-4">
+                  For specific risk profiles, use these tested configurations to model asymmetric or fat-tailed risks:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-indigo-50 p-4 rounded-lg">
-                    <h4 className="font-bold text-indigo-900">NRIG (Normal-Inverse-Gamma)</h4>
-                    <p className="text-sm text-indigo-800 mt-1">Best for <strong>Early-Stage Startups</strong>. Models "Boom or Bust" scenarios with heavy tails (extreme outcomes are more likely).</p>
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                    <h4 className="font-bold text-indigo-900">NRIG (Asymmetric Risk)</h4>
+                    <p className="text-xs text-indigo-700 mb-3">High downside tail risk. Ideal for early-stage startups.</p>
+                    <ul className="text-sm text-indigo-800 space-y-1">
+                      <li><strong>Likelyhood (Alpha):</strong> 0.8</li>
+                      <li><strong>Skew (Beta):</strong> -0.5</li>
+                      <li><strong>Scale (Delta):</strong> 1.5</li>
+                    </ul>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-bold text-gray-900">Student-T</h4>
-                    <p className="text-sm text-gray-800 mt-1">Best for <strong>Mature / Public Markets</strong>. Models standard market variance with adjustable degrees of freedom.</p>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="font-bold text-gray-900">Student-T (Fat Tails)</h4>
+                    <p className="text-xs text-gray-600 mb-3">High frequency of outliers. Ideal for volatile markets.</p>
+                    <ul className="text-sm text-gray-800 space-y-1">
+                      <li><strong>Scale (Vol):</strong> 2.0</li>
+                      <li><strong>Freedom (DoF):</strong> 3.0</li>
+                    </ul>
                   </div>
                 </div>
               </div>
