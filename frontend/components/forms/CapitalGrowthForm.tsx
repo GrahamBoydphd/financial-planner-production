@@ -54,8 +54,8 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
       setVolType(vType);
       
       // Handle rename: growth_rate_percent takes precedence, fallback to vol_mean
-      const valMean = p.growth_rate_percent !== undefined ? p.growth_rate_percent : p.vol_mean;
-      setMean(valMean !== undefined ? valMean.toString() : '');
+      const valMean = p.growth_rate_percent !== undefined ? p.growth_rate_percent.toString() : (p.vol_mean !== undefined ? p.vol_mean.toString() : "");
+      setMean(valMean);
 
       setVolMin(p.vol_min !== undefined ? p.vol_min.toString() : '');
       setVolMax(p.vol_max !== undefined ? p.vol_max.toString() : '');

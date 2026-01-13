@@ -133,6 +133,7 @@ export interface CapitalGrowthPolicy {
   id: string;
   plan_id: string;
   volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
+  growth_rate_percent?: string;
   vol_min?: string;
   vol_max?: string;
   vol_intervals?: number;
