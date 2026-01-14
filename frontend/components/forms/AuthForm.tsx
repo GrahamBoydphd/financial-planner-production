@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import InfoTag from '@/components/ui/InfoTag';
 
 interface AuthFormProps {
@@ -10,6 +11,7 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -62,8 +64,12 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
     try {
       if (mode === 'register') {
         await onSubmit({ username, email, password, full_name: fullName, company_name: companyName });
+        // Redirect to Help page with new flag for new users
+        router.push('/help?new=true');
       } else {
         await onSubmit({ username, password });
+        // Redirect to Dashboard for returning users
+        router.push('/');
       }
     } catch (err: any) {
       console.error(err);
