@@ -76,8 +76,8 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
       target_count: role.target_count,
       hiring_plan: role.hiring_plan as "fixed_count" | "monthly_rate",
       hiring_rate: role.hiring_rate ? Number(role.hiring_rate) : undefined,
-      // Convert decimal (0.03) to percentage (3.0) for editing
-      annual_increase: ((Number(role.annual_increase) || 0) * 100).toString()
+      // Use raw percentage directly
+      annual_increase: role.annual_increase_percent || "0"
     })
     setIsEditing(true)
     setGlobalError(null)
@@ -149,9 +149,9 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
       const salaryVal = parseFloat(currentRole.annual_salary || "0")
       const salaryPayload = salaryVal.toFixed(2) // "50000.00"
 
-      // Annual Increase: User enters "3.5" (%), we send "0.035"
+      // Annual Increase: User enters "3.5" (%), we send "3.5"
       const increaseVal = parseFloat(currentRole.annual_increase || "0")
-      const increasePayload = (increaseVal / 100).toString() 
+      const increasePayload = increaseVal.toString() 
 
       const roleData = {
         role_name: currentRole.role_name!,
@@ -160,7 +160,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
         target_count: Number(currentRole.target_count) || 1,
         hiring_plan: currentRole.hiring_plan || "fixed_count",
         hiring_rate: currentRole.hiring_plan === "monthly_rate" ? (Number(currentRole.hiring_rate) || 1) : undefined,
-        annual_increase: increasePayload
+        annual_increase_percent: increasePayload
       }
 
       // Cast to any to satisfy TS if onSave expects numbers, as we are sending strings for precision

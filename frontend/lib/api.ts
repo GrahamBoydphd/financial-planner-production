@@ -186,7 +186,7 @@ export interface StaffingRole {
   target_count: number; 
   hiring_plan: 'fixed_count' | 'monthly_rate'; 
   hiring_rate?: string; 
-  annual_increase: string;
+  annual_increase_percent: string;
 }
 
 export interface MonthlyData {

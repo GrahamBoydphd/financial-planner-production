@@ -165,7 +165,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                       <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-yellow-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
                     </li>
                     <li>
-                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. Use the tabs to enter:
+                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete. Use the tabs to enter:
                       <ul className="list-disc pl-5 mt-1">
                         <li>Revenue items, Expense items, and Staffing items.</li>
                         <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
@@ -177,7 +177,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                       <ul className="list-disc pl-5 mt-1">
                         <li><strong>Conventional:</strong> Standard deterministic planning.</li>
                         <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
-                        <li><strong>Monte Carlo:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
+                        <li><strong>Likely real-world outcomes:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
                       </ul>
                     </li>
                   </ol>
@@ -234,7 +234,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                       <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-indigo-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
                     </li>
                     <li>
-                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. Use the tabs to enter:
+                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete to go straight to the Projections tab. Use the tabs to enter:
                       <ul className="list-disc pl-5 mt-1">
                         <li>Revenue items, Expense items, and Staffing items.</li>
                         <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
@@ -246,7 +246,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                       <ul className="list-disc pl-5 mt-1">
                         <li><strong>Conventional:</strong> Standard deterministic planning.</li>
                         <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
-                        <li><strong>Monte Carlo:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
+                        <li><strong>Likely real-world outcomes:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
                       </ul>
                     </li>
                   </ol>

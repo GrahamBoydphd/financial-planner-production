@@ -380,7 +380,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 >
                   <option value="standard">Standard (Average)</option>
                   <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Monte Carlo (1000 Runs)</option>
+                  <option value="monte_carlo">Likely real-world outcomes (1000 Runs)</option>
                 </select>
               </div>
 
@@ -414,7 +414,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               {simMode === 'monte_carlo' && (
                 <div className="flex flex-col justify-center border-l pl-4 w-40">
                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Non-Ergodicity</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Ergodicity Correction</span>
                         {updatingPooling ? (
                             <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
                         ) : (
