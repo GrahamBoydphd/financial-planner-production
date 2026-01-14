@@ -1,7 +1,108 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
+<file path='frontend/components/Layout.tsx'>
+"use client";
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, logout } = useAuth();
+  const pathname = usePathname();
+
+  // Helper to determine if a tab is active
+  const isActive = (path: string) => {
+    if (path === '/') return pathname === '/';
+    return pathname?.startsWith(path);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Master Banner / Navigation */}
+      <nav className="bg-gray-200 border-b border-gray-300">
+        <div className="max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              {/* Logo Section - Vertically Centered */}
+              <div className="flex-shrink-0 flex items-center mr-8">
+                <Link href="/" className="flex items-center font-bold text-xl text-blue-600">
+                  <img src="/logo.png" alt="Evolutesix Logo" className="h-8 w-auto mr-3" />
+                  Financial Planner
+                </Link>
+              </div>
+
+              {/* Navigation Tabs - Aligned to Bottom for Browser-Tab look */}
+              <div className="hidden sm:flex sm:space-x-2 items-end">
+                <Link
+                  href="/"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/structure"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/structure') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Structure (Funds & Companies)
+                </Link>
+                <Link
+                  href="/help"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/help') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Guide & Help
+                </Link>
+              </div>
+            </div>
+
+            {/* User Section - Vertically Centered */}
+            <div className="flex items-center">
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-700">
+                    Welcome, {user?.username}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">Not Logged In</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-[92rem] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
+    </div>
+  );
+}
+</file>
+
 <file path='frontend/app/help/page.tsx'>
 import React from 'react';
 import Link from 'next/link';
+import Layout from '@/components/Layout';
 
 // --- DATA DEFINITIONS (From USER_MANUAL_TECHNICAL_REF.md) ---
 
@@ -119,36 +220,12 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
   const isNewUser = searchParams?.new === 'true';
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 font-sans">
-      {/* Global Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <img src="/logo.png" alt="Evolutesix" className="h-8 w-auto" />
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link href="/" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Dashboard
-                </Link>
-                <Link href="/structure" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Structure
-                </Link>
-                <Link href="/help" className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Help Center
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 relative">
-        {/* Sidebar Navigation */}
-        <aside className="w-64 bg-white border-r border-gray-200 hidden lg:block fixed h-[calc(100vh-4rem)] overflow-y-auto top-16 left-0 z-10">
-          <div className="p-6">
-            <h1 className="text-xl font-bold text-indigo-600 mb-8">Help Topics</h1>
+    <Layout>
+      <div className="flex gap-8">
+        {/* Sidebar Navigation - Sticky */}
+        <aside className="w-64 flex-shrink-0 hidden lg:block">
+          <div className="sticky top-4 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h1 className="text-xl font-bold text-indigo-600 mb-6">Help Topics</h1>
             <nav className="space-y-1">
               <a href="#intro" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Introduction</a>
               <a href="#hierarchy" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">The Hierarchy</a>
@@ -164,7 +241,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 lg:ml-64 p-8 lg:p-12">
+        <div className="flex-1 min-w-0">
           <div className="max-w-5xl mx-auto space-y-16">
             
             {/* Welcome Hero Section (Visible only to new arrivals) */}
@@ -181,14 +258,67 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   <p>
                     The result is not a prediction, but clearer insight into survival, resilience, and downside risk — so you can compare strategies, adjust assumptions, and make better-informed decisions before capital and time are committed.
                   </p>
+                  
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>
+                      <strong>Structure:</strong> Go to the <Link href="/structure" className="text-yellow-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
+                    </li>
+                    <li>
+                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-yellow-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
+                    </li>
+                    <li>
+                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. Use the tabs to enter:
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Revenue items, Expense items, and Staffing items.</li>
+                        <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
+                        <li>Valuation model, Growth rates, and other parameters.</li>
+                      </ul>
+                    </li>
+                    <li>
+                      <strong>Projections:</strong> Finally, go to the Projections page. Use the <strong>dropdown menu</strong> to switch between views:
+                      <ul className="list-disc pl-5 mt-1">
+                        <li><strong>Conventional:</strong> Standard deterministic planning.</li>
+                        <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
+                        <li><strong>Monte Carlo:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
+                      </ul>
+                    </li>
+                  </ol>
+                  
                 </div>
                 <div className="mt-8">
-                  <Link href="/" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 shadow-sm">
-                    Go to Dashboard
-                  </Link>
+                <Link 
+                  href="/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 shadow-sm"
+                >
+                  Go to Dashboard
+                </Link>
                 </div>
               </div>
             )}
+
+
+            {/* Alpha Disclaimer */}
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md shadow-sm">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-bold text-yellow-800">Alpha Release Warning</h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      This software is in Alpha. Financial models are probabilistic estimations, not guarantees. 
+                      Results should be used for strategic planning and scenario analysis only, not as tax or investment advice.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
             {/* Quick Start Guide (Subsequent Visits) */}
             {!isNewUser && (
@@ -225,26 +355,6 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                 </div>
               </section>
             )}
-
-            {/* Alpha Disclaimer */}
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md shadow-sm">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-bold text-yellow-800">Alpha Release Warning</h3>
-                  <div className="mt-2 text-sm text-yellow-700">
-                    <p>
-                      This software is in Alpha. Financial models are probabilistic estimations, not guarantees. 
-                      Results should be used for strategic planning and scenario analysis only, not as tax or investment advice.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Introduction */}
             <section id="intro" className="scroll-mt-24">
@@ -457,296 +567,9 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
             </section>
 
           </div>
-        </main>
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path='frontend/components/forms/AuthForm.tsx'>
-"use client";
-
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import InfoTag from '@/components/ui/InfoTag';
-
-interface AuthFormProps {
-  mode: 'login' | 'register';
-  onSubmit: (data: any) => Promise<void>;
-}
-
-export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
-  const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [isStudent, setIsStudent] = useState(false);
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleStudentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    setIsStudent(checked);
-    if (checked) {
-      setCompanyName('Individual');
-    } else {
-      setCompanyName('');
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!username || !password) {
-      setError('Username and password are required.');
-      return;
-    }
-
-    if (mode === 'register') {
-      if (!fullName) {
-        setError('Full Name is required.');
-        return;
-      }
-      if (!email) {
-        setError('Email is required.');
-        return;
-      }
-      if (!companyName) {
-        setError('Company / Organization Name is required.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Passwords do not match.');
-        return;
-      }
-    }
-
-    setLoading(true);
-    try {
-      if (mode === 'register') {
-        await onSubmit({ username, email, password, full_name: fullName, company_name: companyName });
-        // Redirect to Help page with new flag for new users
-        router.push('/help?new=true');
-      } else {
-        await onSubmit({ username, password });
-        // Redirect to Dashboard for returning users
-        router.push('/');
-      }
-    } catch (err: any) {
-      console.error(err);
-      
-      // Debugging 422: Show raw JSON
-      setError(JSON.stringify(err.response?.data) || err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4">
-      
-      {/* Branding Logo */}
-      <img 
-        src="/logo.png" 
-        alt="Logo" 
-        className="h-16 w-auto mb-8 mx-auto block" 
-      />
-
-      <div className="flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-md md:flex-row">
-        
-        {/* Left Column: Marketing & Disclaimer (Visible on md+) */}
-        <div className="hidden w-full flex-col bg-indigo-700 p-10 text-white md:flex md:w-1/2">
-          <h2 className="mb-6 text-3xl font-bold">Master Your Financial Future</h2>
-          <div className="space-y-4 text-indigo-100">
-            <p>
-              A sophisticated simulation tool designed to model the survival and growth of startups, SMEs, 
-              and the funds that invest in them. Replaces your conventional business / portfolio planning, 
-              because standard business / portfolio planning tools are blind to the
-              losses caused by volatility drag and all other forms of non-ergodic dynamics. This software
-              does capture the non-ergodic dynamics, and uses Monte Carlo simulations to give you a far 
-              superior way of assessing if your venture / fund is likely to succeed. Or not. Because you now 
-              account for real-world volatility, and so can identify and remedy risks standard tools hide.
-            </p>
-            <p className="text-sm opacity-80">
-              This app is based on the book <i>The Ergodic Investor and Entrepreneur</i> by Graham Boyd and 
-              Jack Reardon. 
-            </p>
-          </div>
-        </div>
-
-        {/* Right Column: Form */}
-        <div className="w-full p-8 md:w-1/2">
-          <h2 className="mb-6 text-center text-2xl font-bold text-gray-900">
-            {mode === 'login' ? 'Sign In' : 'Create Account'}
-          </h2>
-          
-          {error && (
-            <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-500 border border-red-200 break-words whitespace-pre-wrap">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="username">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter your username"
-                required
-              />
-            </div>
-
-            {mode === 'register' && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="fullName">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Enter your full name"
-                  required
-                />
-              </div>
-            )}
-
-            {mode === 'register' && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="email">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Enter your email"
-                  required
-                />
-              </div>
-            )}
-
-            {mode === 'register' && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="companyName">
-                  Company / Organization Name
-                </label>
-                <input
-                  id="companyName"
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  disabled={isStudent}
-                  className={`w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${isStudent ? 'bg-gray-100 text-gray-500' : ''}`}
-                  placeholder={isStudent ? "Individual" : "Enter company name"}
-                  required={!isStudent}
-                />
-                <div className="mt-2 flex items-center">
-                  <input
-                    id="isStudent"
-                    type="checkbox"
-                    checked={isStudent}
-                    onChange={handleStudentChange}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label htmlFor="isStudent" className="ml-2 block text-sm text-gray-900">
-                    I am a student / individual
-                  </label>
-                  <InfoTag content="Automatically sets Company Name to 'Individual' and disables the field. Use this if you don't have a registered business entity." />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-
-            {mode === 'register' && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="confirmPassword">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Confirm your password"
-                  required
-                />
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded bg-blue-600 py-2 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
-            >
-              {loading ? 'Processing...' : mode === 'login' ? 'Login' : 'Register'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            {mode === 'login' ? (
-              <p>
-                Don't have an account?{' '}
-                <Link href="/register" className="font-medium text-blue-600 hover:underline">
-                  Register
-                </Link>
-              </p>
-            ) : (
-              <p>
-                Already have an account?{' '}
-                <Link href="/login" className="font-medium text-blue-600 hover:underline">
-                  Login
-                </Link>
-              </p>
-            )}
-          </div>
-
-          {/* Alpha Disclaimer (Bottom of White Card) */}
-          <div className="mt-8 border-t border-gray-100 pt-4 text-xs text-gray-400">
-            <p className="font-semibold uppercase tracking-wider text-gray-500 mb-1">Disclaimer</p>
-            <p>
-              This app is provided for educational purposes only. The output is not advice in any form, 
-              certainly neither investment nor legal advice. To the fullest extent of the law, no liability 
-              will be accepted, neither by Evolutesix nor the author(s) for any loss related to this content. 
-              This is an alpha release for early developmental testing, feedback, and educational purposes only.
-              We may at any stage need to do a complete clean reset, at which point all of your data and 
-              login details may be lost.
-             </p>
-          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }
 </file>

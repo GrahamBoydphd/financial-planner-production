@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Layout from '@/components/Layout';
 
 // --- DATA DEFINITIONS (From USER_MANUAL_TECHNICAL_REF.md) ---
 
@@ -117,36 +118,12 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
   const isNewUser = searchParams?.new === 'true';
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 font-sans">
-      {/* Global Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <img src="/logo.png" alt="Evolutesix" className="h-8 w-auto" />
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link href="/" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Dashboard
-                </Link>
-                <Link href="/structure" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Structure
-                </Link>
-                <Link href="/help" className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Help Center
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 relative">
-        {/* Sidebar Navigation */}
-        <aside className="w-64 bg-white border-r border-gray-200 hidden lg:block fixed h-[calc(100vh-4rem)] overflow-y-auto top-16 left-0 z-10">
-          <div className="p-6">
-            <h1 className="text-xl font-bold text-indigo-600 mb-8">Help Topics</h1>
+    <Layout>
+      <div className="flex gap-8">
+        {/* Sidebar Navigation - Sticky */}
+        <aside className="w-64 flex-shrink-0 hidden lg:block">
+          <div className="sticky top-4 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h1 className="text-xl font-bold text-indigo-600 mb-6">Help Topics</h1>
             <nav className="space-y-1">
               <a href="#intro" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Introduction</a>
               <a href="#hierarchy" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">The Hierarchy</a>
@@ -162,7 +139,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 lg:ml-64 p-8 lg:p-12">
+        <div className="flex-1 min-w-0">
           <div className="max-w-5xl mx-auto space-y-16">
             
             {/* Welcome Hero Section (Visible only to new arrivals) */}
@@ -488,8 +465,8 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
             </section>
 
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 }
