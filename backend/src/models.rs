@@ -4,6 +4,27 @@ use uuid::Uuid;
 use chrono::{NaiveDate, DateTime, Utc};
 use rust_decimal::Decimal;
 
+// --- Phase 0: Multi-Tenancy & Auth ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Tenant {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub full_name: String,
+    pub tenant_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
 // --- Phase 3: Portfolio Structure ---
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -12,6 +33,7 @@ pub struct Fund {
     pub user_id: Uuid,
     pub name: String,
     pub created_at: DateTime<Utc>,
+    pub tenant_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -23,6 +45,7 @@ pub struct Company {
     pub industry: Option<String>,
     pub business_model: Option<String>,
     pub technology: Option<String>,
+    pub tenant_id: Uuid,
 }
 
 // --- Phase 1 & 2: Financial Models ---
@@ -35,7 +58,9 @@ pub struct FinancialPlan {
     pub start_month: NaiveDate,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub initial_cash: Decimal,
     pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
+    pub tenant_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -59,6 +84,7 @@ pub struct RevenueItem {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -82,6 +108,7 @@ pub struct ExpenseItem {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -91,6 +118,7 @@ pub struct CapitalInjection {
     pub name: String,
     pub amount: Decimal,
     pub month: i32,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -100,6 +128,7 @@ pub struct DividendPolicy {
     pub is_enabled: bool,
     pub safety_threshold: Decimal,
     pub payout_ratio: Decimal,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -109,27 +138,30 @@ pub struct CreditFacility {
     pub facility_limit: Decimal,
     pub interest_rate: Decimal,
     pub is_annual_rate: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct ValuationAssumption {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub valuation_name: String,
     pub method: String,
     pub multiplier: Decimal,
     pub date_applied: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct EventShock {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub event_name: String,
     pub shock_month: i32,
     pub impact_type: String,
     pub impact_value: Decimal,
     pub duration_months: Option<i32>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Serialize, FromRow)]
@@ -146,6 +178,7 @@ pub struct CapitalGrowthPolicy {
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub growth_rate_percent: Option<Decimal>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -179,6 +212,36 @@ pub struct StaffingRole {
     pub hiring_plan: String, // "fixed_count" or "monthly_rate"
     pub hiring_rate: Option<i32>, // e.g., 1 = hire every month, 2 = hire every 2 months
     
-    pub annual_increase: Decimal,
+    pub annual_increase_percent: Decimal,
     pub created_at: DateTime<Utc>,
+}
+
+// --- Auth DTOs ---
+
+#[derive(Deserialize, Debug)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+    pub full_name: String,
+    pub email: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user_id: Uuid,
+    pub tenant_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub tenant_id: uuid::Uuid,
+    pub exp: usize,
 }

@@ -11,6 +11,16 @@ SSH_KEY="~/.ssh/id_ed25519_Scaleway_EIS-Financial-Planning-Dev-SSH-key"
 # 3. Server Directory
 SERVER_DIR="~/app"
 
+# ---------------------------------------------------------
+# Parse Arguments
+# ---------------------------------------------------------
+if [ "$#" -ne 1 ]; then
+    echo "Usage: ./scripts/trigger-update.sh \"repo branch\" "
+    exit 1
+fi
+
+GIT_BRANCH="$1"
+
 echo "🚀 Triggering remote update on $SERVER_HOST..."
 
 ssh -i $SSH_KEY $SERVER_HOST << EOF
@@ -21,7 +31,7 @@ ssh -i $SSH_KEY $SERVER_HOST << EOF
 
     echo "⬇️  Pulling changes from GitHub..."
     # You mentioned using this branch name earlier
-    git pull origin cloud-v1-release
+    git pull origin $GIT_BRANCH
 
     echo "🏗️  Compiling and Rebuilding (Production)..."
     

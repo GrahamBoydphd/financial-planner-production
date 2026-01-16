@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 export interface CapitalItem {
   id: string;
   name: string;
-  amount: number;
+  amount: string; // Strict Type: String from backend (Decimal)
   month: number;
 }
 
@@ -57,7 +57,7 @@ export default function CapitalList({ items, onDelete }: Props) {
           {/* Right: Amount and Delete */}
           <div className="flex items-center gap-4">
             <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded text-sm">
-              +${item.amount.toLocaleString()}
+              +${Number(item.amount).toLocaleString()}
             </span>
             
             <button

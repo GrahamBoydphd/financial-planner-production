@@ -14,6 +14,18 @@ interface StaffingFormProps {
   onDelete: (roleId: string) => Promise<void>
 }
 
+// Local interface for form state to handle string inputs for precision
+interface StaffingRoleFormState {
+  id?: string
+  role_name: string
+  annual_salary: string
+  start_month: number
+  target_count: number
+  hiring_plan: "fixed_count" | "monthly_rate"
+  hiring_rate?: number
+  annual_increase: string
+}
+
 // Helper to format currency
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -27,8 +39,12 @@ const formatCurrency = (value: number) => {
 export default function StaffingForm({ planId, initialRoles, onSave, onDelete }: StaffingFormProps) {
   const [roles, setRoles] = useState<StaffingRole[]>(initialRoles)
   const [isEditing, setIsEditing] = useState(false)
-  const [currentRole, setCurrentRole] = useState<Partial<StaffingRole>>({})
-  const [error, setError] = useState<string | null>(null)
+
+  // State uses string for money/percent fields to allow precise editing
+  const [currentRole, setCurrentRole] = useState<Partial<StaffingRoleFormState>>({})
+
+  const [globalError, setGlobalError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
 
   // Update local state when initialRoles changes
@@ -39,25 +55,33 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
   const handleAddNew = () => {
     setCurrentRole({
       role_name: "",
-      annual_salary: 50000,
+      annual_salary: "50000",
       start_month: 1,
       target_count: 1,
       hiring_plan: "fixed_count",
       hiring_rate: 1,
-      annual_increase: 3.0 // Default to 3.0% for the input
+      annual_increase: "3.0"
     })
     setIsEditing(true)
-    setError(null)
+    setGlobalError(null)
+    setFieldErrors({})
   }
 
   const handleEdit = (role: StaffingRole) => {
     setCurrentRole({ 
-      ...role,
-      // Convert decimal (0.03) to percentage (3.0) for editing
-      annual_increase: (role.annual_increase || 0) * 100 
+      id: role.id,
+      role_name: role.role_name,
+      annual_salary: role.annual_salary.toString(),
+      start_month: role.start_month,
+      target_count: role.target_count,
+      hiring_plan: role.hiring_plan as "fixed_count" | "monthly_rate",
+      hiring_rate: role.hiring_rate ? Number(role.hiring_rate) : undefined,
+      // Use raw percentage directly
+      annual_increase: role.annual_increase_percent || "0"
     })
     setIsEditing(true)
-    setError(null)
+    setGlobalError(null)
+    setFieldErrors({})
   }
 
   const handleDelete = async (id: string) => {
@@ -68,7 +92,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
         setRoles(roles.filter(r => r.id !== id))
       } catch (err) {
         console.error("Failed to delete role:", err)
-        setError("Failed to delete role. Please try again.")
+        setGlobalError("Failed to delete role. Please try again.")
       } finally {
         setIsLoading(false)
       }
@@ -78,40 +102,79 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
   const handleCancel = () => {
     setIsEditing(false)
     setCurrentRole({})
-    setError(null)
+    setGlobalError(null)
+    setFieldErrors({})
+  }
+
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!currentRole.role_name?.trim()) {
+      errors.role_name = "Role Name is required"
+    }
+
+    if (!currentRole.annual_salary || isNaN(parseFloat(currentRole.annual_salary))) {
+      errors.annual_salary = "Valid Annual Salary is required"
+    }
+
+    if (!currentRole.target_count || currentRole.target_count < 1) {
+      errors.target_count = "Target count must be at least 1"
+    }
+
+    if (!currentRole.start_month || currentRole.start_month < 1) {
+      errors.start_month = "Start month must be at least 1"
+    }
+
+    if (currentRole.hiring_plan === "monthly_rate") {
+        if (!currentRole.hiring_rate || currentRole.hiring_rate < 1) {
+            errors.hiring_rate = "Hiring pace must be at least 1"
+        }
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!currentRole.role_name) {
-      setError("Role Name is required")
+    if (!validate()) {
       return
     }
 
     try {
       setIsLoading(true)
+
+      // Prepare payload
+      const salaryVal = parseFloat(currentRole.annual_salary || "0")
+      const salaryPayload = salaryVal.toFixed(2) // "50000.00"
+
+      // Annual Increase: User enters "3.5" (%), we send "3.5"
+      const increaseVal = parseFloat(currentRole.annual_increase || "0")
+      const increasePayload = increaseVal.toString()
+
       const roleData = {
-        role_name: currentRole.role_name,
-        annual_salary: Number(currentRole.annual_salary) || 0,
+        role_name: currentRole.role_name!,
+        annual_salary: salaryPayload,
         start_month: Number(currentRole.start_month) || 1,
         target_count: Number(currentRole.target_count) || 1,
         hiring_plan: currentRole.hiring_plan || "fixed_count",
         hiring_rate: currentRole.hiring_plan === "monthly_rate" ? (Number(currentRole.hiring_rate) || 1) : undefined,
-        // Convert percentage (3.5) back to decimal (0.035) for saving
-        annual_increase: (Number(currentRole.annual_increase) || 0) / 100
+        annual_increase_percent: increasePayload
       }
 
+      // Cast to any to satisfy TS if onSave expects numbers, as we are sending strings for precision
       await onSave({
         ...roleData,
         id: currentRole.id 
-      })
+      } as any)
 
       setIsEditing(false)
       setCurrentRole({})
+      setFieldErrors({})
     } catch (err) {
       console.error("Failed to save role:", err)
-      setError("Failed to save role. Please check your inputs.")
+      setGlobalError("Failed to save role. Please check your inputs.")
     } finally {
       setIsLoading(false)
     }
@@ -136,10 +199,10 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
           )}
         </div>
       
-        {error && (
+        {globalError && (
           <div className="bg-red-50 text-red-700 p-3 rounded mb-4 border border-red-200">
             <h4 className="font-bold text-sm">Error</h4>
-            <p className="text-sm">{error}</p>
+            <p className="text-sm">{globalError}</p>
           </div>
         )}
 
@@ -156,13 +219,14 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                   value={currentRole.role_name || ""}
                   onChange={(e) => setCurrentRole({ ...currentRole, role_name: e.target.value })}
                   placeholder="e.g. Sales Representative"
-                  className="w-full rounded border-gray-300 border p-2 text-sm"
+                  className={`w-full rounded border p-2 text-sm ${fieldErrors.role_name ? 'border-red-500' : 'border-gray-300'}`}
                 />
+                {fieldErrors.role_name && <p className="text-xs text-red-500">{fieldErrors.role_name}</p>}
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="annual_salary" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Annual Salary
+                  Annual Salary <span className="text-red-500">*</span>
                   <Tooltip content="Base annual salary per person in this role." />
                 </label>
                 <div className="relative">
@@ -171,17 +235,18 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                     id="annual_salary"
                     type="number"
                     min="0"
-                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
+                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.annual_salary ? 'border-red-500' : 'border-gray-300'}`}
                     value={currentRole.annual_salary || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, annual_salary: parseFloat(e.target.value) })}
+                    onChange={(e) => setCurrentRole({ ...currentRole, annual_salary: e.target.value })}
                   />
                 </div>
+                {fieldErrors.annual_salary && <p className="text-xs text-red-500">{fieldErrors.annual_salary}</p>}
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="hiring_plan" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                   Hiring Plan
-                  <Tooltip content="How employees are added over time." />
+                  <Tooltip content="How employees are added over time (Fixed Count or Monthly Rate)." />
                 </label>
                 <div className="relative">
                   <Briefcase className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
@@ -199,7 +264,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
 
               <div className="space-y-2">
                 <label htmlFor="target_count" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Target Headcount
+                  Target Headcount <span className="text-red-500">*</span>
                   <Tooltip content="Maximum number of people to hire for this role." />
                 </label>
                 <div className="relative">
@@ -209,17 +274,18 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                     type="number"
                     min="1"
                     step="1"
-                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
+                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.target_count ? 'border-red-500' : 'border-gray-300'}`}
                     value={currentRole.target_count || ""}
                     onChange={(e) => setCurrentRole({ ...currentRole, target_count: parseInt(e.target.value) })}
                   />
                 </div>
+                {fieldErrors.target_count && <p className="text-xs text-red-500">{fieldErrors.target_count}</p>}
               </div>
 
               {currentRole.hiring_plan === "monthly_rate" && (
                 <div className="space-y-2">
                   <label htmlFor="hiring_rate" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                    Hiring Pace (Months per Hire)
+                    Hiring Pace (Months per Hire) <span className="text-red-500">*</span>
                     <Tooltip content="Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly)." />
                   </label>
                   <div className="relative">
@@ -229,17 +295,18 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                       type="number"
                       min="1"
                       step="1"
-                      className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
+                      className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.hiring_rate ? 'border-red-500' : 'border-gray-300'}`}
                       value={currentRole.hiring_rate || ""}
                       onChange={(e) => setCurrentRole({ ...currentRole, hiring_rate: parseInt(e.target.value) })}
                     />
                   </div>
+                  {fieldErrors.hiring_rate && <p className="text-xs text-red-500">{fieldErrors.hiring_rate}</p>}
                 </div>
               )}
 
               <div className="space-y-2">
                 <label htmlFor="start_month" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Start Month
+                  Start Month <span className="text-red-500">*</span>
                   <Tooltip content="Month number (1-60) when hiring begins." />
                 </label>
                 <div className="relative">
@@ -249,11 +316,12 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                     type="number"
                     min="1"
                     max="60"
-                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
+                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.start_month ? 'border-red-500' : 'border-gray-300'}`}
                     value={currentRole.start_month || ""}
                     onChange={(e) => setCurrentRole({ ...currentRole, start_month: parseInt(e.target.value) })}
                   />
                 </div>
+                {fieldErrors.start_month && <p className="text-xs text-red-500">{fieldErrors.start_month}</p>}
               </div>
 
               <div className="space-y-2">
@@ -271,7 +339,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                     max="100"
                     className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
                     value={currentRole.annual_increase || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, annual_increase: parseFloat(e.target.value) })}
+                    onChange={(e) => setCurrentRole({ ...currentRole, annual_increase: e.target.value })}
                   />
                 </div>
                 <p className="text-xs text-gray-500 text-right">
@@ -313,7 +381,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                   roles.map((role) => (
                     <tr key={role.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium">{role.role_name}</td>
-                      <td className="px-4 py-3">{formatCurrency(role.annual_salary)}</td>
+                      <td className="px-4 py-3">{formatCurrency(Number(role.annual_salary))}</td>
                       <td className="px-4 py-3">
                         {role.hiring_plan === "monthly_rate" 
                           ? `Ramp (1/${role.hiring_rate || 1}mo)` 

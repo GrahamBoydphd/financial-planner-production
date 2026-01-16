@@ -5,17 +5,13 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import { api, Fund, Company } from '@/lib/api';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export default function FundPage({ params }: { params: { fundId: string } }) {
   const { fundId } = params;
   const [fund, setFund] = useState<Fund | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Create Company State
-  const [isCreating, setIsCreating] = useState(false);
-  const [newCoName, setNewCoName] = useState('');
-  const [newCoIndustry, setNewCoIndustry] = useState('');
 
   const loadData = async () => {
     try {
@@ -38,59 +34,32 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
     loadData();
   }, [fundId]);
 
-  const handleCreateCompany = async () => {
-    if (!newCoName) return;
-    await api.createCompany(newCoName, fundId, newCoIndustry);
-    setNewCoName('');
-    setNewCoIndustry('');
-    setIsCreating(false);
-    loadData();
-  };
-
   if (loading) return <Layout>Loading...</Layout>;
   if (!fund) return <Layout>Fund not found</Layout>;
 
   return (
     <Layout>
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/" className="hover:underline">Dashboard</Link>
-        <span>/</span>
-        <span>{fund.name}</span>
-      </div>
+      <nav className='mb-6'>
+        <Link href='/' className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Back to Dashboard
+        </Link>
+      </nav>
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">{fund.name} <span className="text-gray-400 text-lg">Portfolio</span></h1>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 font-medium"
-        >
-          + Add Company
-        </button>
-      </div>
-
-      {isCreating && (
-        <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded animate-fade-in">
-            <h3 className="font-bold text-purple-800 mb-2">Add Portfolio Company</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <input 
-                    className="border p-2 rounded" 
-                    placeholder="Company Name" 
-                    value={newCoName}
-                    onChange={(e) => setNewCoName(e.target.value)}
-                />
-                <input 
-                    className="border p-2 rounded" 
-                    placeholder="Industry (e.g. SaaS)" 
-                    value={newCoIndustry}
-                    onChange={(e) => setNewCoIndustry(e.target.value)}
-                />
-                <div className="flex gap-2">
-                    <button onClick={handleCreateCompany} className="bg-purple-600 text-white px-4 py-2 rounded font-bold w-full">Save</button>
-                    <button onClick={() => setIsCreating(false)} className="text-gray-500 px-4 py-2">Cancel</button>
-                </div>
-            </div>
+        <div className="flex flex-col items-end">
+          <Link
+            href="/structure#add-company"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors"
+          >
+            + Add Company
+          </Link>
+          <span className="text-xs text-gray-500 mt-1 max-w-[250px] text-right">
+            Companies must be added via the Holding Structure to ensure all parameters are set correctly.
+          </span>
         </div>
-      )}
+      </div>
 
       {companies.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded border border-dashed">

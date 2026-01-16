@@ -1,653 +1,643 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='frontend/app/plan/[planId]/results/page.tsx'>
-'use client';
+<file path='backend/src/models.rs'>
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
+use chrono::{NaiveDate, DateTime, Utc};
+use rust_decimal::Decimal;
 
-import { useEffect, useState } from 'react';
-import Layout from '@/components/Layout';
-import Card from '@/components/ui/Card';
-import CashFlowChart from '@/components/CashFlowChart';
-import Button from '@/components/ui/Button';
-import { api, FinancialPlan, CapitalInjection, DividendPolicy, CreditFacility, ValuationAssumption } from '@/lib/api';
+// --- Phase 0: Multi-Tenancy & Auth ---
 
-// --- COMPONENT: KPI CARDS ---
-interface KPIProps {
-  simMode: string;
-  projection: any;
-  creditLimit: string;
-  stopInsolvency: boolean;
-  currency: string;
-  valuationMethod: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Tenant {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
 }
 
-const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, valuationMethod }: KPIProps) => {
-    if (!projection) return null;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub full_name: String,
+    pub tenant_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
 
-    // Helper to format with currency
-    const fmt = (n: any) => 
-        `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+// --- Phase 3: Portfolio Structure ---
 
-    const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
-    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1] || lastData;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Fund {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub tenant_id: Uuid,
+}
 
-    let totalVal = lastData.total_value;
-    let valuation = projection.deterministic_valuation;
-    let subtitle = 'Deterministic Average';
-    let insolvencyMonth = -1;
-    let runwayVal: number | string = 'Infinite';
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Company {
+    pub id: Uuid,
+    pub fund_id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub industry: Option<String>,
+    pub business_model: Option<String>,
+    pub technology: Option<String>,
+    pub tenant_id: Uuid,
+}
 
-    const checkInsolvency = (dataArray: any[]) => {
-        if (!dataArray) return -1;
-        const idx = dataArray.findIndex(m => m.is_insolvent || Number(m.cash_balance) < -(Number(creditLimit) || 0));
-        return idx !== -1 ? dataArray[idx].month_index : -1;
-    };
+// --- Phase 1 & 2: Financial Models ---
 
-    // RUNWAY CALCULATION HELPER
-    const calculateRunway = (cash: number, netIncome: number) => {
-        if (netIncome >= 0) return 'Infinite';
-        const burn = -netIncome;
-        const available = cash + Number(creditLimit);
-        if (available <= 0) return 0;
-        return Math.floor(available / burn);
-    };
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct FinancialPlan {
+    pub id: Uuid,
+    pub company_id: Uuid,
+    pub name: String,
+    pub start_month: NaiveDate,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub initial_cash: Decimal,
+    pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
+    pub tenant_id: Uuid,
+}
 
-    if (simMode === 'single') {
-        totalVal = singleLastData.total_value;
-        valuation = projection.single_run_valuation;
-        subtitle = 'Single Run Result';
-        if (projection.single_run_data) {
-            insolvencyMonth = checkInsolvency(projection.single_run_data);
-            runwayVal = calculateRunway(Number(singleLastData.cash_balance), Number(singleLastData.net_income));
-        }
-    } else if (simMode === 'monte_carlo') {
-        totalVal = projection.p50_value?.[projection.p50_value.length - 1] || 0;
-        valuation = projection.p50_valuation;
-        subtitle = 'Median (P50)';
-        runwayVal = projection.p50_runway ?? 'Infinite';
-        
-    } else {
-        // Standard
-        insolvencyMonth = checkInsolvency(projection.deterministic_data);
-        runwayVal = calculateRunway(Number(lastData.cash_balance), Number(lastData.net_income));
-    }
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct RevenueItem {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub source: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub growth_rate_percent: Decimal,
+    pub frequency: String,
+    pub cost_of_revenue_percent: Option<Decimal>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+}
 
-    const p90Val = projection.p90_value?.[projection.p90_value.length - 1] || 0;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ExpenseItem {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub growth_rate_percent: Decimal,
+    pub frequency: String,
+    pub pct_of_revenue: Option<Decimal>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+}
 
-    return (
-      <>
-        <Card className="text-center border-b-4 border-gray-500 mb-4">
-          <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value (Cash+Divs)</h3>
-          <p className={`text-2xl font-bold ${totalVal < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-            {fmt(totalVal)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-        </Card>
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CapitalInjection {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub amount: Decimal,
+    pub month: i32,
+    pub created_at: DateTime<Utc>,
+}
 
-        {simMode === 'monte_carlo' && (
-          <Card className="text-center border-b-4 border-blue-600 mb-4">
-            <h3 className="text-blue-700 text-xs uppercase font-bold">Upside (P90)</h3>
-            <p className={`text-2xl font-bold ${p90Val < 0 ? 'text-red-600' : 'text-blue-700'}`}>
-              {fmt(p90Val)}
-            </p>
-          </Card>
-        )}
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct DividendPolicy {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub is_enabled: bool,
+    pub safety_threshold: Decimal,
+    pub payout_ratio: Decimal,
+    pub created_at: DateTime<Utc>,
+}
 
-        <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">Valuation (Est)</h3>
-            <p className="text-2xl font-bold text-green-600">{fmt(valuation)}</p>
-            <p className="text-xs text-gray-400 mt-1">
-                {valuationMethod === 'ebitda' ? 'Based on EBITDA' : 'Based on Final Revenue'}
-            </p>
-        </Card>
-        
-        <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">
-                {simMode === 'monte_carlo' ? 'Runway (Median, P50)' : 'Runway'}
-            </h3>
-            {insolvencyMonth !== -1 ? (
-                <div className="text-red-600">
-                    <p className="text-xl font-bold">Insolvent in Month {insolvencyMonth}</p>
-                    <p className="text-xs mt-1">
-                        {stopInsolvency ? 'Trading Stopped' : 'Showing fantasy projection'}
-                    </p>
-                </div>
-            ) : runwayVal === 0 ? (
-                <p className="text-2xl font-bold text-red-600">Insolvent (0 Mo)</p>
-            ) : runwayVal !== 'Infinite' ? (
-                <p className="text-2xl font-bold text-purple-600">{runwayVal} Mo</p>
-            ) : (
-                <p className="text-2xl font-bold text-purple-600">Infinite</p>
-            )}
-        </Card>
-      </>
-    );
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CreditFacility {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub facility_limit: Decimal,
+    pub interest_rate: Decimal,
+    pub is_annual_rate: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ValuationAssumption {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub valuation_name: String,
+    pub method: String,
+    pub multiplier: Decimal,
+    pub date_applied: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct EventShock {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub event_name: String,
+    pub shock_month: i32,
+    pub impact_type: String,
+    pub impact_value: Decimal,
+    pub duration_months: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, FromRow)]
+pub struct CapitalGrowthPolicy {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub growth_rate_percent: Option<Decimal>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateFundRequest {
+    pub name: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateCompanyRequest {
+    pub fund_id: uuid::Uuid,
+    pub name: String,
+    pub business_model: Option<String>,
+    pub industry: Option<String>,
+    pub technology: Option<String>,
+}
+
+// --- Point 9: Staffing & Payroll ---
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct StaffingRole {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub role_name: String,
+    pub annual_salary: Decimal,
+    pub start_month: i32,
+
+    // Renamed from 'count' to 'target_count' to match sophisticated logic
+    // Assumes DB column is 'target_count'
+    pub target_count: i32,
+
+    // New Fields for Sophisticated Logic
+    pub hiring_plan: String, // "fixed_count" or "monthly_rate"
+    pub hiring_rate: Option<i32>, // e.g., 1 = hire every month, 2 = hire every 2 months
+
+    pub annual_increase_percent: Decimal,
+    pub created_at: DateTime<Utc>,
+}
+
+// --- Auth DTOs ---
+
+#[derive(Deserialize, Debug)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+    pub full_name: String,
+    pub email: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user_id: Uuid,
+    pub tenant_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub tenant_id: uuid::Uuid,
+    pub exp: usize,
+}
+</file>
+
+<file path='backend/src/handlers/plans.rs'>
+use axum::{
+    extract::{Path, State, Query, Extension},
+    http::StatusCode,
+    Json,
 };
+use serde::{Deserialize};
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use crate::models::{FinancialPlan, Claims};
+use crate::errors::AppError;
+use crate::projection::{generate_simulation, SimulationResult};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+use chrono::NaiveDate;
+use std::str::FromStr;
 
-// --- MAIN PAGE COMPONENT ---
-export default function ResultsPage({ params }: { params: { planId: string } }) {
-  const { planId } = params;
-  const [plan, setPlan] = useState<FinancialPlan | null>(null);
-  const [projection, setProjection] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [updatingPooling, setUpdatingPooling] = useState(false);
-   
-  // Financial State
-  const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [dividendPolicy, setDividendPolicy] = useState<DividendPolicy | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [creditFacility, setCreditFacility] = useState<CreditFacility | null>(null);
-   
-  // Forms State
-  const [newCapName, setNewCapName] = useState('');
-  const [newCapAmount, setNewCapAmount] = useState('');
-  const [newCapMonth, setNewCapMonth] = useState('');
+#[derive(Deserialize)]
+pub struct CreatePlanRequest {
+    pub company_id: Uuid,
+    pub name: String,
+    pub start_month: String, // YYYY-MM-01
+}
 
-  const [divEnabled, setDivEnabled] = useState(false);
-  const [divThreshold, setDivThreshold] = useState('50000');
-  const [divRatio, setDivRatio] = useState('20');
+#[derive(Deserialize)]
+pub struct UpdatePlanRequest {
+    pub name: Option<String>,
+    pub start_month: Option<String>,
+    pub pooling_fraction: Option<Decimal>,
+    pub initial_cash: Option<String>,
+}
 
-  const [creditLimit, setCreditLimit] = useState('0');
-  const [creditRate, setCreditRate] = useState('10');
-  const [creditIsAnnual, setCreditIsAnnual] = useState(true);
+pub async fn create_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Json(payload): Json<CreatePlanRequest>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let plan = sqlx::query_as!(
+        FinancialPlan,
+        "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
+        payload.company_id,
+        payload.name,
+        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
+        claims.tenant_id
+    )
+    .fetch_one(&pool)
+    .await?;
 
-  const [valMultiple, setValMultiple] = useState('5'); 
-  const [valuationMethod, setValuationMethod] = useState('revenue');
+    Ok(Json(plan))
+}
 
-  // Controls
-  const [years, setYears] = useState(5);
-  const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
-  const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
-  const [stopInsolvency, setStopInsolvency] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
-  // Non-Ergodicity State
-  const [poolingFraction, setPoolingFraction] = useState(0);
-  
-  // UI Settings
-  const [currency, setCurrency] = useState(''); // Default None
+pub async fn update_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdatePlanRequest>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let start_date = payload.start_month
+        .as_deref()
+        .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+        .flatten();
 
-  // --- DATA LOADING ---
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const p = await api.getPlan(planId);
-        setPlan(p);
-        // Sync slider with DB state on reload
-        setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
-        
-        const caps = await api.getCapitalInjections(planId);
-        setCapitalItems(caps);
-        
-        try {
-          const div = await api.getDividends(planId);
-          setDividendPolicy(div);
-          setDivEnabled(div.is_enabled);
-          setDivThreshold(div.safety_threshold.toString());
-          setDivRatio(div.payout_ratio.toString());
-        } catch { /* No policy set */ }
+    let initial_cash = payload.initial_cash
+        .as_deref()
+        .map(|s| Decimal::from_str(s).ok())
+        .flatten();
 
-        try {
-          const cred = await api.getCredit(planId);
-          setCreditFacility(cred);
-          setCreditLimit(cred.facility_limit.toString());
-          setCreditRate(cred.interest_rate.toString());
-          setCreditIsAnnual(cred.is_annual_rate);
-        } catch { /* No credit set */ }
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
+        FinancialPlan,
+        "UPDATE financial_plans
+         SET name = COALESCE($1, name),
+             start_month = COALESCE($2, start_month),
+             pooling_fraction = COALESCE($3, pooling_fraction),
+             initial_cash = COALESCE($4, initial_cash),
+             updated_at = NOW()
+         WHERE id = $5 AND tenant_id = $6
+         RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
+        payload.name,
+        start_date,
+        payload.pooling_fraction,
+        initial_cash,
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
 
-        try {
-          const vals = await api.getValuation(planId);
-          if (vals && vals.length > 0) {
-             const latest = vals[vals.length - 1];
-             setValMultiple(latest.multiplier.toString());
-             setValuationMethod(latest.method);
-          }
-        } catch { /* No valuation set */ }
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
-        // Use standard or monte_carlo depending on UI
-        const backendMode = simMode === 'monte_carlo' ? 'monte_carlo' : 'single';
-        const proj = await api.getProjection(planId, {
-           mode: backendMode,
-           stop_insolvency: stopInsolvency,
-           initial_cash: p.initial_cash, // Pass initial cash from plan
-           months: years * 12 // FIX: Pass months based on years selector
-        });
+    Ok(Json(plan))
+}
 
-        if (proj.valuation_method) {
-            setValuationMethod(proj.valuation_method);
-        }
-        
-        // --- DATA MAPPING FOR TABLE ---
-        let sourceData = proj.deterministic_data;
-        if (backendMode === 'single' && proj.single_run_data) {
-           sourceData = proj.single_run_data;
-        }
+pub async fn get_all_plans(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<FinancialPlan>>, AppError> {
+    let plans = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
+        claims.tenant_id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-        const tableData = sourceData.map((m: any, i: number) => {
-           let cumulative_pool_received = m.cumulative_pool_received;
-           let total_value = m.total_value;
-           let cash_balance = m.cash_balance;
+    Ok(Json(plans))
+}
 
-           // If Monte Carlo, override specific columns with P50 data to match chart
-           if (simMode === 'monte_carlo') {
-               if (proj.p50_pool_cumulative && proj.p50_pool_cumulative[i] !== undefined) {
-                   cumulative_pool_received = proj.p50_pool_cumulative[i];
-               }
-               if (proj.p50_value && proj.p50_value[i] !== undefined) {
-                   total_value = proj.p50_value[i];
-                   // Derive cash balance to keep row consistent: Cash = Total - Divs
-                   // We use the median run's dividends as the approximation for P50 dividends
-                   cash_balance = Number(total_value) - Number(m.cumulative_dividends);
-               }
-           }
+pub async fn get_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
 
-           return {
-               month_index: m.month_index,
-               date: m.date,
-               revenue: m.revenue,
-               cogs: m.cogs,
-               gross_profit: m.gross_profit,
-               opex: m.opex,
-               net_income: m.net_income,
-               cumulative_pool_received, // Overridden if MC
-               cash_balance, // Overridden if MC
-               total_value, // Overridden if MC
-               dividend_paid: m.dividend_paid,
-               is_insolvent: m.is_insolvent
-           };
-        });
-        
-        (proj as any).cash_flow_data = tableData;
-        setProjection(proj);
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-        setUpdatingPooling(false);
-      }
-    };
-    load();
-  }, [planId, years, simMode, stopInsolvency, refreshTrigger]); 
+    Ok(Json(plan))
+}
 
-  // --- 3. HANDLERS ---
-  const handleAddCapital = async () => {
-    if (!newCapName || !newCapAmount) return;
-    await api.createCapitalInjection({
-      plan_id: planId,
-      name: newCapName,
-      amount: Number(newCapAmount),
-      month: Number(newCapMonth || 0)
-    });
-    setNewCapName(''); setNewCapAmount(''); setNewCapMonth('');
-    setRefreshTrigger(n => n + 1);
-  };
+pub async fn delete_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
+        .execute(&pool)
+        .await?;
 
-  const handleDeleteCapital = async (id: string) => {
-    await api.deleteCapitalInjection(id);
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveDividends = async () => {
-    await api.upsertDividends({
-      plan_id: planId,
-      is_enabled: divEnabled,
-      safety_threshold: Number(divThreshold),
-      payout_ratio: Number(divRatio)
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveCredit = async () => {
-    await api.upsertCredit({
-      plan_id: planId,
-      facility_limit: Number(creditLimit),
-      interest_rate: Number(creditRate),
-      is_annual_rate: creditIsAnnual
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveValuation = async () => {
-    await api.createValuation({
-      plan_id: planId,
-      name: 'Valuation',
-      method: valuationMethod,
-      multiplier: Number(valMultiple),
-      date_applied: new Date().toISOString().split('T')[0] // Fix 422
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handlePoolingSave = async () => {
-    if (!plan) return;
-    setUpdatingPooling(true);
-    try {
-        // Strictly await the update before triggering refresh
-        await api.updatePlan(planId, { pooling_fraction: poolingFraction / 100.0 });
-        
-        // Trigger refresh, set loading to true to bridge gap until useEffect runs
-        setLoading(true);
-        setRefreshTrigger(n => n + 1);
-    } catch (e) {
-        console.error("Failed to update pooling fraction", e);
-        setUpdatingPooling(false);
-        setLoading(false);
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Plan not found".to_string()));
     }
-  };
 
-  // Helper
-  const fmt = (n: any) => 
-    `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    Ok(StatusCode::NO_CONTENT)
+}
 
-  if (!plan) return <Layout>Loading...</Layout>;
+// --- PROJECTION LOGIC ---
 
-  return (
-    <Layout>
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
-          <p className="text-gray-500">Financial Simulation Engine v2.0</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-white p-2 rounded shadow flex flex-wrap items-center gap-4">
-              <select 
-                className="border rounded p-1 text-sm bg-white"
-                value={years}
-                onChange={(e) => setYears(Number(e.target.value))}
-              >
-                {[1, 2, 3, 5, 10, 20, 50, 100].map(y => <option key={y} value={y}>{y} Years</option>)}
-              </select>
+#[derive(Deserialize)]
+pub struct GetProjectionQuery {
+    pub months: Option<i32>,
+    pub initial_cash: Option<Decimal>,
+    pub mode: Option<String>,
+    pub stop_insolvency: Option<bool>,
+}
 
-              <div className="flex items-center gap-2 border-l pl-4">
-                <input 
-                  type="checkbox" id="logScale" 
-                  checked={isLogScale} onChange={(e) => setIsLogScale(e.target.checked)}
-                  className="rounded text-blue-600"
-                />
-                <label htmlFor="logScale" className="text-sm font-medium cursor-pointer">Log Scale</label>
-              </div>
+pub async fn get_plan_projection(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<GetProjectionQuery>,
+) -> Result<Json<SimulationResult>, AppError> {
 
-              <div className="flex items-center gap-2 border-l pl-4">
-                <select 
-                  className="border rounded p-1 text-sm font-bold text-blue-800 bg-blue-50"
-                  value={simMode}
-                  onChange={(e) => setSimMode(e.target.value as any)}
-                >
-                  <option value="standard">Standard (Average)</option>
-                  <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Monte Carlo (1000 Runs)</option>
-                </select>
-              </div>
+    // DoS Protection: Check months limit
+    let months = params.months.unwrap_or(60);
+    if months > 1200 {
+        return Err(AppError::ValidationError("Simulation limited to 100 years (1200 months)".into()));
+    }
 
-              {/* Currency Selector */}
-              <div className="flex items-center gap-2 border-l pl-4">
-                  <span className="text-xs text-gray-500">Currency:</span>
-                  <select 
-                    className="border rounded p-1 text-sm font-bold"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                      <option value="">None</option>
-                      <option value="$">$</option>
-                      <option value="€">€</option>
-                      <option value="£">£</option>
-                      <option value="¥">¥</option>
-                  </select>
-              </div>
+    // Fetch Plan Info
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
 
-              {/* Insolvency Checkbox */}
-              <div className="flex items-center gap-2 border-l pl-4">
-                <input 
-                  type="checkbox" id="stopInsolvency" 
-                  checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
-                  className="rounded text-red-600"
-                />
-                <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop on Insolvency</label>
-              </div>
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
-              {/* Non-Ergodicity Slider */}
-              {simMode === 'monte_carlo' && (
-                <div className="flex flex-col justify-center border-l pl-4 w-40">
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Non-Ergodicity</span>
-                        {updatingPooling ? (
-                            <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
-                        ) : (
-                            <span className="text-xs font-bold text-blue-600">{poolingFraction}%</span>
-                        )}
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      step="1"
-                      value={poolingFraction}
-                      onChange={(e) => setPoolingFraction(Number(e.target.value))}
-                      onMouseUp={handlePoolingSave}
-                      onTouchEnd={handlePoolingSave}
-                      disabled={updatingPooling || loading}
-                      className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer ${updatingPooling || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    />
-                </div>
-              )}
-            </div>
+    // Fetch Inputs
+    let revenue_items = sqlx::query_as!(
+        crate::models::RevenueItem,
+        "SELECT id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM revenue_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-            <div className="flex gap-2">
-              {simMode === 'single' && (
-                 <Button variant="secondary" onClick={() => setRefreshTrigger(n => n + 1)}>Recalculate 🎲</Button>
-              )}
-              <a href={`/plan/${planId}/inputs`} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium">Edit Revenue/Cost</a>
-            </div>
-        </div>
-      </div>
+    let expense_items = sqlx::query_as!(
+        crate::models::ExpenseItem,
+        "SELECT id, plan_id, name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM expense_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-      {loading ? (
-        <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
-      ) : projection && (
-        <div className="space-y-8">
-          
-          {simMode === 'single' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-700">Deterministic (Average)</h2>
-                </div>
-                <div className="h-80">
-                  <CashFlowChart 
-                    data={projection} 
-                    isLog={isLogScale} 
-                    mode="standard" 
-                    creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
-                  />
-                </div>
-              </Card>
-              <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-blue-700">Volatile (Single Run)</h2>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Stochastic</span>
-                </div>
-                <div className="h-80">
-                  <CashFlowChart 
-                    data={projection} 
-                    isLog={isLogScale} 
-                    mode="single" 
-                    creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
-                  />
-                </div>
-              </Card>
-            </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-grow">
-                <Card className="h-full">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">Total Value Forecast</h2>
-                    {simMode === 'monte_carlo' && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Fan Chart Active</span>}
-                  </div>
-                  <div className="h-96">
-                    <CashFlowChart 
-                      data={projection} 
-                      isLog={isLogScale} 
-                      mode={simMode} 
-                      creditLimit={Number(creditLimit)}
-                      currencySymbol={currency}
-                    />
-                  </div>
-                </Card>
-              </div>
-              <div className="w-full lg:w-64 flex-shrink-0">
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                   <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
-                </div>
-              </div>
-            </div>
-          )}
+    let event_shocks = sqlx::query_as!(
+        crate::models::EventShock,
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-          {simMode === 'single' && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
-            </div>
-          )}
+    let capital_injections = sqlx::query_as!(
+        crate::models::CapitalInjection,
+        "SELECT id, plan_id, name, amount, month, created_at FROM capital_injections WHERE plan_id = $1 ORDER BY month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-          {/* --- INLINED GRID TO FIX FOCUS LOSS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Valuation Model</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">
-                    {valuationMethod === 'ebitda' ? 'EBITDA Multiple (x)' : 'Revenue Multiple (x)'}
-                  </label>
-                  <input type="number" step="0.1" className="border p-1 w-full text-sm rounded" 
-                    value={valMultiple} onChange={e => setValMultiple(e.target.value)} 
-                    placeholder="e.g. 5.0"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 italic">
-                  Valuation = Annual {valuationMethod === 'ebitda' ? 'EBITDA' : 'Revenue'} × Multiple
-                </div>
-                <button onClick={handleSaveValuation} className="w-full bg-blue-600 text-white text-sm py-1 rounded">Set Valuation</button>
-              </div>
-            </Card>
+    let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
+        crate::models::DividendPolicy,
+        "SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at FROM dividend_policies WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
 
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
-              <div className="space-y-2 mb-4 h-24 overflow-y-auto">
-                {capitalItems.length === 0 && <p className="text-sm text-gray-400 italic">No external capital.</p>}
-                {capitalItems.map(c => (
-                  <div key={c.id} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
-                    <div>
-                      <span className="font-bold block">{c.name}</span>
-                      <span className="text-xs text-gray-500">Month {c.month}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-green-700">{fmt(c.amount)}</span>
-                      <button onClick={() => handleDeleteCapital(c.id)} className="text-red-400 hover:text-red-600">×</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Name" className="border p-1 text-xs rounded col-span-2" 
-                  value={newCapName} onChange={e => setNewCapName(e.target.value)} />
-                <input type="number" placeholder="$" className="border p-1 text-xs rounded" 
-                  value={newCapAmount} onChange={e => setNewCapAmount(e.target.value)} />
-                <input type="number" placeholder="Mo" className="border p-1 text-xs rounded" 
-                  value={newCapMonth} onChange={e => setNewCapMonth(e.target.value)} />
-                <button onClick={handleAddCapital} className="bg-gray-700 text-white text-xs py-1 rounded col-span-2">Add</button>
-              </div>
-            </Card>
+    let credit_facility: Option<crate::models::CreditFacility> = sqlx::query_as!(
+        crate::models::CreditFacility,
+        "SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at FROM credit_facilities WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
 
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Dividend Policy</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Enable?</label>
-                  <input type="checkbox" checked={divEnabled} onChange={e => setDivEnabled(e.target.checked)} className="h-4 w-4" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Safety Threshold ($)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={divThreshold} onChange={e => setDivThreshold(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Payout Ratio (%)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={divRatio} onChange={e => setDivRatio(e.target.value)} />
-                </div>
-                <button onClick={handleSaveDividends} className="w-full bg-green-600 text-white text-sm py-1 rounded">Update</button>
-              </div>
-            </Card>
+    let valuation_assumptions = sqlx::query_as!(
+        crate::models::ValuationAssumption,
+        "SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at FROM valuation_assumptions WHERE plan_id = $1 ORDER BY date_applied DESC LIMIT 1",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Credit / Overdraft</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">Limit ($)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Rate (%)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={creditRate} onChange={e => setCreditRate(e.target.value)} />
-                </div>
-                <div className="flex gap-2 text-xs">
-                  <label className="flex items-center gap-1">
-                    <input type="radio" checked={creditIsAnnual} onChange={() => setCreditIsAnnual(true)} /> Annual
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="radio" checked={!creditIsAnnual} onChange={() => setCreditIsAnnual(false)} /> Monthly
-                  </label>
-                </div>
-                <button onClick={handleSaveCredit} className="w-full bg-purple-600 text-white text-sm py-1 rounded">Set</button>
-              </div>
-            </Card>
-          </div>
+    let staffing_roles = sqlx::query_as!(
+        crate::models::StaffingRole,
+        "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at
+         FROM staffing_roles WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
 
-          <Card className="overflow-x-auto max-h-96">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">Most typical (median) outcome</h3>
-            <table className="min-w-full text-xs text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3">Month</th>
-                  <th className="px-4 py-3">Revenue</th>
-                  <th className="px-4 py-3">Gross Profit</th>
-                  <th className="px-4 py-3">OpEx</th>
-                  <th className="px-4 py-3">Net Income</th>
-                  <th className="px-4 py-3 text-orange-600">Pool Received</th>
-                  <th className="px-4 py-3 text-gray-900 font-bold">Cash Bal</th>
-                  <th className="px-4 py-3 text-green-600">Dividends</th>
-                  <th className="px-4 py-3 text-blue-700 font-bold">Net Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(projection as any).cash_flow_data.map((row: any) => (
-                  <tr key={row.month_index} className={`border-b hover:bg-gray-50 ${row.is_insolvent ? 'bg-red-50' : 'bg-white'}`}>
-                    <td className="px-4 py-2 font-medium">{row.month_index}</td>
-                    <td className="px-4 py-2">{fmt(row.revenue)}</td>
-                    <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
-                    <td className="px-4 py-2">{fmt(row.opex)}</td>
-                    <td className={`px-4 py-2 ${row.net_income < 0 ? 'text-red-500' : 'text-green-600'}`}>{fmt(row.net_income)}</td>
-                    <td className="px-4 py-2 text-orange-600">{fmt(row.cumulative_pool_received)}</td>
-                    <td className={`px-4 py-2 font-bold ${row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmt(row.cash_balance)}</td>
-                    <td className="px-4 py-2 text-green-600">{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
-                    <td className={`px-4 py-2 font-bold ${row.total_value < 0 ? 'text-red-600' : 'text-blue-700'}`}>
-                      {fmt(row.total_value)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </div>
-      )}
-    </Layout>
-  );
+    let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
+        crate::models::CapitalGrowthPolicy,
+        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent FROM capital_growth_policies WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+
+    // Run Simulation
+    let initial_cash = params.initial_cash.unwrap_or(Decimal::from_f64(0.0).unwrap());
+    let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
+    let stop_insolvency = params.stop_insolvency.unwrap_or(false);
+
+    let result = generate_simulation(
+        plan.start_month,
+        months,
+        initial_cash,
+        &revenue_items,
+        &expense_items,
+        &event_shocks,
+        &capital_injections,
+        &dividend_policy,
+        &credit_facility,
+        &capital_growth,
+        &staffing_roles,
+        &valuation_assumptions,
+        use_monte_carlo,
+        stop_insolvency,
+        plan.pooling_fraction // Pass pooling fraction
+    );
+
+    Ok(Json(result))
+}
+</file>
+
+<file path='backend/src/handlers/events.rs'>
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+    Extension,
+};
+use serde::{Deserialize};
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use rust_decimal::Decimal;
+use crate::models::{EventShock, Claims};
+use crate::errors::AppError;
+
+#[derive(Deserialize)]
+pub struct CreateShockRequest {
+    pub plan_id: Uuid,
+    pub event_name: String,
+    pub shock_month: i32,
+    pub impact_type: String,
+    pub impact_value: Decimal,
+    pub duration_months: Option<i32>,
+}
+
+pub async fn create_event_shock(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Json(payload): Json<CreateShockRequest>,
+) -> Result<Json<EventShock>, AppError> {
+    // Verify plan ownership
+    let plan_exists = sqlx::query!(
+        "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        payload.plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    if plan_exists.is_none() {
+        return Err(AppError::NotFound("Financial plan not found".to_string()));
+    }
+
+    let new_shock = sqlx::query_as!(
+        EventShock,
+        "INSERT INTO event_shocks (plan_id, event_name, shock_month, impact_type, impact_value, duration_months) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at",
+        payload.plan_id,
+        payload.event_name,
+        payload.shock_month,
+        payload.impact_type,
+        payload.impact_value,
+        payload.duration_months
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(new_shock))
+}
+
+pub async fn get_event_shock(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<EventShock>, AppError> {
+    let shock = sqlx::query_as!(
+        EventShock,
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Event shock not found".to_string()))?;
+
+    Ok(Json(shock))
+}
+
+pub async fn get_plan_event_shocks(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(plan_id): Path<Uuid>,
+) -> Result<Json<Vec<EventShock>>, AppError> {
+    let shocks = sqlx::query_as!(
+        EventShock,
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        plan_id,
+        claims.tenant_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(shocks))
+}
+
+pub async fn delete_event_shock(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let result = sqlx::query!(
+        "DELETE FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        id,
+        claims.tenant_id
+    )
+    .execute(&pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Event shock not found".to_string()));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }
 </file>
 

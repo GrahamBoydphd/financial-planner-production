@@ -11,3 +11,4 @@ pub mod events;      // Kept from your list
 pub mod capital_growth; // Add this
 // pub mod financials; // Removed (Legacy? If you need code from here, move it to the specific files)
 pub mod staffing;
+pub mod auth;

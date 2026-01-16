@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import CashFlowChart from '@/components/CashFlowChart';
@@ -127,9 +129,11 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [projection, setProjection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updatingPooling, setUpdatingPooling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
    
   // Financial State
   const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
+  const [initialCash, setInitialCash] = useState("0");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [dividendPolicy, setDividendPolicy] = useState<DividendPolicy | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -148,7 +152,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [creditRate, setCreditRate] = useState('10');
   const [creditIsAnnual, setCreditIsAnnual] = useState(true);
 
-  const [valMultiple, setValMultiple] = useState('5'); 
   const [valuationMethod, setValuationMethod] = useState('revenue');
 
   // Controls
@@ -169,8 +172,10 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const p = await api.getPlan(planId);
         setPlan(p);
+        setInitialCash(p.initial_cash || "0");
         // Sync slider with DB state on reload
         setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
         
@@ -182,7 +187,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           setDividendPolicy(div);
           setDivEnabled(div.is_enabled);
           setDivThreshold(div.safety_threshold.toString());
-          setDivRatio(div.payout_ratio.toString());
+          // Convert decimal (0.2) to percentage (20) for display
+          setDivRatio((Number(div.payout_ratio) * 100).toString());
         } catch { /* No policy set */ }
 
         try {
@@ -197,7 +203,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           const vals = await api.getValuation(planId);
           if (vals && vals.length > 0) {
              const latest = vals[vals.length - 1];
-             setValMultiple(latest.multiplier.toString());
              setValuationMethod(latest.method);
           }
         } catch { /* No valuation set */ }
@@ -207,7 +212,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         const proj = await api.getProjection(planId, {
            mode: backendMode,
            stop_insolvency: stopInsolvency,
-           initial_cash: p.initial_cash, // Pass initial cash from plan
+           initial_cash: Number(p.initial_cash || 0),
            months: years * 12 // FIX: Pass months based on years selector
         });
 
@@ -260,6 +265,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
       } catch (e) {
         console.error(e);
+        setError(e instanceof Error ? e.message : String(e));
       } finally {
         setLoading(false);
         setUpdatingPooling(false);
@@ -274,7 +280,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     await api.createCapitalInjection({
       plan_id: planId,
       name: newCapName,
-      amount: Number(newCapAmount),
+      amount: parseFloat(newCapAmount).toFixed(2),
       month: Number(newCapMonth || 0)
     });
     setNewCapName(''); setNewCapAmount(''); setNewCapMonth('');
@@ -290,8 +296,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     await api.upsertDividends({
       plan_id: planId,
       is_enabled: divEnabled,
-      safety_threshold: Number(divThreshold),
-      payout_ratio: Number(divRatio)
+      safety_threshold: divThreshold,
+      payout_ratio: (Number(divRatio) / 100).toString()
     });
     setRefreshTrigger(n => n + 1);
   };
@@ -299,20 +305,9 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const handleSaveCredit = async () => {
     await api.upsertCredit({
       plan_id: planId,
-      facility_limit: Number(creditLimit),
-      interest_rate: Number(creditRate),
+      facility_limit: creditLimit,
+      interest_rate: creditRate,
       is_annual_rate: creditIsAnnual
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveValuation = async () => {
-    await api.createValuation({
-      plan_id: planId,
-      name: 'Valuation',
-      method: valuationMethod,
-      multiplier: Number(valMultiple),
-      date_applied: new Date().toISOString().split('T')[0] // Fix 422
     });
     setRefreshTrigger(n => n + 1);
   };
@@ -322,7 +317,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     setUpdatingPooling(true);
     try {
         // Strictly await the update before triggering refresh
-        await api.updatePlan(planId, { pooling_fraction: poolingFraction / 100.0 });
+        await api.updatePlan(planId, { pooling_fraction: (poolingFraction / 100.0).toString() });
         
         // Trigger refresh, set loading to true to bridge gap until useEffect runs
         setLoading(true);
@@ -342,6 +337,13 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
   return (
     <Layout>
+      <nav className='mb-6'>
+        <Link href={`/company/${plan.company_id}`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Return to Company
+        </Link>
+      </nav>
+
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
@@ -375,7 +377,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 >
                   <option value="standard">Standard (Average)</option>
                   <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Monte Carlo (1000 Runs)</option>
+                  <option value="monte_carlo">Likely real-world outcomes (1000 Runs)</option>
                 </select>
               </div>
 
@@ -409,7 +411,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               {simMode === 'monte_carlo' && (
                 <div className="flex flex-col justify-center border-l pl-4 w-40">
                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Non-Ergodicity</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Ergodicity Correction</span>
                         {updatingPooling ? (
                             <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
                         ) : (
@@ -441,9 +443,11 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         </div>
       </div>
 
+      {error && <div className="bg-red-50 text-red-600 p-4 rounded mb-4 border border-red-200">Simulation Error: {error}</div>}
+
       {loading ? (
         <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
-      ) : projection && (
+      ) : projection && (projection.deterministic_data?.length > 0 || projection.single_run_data?.length > 0) ? (
         <div className="space-y-8">
           
           {simMode === 'single' ? (
@@ -512,28 +516,15 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           )}
 
           {/* --- INLINED GRID TO FIX FOCUS LOSS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Valuation Model</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">
-                    {valuationMethod === 'ebitda' ? 'EBITDA Multiple (x)' : 'Revenue Multiple (x)'}
-                  </label>
-                  <input type="number" step="0.1" className="border p-1 w-full text-sm rounded" 
-                    value={valMultiple} onChange={e => setValMultiple(e.target.value)} 
-                    placeholder="e.g. 5.0"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 italic">
-                  Valuation = Annual {valuationMethod === 'ebitda' ? 'EBITDA' : 'Revenue'} × Multiple
-                </div>
-                <button onClick={handleSaveValuation} className="w-full bg-blue-600 text-white text-sm py-1 rounded">Set Valuation</button>
-              </div>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <Card>
               <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
+
+              <div className="bg-green-50 border border-green-200 text-green-800 p-2 rounded mb-4 text-sm flex justify-between items-center">
+                <span className="font-medium">Opening Balance (Day 0):</span>
+                <span className="font-bold">{fmt(initialCash)}</span>
+              </div>
+
               <div className="space-y-2 mb-4 h-24 overflow-y-auto">
                 {capitalItems.length === 0 && <p className="text-sm text-gray-400 italic">No external capital.</p>}
                 {capitalItems.map(c => (
@@ -642,6 +633,12 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               </tbody>
             </table>
           </Card>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded border-2 border-dashed border-gray-300">
+            <p className="text-xl font-bold text-gray-400 mb-2">No Data Available</p>
+            <p className="text-gray-500">Enter Revenue / Cost / Capital items first</p>
+            <a href={`/plan/${planId}/inputs`} className="mt-4 text-blue-600 hover:underline">Go to Inputs</a>
         </div>
       )}
     </Layout>
