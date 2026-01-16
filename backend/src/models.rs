@@ -140,7 +140,7 @@ pub struct CreditFacility {
 pub struct ValuationAssumption {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub valuation_name: String,
     pub method: String,
     pub multiplier: Decimal,
     pub date_applied: Option<NaiveDate>,

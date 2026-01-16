@@ -65,7 +65,7 @@ export default function ValuationForm({ planId, onSuccess }: Props) {
     try {
         const payload = {
             plan_id: planId,
-            name: 'Valuation',
+            valuation_name: 'Valuation',
             method: method,
             multiplier: method === 'revenue' ? String(revenueMultiple) : String(ebitdaMultiple),
             date_applied: new Date().toISOString().split('T')[0]
@@ -109,7 +109,7 @@ export default function ValuationForm({ planId, onSuccess }: Props) {
                 <div>
                     <label className="text-xs text-gray-500 flex items-center gap-1">
                         Revenue Multiple (x)
-                        <Tooltip content="Multiple applied to revenue for valuation." />
+                        <Tooltip content="Revenue / Ebitda Multiple = Company Valuation (or Enterprise Value) / Annual Revenue / Ebitda" />
                     </label>
                     <input 
                         type="number" 
@@ -152,7 +152,7 @@ export default function ValuationForm({ planId, onSuccess }: Props) {
         {/* Summary Card */}
         {activeValuation && (
             <div className="mt-4 p-3 bg-white rounded border border-gray-200 text-xs shadow-sm">
-                <h4 className="font-bold text-gray-700 mb-1">Current Model: {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'} ({activeValuation.multiplier}x)</h4>
+                <h4 className="font-bold text-gray-700 mb-1">{activeValuation.valuation_name}: {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'} ({activeValuation.multiplier}x)</h4>
                 <div className="flex justify-between items-center">
                     <span className="text-gray-600">Method:</span>
                     <span className="font-mono font-semibold text-purple-700">

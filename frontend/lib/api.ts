@@ -171,7 +171,7 @@ export interface CreditFacility {
 export interface ValuationAssumption {
   id: string;
   plan_id: string;
-  name: string;
+  valuation_name: string;
   method: 'revenue' | 'ebitda';
   multiplier: string;
   date_applied: string;
@@ -323,6 +323,6 @@ export const api = {
   // VALUATION
   getValuation: async (planId: string) => 
     (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
-  createValuation: async (item: { plan_id: string, name: string, method: string, multiplier: string, date_applied: string }) => 
+  createValuation: async (item: { plan_id: string, valuation_name: string, method: string, multiplier: string, date_applied: string }) => 
     (await apiClient.post('/api/valuation', item)).data,
 };

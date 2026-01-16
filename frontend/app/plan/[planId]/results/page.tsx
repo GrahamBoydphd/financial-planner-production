@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import CashFlowChart from '@/components/CashFlowChart';
@@ -150,7 +152,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [creditRate, setCreditRate] = useState('10');
   const [creditIsAnnual, setCreditIsAnnual] = useState(true);
 
-  const [valMultiple, setValMultiple] = useState('5'); 
   const [valuationMethod, setValuationMethod] = useState('revenue');
 
   // Controls
@@ -201,7 +202,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           const vals = await api.getValuation(planId);
           if (vals && vals.length > 0) {
              const latest = vals[vals.length - 1];
-             setValMultiple(latest.multiplier.toString());
              setValuationMethod(latest.method);
           }
         } catch { /* No valuation set */ }
@@ -311,17 +311,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     setRefreshTrigger(n => n + 1);
   };
 
-  const handleSaveValuation = async () => {
-    await api.createValuation({
-      plan_id: planId,
-      name: 'Valuation',
-      method: valuationMethod,
-      multiplier: valMultiple,
-      date_applied: new Date().toISOString().split('T')[0] // Fix 422
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
   const handlePoolingSave = async () => {
     if (!plan) return;
     setUpdatingPooling(true);
@@ -347,6 +336,13 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
   return (
     <Layout>
+      <nav className='mb-6'>
+        <Link href={`/company/${plan.company_id}`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Return to Company
+        </Link>
+      </nav>
+
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
@@ -450,7 +446,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
       {loading ? (
         <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
-      ) : projection && (
+      ) : projection && (projection.deterministic_data?.length > 0 || projection.single_run_data?.length > 0) ? (
         <div className="space-y-8">
           
           {simMode === 'single' ? (
@@ -519,26 +515,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           )}
 
           {/* --- INLINED GRID TO FIX FOCUS LOSS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Valuation Model</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">
-                    {valuationMethod === 'ebitda' ? 'EBITDA Multiple (x)' : 'Revenue Multiple (x)'}
-                  </label>
-                  <input type="number" step="0.1" className="border p-1 w-full text-sm rounded" 
-                    value={valMultiple} onChange={e => setValMultiple(e.target.value)} 
-                    placeholder="e.g. 5.0"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 italic">
-                  Valuation = Annual {valuationMethod === 'ebitda' ? 'EBITDA' : 'Revenue'} × Multiple
-                </div>
-                <button onClick={handleSaveValuation} className="w-full bg-blue-600 text-white text-sm py-1 rounded">Set Valuation</button>
-              </div>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <Card>
               <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
               
@@ -655,6 +632,12 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               </tbody>
             </table>
           </Card>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded border-2 border-dashed border-gray-300">
+            <p className="text-xl font-bold text-gray-400 mb-2">No Data Available</p>
+            <p className="text-gray-500">Enter Revenue / Cost / Capital items first</p>
+            <a href={`/plan/${planId}/inputs`} className="mt-4 text-blue-600 hover:underline">Go to Inputs</a>
         </div>
       )}
     </Layout>

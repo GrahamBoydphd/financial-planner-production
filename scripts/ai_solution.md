@@ -173,7 +173,7 @@ export interface CreditFacility {
 export interface ValuationAssumption {
   id: string;
   plan_id: string;
-  name: string;
+  valuation_name: string;
   method: 'revenue' | 'ebitda';
   multiplier: string;
   date_applied: string;
@@ -325,430 +325,187 @@ export const api = {
   // VALUATION
   getValuation: async (planId: string) => 
     (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
-  createValuation: async (item: { plan_id: string, name: string, method: string, multiplier: string, date_applied: string }) => 
+  createValuation: async (item: { plan_id: string, valuation_name: string, method: string, multiplier: string, date_applied: string }) => 
     (await apiClient.post('/api/valuation', item)).data,
 };
 </file>
 
-<file path='frontend/components/forms/StaffingForm.tsx'>
-"use client"
+<file path='frontend/components/forms/ValuationForm.tsx'>
+'use client';
 
-import React, { useState, useEffect } from "react"
-import { Plus, Trash2, Edit2, Save, X, Users, DollarSign, Calendar, TrendingUp, Briefcase } from "lucide-react"
-import { StaffingRole } from "@/lib/api"
-import Card from "@/components/ui/Card"
-import Button from "@/components/ui/Button"
-import Tooltip from "@/components/ui/Tooltip"
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
 
-interface StaffingFormProps {
-  planId: string
-  initialRoles: StaffingRole[]
-  onSave: (role: Omit<StaffingRole, "id" | "plan_id"> & { id?: string }) => Promise<void>
-  onDelete: (roleId: string) => Promise<void>
+interface Props {
+  planId: string;
+  onSuccess: () => void;
 }
 
-// Local interface for form state to handle string inputs for precision
-interface StaffingRoleFormState {
-  id?: string
-  role_name: string
-  annual_salary: string
-  start_month: number
-  target_count: number
-  hiring_plan: "fixed_count" | "monthly_rate"
-  hiring_rate?: number
-  annual_increase: string
+interface FormErrors {
+  multiple?: string;
+  general?: string;
 }
 
-// Helper to format currency
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+export default function ValuationForm({ planId, onSuccess }: Props) {
+  const [method, setMethod] = useState<'revenue' | 'ebitda'>('revenue');
+  const [revenueMultiple, setRevenueMultiple] = useState('');
+  const [ebitdaMultiple, setEbitdaMultiple] = useState('');
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [activeValuation, setActiveValuation] = useState<any>(null);
 
-export default function StaffingForm({ planId, initialRoles, onSave, onDelete }: StaffingFormProps) {
-  const [roles, setRoles] = useState<StaffingRole[]>(initialRoles)
-  const [isEditing, setIsEditing] = useState(false)
-  
-  // State uses string for money/percent fields to allow precise editing
-  const [currentRole, setCurrentRole] = useState<Partial<StaffingRoleFormState>>({})
-  
-  const [globalError, setGlobalError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
-
-  // Update local state when initialRoles changes
   useEffect(() => {
-    setRoles(initialRoles)
-  }, [initialRoles])
+    let active = true;
+    api.getValuation(planId).then(data => {
+        if (!active) return;
+        console.log("DEBUG VALUATION FETCH:", data);
 
-  const handleAddNew = () => {
-    setCurrentRole({
-      role_name: "",
-      annual_salary: "50000",
-      start_month: 1,
-      target_count: 1,
-      hiring_plan: "fixed_count",
-      hiring_rate: 1,
-      annual_increase: "3.0"
-    })
-    setIsEditing(true)
-    setGlobalError(null)
-    setFieldErrors({})
-  }
-
-  const handleEdit = (role: StaffingRole) => {
-    setCurrentRole({ 
-      id: role.id,
-      role_name: role.role_name,
-      annual_salary: role.annual_salary.toString(),
-      start_month: role.start_month,
-      target_count: role.target_count,
-      hiring_plan: role.hiring_plan as "fixed_count" | "monthly_rate",
-      hiring_rate: role.hiring_rate ? Number(role.hiring_rate) : undefined,
-      // Use raw percentage directly
-      annual_increase: role.annual_increase_percent || "0"
-    })
-    setIsEditing(true)
-    setGlobalError(null)
-    setFieldErrors({})
-  }
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this role?")) {
-      try {
-        setIsLoading(true)
-        await onDelete(id)
-        setRoles(roles.filter(r => r.id !== id))
-      } catch (err) {
-        console.error("Failed to delete role:", err)
-        setGlobalError("Failed to delete role. Please try again.")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-  }
-
-  const handleCancel = () => {
-    setIsEditing(false)
-    setCurrentRole({})
-    setGlobalError(null)
-    setFieldErrors({})
-  }
-
-  const validate = (): boolean => {
-    const errors: Record<string, string> = {}
-    
-    if (!currentRole.role_name?.trim()) {
-      errors.role_name = "Role Name is required"
-    }
-    
-    if (!currentRole.annual_salary || isNaN(parseFloat(currentRole.annual_salary))) {
-      errors.annual_salary = "Valid Annual Salary is required"
-    }
-
-    if (!currentRole.target_count || currentRole.target_count < 1) {
-      errors.target_count = "Target count must be at least 1"
-    }
-
-    if (!currentRole.start_month || currentRole.start_month < 1) {
-      errors.start_month = "Start month must be at least 1"
-    }
-
-    if (currentRole.hiring_plan === "monthly_rate") {
-        if (!currentRole.hiring_rate || currentRole.hiring_rate < 1) {
-            errors.hiring_rate = "Hiring pace must be at least 1"
+        // Check if data is an array and has items
+        if (Array.isArray(data) && data.length > 0) {
+            // Take the LAST item (assuming chronological order)
+            const lastItem = data[data.length - 1];
+            
+            setActiveValuation(lastItem);
+            setMethod(lastItem.method);
+            
+            if (lastItem.method === 'revenue') {
+                setRevenueMultiple(lastItem.multiplier.toString());
+                setEbitdaMultiple('');
+            } else {
+                setEbitdaMultiple(lastItem.multiplier.toString());
+                setRevenueMultiple('');
+            }
         }
-    }
+    }).catch((error) => {
+        console.error("DEBUG VALUATION ERROR:", error);
+    });
+    return () => { active = false; };
+  }, [planId]);
 
-    setFieldErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSave = async () => {
+    setErrors({});
     
-    if (!validate()) {
-      return
+    // Validation
+    if (method === 'revenue' && !revenueMultiple) {
+        setErrors({ multiple: "Revenue multiple is required." });
+        return;
+    }
+    if (method === 'ebitda' && !ebitdaMultiple) {
+        setErrors({ multiple: "EBITDA multiple is required." });
+        return;
     }
 
     try {
-      setIsLoading(true)
-      
-      // Prepare payload
-      const salaryVal = parseFloat(currentRole.annual_salary || "0")
-      const salaryPayload = salaryVal.toFixed(2) // "50000.00"
-
-      // Annual Increase: User enters "3.5" (%), we send "3.5"
-      const increaseVal = parseFloat(currentRole.annual_increase || "0")
-      const increasePayload = increaseVal.toString() 
-
-      const roleData = {
-        role_name: currentRole.role_name!,
-        annual_salary: salaryPayload, 
-        start_month: Number(currentRole.start_month) || 1,
-        target_count: Number(currentRole.target_count) || 1,
-        hiring_plan: currentRole.hiring_plan || "fixed_count",
-        hiring_rate: currentRole.hiring_plan === "monthly_rate" ? (Number(currentRole.hiring_rate) || 1) : undefined,
-        annual_increase_percent: increasePayload
-      }
-
-      // Cast to any to satisfy TS if onSave expects numbers, as we are sending strings for precision
-      await onSave({
-        ...roleData,
-        id: currentRole.id 
-      } as any)
-
-      setIsEditing(false)
-      setCurrentRole({})
-      setFieldErrors({})
-    } catch (err) {
-      console.error("Failed to save role:", err)
-      setGlobalError("Failed to save role. Please check your inputs.")
-    } finally {
-      setIsLoading(false)
+        const payload = {
+            plan_id: planId,
+            valuation_name: 'Valuation',
+            method: method,
+            multiplier: method === 'revenue' ? String(revenueMultiple) : String(ebitdaMultiple),
+            date_applied: new Date().toISOString().split('T')[0]
+        };
+        await api.createValuation(payload);
+        
+        setActiveValuation(payload);
+        onSuccess();
+    } catch (e) {
+        setErrors({ general: "Failed to save valuation logic." });
     }
-  }
+  };
 
   return (
-    <Card className="w-full">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Staffing & Payroll
-            </h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Manage headcount, salaries, and hiring timelines.
-            </p>
-          </div>
-          {!isEditing && (
-            <Button onClick={handleAddNew} className="gap-1 flex items-center text-sm">
-              <Plus className="h-4 w-4" /> Add Role
-            </Button>
-          )}
-        </div>
-      
-        {globalError && (
-          <div className="bg-red-50 text-red-700 p-3 rounded mb-4 border border-red-200">
-            <h4 className="font-bold text-sm">Error</h4>
-            <p className="text-sm">{globalError}</p>
-          </div>
-        )}
-
-        {isEditing ? (
-          <form onSubmit={handleSubmit} className="space-y-4 border p-4 rounded-md bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label htmlFor="role_name" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Role Name <span className="text-red-500">*</span>
-                  <Tooltip content="Title of the position (e.g., 'Sales Rep', 'Developer')." />
-                </label>
-                <input
-                  id="role_name"
-                  value={currentRole.role_name || ""}
-                  onChange={(e) => setCurrentRole({ ...currentRole, role_name: e.target.value })}
-                  placeholder="e.g. Sales Representative"
-                  className={`w-full rounded border p-2 text-sm ${fieldErrors.role_name ? 'border-red-500' : 'border-gray-300'}`}
+    <div className="space-y-3 bg-gray-50 p-4 rounded border">
+        <h3 className="font-bold text-gray-700 text-sm">Exit Valuation Model</h3>
+        
+        <div className="flex gap-4 text-xs">
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input 
+                    type="radio" 
+                    name="valMethod" 
+                    checked={method === 'revenue'} 
+                    onChange={() => setMethod('revenue')} 
                 />
-                {fieldErrors.role_name && <p className="text-xs text-red-500">{fieldErrors.role_name}</p>}
-              </div>
+                Revenue Multiple
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input 
+                    type="radio" 
+                    name="valMethod" 
+                    checked={method === 'ebitda'} 
+                    onChange={() => setMethod('ebitda')} 
+                />
+                EBITDA Multiple
+            </label>
+        </div>
 
-              <div className="space-y-2">
-                <label htmlFor="annual_salary" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Annual Salary <span className="text-red-500">*</span>
-                  <Tooltip content="Base annual salary per person in this role." />
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                  <input
-                    id="annual_salary"
-                    type="number"
-                    min="0"
-                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.annual_salary ? 'border-red-500' : 'border-gray-300'}`}
-                    value={currentRole.annual_salary || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, annual_salary: e.target.value })}
-                  />
-                </div>
-                {fieldErrors.annual_salary && <p className="text-xs text-red-500">{fieldErrors.annual_salary}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="hiring_plan" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Hiring Plan
-                  <Tooltip content="How employees are added over time (Fixed Count or Monthly Rate)." />
-                </label>
-                <div className="relative">
-                  <Briefcase className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                  <select
-                    id="hiring_plan"
-                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm bg-white"
-                    value={currentRole.hiring_plan || "fixed_count"}
-                    onChange={(e) => setCurrentRole({ ...currentRole, hiring_plan: e.target.value as any })}
-                  >
-                    <option value="fixed_count">Fixed Count (All at once)</option>
-                    <option value="monthly_rate">Ramp Up (Over time)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="target_count" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Target Headcount <span className="text-red-500">*</span>
-                  <Tooltip content="Maximum number of people to hire for this role." />
-                </label>
-                <div className="relative">
-                  <Users className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                  <input
-                    id="target_count"
-                    type="number"
-                    min="1"
-                    step="1"
-                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.target_count ? 'border-red-500' : 'border-gray-300'}`}
-                    value={currentRole.target_count || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, target_count: parseInt(e.target.value) })}
-                  />
-                </div>
-                {fieldErrors.target_count && <p className="text-xs text-red-500">{fieldErrors.target_count}</p>}
-              </div>
-
-              {currentRole.hiring_plan === "monthly_rate" && (
-                <div className="space-y-2">
-                  <label htmlFor="hiring_rate" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                    Hiring Pace (Months per Hire) <span className="text-red-500">*</span>
-                    <Tooltip content="Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly)." />
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                    <input
-                      id="hiring_rate"
-                      type="number"
-                      min="1"
-                      step="1"
-                      className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.hiring_rate ? 'border-red-500' : 'border-gray-300'}`}
-                      value={currentRole.hiring_rate || ""}
-                      onChange={(e) => setCurrentRole({ ...currentRole, hiring_rate: parseInt(e.target.value) })}
+        <div className="grid grid-cols-1 gap-4">
+            {method === 'revenue' && (
+                <div>
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                        Revenue Multiple (x)
+                        <Tooltip content="Revenue / Ebitda Multiple = Company Valuation (or Enterprise Value) / Annual Revenue / Ebitda" />
+                    </label>
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        className={`w-full border p-1 rounded ${errors.multiple ? 'border-red-500' : ''}`} 
+                        value={revenueMultiple} 
+                        onChange={e => {
+                            setRevenueMultiple(e.target.value);
+                            if (errors.multiple) setErrors({});
+                        }} 
+                        placeholder="e.g. 5.0"
                     />
-                  </div>
-                  {fieldErrors.hiring_rate && <p className="text-xs text-red-500">{fieldErrors.hiring_rate}</p>}
+                    {errors.multiple && <p className="text-red-500 text-xs mt-1">{errors.multiple}</p>}
                 </div>
-              )}
+            )}
+            {method === 'ebitda' && (
+                <div>
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                        EBITDA Multiple (x)
+                        <Tooltip content="Multiple applied to EBITDA for valuation." />
+                    </label>
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        className={`w-full border p-1 rounded ${errors.multiple ? 'border-red-500' : ''}`} 
+                        value={ebitdaMultiple} 
+                        onChange={e => {
+                            setEbitdaMultiple(e.target.value);
+                            if (errors.multiple) setErrors({});
+                        }} 
+                        placeholder="e.g. 12.0"
+                    />
+                    {errors.multiple && <p className="text-red-500 text-xs mt-1">{errors.multiple}</p>}
+                </div>
+            )}
+        </div>
 
-              <div className="space-y-2">
-                <label htmlFor="start_month" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Start Month <span className="text-red-500">*</span>
-                  <Tooltip content="Month number (1-60) when hiring begins." />
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                  <input
-                    id="start_month"
-                    type="number"
-                    min="1"
-                    max="60"
-                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.start_month ? 'border-red-500' : 'border-gray-300'}`}
-                    value={currentRole.start_month || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, start_month: parseInt(e.target.value) })}
-                  />
-                </div>
-                {fieldErrors.start_month && <p className="text-xs text-red-500">{fieldErrors.start_month}</p>}
-              </div>
+        {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
 
-              <div className="space-y-2">
-                <label htmlFor="annual_increase" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Annual Increase (%)
-                  <Tooltip content="Expected annual salary increase (e.g., 3.5 for 3.5%)." />
-                </label>
-                <div className="relative">
-                  <TrendingUp className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                  <input
-                    id="annual_increase"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
-                    value={currentRole.annual_increase || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, annual_increase: e.target.value })}
-                  />
+        {/* Summary Card */}
+        {activeValuation && (
+            <div className="mt-4 p-3 bg-white rounded border border-gray-200 text-xs shadow-sm">
+                <h4 className="font-bold text-gray-700 mb-1">{activeValuation.valuation_name}: {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'} ({activeValuation.multiplier}x)</h4>
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Method:</span>
+                    <span className="font-mono font-semibold text-purple-700">
+                        {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'}
+                    </span>
                 </div>
-                <p className="text-xs text-gray-500 text-right">
-                  Enters as: {currentRole.annual_increase}%
-                </p>
-              </div>
+                <div className="flex justify-between items-center mt-1">
+                    <span className="text-gray-600">Multiplier:</span>
+                    <span className="font-mono font-semibold text-purple-700">
+                        {activeValuation.multiplier}x
+                    </span>
+                </div>
             </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={handleCancel} disabled={isLoading} className="flex items-center">
-                <X className="h-4 w-4 mr-1" /> Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading} className="flex items-center">
-                <Save className="h-4 w-4 mr-1" /> {currentRole.id ? "Update Role" : "Add Role"}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <div className="rounded-md border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Role Name</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Salary (Annual)</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Plan</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Target</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Start</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {roles.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-gray-500">
-                      No staffing roles defined yet. Click "Add Role" to begin.
-                    </td>
-                  </tr>
-                ) : (
-                  roles.map((role) => (
-                    <tr key={role.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">{role.role_name}</td>
-                      <td className="px-4 py-3">{formatCurrency(Number(role.annual_salary))}</td>
-                      <td className="px-4 py-3">
-                        {role.hiring_plan === "monthly_rate" 
-                          ? `Ramp (1/${role.hiring_rate || 1}mo)` 
-                          : "Fixed"}
-                      </td>
-                      <td className="px-4 py-3">{role.target_count}</td>
-                      <td className="px-4 py-3">Month {role.start_month}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(role)}
-                            className="p-1 text-blue-600 hover:text-blue-800 rounded hover:bg-blue-50"
-                            title="Edit"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(role.id)}
-                            className="p-1 text-red-600 hover:text-red-800 rounded hover:bg-red-50"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         )}
-    </Card>
-  )
+
+        <button onClick={handleSave} className="w-full bg-purple-600 text-white py-1 rounded text-sm font-bold">
+            {activeValuation ? 'Update Valuation Logic' : 'Set Valuation Logic'}
+        </button>
+    </div>
+  );
 }
 </file>
 
@@ -756,6 +513,8 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import CashFlowChart from '@/components/CashFlowChart';
@@ -905,7 +664,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [creditRate, setCreditRate] = useState('10');
   const [creditIsAnnual, setCreditIsAnnual] = useState(true);
 
-  const [valMultiple, setValMultiple] = useState('5'); 
   const [valuationMethod, setValuationMethod] = useState('revenue');
 
   // Controls
@@ -956,7 +714,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           const vals = await api.getValuation(planId);
           if (vals && vals.length > 0) {
              const latest = vals[vals.length - 1];
-             setValMultiple(latest.multiplier.toString());
              setValuationMethod(latest.method);
           }
         } catch { /* No valuation set */ }
@@ -1066,17 +823,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     setRefreshTrigger(n => n + 1);
   };
 
-  const handleSaveValuation = async () => {
-    await api.createValuation({
-      plan_id: planId,
-      name: 'Valuation',
-      method: valuationMethod,
-      multiplier: valMultiple,
-      date_applied: new Date().toISOString().split('T')[0] // Fix 422
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
   const handlePoolingSave = async () => {
     if (!plan) return;
     setUpdatingPooling(true);
@@ -1102,6 +848,13 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
   return (
     <Layout>
+      <nav className='mb-6'>
+        <Link href={`/company/${plan.company_id}`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Return to Company
+        </Link>
+      </nav>
+
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
@@ -1205,7 +958,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
       {loading ? (
         <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
-      ) : projection && (
+      ) : projection && (projection.deterministic_data?.length > 0 || projection.single_run_data?.length > 0) ? (
         <div className="space-y-8">
           
           {simMode === 'single' ? (
@@ -1274,26 +1027,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           )}
 
           {/* --- INLINED GRID TO FIX FOCUS LOSS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Valuation Model</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">
-                    {valuationMethod === 'ebitda' ? 'EBITDA Multiple (x)' : 'Revenue Multiple (x)'}
-                  </label>
-                  <input type="number" step="0.1" className="border p-1 w-full text-sm rounded" 
-                    value={valMultiple} onChange={e => setValMultiple(e.target.value)} 
-                    placeholder="e.g. 5.0"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 italic">
-                  Valuation = Annual {valuationMethod === 'ebitda' ? 'EBITDA' : 'Revenue'} × Multiple
-                </div>
-                <button onClick={handleSaveValuation} className="w-full bg-blue-600 text-white text-sm py-1 rounded">Set Valuation</button>
-              </div>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <Card>
               <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
               
@@ -1411,482 +1145,13 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
             </table>
           </Card>
         </div>
-      )}
-    </Layout>
-  );
-}
-</file>
-
-<file path='frontend/app/help/page.tsx'>
-import React from 'react';
-import Link from 'next/link';
-import Layout from '@/components/Layout';
-
-// --- DATA DEFINITIONS (From USER_MANUAL_TECHNICAL_REF.md) ---
-
-const staffingData = [
-  { label: "Role Name", purpose: "Title of the position (e.g., 'Sales Rep', 'Developer').", rules: "Required, must not be empty." },
-  { label: "Annual Salary", purpose: "Base annual salary per person in this role.", rules: "Required, must be a valid number." },
-  { label: "Hiring Plan", purpose: "How employees are added over time (Fixed Count or Monthly Rate).", rules: "Select: 'fixed_count' or 'monthly_rate'." },
-  { label: "Target Headcount", purpose: "Maximum number of people to hire for this role.", rules: "Required, integer >= 1." },
-  { label: "Hiring Pace", purpose: "Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly).", rules: "Required if 'monthly_rate', integer >= 1." },
-  { label: "Start Month", purpose: "Month number (1-60) when hiring begins.", rules: "Required, integer 1-60." },
-  { label: "Annual Increase (%)", purpose: "Expected annual salary increase (e.g., 3.5 for 3.5%).", rules: "Optional, 0-100." },
-];
-
-const revenueData = [
-  { label: "Name", purpose: "Name of the revenue stream (e.g., SaaS Subs).", rules: "Required, must not be empty." },
-  { label: "Source Type", purpose: "Category of revenue (e.g., Sales, Subscription).", rules: "Select: Sales, Subscription, Service, Other." },
-  { label: "Initial Amount ($)", purpose: "Starting revenue amount.", rules: "Required number." },
-  { label: "Growth Rate (%/mo)", purpose: "Monthly growth rate percentage.", rules: "Optional number." },
-  { label: "Cost of Rev (%)", purpose: "Cost of revenue percentage.", rules: "Optional number." },
-  { label: "Frequency", purpose: "How often revenue is recognized.", rules: "Select: Monthly, One-time, Quarterly, Annually." },
-  { label: "Start Month", purpose: "Month in which revenue stream begins.", rules: "Required number." },
-  { label: "End Month (Opt)", purpose: "Month in which revenue stream ends.", rules: "Optional number." },
-  { label: "Model Type", purpose: "Type of volatility model to apply.", rules: "Averages, Simple, NRIG, or Student-T." },
-  { label: "Mean / Drift", purpose: "Expected Monthly Return.", rules: "Optional number." },
-  { label: "Min %", purpose: "Minimum percentage deviation (Flat).", rules: "Required if Simple, < Max %." },
-  { label: "Max %", purpose: "Maximum percentage deviation (Flat).", rules: "Required if Simple, > Min %." },
-  { label: "Steps", purpose: "Number of intervals between min and max (Flat).", rules: "Required if Simple." },
-  { label: "Scale (Vol)", purpose: "Volatility Scale (Student-T).", rules: "Required if Student-T." },
-  { label: "Freedom (Deg)", purpose: "Degrees of freedom (Student-T).", rules: "Required if Student-T." },
-  { label: "Likelyhood (Alpha)", purpose: "Tail Weight (NRIG).", rules: "Required if NRIG." },
-  { label: "Skew (Beta)", purpose: "Imbalance (NRIG).", rules: "Required if NRIG." },
-  { label: "Scale (Delta)", purpose: "Volatility Scale (NRIG).", rules: "Required if NRIG." },
-];
-
-const expenseData = [
-  { label: "Name", purpose: "Name of the expense item (e.g., Salaries).", rules: "Required, must not be empty." },
-  { label: "Category", purpose: "Category of expense (e.g., OpEx, CapEx).", rules: "Select: OpEx, CapEx, Payroll, Marketing." },
-  { label: "Initial Amount ($)", purpose: "Starting expense amount.", rules: "Required number." },
-  { label: "Growth Rate (%/mo)", purpose: "Monthly growth rate percentage.", rules: "Optional number." },
-  { label: "% of Revenue", purpose: "Percentage of revenue tied to expense.", rules: "Optional number." },
-  { label: "Frequency", purpose: "How often expense is incurred.", rules: "Select: Monthly, One-time, Quarterly, Annually." },
-  { label: "Start Month", purpose: "Month in which expense begins.", rules: "Required number." },
-  { label: "End Month (Opt)", purpose: "Month in which expense ends.", rules: "Optional number." },
-  { label: "Volatility Inputs", purpose: "Same model options as Revenue.", rules: "See Revenue Volatility." },
-];
-
-const capitalData = [
-  { label: "Source Name", purpose: "Name of the capital source (e.g., Seed Round).", rules: "Required, must not be empty." },
-  { label: "Amount ($)", purpose: "Amount of capital injection.", rules: "Required number." },
-  { label: "Month", purpose: "Month in which capital is injected.", rules: "Required integer 1-120." },
-];
-
-const capitalGrowthData = [
-  { label: "Model Type", purpose: "Type of volatility model to apply.", rules: "Selection required." },
-  { label: "Expected Return", purpose: "Expected monthly return percentage.", rules: "Required number." },
-  { label: "Volatility Params", purpose: "Min/Max (Simple) or Distribution params.", rules: "Dependent on Model Type." },
-];
-
-const dividendData = [
-  { label: "Enable Dividends", purpose: "Toggle dividends payout.", rules: "Boolean." },
-  { label: "Safety Threshold ($)", purpose: "Minimum cash balance required before dividends are paid.", rules: "Required number." },
-  { label: "Payout Percentage", purpose: "Percentage of surplus cash distributed as dividends.", rules: "Required number 0-100." },
-];
-
-const creditData = [
-  { label: "Max Limit ($)", purpose: "Maximum credit facility limit.", rules: "Required number." },
-  { label: "Interest Rate (%)", purpose: "Interest rate on the credit facility.", rules: "Required number." },
-  { label: "Rate Type", purpose: "Annual (APR) or Monthly.", rules: "Boolean." },
-];
-
-const valuationData = [
-  { label: "Valuation Method", purpose: "Method used for valuation.", rules: "Revenue Multiple or EBITDA Multiple." },
-  { label: "Revenue Multiple (x)", purpose: "Multiple applied to revenue.", rules: "Required if Revenue Method." },
-  { label: "EBITDA Multiple (x)", purpose: "Multiple applied to EBITDA.", rules: "Required if EBITDA Method." },
-];
-
-const authData = [
-  { label: "Username", purpose: "Required Username.", rules: "Required." },
-  { label: "Email", purpose: "Required Email.", rules: "Required." },
-  { label: "Full Name", purpose: "Required Full Name.", rules: "Required." },
-  { label: "Company Name", purpose: "Organization Name.", rules: "Required (unless Student)." },
-  { label: "Password", purpose: "Required Password.", rules: "Required." },
-  { label: "Student / Individual", purpose: "Toggle for individual bypass.", rules: "Boolean." },
-];
-
-// --- COMPONENTS ---
-
-const TableSection = ({ title, id, data }: { title: string, id: string, data: any[] }) => (
-  <div id={id} className="scroll-mt-24 mb-10">
-    <h4 className="text-md font-bold text-gray-900 mb-4 uppercase tracking-wide border-l-4 border-indigo-500 pl-3">{title}</h4>
-    <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-      <table className="min-w-full divide-y divide-gray-300">
-        <thead className="bg-gray-50">
-          <tr>
-            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500 sm:pl-6">Label</th>
-            <th scope="col" className="px-3 py-3.5 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Purpose</th>
-            <th scope="col" className="px-3 py-3.5 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Validation</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
-          {data.map((row, idx) => (
-            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{row.label}</td>
-              <td className="px-3 py-4 text-sm text-gray-600">{row.purpose}</td>
-              <td className="px-3 py-4 text-sm text-gray-500 italic">{row.rules}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-);
-
-export default function HelpPage({ searchParams }: { searchParams?: { new?: string } }) {
-  const isNewUser = searchParams?.new === 'true';
-
-  return (
-    <Layout>
-      <div className="flex gap-8">
-        {/* Sidebar Navigation - Sticky */}
-        <aside className="w-64 flex-shrink-0 hidden lg:block">
-          <div className="sticky top-4 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h1 className="text-xl font-bold text-indigo-600 mb-6">Help Topics</h1>
-            <nav className="space-y-1">
-              <a href="#intro" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Introduction</a>
-              <a href="#hierarchy" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">The Hierarchy</a>
-              <a href="#best-practices" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Best Practices</a>
-              
-              <div className="h-6"></div>
-              <p className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Technical Appendix</p>
-              <a href="#glossary" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Input Glossary</a>
-              <a href="#sim-params" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">Simulation Parameters</a>
-              <a href="#ui-logic" className="block px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md">UI Logic</a>
-            </nav>
-          </div>
-        </aside>
-
-        {/* Main Content Area */}
-        <div className="flex-1 min-w-0">
-          <div className="max-w-5xl mx-auto space-y-16">
-            
-            {/* Welcome Hero Section (Visible only to new arrivals) */}
-            {isNewUser && (
-              <div className="bg-indigo-600 rounded-lg shadow-md p-8 text-white">
-                <h2 className="text-3xl font-bold mb-4">Welcome to Evolutesix</h2>
-                <div className="space-y-4 text-indigo-100 text-lg">
-                  <p>
-                    Congratulations on starting your journey. This Financial Planner helps founders and investors understand how a business is likely to behave under real-world uncertainty.
-                  </p>
-                  <p>
-                    Instead of projecting a single “expected” outcome, the tool stress-tests your plan across thousands of possible paths, revealing: how sensitive your business is to cash shocks, where volatility creates hidden risk, and which strategic choices meaningfully reduce the chance of failure.
-                  </p>
-                  <p>
-                    The result is not a prediction, but clearer insight into survival, resilience, and downside risk — so you can compare strategies, adjust assumptions, and make better-informed decisions before capital and time are committed.
-                  </p>
-                  
-                  <ol className="list-decimal pl-5 space-y-2">
-                    <li>
-                      <strong>Structure:</strong> Go to the <Link href="/structure" className="text-yellow-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
-                    </li>
-                    <li>
-                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-yellow-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
-                    </li>
-                    <li>
-                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete. Use the tabs to enter:
-                      <ul className="list-disc pl-5 mt-1">
-                        <li>Revenue items, Expense items, and Staffing items.</li>
-                        <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
-                        <li>Valuation model, Growth rates, and other parameters.</li>
-                      </ul>
-                    </li>
-                    <li>
-                      <strong>Projections:</strong> Finally, go to the Projections page. Use the <strong>dropdown menu</strong> to switch between views:
-                      <ul className="list-disc pl-5 mt-1">
-                        <li><strong>Conventional:</strong> Standard deterministic planning.</li>
-                        <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
-                        <li><strong>Likely real-world outcomes:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
-                      </ul>
-                    </li>
-                  </ol>
-                  
-                </div>
-                <div className="mt-8">
-                <Link 
-                  href="/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 shadow-sm"
-                >
-                  Go to Dashboard
-                </Link>
-                </div>
-              </div>
-            )}
-
-
-            {/* Alpha Disclaimer */}
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md shadow-sm">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-bold text-yellow-800">Alpha Release Warning</h3>
-                  <div className="mt-2 text-sm text-yellow-700">
-                    <p>
-                      This software is in Alpha. Financial models are probabilistic estimations, not guarantees. 
-                      Results should be used for strategic planning and scenario analysis only, not as tax or investment advice.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-
-            {/* Quick Start Guide (Subsequent Visits) */}
-            {!isNewUser && (
-              <section id="quick-start" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Start Guide</h2>
-                <div className="prose prose-indigo text-gray-600 max-w-none space-y-4">
-                  <p>
-                    Use this guide to understand our risk-based modeling before building your first plan.
-                  </p>
-                  <ol className="list-decimal pl-5 space-y-2">
-                    <li>
-                      <strong>Structure:</strong> Go to the <Link href="/structure" className="text-indigo-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
-                    </li>
-                    <li>
-                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-indigo-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
-                    </li>
-                    <li>
-                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete to go straight to the Projections tab. Use the tabs to enter:
-                      <ul className="list-disc pl-5 mt-1">
-                        <li>Revenue items, Expense items, and Staffing items.</li>
-                        <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
-                        <li>Valuation model, Growth rates, and other parameters.</li>
-                      </ul>
-                    </li>
-                    <li>
-                      <strong>Projections:</strong> Finally, go to the Projections page. Use the <strong>dropdown menu</strong> to switch between views:
-                      <ul className="list-disc pl-5 mt-1">
-                        <li><strong>Conventional:</strong> Standard deterministic planning.</li>
-                        <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
-                        <li><strong>Likely real-world outcomes:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
-                      </ul>
-                    </li>
-                  </ol>
-                </div>
-              </section>
-            )}
-
-            {/* Introduction */}
-            <section id="intro" className="scroll-mt-24">
-              <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-6">Antifragile Financial Modeling</h1>
-              <div className="prose prose-indigo text-gray-600 max-w-none">
-                <p className="text-xl leading-relaxed">
-                  Traditional spreadsheets assume averages. Reality is volatile. Our engine prioritizes 
-                  <span className="font-bold text-gray-900"> "Correctness over Convenience"</span> by modeling 
-                  non-ergodic path dependence—meaning the order of events matters.
-                </p>
-                <p className="mt-4">
-                  A 50% drop followed by a 50% gain leaves you with 75% of your starting capital, not 100%. 
-                  We simulate thousands of trajectories to show you the probability of ruin, not just the average outcome.
-                  This approach helps you build an "Antifragile" strategy that can withstand and potentially benefit from volatility.
-                </p>
-              </div>
-            </section>
-
-            {/* Hierarchy */}
-            <section id="hierarchy" className="scroll-mt-24">
-              <div className="border-b border-gray-200 pb-4 mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">The Hierarchy</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="text-4xl mb-4">🏛️</div>
-                  <h3 className="text-lg font-bold text-gray-900">Fund</h3>
-                  <p className="mt-2 text-sm text-gray-500">The top-level container. Represents your investment firm or holding entity. Invests in the Company.</p>
-                </div>
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="text-4xl mb-4">🏢</div>
-                  <h3 className="text-lg font-bold text-gray-900">Company</h3>
-                  <p className="mt-2 text-sm text-gray-500">A specific business entity. Contains historical data and settings; and prediction parameters for future scenarios. Needs multiple plans in order to navigate into the future.</p>
-                </div>
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="text-4xl mb-4">📄</div>
-                  <h3 className="text-lg font-bold text-gray-900">Plans</h3>
-                  <p className="mt-2 text-sm text-gray-500">A specific business plan scenario (e.g., "Series A Base") for the company.</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Best Practices */}
-            <section id="best-practices" className="scroll-mt-24">
-              <div className="border-b border-gray-200 pb-4 mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">Best Practices</h2>
-              </div>
-              
-              <div className="space-y-12">
-                <div>
-                  <h3 className="text-xl font-bold text-indigo-600 mb-3">1. The Three-Tier Approach</h3>
-                  <p className="text-gray-700 mb-4">
-                    Don't rely on a single number. We recommend creating three distinct Plans for every Company:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-2 text-gray-600">
-                    <li><strong>Base Case (P50):</strong> Your honest expectation. Standard growth, standard churn.</li>
-                    <li><strong>Optimistic (P90):</strong> Everything goes right. Higher viral coefficient, lower costs.</li>
-                    <li><strong>Stress Test (P5):</strong> The "Black Swan" scenario. Use NRIG volatility with fat tails to model market crashes or funding dry-ups.</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-indigo-600 mb-3">2. Iterative Modeling & The Liquidity Gap</h3>
-                  <p className="text-gray-700 mb-4">
-                    Financial modeling is a loop, not a line. Use the simulation results to find your breaking point.
-                  </p>
-                  <ol className="list-decimal pl-5 space-y-2 text-gray-600">
-                    <li>Run the simulation (1000+ iterations).</li>
-                    <li>Check the <strong>Cash Balance</strong> chart. Look for the <strong>P5 (5th Percentile)</strong> line.</li>
-                    <li>Identify the "Liquidity Gap"—the month where the P5 line dips below zero.</li>
-                    <li>Return to the <strong>Capital</strong> form and inject a bridge round or credit facility one month prior to the gap.</li>
-                    <li>Re-run to verify survival.</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-indigo-600 mb-3">3. The Starter Strategy</h3>
-                  <p className="text-gray-700 mb-4">
-                    If you are unsure where to begin, we recommend starting with <strong>Flat Volatility</strong>. This establishes a baseline range without the complexity of heavy-tailed distributions.
-                  </p>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm max-w-md">
-                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-2">Starter Configuration</h4>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li><strong>Model Type:</strong> Simple / Flat</li>
-                      <li><strong>Mean / Drift:</strong> 1.34% <span className="text-gray-400">(Average Monthly Growth)</span></li>
-                      <li><strong>Min %:</strong> -30.00% <span className="text-gray-400">(Worst Month)</span></li>
-                      <li><strong>Max %:</strong> 32.68% <span className="text-gray-400">(Best Month)</span></li>
-                      <li><strong>Steps:</strong> 2</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-indigo-600 mb-3">4. Advanced Modeling Examples</h3>
-                  <p className="text-gray-700 mb-4">
-                    For specific risk profiles, use these tested configurations to model asymmetric or fat-tailed risks:
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                      <h4 className="font-bold text-indigo-900">NRIG (Asymmetric Risk)</h4>
-                      <p className="text-xs text-indigo-700 mb-3">High downside tail risk. Ideal for early-stage startups.</p>
-                      <ul className="text-sm text-indigo-800 space-y-1">
-                        <li><strong>Likelyhood (Alpha):</strong> 0.8</li>
-                        <li><strong>Skew (Beta):</strong> -0.5</li>
-                        <li><strong>Scale (Delta):</strong> 1.5</li>
-                      </ul>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h4 className="font-bold text-gray-900">Student-T (Fat Tails)</h4>
-                      <p className="text-xs text-gray-600 mb-3">High frequency of outliers. Ideal for volatile markets.</p>
-                      <ul className="text-sm text-gray-800 space-y-1">
-                        <li><strong>Scale (Vol):</strong> 2.0</li>
-                        <li><strong>Freedom (DoF):</strong> 3.0</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Technical Appendix */}
-            <section id="technical-appendix" className="pt-10 border-t-4 border-gray-200">
-              <h2 className="text-3xl font-bold text-gray-900 mb-10">Technical Appendix</h2>
-
-              {/* Glossary */}
-              <div id="glossary" className="scroll-mt-24">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">1. Input Field Glossary</h3>
-                <TableSection title="Staffing Form" id="staffing" data={staffingData} />
-                <TableSection title="Revenue Form" id="revenue" data={revenueData} />
-                <TableSection title="Expense Form" id="expense" data={expenseData} />
-                <TableSection title="Capital Injection" id="capital" data={capitalData} />
-                <TableSection title="Capital Growth Policy" id="capital-growth" data={capitalGrowthData} />
-                <TableSection title="Dividends" id="dividends" data={dividendData} />
-                <TableSection title="Credit Facility" id="credit" data={creditData} />
-                <TableSection title="Valuation" id="valuation" data={valuationData} />
-                <TableSection title="Authentication" id="auth" data={authData} />
-              </div>
-
-              {/* Simulation Parameters */}
-              <div id="sim-params" className="scroll-mt-24 mt-16">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">2. Simulation Parameters</h3>
-                <div className="prose prose-indigo text-gray-600 max-w-none space-y-8">
-                  <p>
-                    The simulation allows you to model financial performance under different conditions. Volatility can be included for Revenue, Expenses and Capital Growth.
-                  </p>
-                  
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-lg font-bold text-gray-900">Deterministic</h4>
-                    <p className="mt-2">The simulation runs without any volatility. This is the most basic form of modelling that gives you an idea of what to expect without accounting for any unexpected conditions.</p>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-lg font-bold text-gray-900">NRIG (Normal-Inverse-Gamma)</h4>
-                    <p className="mt-2">Used for "Comprehensive Volatility". Captures heavy tails and skewness.</p>
-                    <ul className="mt-4 list-disc pl-5 space-y-1">
-                      <li><strong>Alpha (Likelihood):</strong> Affects the likelihood of extreme events. Lower values = fatter tails (higher risk of extreme events).</li>
-                      <li><strong>Beta (Skew):</strong> Controls asymmetry. Skew risk towards upside (positive shocks) or downside.</li>
-                      <li><strong>Delta (Scale):</strong> Base volatility scale. Higher values = higher variance.</li>
-                    </ul>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-lg font-bold text-gray-900">Student-T</h4>
-                    <p className="mt-2">A robust alternative to Normal distribution, handling outliers via degrees of freedom.</p>
-                    <ul className="mt-4 list-disc pl-5 space-y-1">
-                      <li><strong>Scale:</strong> Spread of the distribution. Higher values = higher volatility.</li>
-                      <li><strong>Freedom (Degrees):</strong> Controls tail thickness. Lower values (3-5) = fatter tails. Higher values converge to Normal distribution.</li>
-                    </ul>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-lg font-bold text-gray-900">Flat / Simple</h4>
-                    <p className="mt-2">Uniform distribution between a defined Minimum and Maximum percentage deviation.</p>
-                    <ul className="mt-4 list-disc pl-5 space-y-1">
-                      <li><strong>Min %:</strong> Maximum downside deviation in a single month.</li>
-                      <li><strong>Max %:</strong> Maximum upside deviation in a single month.</li>
-                      <li><strong>Steps:</strong> Granularity of the random walk.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* UI Logic */}
-              <div id="ui-logic" className="scroll-mt-24 mt-16 mb-20">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">3. UI Logic</h3>
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-8">
-                  <h4 className="text-xl font-bold text-gray-900 mb-4">"Student / Individual" Bypass</h4>
-                  <p className="text-gray-700 mb-4">
-                    To facilitate access for students and individual researchers who do not belong to a corporate entity, the registration form includes a specific bypass logic.
-                  </p>
-                  <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                    <ul className="space-y-3 text-sm text-gray-600">
-                      <li className="flex items-start">
-                        <span className="flex-shrink-0 h-5 w-5 text-indigo-500">✓</span>
-                        <span className="ml-2">When checked, the <strong>Company / Organization Name</strong> field is immediately disabled.</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="flex-shrink-0 h-5 w-5 text-indigo-500">✓</span>
-                        <span className="ml-2">The value is programmatically set to <code>"Individual"</code>.</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="flex-shrink-0 h-5 w-5 text-indigo-500">✓</span>
-                        <span className="ml-2">This allows the user to bypass strict organization name validation while maintaining data integrity in the backend.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-            </section>
-
-          </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded border-2 border-dashed border-gray-300">
+            <p className="text-xl font-bold text-gray-400 mb-2">No Data Available</p>
+            <p className="text-gray-500">Enter Revenue / Cost / Capital items first</p>
+            <a href={`/plan/${planId}/inputs`} className="mt-4 text-blue-600 hover:underline">Go to Inputs</a>
         </div>
-      </div>
+      )}
     </Layout>
   );
 }
