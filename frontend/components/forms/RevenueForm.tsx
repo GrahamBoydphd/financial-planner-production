@@ -135,12 +135,13 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-1">
          <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
          {itemToEdit && (
             <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
          )}
       </div>
+      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
 
       {errors.length > 0 && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
@@ -151,7 +152,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs text-gray-500">Name</label>
+          <label className="text-xs text-gray-500">Name *</label>
           <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
         </div>
         <div>
@@ -167,7 +168,10 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="text-xs text-gray-500">Initial Amount ($)</label>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Initial Amount ($) *
+            <Tooltip content="Initial amount of revenue in Starting Month" />
+          </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
         </div>
         <div>
@@ -197,7 +201,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
           </select>
         </div>
         <div>
-          <label className="text-xs text-gray-500">Start Month</label>
+          <label className="text-xs text-gray-500">Start Month *</label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
         </div>
         <div>

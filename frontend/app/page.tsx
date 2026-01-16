@@ -91,7 +91,11 @@ export default function Dashboard() {
                 {/* FUND HEADER */}
                 <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-800">{fund.name}</h2>
+                    <h2 className="text-xl font-bold text-gray-800">
+                      <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
+                        {fund.name}
+                      </Link>
+                    </h2>
                     <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
                   </div>
                   <DeleteButton onDelete={() => handleDeleteFund(fund.id)} />

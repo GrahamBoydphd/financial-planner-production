@@ -5,6 +5,7 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import { api, Company, FinancialPlan, Fund } from '@/lib/api';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export default function CompanyPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
@@ -61,6 +62,13 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
 
   return (
     <Layout>
+      <nav className='mb-6'>
+        <Link href='/' className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Back to Dashboard
+        </Link>
+      </nav>
+
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <Link href="/" className="hover:underline">Dashboard</Link>

@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "STRATEGIST.md",
+                "file": "ROADMAP.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "STRATEGIST"
+              "title": "ROADMAP"
             }
           },
           {
@@ -89,6 +89,34 @@
               },
               "icon": "lucide-file",
               "title": "Handoffs_BE"
+            }
+          },
+          {
+            "id": "17d307c6a0e22fd1",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Handoffs_FE.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Handoffs_FE"
+            }
+          },
+          {
+            "id": "f1118664327cc632",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Julia Feedback actions.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Julia Feedback actions"
             }
           }
         ],
@@ -257,31 +285,31 @@
   "active": "a7d334899caf750b",
   "lastOpenFiles": [
     "Handoffs_FE.md",
+    "COMMAND_LOG.md",
+    "ROADMAP.md",
+    "STRATEGIST.md",
+    "Toplevel_Plan_to_the_full_Ergodic_Simulation.md",
+    "Handoffs_BE.md",
+    "Handoffs_BE_API_STANDARDS_V3_260116.md",
+    "Julia Feedback actions.md",
     "Handoffs_Deployment+Historical.md",
     "Handoffs_Depolyment_Historical.md",
     "FE_Handoffs.md",
-    "Handoffs_BE.md",
-    "COMMAND_LOG.md",
     "Progess.md",
     "ARCHITECT_BE.md",
     "USER_MANUAL_TECHNICAL_REF.md",
-    "Toplevel_Plan_to_the_full_Ergodic_Simulation.md",
     "Tools_Manifest.md",
     "Backend to Frontend handover packets.md",
     "FE_Prompts.md",
     "Context_History.md",
-    "STRATEGIST.md",
     "ARCHITECT_FE.md",
     "BACKEND_ANCHOR.md",
     "ARCHITECTURAL_CONTEXT_CLI.md",
     "FRONTEND_ANCHOR.md",
-    "ROADMAP.md",
     "Untitled",
     "autopsy_userlayer1.md",
     "audit_MVP_freeze_auth-check.md",
     "audit_baseline.md",
-    "ARCHITECTURAL_CONTEXT_PRODUCTION.md",
-    "PRODUCTION_LEARNINGS_V1.md",
-    "ai_solution.md"
+    "ARCHITECTURAL_CONTEXT_PRODUCTION.md"
   ]
 }

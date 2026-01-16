@@ -1,5 +1,112 @@
+Note that the dates below are in YYMMDD format and in reverse order, latest first. Alert me to any case of conflict; most likely the version coming first in this list, i.e., the most recent date, is the current version. 
 
-# V2 Handoff  260110
+
+## 🔎 V3_ Final Audit Checklist for the Strategist
+
+| **Component**         | **Final Standard**                                     | **Status** |
+| --------------------- | ------------------------------------------------------ | ---------- |
+| **Simulation Labels** | "Likely real-world outcomes" & "Ergodicity Correction" | **Active** |
+| **Data Keys**         | `growth_rate_percent` & `annual_increase_percent`      | **Active** |
+| **UX Polish**         | Password toggles, Auto-scroll anchors, and tooltips    | **Active** |
+| **Architecture**      | Parent Fund -> Company -> Scenario hierarchy           | **Active** |
+
+# V3_FINAL_HANDOVER_MANIFEST_260116
+
+## 1. "Fortress" Backend Alignment
+
+All financial data modules have been audited to ensure mathematical parity with the Rust simulation engine222.
+
+### A. The Percentage Rule
+
+The frontend has been updated to send raw percentage values. The backend now performs all internal divisions ($\text{rate} / 100.0$).
+
+- **Staffing**: Sends `annual_increase_percent` as a whole number (e.g., "3.5" for 3.5%).
+    
+- **Revenue/Expenses**: Sends `growth_rate_percent` as a raw string.
+    
+- **Treasury**: Sends `growth_rate_percent` (formerly `vol_mean`) as a raw string.
+    
+- **Credit/Debt**: Sends `interest_rate` as a raw string3.
+    
+
+### B. Naming Conventions & Type Hardening
+
+- **Key Renaming**: `annual_increase_percent` (Staffing) and `growth_rate_percent` (Treasury/Revenue/Expense) are now the universal standards.
+    
+- **String Precision**: Every numeric value is cast to a **String** before transmission to maintain decimal precision through the JSON layer.
+    
+- **Lowercase Enums**: All categorical inputs (Frequency, Hiring Plan, Volatility Type, Source, Category) are normalized using `.toLowerCase()` before submission.
+    
+
+---
+
+## 2. UX & Navigation Architecture
+
+The user journey has been refined to guide strategists through the modeling hierarchy44444.
+
+### A. Hub-and-Spoke Navigation
+
+- **Master Banner**: Centralized in `Layout.tsx` featuring "Browser-Tab" styling for Dashboard, Structure (Funds & Companies), and Guide & Help.
+    
+- **Localized Breadcrumbs**:
+    
+    - **Results $\rightarrow$ Company**: "Return to Company" link preserves analytical context5.
+        
+    - **Company $\rightarrow$ Dashboard**: "Back to Dashboard" link facilitates rapid portfolio switching6.
+        
+    - **Fund $\rightarrow$ Dashboard**: Standard return path for investment container management7.
+        
+
+### B. Onboarding & Visibility
+
+- **Auth Visibility**: Password toggle icons (Eye/Eye-Off) are active on Login and Register forms8.
+    
+- **First-Time Redirect**: Successful registration now funnels users directly to the Help page for strategic orientation9.
+    
+- **Auto-Scroll**: The "Add Company" button on the Fund page utilizes a `#add-company` anchor to position the user correctly on the Structure page101010.
+    
+
+---
+
+## 3. Strategic Manual & Terminology
+
+The language of the platform has been shifted from technical jargon to strategic outcomes11.
+
+- **Likely Real-World Outcomes**: This term now replaces "Monte Carlo" across the Projections menu and Help Center121212.
+    
+- **Ergodicity Correction**: The "Non-Ergodicity" slider has been renamed to better reflect its mathematical purpose in reconciling individual paths with ensemble averages13.
+    
+- **Strategic Examples**: The Help page now includes specific "Quick-Start" configurations for Flat, NRIG (Asymmetric), and Student-T (Fat-Tail) risk models14.
+    
+- **Cash is King**: Tooltips and documentation now explicitly state the use of **Cash Accounting** for liquidity-focused survival planning15.
+    
+
+---
+
+## 4. Final Technical Sign-off
+
+|**Verification Point**|**Status**|**Proof**|
+|---|---|---|
+|**Percentage Logic**|**Verified**|`increasePayload = increaseVal.toString()`|
+|**Enum Casing**|**Verified**|`.toLowerCase()` active on all DTO mappings 16|
+|**Key Parity**|**Verified**|`growth_rate_percent` is the active Treasury/Revenue key|
+|**TypeScript Build**|**Success**|Zero errors in `norig` and `decimal` interfaces 17|
+
+**This phase of development is now concluded.** The frontend is mathematically robust, intuitively navigable, and strategically documented.
+
+## V3 Handoff 260115
+Based on the source files and documentation provided, I can confirm the current state of your "Fortress" hardening for **Staffing** and **Treasury**. Both modules have indeed been updated to align with the backend's standardized numeric keys and percentage logic.
+
+### 🛡️ Final Hardening Verification
+
+|Module|API Payload Key|Status|Verification from Source|
+|---|---|---|---|
+|**Staffing**|`annual_increase_percent`|**Aligned**|`StaffingForm.tsx` now correctly maps the `annual_increase` input directly to the `annual_increase_percent` payload key without dividing by 100.|
+|**Treasury**|`growth_rate_percent`|**Aligned**|`CapitalGrowthForm.tsx` handles both the fetch (with fallback) and the save (as a String) using the new `growth_rate_percent` key.|
+|**Revenue**|`growth_rate_percent`|**Aligned**|Standardized as a string payload with lowercase enum handling.|
+|**Expenses**|`growth_rate_percent`|**Aligned**|Standardized as a string payload with lowercase enum handling.|
+
+# V3 Handoff  260110
 
 That is fantastic news! Seeing a complex, full-stack application go from a conceptual architecture to a **live, production-hardened environment** is always a satisfying milestone.
 

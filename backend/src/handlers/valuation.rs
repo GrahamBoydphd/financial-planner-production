@@ -14,6 +14,7 @@ use crate::errors::AppError;
 #[derive(Deserialize)]
 pub struct UpsertValuationRequest {
     pub plan_id: Uuid,
+    pub valuation_name: String,
     pub method: String,
     pub multiplier: Decimal,
     pub date_applied: NaiveDate,
@@ -45,8 +46,9 @@ pub async fn upsert_valuation_assumption(
 
     let assumption: ValuationAssumption = sqlx::query_as!(
         ValuationAssumption,
-        "INSERT INTO valuation_assumptions (plan_id, method, multiplier, date_applied) VALUES ($1, $2, $3, $4) RETURNING *",
+        "INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) VALUES ($1, $2, $3, $4, $5) RETURNING *",
         payload.plan_id,
+        payload.valuation_name,
         payload.method,
         payload.multiplier,
         payload.date_applied

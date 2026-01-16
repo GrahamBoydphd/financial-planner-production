@@ -326,6 +326,9 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                     <li>Return to the <strong>Capital</strong> form and inject a bridge round or credit facility one month prior to the gap.</li>
                     <li>Re-run to verify survival.</li>
                   </ol>
+                  <p className="text-gray-700 mt-4 bg-indigo-50 p-4 rounded-md border-l-4 border-indigo-500">
+                    <strong>Cash vs. Accrual:</strong> This model uses Cash Basis accounting. Revenue is recognized when cash is received, and expenses are recognized when cash is paid out. This is critical for startup survival modeling, as "profit" on paper does not pay the bills. Ensure your inputs reflect cash movements (e.g., if you invoice in Jan but get paid in Mar, enter the revenue start month as Mar).
+                  </p>
                 </div>
 
                 <div>
