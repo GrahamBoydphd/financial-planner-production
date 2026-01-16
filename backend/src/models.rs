@@ -84,6 +84,7 @@ pub struct RevenueItem {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -107,6 +108,7 @@ pub struct ExpenseItem {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -116,6 +118,7 @@ pub struct CapitalInjection {
     pub name: String,
     pub amount: Decimal,
     pub month: i32,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -125,6 +128,7 @@ pub struct DividendPolicy {
     pub is_enabled: bool,
     pub safety_threshold: Decimal,
     pub payout_ratio: Decimal,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -134,6 +138,7 @@ pub struct CreditFacility {
     pub facility_limit: Decimal,
     pub interest_rate: Decimal,
     pub is_annual_rate: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -144,17 +149,19 @@ pub struct ValuationAssumption {
     pub method: String,
     pub multiplier: Decimal,
     pub date_applied: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct EventShock {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub event_name: String,
     pub shock_month: i32,
     pub impact_type: String,
     pub impact_value: Decimal,
     pub duration_months: Option<i32>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Serialize, FromRow)]

@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "payout_ratio",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -38,6 +43,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

@@ -23,17 +23,18 @@
 │   │   ├── 20260110131527_ensure_cascade_deletes.sql
 │   │   ├── 20260110154428_add_initial_cash_to_plans.sql
 │   │   ├── 20260113083505_standardize_capital_growth.sql
-│   │   └── 20260113095020_standardize_staffing_naming.sql
+│   │   ├── 20260113095020_standardize_staffing_naming.sql
+│   │   └── 20260116081601_standardize_valuation_naming.sql
 │   ├── .sqlx
 │   │   ├── query-052a4dd2b1dd8ca8b4393fb0268e36208200db764098f736736c9e2731f1cd28.json
 │   │   ├── query-07b75ef48873f25f84ec047fa5e9991a231afa56ab5266ef1a2bb155d5934eb1.json
-│   │   ├── query-0a11576f3b62a56b4a4822393075fb020d30a48278ba3a88f470f71bddf2805b.json
 │   │   ├── query-11564b17dd54f87e483bf304cdec5d3ec1dd6b09b4c97ed5c24a20474615d318.json
 │   │   ├── query-154646ae645865f7559d7fbae2be0051ac641f5afe0a90e719e7a5bac00d0ba9.json
 │   │   ├── query-15585c27e6e36ac147f19db2758dfe756f01ef17222f28aeb65fbaf8b5edc4d8.json
 │   │   ├── query-15b953e185f9399490b8fc5bfbb2ca91666fad1c452730a17fce78e7233aaf23.json
 │   │   ├── query-16521ffd5bd15667c1c2beaf6457f4ed7bcec0214ffefd142a2e3d4e459551d9.json
 │   │   ├── query-1e77b5df95a91b1a062eed7d7ed4bbd0cf28f4d6a48d2734c628760eaababa91.json
+│   │   ├── query-20d69bec5115d276007a2ec5988bdad05ed926b8975a9f7e5bc59b75a8578303.json
 │   │   ├── query-2f8e7e732fd5f8fb5dec2fef3ec711da2eefe38a80fd8efa52033be5f66e7ff3.json
 │   │   ├── query-37b8d3066acedd73c2d723fd04eb83fcdd5245d069c26bd6a01d5879f7f7d42b.json
 │   │   ├── query-4408098f8a1b6a65b2c77d426e84200ec3e4376ea07e18f1a6e6ef43fc829380.json
@@ -121,14 +122,15 @@
 │   ├── Context_History.md
 │   ├── FE_Prompts.md
 │   ├── FRONTEND_ANCHOR.md
+│   ├── Handoffs_BE_API_STANDARDS_V3_260116.md
 │   ├── Handoffs_BE.md
 │   ├── Handoffs_Deployment+Historical.md
 │   ├── Handoffs_FE.md
+│   ├── Julia Feedback actions.md
 │   ├── .obsidian
 │   │   ├── appearance.json
 │   │   ├── app.json
-│   │   ├── core-plugins.json
-│   │   └── workspace.json
+│   │   └── core-plugins.json
 │   ├── PRODUCTION_LEARNINGS_V1.md
 │   ├── Progess.md
 │   ├── ROADMAP.md
@@ -222,7 +224,12 @@
 │   │   │       │   ├── 16.pack.gz
 │   │   │       │   ├── 17.pack.gz
 │   │   │       │   ├── 18.pack.gz
+│   │   │       │   ├── 19.pack.gz
 │   │   │       │   ├── 1.pack.gz
+│   │   │       │   ├── 20.pack.gz
+│   │   │       │   ├── 21.pack.gz
+│   │   │       │   ├── 22.pack.gz
+│   │   │       │   ├── 23.pack.gz
 │   │   │       │   ├── 2.pack.gz
 │   │   │       │   ├── 3.pack.gz
 │   │   │       │   ├── 4.pack.gz
@@ -264,6 +271,8 @@
 │   │   │       │   ├── 14.pack.gz
 │   │   │       │   ├── 15.pack.gz
 │   │   │       │   ├── 16.pack.gz
+│   │   │       │   ├── 17.pack.gz
+│   │   │       │   ├── 18.pack.gz
 │   │   │       │   ├── 1.pack.gz
 │   │   │       │   ├── 2.pack.gz
 │   │   │       │   ├── 3.pack.gz
@@ -283,7 +292,6 @@
 │   │   │           ├── 4.pack
 │   │   │           ├── index.pack
 │   │   │           └── index.pack.old
-│   │   ├── fallback-build-manifest.json
 │   │   ├── package.json
 │   │   ├── react-loadable-manifest.json
 │   │   ├── server
@@ -292,40 +300,36 @@
 │   │   │   │   │   └── [companyId]
 │   │   │   │   │       ├── page_client-reference-manifest.js
 │   │   │   │   │       └── page.js
+│   │   │   │   ├── fund
+│   │   │   │   │   └── [fundId]
+│   │   │   │   │       ├── page_client-reference-manifest.js
+│   │   │   │   │       └── page.js
 │   │   │   │   ├── help
 │   │   │   │   │   ├── page_client-reference-manifest.js
 │   │   │   │   │   └── page.js
 │   │   │   │   ├── login
 │   │   │   │   │   ├── page_client-reference-manifest.js
 │   │   │   │   │   └── page.js
-│   │   │   │   ├── _not-found
-│   │   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   │   └── page.js
 │   │   │   │   ├── page_client-reference-manifest.js
 │   │   │   │   ├── page.js
 │   │   │   │   ├── plan
 │   │   │   │   │   └── [planId]
-│   │   │   │   │       └── inputs
+│   │   │   │   │       ├── inputs
+│   │   │   │   │       │   ├── page_client-reference-manifest.js
+│   │   │   │   │       │   └── page.js
+│   │   │   │   │       └── results
 │   │   │   │   │           ├── page_client-reference-manifest.js
 │   │   │   │   │           └── page.js
-│   │   │   │   ├── register
-│   │   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   │   └── page.js
 │   │   │   │   └── structure
 │   │   │   │       ├── page_client-reference-manifest.js
 │   │   │   │       └── page.js
 │   │   │   ├── app-paths-manifest.json
-│   │   │   ├── _error.js
 │   │   │   ├── interception-route-rewrite-manifest.js
 │   │   │   ├── middleware-build-manifest.js
 │   │   │   ├── middleware-manifest.json
 │   │   │   ├── middleware-react-loadable-manifest.js
 │   │   │   ├── next-font-manifest.js
 │   │   │   ├── next-font-manifest.json
-│   │   │   ├── pages
-│   │   │   │   ├── _app.js
-│   │   │   │   ├── _document.js
-│   │   │   │   └── _error.js
 │   │   │   ├── pages-manifest.json
 │   │   │   ├── server-reference-manifest.js
 │   │   │   ├── server-reference-manifest.json
@@ -333,6 +337,7 @@
 │   │   │   │   ├── asynckit.js
 │   │   │   │   ├── axios.js
 │   │   │   │   ├── call-bind-apply-helpers.js
+│   │   │   │   ├── chart.js.js
 │   │   │   │   ├── combined-stream.js
 │   │   │   │   ├── debug.js
 │   │   │   │   ├── delayed-stream.js
@@ -351,6 +356,7 @@
 │   │   │   │   ├── hasown.js
 │   │   │   │   ├── has-symbols.js
 │   │   │   │   ├── has-tostringtag.js
+│   │   │   │   ├── @kurkle.js
 │   │   │   │   ├── lucide-react.js
 │   │   │   │   ├── math-intrinsics.js
 │   │   │   │   ├── mime-db.js
@@ -358,6 +364,7 @@
 │   │   │   │   ├── ms.js
 │   │   │   │   ├── next.js
 │   │   │   │   ├── proxy-from-env.js
+│   │   │   │   ├── react-chartjs-2.js
 │   │   │   │   ├── supports-color.js
 │   │   │   │   └── @swc.js
 │   │   │   └── webpack-runtime.js
@@ -367,39 +374,26 @@
 │   │   │   │   │   ├── company
 │   │   │   │   │   │   └── [companyId]
 │   │   │   │   │   │       └── page.js
+│   │   │   │   │   ├── fund
+│   │   │   │   │   │   └── [fundId]
+│   │   │   │   │   │       └── page.js
 │   │   │   │   │   ├── help
 │   │   │   │   │   │   └── page.js
 │   │   │   │   │   ├── layout.js
 │   │   │   │   │   ├── login
 │   │   │   │   │   │   └── page.js
-│   │   │   │   │   ├── _not-found
-│   │   │   │   │   │   └── page.js
 │   │   │   │   │   ├── page.js
 │   │   │   │   │   ├── plan
 │   │   │   │   │   │   └── [planId]
-│   │   │   │   │   │       └── inputs
+│   │   │   │   │   │       ├── inputs
+│   │   │   │   │   │       │   └── page.js
+│   │   │   │   │   │       └── results
 │   │   │   │   │   │           └── page.js
-│   │   │   │   │   ├── register
-│   │   │   │   │   │   └── page.js
 │   │   │   │   │   └── structure
 │   │   │   │   │       └── page.js
 │   │   │   │   ├── app-pages-internals.js
-│   │   │   │   ├── _error.js
-│   │   │   │   ├── fallback
-│   │   │   │   │   ├── amp.js
-│   │   │   │   │   ├── main.js
-│   │   │   │   │   ├── pages
-│   │   │   │   │   │   ├── _app.js
-│   │   │   │   │   │   └── _error.js
-│   │   │   │   │   ├── react-refresh.js
-│   │   │   │   │   └── webpack.js
 │   │   │   │   ├── main-app.js
-│   │   │   │   ├── main.js
-│   │   │   │   ├── pages
-│   │   │   │   │   ├── _app.js
-│   │   │   │   │   └── _error.js
 │   │   │   │   ├── polyfills.js
-│   │   │   │   ├── react-refresh.js
 │   │   │   │   └── webpack.js
 │   │   │   ├── css
 │   │   │   │   └── app
@@ -416,127 +410,108 @@
 │   │   │   │   ├── df0a9ae256c0569c-s.woff2
 │   │   │   │   └── e4af272ccee01ff0-s.p.woff2
 │   │   │   └── webpack
-│   │   │       ├── 0c4bc21e25f13ec6.webpack.hot-update.json
-│   │   │       ├── 0f33e81e312972ec.webpack.hot-update.json
-│   │   │       ├── 13d9429d5d593eae.webpack.hot-update.json
-│   │   │       ├── 1d2a93633a9eee67.webpack.hot-update.json
-│   │   │       ├── 223122294de05cb6.webpack.hot-update.json
-│   │   │       ├── 25e80dbac9fcb32b.webpack.hot-update.json
-│   │   │       ├── 272eae21ac0d1d96.webpack.hot-update.json
-│   │   │       ├── 2e52f591d39aae8e.webpack.hot-update.json
-│   │   │       ├── 340e847c072f69e8.webpack.hot-update.json
-│   │   │       ├── 3b0829fb3d1a6c43.webpack.hot-update.json
-│   │   │       ├── 4caf5f9017f4760e.webpack.hot-update.json
-│   │   │       ├── 4df8edb0e4dd9570.webpack.hot-update.json
+│   │   │       ├── 1932c07213f56657.webpack.hot-update.json
+│   │   │       ├── 33c62bc1982de5f9.webpack.hot-update.json
+│   │   │       ├── 36725c022a7cdc00.webpack.hot-update.json
+│   │   │       ├── 3f4f970d50eb27f7.webpack.hot-update.json
+│   │   │       ├── 43e8d80c7fbf1d4c.webpack.hot-update.json
+│   │   │       ├── 479db59b85249ed6.webpack.hot-update.json
+│   │   │       ├── 5adb87cd5f646b26.webpack.hot-update.json
 │   │   │       ├── 633457081244afec._.hot-update.json
-│   │   │       ├── 66724536b005f621.webpack.hot-update.json
-│   │   │       ├── 6b073c33cc6b30ac.webpack.hot-update.json
-│   │   │       ├── 6bde58e248dffc4a.webpack.hot-update.json
-│   │   │       ├── 7f03e9f59a2505cb.webpack.hot-update.json
-│   │   │       ├── 84857939e65c97d5.webpack.hot-update.json
-│   │   │       ├── 874faf484cabc3e4.webpack.hot-update.json
-│   │   │       ├── 8ddb151850e27f3c.webpack.hot-update.json
-│   │   │       ├── 990f327f2ff6643b.webpack.hot-update.json
-│   │   │       ├── 9c049e4107664067.webpack.hot-update.json
-│   │   │       ├── a466c02afbb9e94b.webpack.hot-update.json
+│   │   │       ├── 8d0fb777d59a1b54.webpack.hot-update.json
+│   │   │       ├── 94f854241b0d8b21.webpack.hot-update.json
+│   │   │       ├── 9c0ce344f1de589b.webpack.hot-update.json
+│   │   │       ├── a21a17ecdba3344b.webpack.hot-update.json
+│   │   │       ├── afcede650b5519d7.webpack.hot-update.json
 │   │   │       ├── app
+│   │   │       │   ├── company
+│   │   │       │   │   └── [companyId]
+│   │   │       │   │       ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   │       ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   │       ├── page.a21a17ecdba3344b.hot-update.js
+│   │   │       │   │       └── page.e26695942ed9a206.hot-update.js
+│   │   │       │   ├── fund
+│   │   │       │   │   └── [fundId]
+│   │   │       │   │       ├── page.1932c07213f56657.hot-update.js
+│   │   │       │   │       ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   │       ├── page.8d0fb777d59a1b54.hot-update.js
+│   │   │       │   │       ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   │       ├── page.e26695942ed9a206.hot-update.js
+│   │   │       │   │       └── page.edc06bc8b36d9868.hot-update.js
 │   │   │       │   ├── help
-│   │   │       │   │   ├── page.0f33e81e312972ec.hot-update.js
-│   │   │       │   │   ├── page.1d2a93633a9eee67.hot-update.js
-│   │   │       │   │   ├── page.272eae21ac0d1d96.hot-update.js
-│   │   │       │   │   ├── page.340e847c072f69e8.hot-update.js
-│   │   │       │   │   ├── page.7f03e9f59a2505cb.hot-update.js
-│   │   │       │   │   └── page.be37aa5bc388665f.hot-update.js
-│   │   │       │   ├── layout.0c4bc21e25f13ec6.hot-update.js
-│   │   │       │   ├── layout.13d9429d5d593eae.hot-update.js
-│   │   │       │   ├── layout.25e80dbac9fcb32b.hot-update.js
-│   │   │       │   ├── layout.272eae21ac0d1d96.hot-update.js
-│   │   │       │   ├── layout.2e52f591d39aae8e.hot-update.js
-│   │   │       │   ├── layout.340e847c072f69e8.hot-update.js
-│   │   │       │   ├── layout.3b0829fb3d1a6c43.hot-update.js
-│   │   │       │   ├── layout.4df8edb0e4dd9570.hot-update.js
-│   │   │       │   ├── layout.6b073c33cc6b30ac.hot-update.js
-│   │   │       │   ├── layout.6bde58e248dffc4a.hot-update.js
-│   │   │       │   ├── layout.84857939e65c97d5.hot-update.js
-│   │   │       │   ├── layout.874faf484cabc3e4.hot-update.js
-│   │   │       │   ├── layout.8ddb151850e27f3c.hot-update.js
-│   │   │       │   ├── layout.990f327f2ff6643b.hot-update.js
-│   │   │       │   ├── layout.9c049e4107664067.hot-update.js
-│   │   │       │   ├── layout.a466c02afbb9e94b.hot-update.js
-│   │   │       │   ├── layout.c084faff8d5acdbe.hot-update.js
-│   │   │       │   ├── layout.c27b83e89108e69f.hot-update.js
-│   │   │       │   ├── layout.cbacb359ecf5e4c2.hot-update.js
-│   │   │       │   ├── layout.d432cb262414a773.hot-update.js
-│   │   │       │   ├── layout.e204db6641d370a2.hot-update.js
-│   │   │       │   ├── layout.ec3ed27e3c3329c5.hot-update.js
-│   │   │       │   ├── layout.ef384b34248d7af4.hot-update.js
-│   │   │       │   ├── layout.f4cf8418008edfcc.hot-update.js
-│   │   │       │   ├── layout.ffc8fa27009ce7af.hot-update.js
+│   │   │       │   │   ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   │   ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   │   └── page.e26695942ed9a206.hot-update.js
+│   │   │       │   ├── layout.1932c07213f56657.hot-update.js
+│   │   │       │   ├── layout.33c62bc1982de5f9.hot-update.js
+│   │   │       │   ├── layout.36725c022a7cdc00.hot-update.js
+│   │   │       │   ├── layout.3f4f970d50eb27f7.hot-update.js
+│   │   │       │   ├── layout.479db59b85249ed6.hot-update.js
+│   │   │       │   ├── layout.8d0fb777d59a1b54.hot-update.js
+│   │   │       │   ├── layout.9c0ce344f1de589b.hot-update.js
+│   │   │       │   ├── layout.a21a17ecdba3344b.hot-update.js
+│   │   │       │   ├── layout.da1a46afb3232777.hot-update.js
+│   │   │       │   ├── layout.e26695942ed9a206.hot-update.js
+│   │   │       │   ├── layout.edc06bc8b36d9868.hot-update.js
 │   │   │       │   ├── login
-│   │   │       │   │   ├── page.272eae21ac0d1d96.hot-update.js
-│   │   │       │   │   ├── page.874faf484cabc3e4.hot-update.js
-│   │   │       │   │   └── page.a466c02afbb9e94b.hot-update.js
-│   │   │       │   ├── page.340e847c072f69e8.hot-update.js
-│   │   │       │   ├── page.9c049e4107664067.hot-update.js
-│   │   │       │   ├── page.ef384b34248d7af4.hot-update.js
-│   │   │       │   ├── register
-│   │   │       │   │   ├── page.272eae21ac0d1d96.hot-update.js
-│   │   │       │   │   ├── page.874faf484cabc3e4.hot-update.js
-│   │   │       │   │   └── page.a466c02afbb9e94b.hot-update.js
+│   │   │       │   │   ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   │   ├── page.479db59b85249ed6.hot-update.js
+│   │   │       │   │   ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   │   └── page.e26695942ed9a206.hot-update.js
+│   │   │       │   ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   ├── page.8d0fb777d59a1b54.hot-update.js
+│   │   │       │   ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   ├── page.e26695942ed9a206.hot-update.js
+│   │   │       │   ├── plan
+│   │   │       │   │   └── [planId]
+│   │   │       │   │       ├── inputs
+│   │   │       │   │       │   ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   │       │   ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   │       │   ├── page.da1a46afb3232777.hot-update.js
+│   │   │       │   │       │   └── page.e26695942ed9a206.hot-update.js
+│   │   │       │   │       └── results
+│   │   │       │   │           ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │   │           ├── page.3f4f970d50eb27f7.hot-update.js
+│   │   │       │   │           ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │   │           ├── page.da1a46afb3232777.hot-update.js
+│   │   │       │   │           └── page.e26695942ed9a206.hot-update.js
 │   │   │       │   └── structure
-│   │   │       │       ├── page.340e847c072f69e8.hot-update.js
-│   │   │       │       └── page.9c049e4107664067.hot-update.js
-│   │   │       ├── be37aa5bc388665f.webpack.hot-update.json
-│   │   │       ├── c084faff8d5acdbe.webpack.hot-update.json
-│   │   │       ├── c27b83e89108e69f.webpack.hot-update.json
-│   │   │       ├── cbacb359ecf5e4c2.webpack.hot-update.json
-│   │   │       ├── cdd00c5103958c54.webpack.hot-update.json
-│   │   │       ├── d432cb262414a773.webpack.hot-update.json
-│   │   │       ├── e204db6641d370a2.webpack.hot-update.json
-│   │   │       ├── e7bd48d0986dda2b.webpack.hot-update.json
-│   │   │       ├── ec3ed27e3c3329c5.webpack.hot-update.json
-│   │   │       ├── ef384b34248d7af4.webpack.hot-update.json
-│   │   │       ├── f4cf8418008edfcc.webpack.hot-update.json
-│   │   │       ├── ffc8fa27009ce7af.webpack.hot-update.json
-│   │   │       ├── webpack.0c4bc21e25f13ec6.hot-update.js
-│   │   │       ├── webpack.0f33e81e312972ec.hot-update.js
-│   │   │       ├── webpack.13d9429d5d593eae.hot-update.js
-│   │   │       ├── webpack.1d2a93633a9eee67.hot-update.js
-│   │   │       ├── webpack.223122294de05cb6.hot-update.js
-│   │   │       ├── webpack.25e80dbac9fcb32b.hot-update.js
-│   │   │       ├── webpack.272eae21ac0d1d96.hot-update.js
-│   │   │       ├── webpack.2e52f591d39aae8e.hot-update.js
-│   │   │       ├── webpack.340e847c072f69e8.hot-update.js
-│   │   │       ├── webpack.3b0829fb3d1a6c43.hot-update.js
-│   │   │       ├── webpack.4caf5f9017f4760e.hot-update.js
-│   │   │       ├── webpack.4df8edb0e4dd9570.hot-update.js
-│   │   │       ├── webpack.66724536b005f621.hot-update.js
-│   │   │       ├── webpack.6b073c33cc6b30ac.hot-update.js
-│   │   │       ├── webpack.6bde58e248dffc4a.hot-update.js
-│   │   │       ├── webpack.7f03e9f59a2505cb.hot-update.js
-│   │   │       ├── webpack.84857939e65c97d5.hot-update.js
-│   │   │       ├── webpack.874faf484cabc3e4.hot-update.js
-│   │   │       ├── webpack.8ddb151850e27f3c.hot-update.js
-│   │   │       ├── webpack.990f327f2ff6643b.hot-update.js
-│   │   │       ├── webpack.9c049e4107664067.hot-update.js
-│   │   │       ├── webpack.a466c02afbb9e94b.hot-update.js
-│   │   │       ├── webpack.be37aa5bc388665f.hot-update.js
-│   │   │       ├── webpack.c084faff8d5acdbe.hot-update.js
-│   │   │       ├── webpack.c27b83e89108e69f.hot-update.js
-│   │   │       ├── webpack.cbacb359ecf5e4c2.hot-update.js
-│   │   │       ├── webpack.cdd00c5103958c54.hot-update.js
-│   │   │       ├── webpack.d432cb262414a773.hot-update.js
-│   │   │       ├── webpack.e204db6641d370a2.hot-update.js
-│   │   │       ├── webpack.e7bd48d0986dda2b.hot-update.js
-│   │   │       ├── webpack.ec3ed27e3c3329c5.hot-update.js
-│   │   │       ├── webpack.ef384b34248d7af4.hot-update.js
-│   │   │       ├── webpack.f4cf8418008edfcc.hot-update.js
-│   │   │       └── webpack.ffc8fa27009ce7af.hot-update.js
+│   │   │       │       ├── page.36725c022a7cdc00.hot-update.js
+│   │   │       │       ├── page.8d0fb777d59a1b54.hot-update.js
+│   │   │       │       ├── page.9c0ce344f1de589b.hot-update.js
+│   │   │       │       └── page.e26695942ed9a206.hot-update.js
+│   │   │       ├── b5f4ad588ec84415.webpack.hot-update.json
+│   │   │       ├── be3995ed29fa9e08.webpack.hot-update.json
+│   │   │       ├── da1a46afb3232777.webpack.hot-update.json
+│   │   │       ├── e02373c296097517.webpack.hot-update.json
+│   │   │       ├── e26695942ed9a206.webpack.hot-update.json
+│   │   │       ├── edc06bc8b36d9868.webpack.hot-update.json
+│   │   │       ├── webpack.1932c07213f56657.hot-update.js
+│   │   │       ├── webpack.33c62bc1982de5f9.hot-update.js
+│   │   │       ├── webpack.36725c022a7cdc00.hot-update.js
+│   │   │       ├── webpack.3f4f970d50eb27f7.hot-update.js
+│   │   │       ├── webpack.43e8d80c7fbf1d4c.hot-update.js
+│   │   │       ├── webpack.479db59b85249ed6.hot-update.js
+│   │   │       ├── webpack.5adb87cd5f646b26.hot-update.js
+│   │   │       ├── webpack.8d0fb777d59a1b54.hot-update.js
+│   │   │       ├── webpack.94f854241b0d8b21.hot-update.js
+│   │   │       ├── webpack.9c0ce344f1de589b.hot-update.js
+│   │   │       ├── webpack.a21a17ecdba3344b.hot-update.js
+│   │   │       ├── webpack.afcede650b5519d7.hot-update.js
+│   │   │       ├── webpack.b5f4ad588ec84415.hot-update.js
+│   │   │       ├── webpack.be3995ed29fa9e08.hot-update.js
+│   │   │       ├── webpack.da1a46afb3232777.hot-update.js
+│   │   │       ├── webpack.e02373c296097517.hot-update.js
+│   │   │       ├── webpack.e26695942ed9a206.hot-update.js
+│   │   │       └── webpack.edc06bc8b36d9868.hot-update.js
 │   │   ├── trace
 │   │   └── types
 │   │       ├── app
 │   │       │   ├── company
 │   │       │   │   └── [companyId]
+│   │       │   │       └── page.ts
+│   │       │   ├── fund
+│   │       │   │   └── [fundId]
 │   │       │   │       └── page.ts
 │   │       │   ├── help
 │   │       │   │   └── page.ts
@@ -546,10 +521,10 @@
 │   │       │   ├── page.ts
 │   │       │   ├── plan
 │   │       │   │   └── [planId]
-│   │       │   │       └── inputs
+│   │       │   │       ├── inputs
+│   │       │   │       │   └── page.ts
+│   │       │   │       └── results
 │   │       │   │           └── page.ts
-│   │       │   ├── register
-│   │       │   │   └── page.ts
 │   │       │   └── structure
 │   │       │       └── page.ts
 │   │       └── package.json
@@ -565,6 +540,7 @@
 │   ├── tsconfig.json
 │   └── tsconfig.tsbuildinfo
 ├── .gitignore
+├── migrations
 ├── project_structure_auth.txt
 ├── scripts
 │   ├── ai_prompt_packet.txt
@@ -605,4 +581,4 @@
 │   └── verify_auth.sh
 └── tree.txt
 
-94 directories, 512 files
+102 directories, 480 files

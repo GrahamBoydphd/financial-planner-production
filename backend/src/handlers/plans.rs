@@ -36,7 +36,7 @@ pub async fn create_plan(
 ) -> Result<Json<FinancialPlan>, AppError> {
     let plan = sqlx::query_as!(
         FinancialPlan,
-        "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING *",
+        "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
         payload.company_id,
         payload.name,
         chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
@@ -73,7 +73,7 @@ pub async fn update_plan(
              initial_cash = COALESCE($4, initial_cash),
              updated_at = NOW() 
          WHERE id = $5 AND tenant_id = $6
-         RETURNING *",
+         RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
         payload.name,
         start_date,
         payload.pooling_fraction,
@@ -95,7 +95,7 @@ pub async fn get_all_plans(
 ) -> Result<Json<Vec<FinancialPlan>>, AppError> {
     let plans = sqlx::query_as!(
         FinancialPlan,
-        "SELECT * FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
         claims.tenant_id
     )
     .fetch_all(&pool)
@@ -111,7 +111,7 @@ pub async fn get_plan(
 ) -> Result<Json<FinancialPlan>, AppError> {
     let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
-        "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
     )
@@ -165,7 +165,7 @@ pub async fn get_plan_projection(
     // Fetch Plan Info
     let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
-        "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
     )
@@ -177,7 +177,7 @@ pub async fn get_plan_projection(
     // Fetch Inputs
     let revenue_items = sqlx::query_as!(
         crate::models::RevenueItem,
-        "SELECT * FROM revenue_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        "SELECT id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM revenue_items WHERE plan_id = $1 ORDER BY start_month ASC",
         id
     )
     .fetch_all(&pool)
@@ -185,7 +185,7 @@ pub async fn get_plan_projection(
 
     let expense_items = sqlx::query_as!(
         crate::models::ExpenseItem,
-        "SELECT * FROM expense_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        "SELECT id, plan_id, name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM expense_items WHERE plan_id = $1 ORDER BY start_month ASC",
         id
     )
     .fetch_all(&pool)
@@ -193,7 +193,7 @@ pub async fn get_plan_projection(
 
     let event_shocks = sqlx::query_as!(
         crate::models::EventShock,
-        "SELECT * FROM event_shocks WHERE plan_id = $1",
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1",
         id
     )
     .fetch_all(&pool)
@@ -201,7 +201,7 @@ pub async fn get_plan_projection(
 
     let capital_injections = sqlx::query_as!(
         crate::models::CapitalInjection,
-        "SELECT * FROM capital_injections WHERE plan_id = $1 ORDER BY month ASC",
+        "SELECT id, plan_id, name, amount, month, created_at FROM capital_injections WHERE plan_id = $1 ORDER BY month ASC",
         id
     )
     .fetch_all(&pool)
@@ -209,7 +209,7 @@ pub async fn get_plan_projection(
 
     let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
         crate::models::DividendPolicy,
-        "SELECT * FROM dividend_policies WHERE plan_id = $1",
+        "SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at FROM dividend_policies WHERE plan_id = $1",
         id
     )
     .fetch_optional(&pool)
@@ -217,7 +217,7 @@ pub async fn get_plan_projection(
 
     let credit_facility: Option<crate::models::CreditFacility> = sqlx::query_as!(
         crate::models::CreditFacility,
-        "SELECT * FROM credit_facilities WHERE plan_id = $1",
+        "SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at FROM credit_facilities WHERE plan_id = $1",
         id
     )
     .fetch_optional(&pool)
@@ -225,7 +225,7 @@ pub async fn get_plan_projection(
 
     let valuation_assumptions = sqlx::query_as!(
         crate::models::ValuationAssumption,
-        "SELECT * FROM valuation_assumptions WHERE plan_id = $1 ORDER BY date_applied DESC LIMIT 1",
+        "SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at FROM valuation_assumptions WHERE plan_id = $1 ORDER BY date_applied DESC LIMIT 1",
         id
     )
     .fetch_all(&pool)

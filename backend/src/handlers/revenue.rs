@@ -153,7 +153,7 @@ pub async fn create_revenue_item(
             volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-        RETURNING *
+        RETURNING id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at
         "#,
         payload.plan_id, payload.name, payload.source, payload.start_month, payload.end_month, 
         initial_amount, growth_rate_percent, payload.frequency, cost_of_revenue_percent,
@@ -175,7 +175,7 @@ pub async fn get_revenue_items(
     let items = sqlx::query_as!(
         RevenueItem,
         r#"
-        SELECT * FROM revenue_items 
+        SELECT id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM revenue_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
         ORDER BY start_month ASC
@@ -277,7 +277,7 @@ pub async fn update_revenue_item(
             vol_mean = $13, vol_scale = $14, vol_freedom = $15, vol_alpha = $16, vol_beta = $17
         WHERE id = $18
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $19)
-        RETURNING *
+        RETURNING id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at
         "#,
         payload.name, payload.source, payload.start_month, payload.end_month, 
         initial_amount, growth_rate_percent, payload.frequency, cost_of_revenue_percent,

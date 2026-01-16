@@ -32,6 +32,11 @@
         "ordinal": 5,
         "name": "date_applied",
         "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -49,7 +54,8 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
   "hash": "20d69bec5115d276007a2ec5988bdad05ed926b8975a9f7e5bc59b75a8578303"

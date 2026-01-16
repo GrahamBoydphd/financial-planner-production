@@ -14,7 +14,7 @@ use crate::errors::AppError;
 #[derive(Deserialize)]
 pub struct CreateShockRequest {
     pub plan_id: Uuid,
-    pub name: String,
+    pub event_name: String,
     pub shock_month: i32,
     pub impact_type: String,
     pub impact_value: Decimal,
@@ -41,9 +41,9 @@ pub async fn create_event_shock(
 
     let new_shock = sqlx::query_as!(
         EventShock,
-        "INSERT INTO event_shocks (plan_id, name, shock_month, impact_type, impact_value, duration_months) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, plan_id, name, shock_month, impact_type, impact_value, duration_months",
+        "INSERT INTO event_shocks (plan_id, event_name, shock_month, impact_type, impact_value, duration_months) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at",
         payload.plan_id,
-        payload.name,
+        payload.event_name,
         payload.shock_month,
         payload.impact_type,
         payload.impact_value,
@@ -62,7 +62,7 @@ pub async fn get_event_shock(
 ) -> Result<Json<EventShock>, AppError> {
     let shock = sqlx::query_as!(
         EventShock,
-        "SELECT id, plan_id, name, shock_month, impact_type, impact_value, duration_months FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
         id,
         claims.tenant_id
     )
@@ -80,7 +80,7 @@ pub async fn get_plan_event_shocks(
 ) -> Result<Json<Vec<EventShock>>, AppError> {
     let shocks = sqlx::query_as!(
         EventShock,
-        "SELECT id, plan_id, name, shock_month, impact_type, impact_value, duration_months FROM event_shocks WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
         plan_id,
         claims.tenant_id
     )

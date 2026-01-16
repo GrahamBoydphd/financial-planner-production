@@ -81,1208 +81,724 @@ CRITICAL OUTPUT RULES:
     * Do not add new crates/packages unless explicitly instructed by the Architect prompt.</architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Fix Valuation saving and remove redundant UI card from results.
-ACTION: 
-1. Update 'frontend/lib/api.ts':
-   - Rename 'name' to 'valuation_name' in the 'ValuationAssumption' interface to align with Backend 'Fortress' hardening.
-2. Update 'frontend/components/forms/ValuationForm.tsx':
-   - In 'handleSave', change the payload key 'name: "Valuation"' to 'valuation_name: "Valuation"'.
-   - Update the UI summary card reference to 'activeValuation.valuation_name'.
-3. Update 'frontend/app/plan/[planId]/results/page.tsx':
-   - Locate and REMOVE the 'Valuation Model' Card (roughly lines 301-318) that contains the multiplier input and 'Set Valuation' button.
-   - Keep the 'Valuation (Est)' KPI card as it is read-only and useful for the dashboard.
-CONSTRAINTS: Ensure no other grid elements are broken by removing the Valuation card.
+CONTEXT: Resolve 23 build errors by aligning Models and Handlers. ACTION: 1) In 'backend/src/models.rs', add 'pub created_at: DateTime<Utc>' to RevenueItem, ExpenseItem, CapitalInjection, DividendPolicy, CreditFacility, and ValuationAssumption. 2) In 'backend/src/handlers/plans.rs', update 'capital_injections' query: change 'description' to 'name'. 3) In 'plans.rs', update 'valuation_assumptions' query: change 'amount' to 'valuation_name' and ensure 'multiplier' is present. 4) In 'plans.rs', update 'credit_facilities': change 'limit_amount' to 'facility_limit'. 5) In 'backend/src/handlers/events.rs', ensure 'event_name' and 'created_at' are used in all queries. CONSTRAINTS: This resolves E0277 errors by matching mandatory DB columns to the Rust structs.
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/lib/api.ts ---
-import axios from 'axios';
+--- START FILE: backend/src/models.rs ---
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
+use chrono::{NaiveDate, DateTime, Utc};
+use rust_decimal::Decimal;
 
-// If the environment variable is set (Production), use it.
-// Otherwise, fall back to localhost (Development).
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// --- Phase 0: Multi-Tenancy & Auth ---
 
-// --- AXIOS INSTANCE (Auth Injection) ---
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request Interceptor: Inject Token
-apiClient.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response Interceptor: Handle 401 & Debug 422
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response) {
-      // Debugging 422 errors
-      if (error.response.status === 422) {
-        console.error("DEBUG 422 DETAIL:", error.response.data);
-      }
-
-      if (error.response.status === 401) {
-        // Token expired or invalid
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-          // Optional: Redirect to login if not already there
-          // window.location.href = '/login'; 
-        }
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// --- INTERFACES ---
-export interface AuthResponse {
-  token: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Tenant {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface Fund {
-  id: string;
-  name: string;
-  created_at: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub full_name: String,
+    pub tenant_id: Uuid,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface Company {
-  id: string;
-  fund_id: string;
-  name: string;
-  industry?: string;
-  business_model?: string;
-  created_at: string;
+// --- Phase 3: Portfolio Structure ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Fund {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub tenant_id: Uuid,
 }
 
-export interface FinancialPlan {
-  id: string;
-  company_id: string;
-  name: string;
-  start_month: string;
-  initial_cash: string;
-  pooling_fraction: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Company {
+    pub id: Uuid,
+    pub fund_id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub industry: Option<String>,
+    pub business_model: Option<String>,
+    pub technology: Option<String>,
+    pub tenant_id: Uuid,
 }
 
-export interface UpdatePlanRequest {
-  name?: string;
-  start_month?: string;
-  initial_cash?: string;
-  pooling_fraction?: string;
+// --- Phase 1 & 2: Financial Models ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct FinancialPlan {
+    pub id: Uuid,
+    pub company_id: Uuid,
+    pub name: String,
+    pub start_month: NaiveDate,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub initial_cash: Decimal,
+    pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
+    pub tenant_id: Uuid,
 }
 
-export interface RevenueItem {
-  id: string;
-  plan_id: string;
-  name: string;
-  source: string;
-  initial_amount: string;
-  growth_rate_percent: string;
-  start_month: number;
-  end_month?: number;
-  frequency: string;
-  cost_of_revenue_percent?: string;
-  volatility_type?: string;
-  vol_min?: string;
-  vol_max?: string;
-  vol_intervals?: number;
-  vol_mean?: string;
-  vol_scale?: string;
-  vol_freedom?: string;
-  vol_alpha?: string;
-  vol_beta?: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct RevenueItem {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub source: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub growth_rate_percent: Decimal,
+    pub frequency: String,
+    pub cost_of_revenue_percent: Option<Decimal>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface ExpenseItem {
-  id: string;
-  plan_id: string;
-  name: string;
-  category: string;
-  initial_amount: string;
-  growth_rate_percent: string;
-  start_month: number;
-  end_month?: number;
-  frequency: string;
-  pct_of_revenue?: string;
-  volatility_type?: string;
-  vol_min?: string;
-  vol_max?: string;
-  vol_intervals?: number;
-  vol_mean?: string;
-  vol_scale?: string;
-  vol_freedom?: string;
-  vol_alpha?: string;
-  vol_beta?: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ExpenseItem {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub growth_rate_percent: Decimal,
+    pub frequency: String,
+    pub pct_of_revenue: Option<Decimal>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface CapitalGrowthPolicy {
-  id: string;
-  plan_id: string;
-  volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
-  growth_rate_percent?: string;
-  vol_min?: string;
-  vol_max?: string;
-  vol_intervals?: number;
-  vol_mean?: string;
-  vol_scale?: string;
-  vol_freedom?: string;
-  vol_alpha?: string;
-  vol_beta?: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CapitalInjection {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub amount: Decimal,
+    pub month: i32,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface CapitalInjection {
-  id: string;
-  plan_id: string;
-  name: string;
-  amount: string; // Strict Type: String for Decimal precision
-  month: number;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct DividendPolicy {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub is_enabled: bool,
+    pub safety_threshold: Decimal,
+    pub payout_ratio: Decimal,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface DividendPolicy {
-  id: string;
-  plan_id: string;
-  is_enabled: boolean;
-  safety_threshold: string;
-  payout_ratio: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CreditFacility {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub facility_limit: Decimal,
+    pub interest_rate: Decimal,
+    pub is_annual_rate: bool,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface CreditFacility {
-  id: string;
-  plan_id: string;
-  facility_limit: string;
-  interest_rate: string;
-  is_annual_rate: boolean;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ValuationAssumption {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub valuation_name: String,
+    pub method: String,
+    pub multiplier: Decimal,
+    pub date_applied: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface ValuationAssumption {
-  id: string;
-  plan_id: string;
-  valuation_name: string;
-  method: 'revenue' | 'ebitda';
-  multiplier: string;
-  date_applied: string;
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct EventShock {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub event_name: String,
+    pub shock_month: i32,
+    pub impact_type: String,
+    pub impact_value: Decimal,
+    pub duration_months: Option<i32>,
+    pub created_at: DateTime<Utc>,
 }
 
-export interface StaffingRole {
-  id: string;
-  plan_id: string;
-  role_name: string;
-  annual_salary: string;
-  start_month: number;
-  target_count: number; 
-  hiring_plan: 'fixed_count' | 'monthly_rate'; 
-  hiring_rate?: string; 
-  annual_increase_percent: string;
+#[derive(Serialize, FromRow)]
+pub struct CapitalGrowthPolicy {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub growth_rate_percent: Option<Decimal>,
 }
 
-export interface MonthlyData {
-  month_index: number;
-  date: string;
-  revenue: string;
-  cogs: string;
-  gross_profit: string;
-  opex: string;
-  interest_expense: string;
-  net_income: string;
-  cash_balance: string;
-  dividend_paid: string;
-  cumulative_dividends: string;
-  cumulative_external_capital: string;
-  cumulative_pool_received: string; 
-  current_debt: string;
-  total_value: string;
-  is_insolvent: boolean;
+#[derive(Deserialize, Debug)]
+pub struct CreateFundRequest {
+    pub name: String,
 }
 
-export interface SimulationResult {
-  labels: string[];
-  valuation_method: string;
-  deterministic_data: MonthlyData[];
-  single_run_data?: MonthlyData[];
-  single_run_value?: string[];
-
-  p0_value?: string[];
-  p10_value?: string[];
-  p25_value?: string[];
-  p50_value?: string[];
-  p75_value?: string[];
-  p90_value?: string[];
-  p100_value?: string[];
-
-  p50_pool_cumulative?: string[]; 
-
-  deterministic_runway?: number;
-  deterministic_valuation: string;
-
-  single_run_runway?: number;
-  single_run_valuation?: string;
-
-  p50_runway?: number;
-  p50_valuation?: string;
+#[derive(Deserialize, Debug)]
+pub struct CreateCompanyRequest {
+    pub fund_id: uuid::Uuid,
+    pub name: String,
+    pub business_model: Option<String>,
+    pub industry: Option<String>,
+    pub technology: Option<String>,
 }
 
-// --- API OBJECT ---
-export const api = {
-  // AUTH
-  login: async (username: string, password: string) => {
-    const payload = { username, password };
-    return (await apiClient.post<AuthResponse>('/api/auth/login', payload)).data;
-  },
-  
-  register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
-    const payload = { username, email, password, full_name, company_name };
-    return (await apiClient.post<AuthResponse>('/api/auth/register', payload)).data;
-  },
-
-  // FUNDS
-  getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
-  getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
-  createFund: async (name: string) => 
-    (await apiClient.post<Fund>('/api/funds', { name })).data,
-  deleteFund: async (id: string) => {
-    await apiClient.delete(`/api/funds/${id}`);
-  },
-
-  // COMPANIES
-  getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
-  getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
-  createCompany: async (name: string, fund_id: string, industry?: string, business_model?: string, technology?: string) => 
-    (await apiClient.post<Company>('/api/companies', { name, fund_id, industry, business_model, technology })).data,
-  deleteCompany: async (id: string) => {
-    await apiClient.delete(`/api/companies/${id}`);
-  },  
-
-  // PLANS
-  getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
-  getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
-  // STRICT PAYLOAD: { company_id, name, start_month }
-  createPlan: async (company_id: string, name: string, start_month: string) => 
-    (await apiClient.post<FinancialPlan>('/api/plans', { company_id, name, start_month })).data,
-  updatePlan: async (id: string, updates: UpdatePlanRequest) => 
-    (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
-  getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 
-    (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
-
-  // REVENUE
-  getRevenueItems: async (planId: string) => (await apiClient.get<RevenueItem[]>(`/api/plans/${planId}/revenue`)).data,
-  createRevenueItem: async (item: Omit<RevenueItem, 'id'>) => (await apiClient.post<RevenueItem>('/api/revenue', item)).data,
-  updateRevenueItem: async (id: string, item: Partial<RevenueItem>) => (await apiClient.put<RevenueItem>(`/api/revenue/${id}`, item)).data,
-  deleteRevenueItem: async (id: string) => (await apiClient.delete(`/api/revenue/${id}`)),
-
-  // EXPENSES
-  getExpenseItems: async (planId: string) => (await apiClient.get<ExpenseItem[]>(`/api/plans/${planId}/expenses`)).data,
-  createExpenseItem: async (item: Omit<ExpenseItem, 'id'>) => (await apiClient.post<ExpenseItem>('/api/expenses', item)).data,
-  updateExpenseItem: async (id: string, item: Partial<ExpenseItem>) => (await apiClient.put<ExpenseItem>(`/api/expenses/${id}`, item)).data,
-  deleteExpenseItem: async (id: string) => (await apiClient.delete(`/api/expenses/${id}`)),
-
-  // STAFFING
-  getStaffingRoles: async (planId: string) => (await apiClient.get<StaffingRole[]>(`/api/plans/${planId}/staffing`)).data,
-  createStaffingRole: async (role: Omit<StaffingRole, 'id'>) => (await apiClient.post<StaffingRole>('/api/staffing', role)).data,
-  updateStaffingRole: async (role: Omit<StaffingRole, 'plan_id'> & { plan_id?: string }) => (await apiClient.put<StaffingRole>(`/api/staffing/${role.id}`, role)).data,
-  deleteStaffingRole: async (id: string) => (await apiClient.delete(`/api/staffing/${id}`)).data,
-
-  // CAPITAL GROWTH (Treasury)
-  getCapitalGrowth: async (planId: string) => (await apiClient.get<CapitalGrowthPolicy>(`/api/plans/${planId}/capital-growth`)).data,
-  upsertCapitalGrowth: async (item: Omit<CapitalGrowthPolicy, 'id'>) => 
-    (await apiClient.post<CapitalGrowthPolicy>('/api/capital-growth', item)).data,
-
-  // CAPITAL INJECTIONS
-  getCapitalInjections: async (planId: string) => 
-    (await apiClient.get<CapitalInjection[]>(`/api/plans/${planId}/capital`)).data,
-  createCapitalInjection: async (item: Omit<CapitalInjection, 'id'>) => 
-    (await apiClient.post<CapitalInjection>('/api/capital', item)).data,
-  deleteCapitalInjection: async (id: string) => 
-    (await apiClient.delete(`/api/capital/${id}`)),
-
-  // DIVIDENDS
-  getDividends: async (planId: string) => 
-    (await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`)).data,
-  upsertDividends: async (item: Omit<DividendPolicy, 'id'>) => 
-    (await apiClient.post<DividendPolicy>('/api/dividends', item)).data,
-
-  // CREDIT
-  getCredit: async (planId: string) => 
-    (await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`)).data,
-  upsertCredit: async (item: Omit<CreditFacility, 'id'>) => 
-    (await apiClient.post<CreditFacility>('/api/credit', item)).data,
-
-  // VALUATION
-  getValuation: async (planId: string) => 
-    (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
-  createValuation: async (item: { plan_id: string, valuation_name: string, method: string, multiplier: string, date_applied: string }) => 
-    (await apiClient.post('/api/valuation', item)).data,
-};
---- END FILE: frontend/lib/api.ts ---
-
---- START FILE: frontend/components/forms/ValuationForm.tsx ---
-'use client';
-
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import Tooltip from '@/components/ui/Tooltip';
-
-interface Props {
-  planId: string;
-  onSuccess: () => void;
-}
-
-interface FormErrors {
-  multiple?: string;
-  general?: string;
-}
-
-export default function ValuationForm({ planId, onSuccess }: Props) {
-  const [method, setMethod] = useState<'revenue' | 'ebitda'>('revenue');
-  const [revenueMultiple, setRevenueMultiple] = useState('');
-  const [ebitdaMultiple, setEbitdaMultiple] = useState('');
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [activeValuation, setActiveValuation] = useState<any>(null);
-
-  useEffect(() => {
-    let active = true;
-    api.getValuation(planId).then(data => {
-        if (!active) return;
-        console.log("DEBUG VALUATION FETCH:", data);
-
-        // Check if data is an array and has items
-        if (Array.isArray(data) && data.length > 0) {
-            // Take the LAST item (assuming chronological order)
-            const lastItem = data[data.length - 1];
-            
-            setActiveValuation(lastItem);
-            setMethod(lastItem.method);
-            
-            if (lastItem.method === 'revenue') {
-                setRevenueMultiple(lastItem.multiplier.toString());
-                setEbitdaMultiple('');
-            } else {
-                setEbitdaMultiple(lastItem.multiplier.toString());
-                setRevenueMultiple('');
-            }
-        }
-    }).catch((error) => {
-        console.error("DEBUG VALUATION ERROR:", error);
-    });
-    return () => { active = false; };
-  }, [planId]);
-
-  const handleSave = async () => {
-    setErrors({});
+// --- Point 9: Staffing & Payroll ---
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct StaffingRole {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub role_name: String,
+    pub annual_salary: Decimal,
+    pub start_month: i32,
     
-    // Validation
-    if (method === 'revenue' && !revenueMultiple) {
-        setErrors({ multiple: "Revenue multiple is required." });
-        return;
-    }
-    if (method === 'ebitda' && !ebitdaMultiple) {
-        setErrors({ multiple: "EBITDA multiple is required." });
-        return;
-    }
-
-    try {
-        const payload = {
-            plan_id: planId,
-            name: 'Valuation',
-            method: method,
-            multiplier: method === 'revenue' ? String(revenueMultiple) : String(ebitdaMultiple),
-            date_applied: new Date().toISOString().split('T')[0]
-        };
-        await api.createValuation(payload);
-        
-        setActiveValuation(payload);
-        onSuccess();
-    } catch (e) {
-        setErrors({ general: "Failed to save valuation logic." });
-    }
-  };
-
-  return (
-    <div className="space-y-3 bg-gray-50 p-4 rounded border">
-        <h3 className="font-bold text-gray-700 text-sm">Exit Valuation Model</h3>
-        
-        <div className="flex gap-4 text-xs">
-            <label className="flex items-center gap-1 cursor-pointer">
-                <input 
-                    type="radio" 
-                    name="valMethod" 
-                    checked={method === 'revenue'} 
-                    onChange={() => setMethod('revenue')} 
-                />
-                Revenue Multiple
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer">
-                <input 
-                    type="radio" 
-                    name="valMethod" 
-                    checked={method === 'ebitda'} 
-                    onChange={() => setMethod('ebitda')} 
-                />
-                EBITDA Multiple
-            </label>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
-            {method === 'revenue' && (
-                <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                        Revenue Multiple (x)
-                        <Tooltip content="Revenue / Ebitda Multiple = Company Valuation (or Enterprise Value) / Annual Revenue / Ebitda" />
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className={`w-full border p-1 rounded ${errors.multiple ? 'border-red-500' : ''}`} 
-                        value={revenueMultiple} 
-                        onChange={e => {
-                            setRevenueMultiple(e.target.value);
-                            if (errors.multiple) setErrors({});
-                        }} 
-                        placeholder="e.g. 5.0"
-                    />
-                    {errors.multiple && <p className="text-red-500 text-xs mt-1">{errors.multiple}</p>}
-                </div>
-            )}
-            {method === 'ebitda' && (
-                <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                        EBITDA Multiple (x)
-                        <Tooltip content="Multiple applied to EBITDA for valuation." />
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className={`w-full border p-1 rounded ${errors.multiple ? 'border-red-500' : ''}`} 
-                        value={ebitdaMultiple} 
-                        onChange={e => {
-                            setEbitdaMultiple(e.target.value);
-                            if (errors.multiple) setErrors({});
-                        }} 
-                        placeholder="e.g. 12.0"
-                    />
-                    {errors.multiple && <p className="text-red-500 text-xs mt-1">{errors.multiple}</p>}
-                </div>
-            )}
-        </div>
-
-        {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
-
-        {/* Summary Card */}
-        {activeValuation && (
-            <div className="mt-4 p-3 bg-white rounded border border-gray-200 text-xs shadow-sm">
-                <h4 className="font-bold text-gray-700 mb-1">Current Model: {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'} ({activeValuation.multiplier}x)</h4>
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Method:</span>
-                    <span className="font-mono font-semibold text-purple-700">
-                        {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'}
-                    </span>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                    <span className="text-gray-600">Multiplier:</span>
-                    <span className="font-mono font-semibold text-purple-700">
-                        {activeValuation.multiplier}x
-                    </span>
-                </div>
-            </div>
-        )}
-
-        <button onClick={handleSave} className="w-full bg-purple-600 text-white py-1 rounded text-sm font-bold">
-            {activeValuation ? 'Update Valuation Logic' : 'Set Valuation Logic'}
-        </button>
-    </div>
-  );
-}
---- END FILE: frontend/components/forms/ValuationForm.tsx ---
-
---- START FILE: frontend/app/plan/[planId]/results/page.tsx ---
-'use client';
-
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import Layout from '@/components/Layout';
-import Card from '@/components/ui/Card';
-import CashFlowChart from '@/components/CashFlowChart';
-import Button from '@/components/ui/Button';
-import { api, FinancialPlan, CapitalInjection, DividendPolicy, CreditFacility, ValuationAssumption } from '@/lib/api';
-
-// --- COMPONENT: KPI CARDS ---
-interface KPIProps {
-  simMode: string;
-  projection: any;
-  creditLimit: string;
-  stopInsolvency: boolean;
-  currency: string;
-  valuationMethod: string;
+    // Renamed from 'count' to 'target_count' to match sophisticated logic
+    // Assumes DB column is 'target_count'
+    pub target_count: i32, 
+    
+    // New Fields for Sophisticated Logic
+    pub hiring_plan: String, // "fixed_count" or "monthly_rate"
+    pub hiring_rate: Option<i32>, // e.g., 1 = hire every month, 2 = hire every 2 months
+    
+    pub annual_increase_percent: Decimal,
+    pub created_at: DateTime<Utc>,
 }
 
-const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, valuationMethod }: KPIProps) => {
-    if (!projection) return null;
+// --- Auth DTOs ---
 
-    // Helper to format with currency
-    const fmt = (n: any) => 
-        `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+#[derive(Deserialize, Debug)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+    pub full_name: String,
+    pub email: String,
+}
 
-    const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
-    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1] || lastData;
+#[derive(Deserialize, Debug)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
 
-    let totalVal = lastData.total_value;
-    let valuation = projection.deterministic_valuation;
-    let subtitle = 'Deterministic Average';
-    let insolvencyMonth = -1;
-    let runwayVal: number | string = 'Infinite';
+#[derive(Serialize, Debug)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user_id: Uuid,
+    pub tenant_id: Uuid,
+}
 
-    const checkInsolvency = (dataArray: any[]) => {
-        if (!dataArray) return -1;
-        const idx = dataArray.findIndex(m => m.is_insolvent || Number(m.cash_balance) < -(Number(creditLimit) || 0));
-        return idx !== -1 ? dataArray[idx].month_index : -1;
-    };
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub tenant_id: uuid::Uuid,
+    pub exp: usize,
+}
+--- END FILE: backend/src/models.rs ---
 
-    // RUNWAY CALCULATION HELPER
-    const calculateRunway = (cash: number, netIncome: number) => {
-        if (netIncome >= 0) return 'Infinite';
-        const burn = -netIncome;
-        const available = cash + Number(creditLimit);
-        if (available <= 0) return 0;
-        return Math.floor(available / burn);
-    };
-
-    if (simMode === 'single') {
-        totalVal = singleLastData.total_value;
-        valuation = projection.single_run_valuation;
-        subtitle = 'Single Run Result';
-        if (projection.single_run_data) {
-            insolvencyMonth = checkInsolvency(projection.single_run_data);
-            runwayVal = calculateRunway(Number(singleLastData.cash_balance), Number(singleLastData.net_income));
-        }
-    } else if (simMode === 'monte_carlo') {
-        totalVal = projection.p50_value?.[projection.p50_value.length - 1] || 0;
-        valuation = projection.p50_valuation;
-        subtitle = 'Median (P50)';
-        runwayVal = projection.p50_runway ?? 'Infinite';
-        
-    } else {
-        // Standard
-        insolvencyMonth = checkInsolvency(projection.deterministic_data);
-        runwayVal = calculateRunway(Number(lastData.cash_balance), Number(lastData.net_income));
-    }
-
-    const p90Val = projection.p90_value?.[projection.p90_value.length - 1] || 0;
-
-    return (
-      <>
-        <Card className="text-center border-b-4 border-gray-500 mb-4">
-          <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value (Cash+Divs)</h3>
-          <p className={`text-2xl font-bold ${totalVal < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-            {fmt(totalVal)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-        </Card>
-
-        {simMode === 'monte_carlo' && (
-          <Card className="text-center border-b-4 border-blue-600 mb-4">
-            <h3 className="text-blue-700 text-xs uppercase font-bold">Upside (P90)</h3>
-            <p className={`text-2xl font-bold ${p90Val < 0 ? 'text-red-600' : 'text-blue-700'}`}>
-              {fmt(p90Val)}
-            </p>
-          </Card>
-        )}
-
-        <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">Valuation (Est)</h3>
-            <p className="text-2xl font-bold text-green-600">{fmt(valuation)}</p>
-            <p className="text-xs text-gray-400 mt-1">
-                {valuationMethod === 'ebitda' ? 'Based on EBITDA' : 'Based on Final Revenue'}
-            </p>
-        </Card>
-        
-        <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">
-                {simMode === 'monte_carlo' ? 'Runway (Median, P50)' : 'Runway'}
-            </h3>
-            {insolvencyMonth !== -1 ? (
-                <div className="text-red-600">
-                    <p className="text-xl font-bold">Insolvent in Month {insolvencyMonth}</p>
-                    <p className="text-xs mt-1">
-                        {stopInsolvency ? 'Trading Stopped' : 'Showing fantasy projection'}
-                    </p>
-                </div>
-            ) : runwayVal === 0 ? (
-                <p className="text-2xl font-bold text-red-600">Insolvent (0 Mo)</p>
-            ) : runwayVal !== 'Infinite' ? (
-                <p className="text-2xl font-bold text-purple-600">{runwayVal} Mo</p>
-            ) : (
-                <p className="text-2xl font-bold text-purple-600">Infinite</p>
-            )}
-        </Card>
-      </>
-    );
+--- START FILE: backend/src/handlers/plans.rs ---
+use axum::{
+    extract::{Path, State, Query, Extension},
+    http::StatusCode,
+    Json,
 };
+use serde::{Deserialize};
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use crate::models::{FinancialPlan, Claims};
+use crate::errors::AppError;
+use crate::projection::{generate_simulation, SimulationResult};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+use chrono::NaiveDate;
+use std::str::FromStr;
 
-// --- MAIN PAGE COMPONENT ---
-export default function ResultsPage({ params }: { params: { planId: string } }) {
-  const { planId } = params;
-  const [plan, setPlan] = useState<FinancialPlan | null>(null);
-  const [projection, setProjection] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [updatingPooling, setUpdatingPooling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-   
-  // Financial State
-  const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
-  const [initialCash, setInitialCash] = useState("0");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [dividendPolicy, setDividendPolicy] = useState<DividendPolicy | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [creditFacility, setCreditFacility] = useState<CreditFacility | null>(null);
-   
-  // Forms State
-  const [newCapName, setNewCapName] = useState('');
-  const [newCapAmount, setNewCapAmount] = useState('');
-  const [newCapMonth, setNewCapMonth] = useState('');
-
-  const [divEnabled, setDivEnabled] = useState(false);
-  const [divThreshold, setDivThreshold] = useState('50000');
-  const [divRatio, setDivRatio] = useState('20');
-
-  const [creditLimit, setCreditLimit] = useState('0');
-  const [creditRate, setCreditRate] = useState('10');
-  const [creditIsAnnual, setCreditIsAnnual] = useState(true);
-
-  const [valMultiple, setValMultiple] = useState('5'); 
-  const [valuationMethod, setValuationMethod] = useState('revenue');
-
-  // Controls
-  const [years, setYears] = useState(5);
-  const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
-  const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
-  const [stopInsolvency, setStopInsolvency] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
-  // Non-Ergodicity State
-  const [poolingFraction, setPoolingFraction] = useState(0);
-  
-  // UI Settings
-  const [currency, setCurrency] = useState(''); // Default None
-
-  // --- DATA LOADING ---
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const p = await api.getPlan(planId);
-        setPlan(p);
-        setInitialCash(p.initial_cash || "0");
-        // Sync slider with DB state on reload
-        setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
-        
-        const caps = await api.getCapitalInjections(planId);
-        setCapitalItems(caps);
-        
-        try {
-          const div = await api.getDividends(planId);
-          setDividendPolicy(div);
-          setDivEnabled(div.is_enabled);
-          setDivThreshold(div.safety_threshold.toString());
-          setDivRatio(div.payout_ratio.toString());
-        } catch { /* No policy set */ }
-
-        try {
-          const cred = await api.getCredit(planId);
-          setCreditFacility(cred);
-          setCreditLimit(cred.facility_limit.toString());
-          setCreditRate(cred.interest_rate.toString());
-          setCreditIsAnnual(cred.is_annual_rate);
-        } catch { /* No credit set */ }
-
-        try {
-          const vals = await api.getValuation(planId);
-          if (vals && vals.length > 0) {
-             const latest = vals[vals.length - 1];
-             setValMultiple(latest.multiplier.toString());
-             setValuationMethod(latest.method);
-          }
-        } catch { /* No valuation set */ }
-
-        // Use standard or monte_carlo depending on UI
-        const backendMode = simMode === 'monte_carlo' ? 'monte_carlo' : 'single';
-        const proj = await api.getProjection(planId, {
-           mode: backendMode,
-           stop_insolvency: stopInsolvency,
-           initial_cash: Number(p.initial_cash || 0),
-           months: years * 12 // FIX: Pass months based on years selector
-        });
-
-        if (proj.valuation_method) {
-            setValuationMethod(proj.valuation_method);
-        }
-        
-        // --- DATA MAPPING FOR TABLE ---
-        let sourceData = proj.deterministic_data;
-        if (backendMode === 'single' && proj.single_run_data) {
-           sourceData = proj.single_run_data;
-        }
-
-        const tableData = sourceData.map((m: any, i: number) => {
-           let cumulative_pool_received = m.cumulative_pool_received;
-           let total_value = m.total_value;
-           let cash_balance = m.cash_balance;
-
-           // If Monte Carlo, override specific columns with P50 data to match chart
-           if (simMode === 'monte_carlo') {
-               if (proj.p50_pool_cumulative && proj.p50_pool_cumulative[i] !== undefined) {
-                   cumulative_pool_received = proj.p50_pool_cumulative[i];
-               }
-               if (proj.p50_value && proj.p50_value[i] !== undefined) {
-                   total_value = proj.p50_value[i];
-                   // Derive cash balance to keep row consistent: Cash = Total - Divs
-                   // We use the median run's dividends as the approximation for P50 dividends
-                   cash_balance = Number(total_value) - Number(m.cumulative_dividends);
-               }
-           }
-
-           return {
-               month_index: m.month_index,
-               date: m.date,
-               revenue: m.revenue,
-               cogs: m.cogs,
-               gross_profit: m.gross_profit,
-               opex: m.opex,
-               net_income: m.net_income,
-               cumulative_pool_received, // Overridden if MC
-               cash_balance, // Overridden if MC
-               total_value, // Overridden if MC
-               dividend_paid: m.dividend_paid,
-               is_insolvent: m.is_insolvent
-           };
-        });
-        
-        (proj as any).cash_flow_data = tableData;
-        setProjection(proj);
-
-      } catch (e) {
-        console.error(e);
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setLoading(false);
-        setUpdatingPooling(false);
-      }
-    };
-    load();
-  }, [planId, years, simMode, stopInsolvency, refreshTrigger]); 
-
-  // --- 3. HANDLERS ---
-  const handleAddCapital = async () => {
-    if (!newCapName || !newCapAmount) return;
-    await api.createCapitalInjection({
-      plan_id: planId,
-      name: newCapName,
-      amount: parseFloat(newCapAmount).toFixed(2),
-      month: Number(newCapMonth || 0)
-    });
-    setNewCapName(''); setNewCapAmount(''); setNewCapMonth('');
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleDeleteCapital = async (id: string) => {
-    await api.deleteCapitalInjection(id);
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveDividends = async () => {
-    await api.upsertDividends({
-      plan_id: planId,
-      is_enabled: divEnabled,
-      safety_threshold: divThreshold,
-      payout_ratio: (Number(divRatio) / 100).toString()
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveCredit = async () => {
-    await api.upsertCredit({
-      plan_id: planId,
-      facility_limit: creditLimit,
-      interest_rate: creditRate,
-      is_annual_rate: creditIsAnnual
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handleSaveValuation = async () => {
-    await api.createValuation({
-      plan_id: planId,
-      valuation_name: 'Valuation',
-      method: valuationMethod,
-      multiplier: valMultiple,
-      date_applied: new Date().toISOString().split('T')[0] // Fix 422
-    });
-    setRefreshTrigger(n => n + 1);
-  };
-
-  const handlePoolingSave = async () => {
-    if (!plan) return;
-    setUpdatingPooling(true);
-    try {
-        // Strictly await the update before triggering refresh
-        await api.updatePlan(planId, { pooling_fraction: (poolingFraction / 100.0).toString() });
-        
-        // Trigger refresh, set loading to true to bridge gap until useEffect runs
-        setLoading(true);
-        setRefreshTrigger(n => n + 1);
-    } catch (e) {
-        console.error("Failed to update pooling fraction", e);
-        setUpdatingPooling(false);
-        setLoading(false);
-    }
-  };
-
-  // Helper
-  const fmt = (n: any) => 
-    `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-
-  if (!plan) return <Layout>Loading...</Layout>;
-
-  return (
-    <Layout>
-      <nav className='mb-6'>
-        <Link href={`/company/${plan.company_id}`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
-          <ArrowLeft className='h-4 w-4' />
-          Return to Company
-        </Link>
-      </nav>
-
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
-          <p className="text-gray-500">Financial Simulation Engine v2.0</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-white p-2 rounded shadow flex flex-wrap items-center gap-4">
-              <select 
-                className="border rounded p-1 text-sm bg-white"
-                value={years}
-                onChange={(e) => setYears(Number(e.target.value))}
-              >
-                {[1, 2, 3, 5, 10, 20, 50, 100].map(y => <option key={y} value={y}>{y} Years</option>)}
-              </select>
-
-              <div className="flex items-center gap-2 border-l pl-4">
-                <input 
-                  type="checkbox" id="logScale" 
-                  checked={isLogScale} onChange={(e) => setIsLogScale(e.target.checked)}
-                  className="rounded text-blue-600"
-                />
-                <label htmlFor="logScale" className="text-sm font-medium cursor-pointer">Log Scale</label>
-              </div>
-
-              <div className="flex items-center gap-2 border-l pl-4">
-                <select 
-                  className="border rounded p-1 text-sm font-bold text-blue-800 bg-blue-50"
-                  value={simMode}
-                  onChange={(e) => setSimMode(e.target.value as any)}
-                >
-                  <option value="standard">Standard (Average)</option>
-                  <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Likely real-world outcomes (1000 Runs)</option>
-                </select>
-              </div>
-
-              {/* Currency Selector */}
-              <div className="flex items-center gap-2 border-l pl-4">
-                  <span className="text-xs text-gray-500">Currency:</span>
-                  <select 
-                    className="border rounded p-1 text-sm font-bold"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                      <option value="">None</option>
-                      <option value="$">$</option>
-                      <option value="€">€</option>
-                      <option value="£">£</option>
-                      <option value="¥">¥</option>
-                  </select>
-              </div>
-
-              {/* Insolvency Checkbox */}
-              <div className="flex items-center gap-2 border-l pl-4">
-                <input 
-                  type="checkbox" id="stopInsolvency" 
-                  checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
-                  className="rounded text-red-600"
-                />
-                <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop on Insolvency</label>
-              </div>
-
-              {/* Non-Ergodicity Slider */}
-              {simMode === 'monte_carlo' && (
-                <div className="flex flex-col justify-center border-l pl-4 w-40">
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Ergodicity Correction</span>
-                        {updatingPooling ? (
-                            <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
-                        ) : (
-                            <span className="text-xs font-bold text-blue-600">{poolingFraction}%</span>
-                        )}
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      step="1"
-                      value={poolingFraction}
-                      onChange={(e) => setPoolingFraction(Number(e.target.value))}
-                      onMouseUp={handlePoolingSave}
-                      onTouchEnd={handlePoolingSave}
-                      disabled={updatingPooling || loading}
-                      className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer ${updatingPooling || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    />
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              {simMode === 'single' && (
-                 <Button variant="secondary" onClick={() => setRefreshTrigger(n => n + 1)}>Recalculate 🎲</Button>
-              )}
-              <a href={`/plan/${planId}/inputs`} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium">Edit Revenue/Cost</a>
-            </div>
-        </div>
-      </div>
-
-      {error && <div className="bg-red-50 text-red-600 p-4 rounded mb-4 border border-red-200">Simulation Error: {error}</div>}
-
-      {loading ? (
-        <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
-      ) : projection && (projection.deterministic_data?.length > 0 || projection.single_run_data?.length > 0) ? (
-        <div className="space-y-8">
-          
-          {simMode === 'single' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-700">Deterministic (Average)</h2>
-                </div>
-                <div className="h-80">
-                  <CashFlowChart 
-                    data={projection} 
-                    isLog={isLogScale} 
-                    mode="standard" 
-                    creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
-                  />
-                </div>
-              </Card>
-              <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-blue-700">Volatile (Single Run)</h2>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Stochastic</span>
-                </div>
-                <div className="h-80">
-                  <CashFlowChart 
-                    data={projection} 
-                    isLog={isLogScale} 
-                    mode="single" 
-                    creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
-                  />
-                </div>
-              </Card>
-            </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-grow">
-                <Card className="h-full">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">Total Value Forecast</h2>
-                    {simMode === 'monte_carlo' && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Fan Chart Active</span>}
-                  </div>
-                  <div className="h-96">
-                    <CashFlowChart 
-                      data={projection} 
-                      isLog={isLogScale} 
-                      mode={simMode} 
-                      creditLimit={Number(creditLimit)}
-                      currencySymbol={currency}
-                    />
-                  </div>
-                </Card>
-              </div>
-              <div className="w-full lg:w-64 flex-shrink-0">
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                   <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {simMode === 'single' && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
-            </div>
-          )}
-
-          {/* --- INLINED GRID TO FIX FOCUS LOSS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Valuation Model</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">
-                    {valuationMethod === 'ebitda' ? 'EBITDA Multiple (x)' : 'Revenue Multiple (x)'}
-                  </label>
-                  <input type="number" step="0.1" className="border p-1 w-full text-sm rounded" 
-                    value={valMultiple} onChange={e => setValMultiple(e.target.value)} 
-                    placeholder="e.g. 5.0"
-                  />
-                </div>
-                <div className="text-xs text-gray-400 italic">
-                  Valuation = Annual {valuationMethod === 'ebitda' ? 'EBITDA' : 'Revenue'} × Multiple
-                </div>
-                <button onClick={handleSaveValuation} className="w-full bg-blue-600 text-white text-sm py-1 rounded">Set Valuation</button>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Capital Stack</h3>
-              
-              <div className="bg-green-50 border border-green-200 text-green-800 p-2 rounded mb-4 text-sm flex justify-between items-center">
-                <span className="font-medium">Opening Balance (Day 0):</span>
-                <span className="font-bold">{fmt(initialCash)}</span>
-              </div>
-
-              <div className="space-y-2 mb-4 h-24 overflow-y-auto">
-                {capitalItems.length === 0 && <p className="text-sm text-gray-400 italic">No external capital.</p>}
-                {capitalItems.map(c => (
-                  <div key={c.id} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
-                    <div>
-                      <span className="font-bold block">{c.name}</span>
-                      <span className="text-xs text-gray-500">Month {c.month}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-green-700">{fmt(c.amount)}</span>
-                      <button onClick={() => handleDeleteCapital(c.id)} className="text-red-400 hover:text-red-600">×</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Name" className="border p-1 text-xs rounded col-span-2" 
-                  value={newCapName} onChange={e => setNewCapName(e.target.value)} />
-                <input type="number" placeholder="$" className="border p-1 text-xs rounded" 
-                  value={newCapAmount} onChange={e => setNewCapAmount(e.target.value)} />
-                <input type="number" placeholder="Mo" className="border p-1 text-xs rounded" 
-                  value={newCapMonth} onChange={e => setNewCapMonth(e.target.value)} />
-                <button onClick={handleAddCapital} className="bg-gray-700 text-white text-xs py-1 rounded col-span-2">Add</button>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Dividend Policy</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Enable?</label>
-                  <input type="checkbox" checked={divEnabled} onChange={e => setDivEnabled(e.target.checked)} className="h-4 w-4" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Safety Threshold ($)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={divThreshold} onChange={e => setDivThreshold(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Payout Ratio (%)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={divRatio} onChange={e => setDivRatio(e.target.value)} />
-                </div>
-                <button onClick={handleSaveDividends} className="w-full bg-green-600 text-white text-sm py-1 rounded">Update</button>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Credit / Overdraft</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 block">Limit ($)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block">Rate (%)</label>
-                  <input type="number" className="border p-1 w-full text-sm rounded" 
-                    value={creditRate} onChange={e => setCreditRate(e.target.value)} />
-                </div>
-                <div className="flex gap-2 text-xs">
-                  <label className="flex items-center gap-1">
-                    <input type="radio" checked={creditIsAnnual} onChange={() => setCreditIsAnnual(true)} /> Annual
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="radio" checked={!creditIsAnnual} onChange={() => setCreditIsAnnual(false)} /> Monthly
-                  </label>
-                </div>
-                <button onClick={handleSaveCredit} className="w-full bg-purple-600 text-white text-sm py-1 rounded">Set</button>
-              </div>
-            </Card>
-          </div>
-
-          <Card className="overflow-x-auto max-h-96">
-            <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">Most typical (median) outcome</h3>
-            <table className="min-w-full text-xs text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3">Month</th>
-                  <th className="px-4 py-3">Revenue</th>
-                  <th className="px-4 py-3">Gross Profit</th>
-                  <th className="px-4 py-3">OpEx</th>
-                  <th className="px-4 py-3">Net Income</th>
-                  <th className="px-4 py-3 text-orange-600">Pool Received</th>
-                  <th className="px-4 py-3 text-gray-900 font-bold">Cash Bal</th>
-                  <th className="px-4 py-3 text-green-600">Dividends</th>
-                  <th className="px-4 py-3 text-blue-700 font-bold">Net Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(projection as any).cash_flow_data.map((row: any) => (
-                  <tr key={row.month_index} className={`border-b hover:bg-gray-50 ${row.is_insolvent ? 'bg-red-50' : 'bg-white'}`}>
-                    <td className="px-4 py-2 font-medium">{row.month_index}</td>
-                    <td className="px-4 py-2">{fmt(row.revenue)}</td>
-                    <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
-                    <td className="px-4 py-2">{fmt(row.opex)}</td>
-                    <td className={`px-4 py-2 ${row.net_income < 0 ? 'text-red-500' : 'text-green-600'}`}>{fmt(row.net_income)}</td>
-                    <td className="px-4 py-2 text-orange-600">{fmt(row.cumulative_pool_received)}</td>
-                    <td className={`px-4 py-2 font-bold ${row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmt(row.cash_balance)}</td>
-                    <td className="px-4 py-2 text-green-600">{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
-                    <td className={`px-4 py-2 font-bold ${row.total_value < 0 ? 'text-red-600' : 'text-blue-700'}`}>
-                      {fmt(row.total_value)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded border-2 border-dashed border-gray-300">
-            <p className="text-xl font-bold text-gray-400 mb-2">No Data Available</p>
-            <p className="text-gray-500">Enter Revenue / Cost / Capital items first</p>
-            <a href={`/plan/${planId}/inputs`} className="mt-4 text-blue-600 hover:underline">Go to Inputs</a>
-        </div>
-      )}
-    </Layout>
-  );
+#[derive(Deserialize)]
+pub struct CreatePlanRequest {
+    pub company_id: Uuid,
+    pub name: String,
+    pub start_month: String, // YYYY-MM-01
 }
---- END FILE: frontend/app/plan/[planId]/results/page.tsx ---
+
+#[derive(Deserialize)]
+pub struct UpdatePlanRequest {
+    pub name: Option<String>,
+    pub start_month: Option<String>,
+    pub pooling_fraction: Option<Decimal>,
+    pub initial_cash: Option<String>,
+}
+
+pub async fn create_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Json(payload): Json<CreatePlanRequest>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let plan = sqlx::query_as!(
+        FinancialPlan,
+        "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
+        payload.company_id,
+        payload.name,
+        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
+        claims.tenant_id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(plan))
+}
+
+pub async fn update_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdatePlanRequest>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let start_date = payload.start_month
+        .as_deref()
+        .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+        .flatten();
+
+    let initial_cash = payload.initial_cash
+        .as_deref()
+        .map(|s| Decimal::from_str(s).ok())
+        .flatten();
+
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
+        FinancialPlan,
+        "UPDATE financial_plans 
+         SET name = COALESCE($1, name), 
+             start_month = COALESCE($2, start_month), 
+             pooling_fraction = COALESCE($3, pooling_fraction),
+             initial_cash = COALESCE($4, initial_cash),
+             updated_at = NOW() 
+         WHERE id = $5 AND tenant_id = $6
+         RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
+        payload.name,
+        start_date,
+        payload.pooling_fraction,
+        initial_cash,
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
+
+    Ok(Json(plan))
+}
+
+pub async fn get_all_plans(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<FinancialPlan>>, AppError> {
+    let plans = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
+        claims.tenant_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(plans))
+}
+
+pub async fn get_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
+
+    Ok(Json(plan))
+}
+
+pub async fn delete_plan(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
+        .execute(&pool)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Plan not found".to_string()));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// --- PROJECTION LOGIC ---
+
+#[derive(Deserialize)]
+pub struct GetProjectionQuery {
+    pub months: Option<i32>,
+    pub initial_cash: Option<Decimal>,
+    pub mode: Option<String>,
+    pub stop_insolvency: Option<bool>,
+}
+
+pub async fn get_plan_projection(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<GetProjectionQuery>,
+) -> Result<Json<SimulationResult>, AppError> {
+    
+    // DoS Protection: Check months limit
+    let months = params.months.unwrap_or(60);
+    if months > 1200 {
+        return Err(AppError::ValidationError("Simulation limited to 100 years (1200 months)".into()));
+    }
+
+    // Fetch Plan Info
+    let plan: Option<FinancialPlan> = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
+
+    // Fetch Inputs
+    let revenue_items = sqlx::query_as!(
+        crate::models::RevenueItem,
+        "SELECT id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM revenue_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let expense_items = sqlx::query_as!(
+        crate::models::ExpenseItem,
+        "SELECT id, plan_id, name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM expense_items WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let event_shocks = sqlx::query_as!(
+        crate::models::EventShock,
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let capital_injections = sqlx::query_as!(
+        crate::models::CapitalInjection,
+        "SELECT id, plan_id, name, amount, month, created_at FROM capital_injections WHERE plan_id = $1 ORDER BY month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
+        crate::models::DividendPolicy,
+        "SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at FROM dividend_policies WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+
+    let credit_facility: Option<crate::models::CreditFacility> = sqlx::query_as!(
+        crate::models::CreditFacility,
+        "SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at FROM credit_facilities WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+
+    let valuation_assumptions = sqlx::query_as!(
+        crate::models::ValuationAssumption,
+        "SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at FROM valuation_assumptions WHERE plan_id = $1 ORDER BY date_applied DESC LIMIT 1",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let staffing_roles = sqlx::query_as!(
+        crate::models::StaffingRole,
+        "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at 
+         FROM staffing_roles WHERE plan_id = $1 ORDER BY start_month ASC",
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
+        crate::models::CapitalGrowthPolicy,
+        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent FROM capital_growth_policies WHERE plan_id = $1",
+        id
+    )
+    .fetch_optional(&pool)
+    .await.ok().flatten();
+    
+    // Run Simulation
+    let initial_cash = params.initial_cash.unwrap_or(Decimal::from_f64(0.0).unwrap());
+    let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
+    let stop_insolvency = params.stop_insolvency.unwrap_or(false);
+
+    let result = generate_simulation(
+        plan.start_month,
+        months,
+        initial_cash,
+        &revenue_items,
+        &expense_items,
+        &event_shocks,
+        &capital_injections,
+        &dividend_policy,
+        &credit_facility,
+        &capital_growth, 
+        &staffing_roles,
+        &valuation_assumptions,
+        use_monte_carlo,
+        stop_insolvency,
+        plan.pooling_fraction // Pass pooling fraction
+    );
+
+    Ok(Json(result))
+}
+--- END FILE: backend/src/handlers/plans.rs ---
+
+--- START FILE: backend/src/handlers/events.rs ---
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+    Extension,
+};
+use serde::{Deserialize};
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use rust_decimal::Decimal;
+use crate::models::{EventShock, Claims};
+use crate::errors::AppError;
+
+#[derive(Deserialize)]
+pub struct CreateShockRequest {
+    pub plan_id: Uuid,
+    pub event_name: String,
+    pub shock_month: i32,
+    pub impact_type: String,
+    pub impact_value: Decimal,
+    pub duration_months: Option<i32>,
+}
+
+pub async fn create_event_shock(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Json(payload): Json<CreateShockRequest>,
+) -> Result<Json<EventShock>, AppError> {
+    // Verify plan ownership
+    let plan_exists = sqlx::query!(
+        "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        payload.plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    if plan_exists.is_none() {
+        return Err(AppError::NotFound("Financial plan not found".to_string()));
+    }
+
+    let new_shock = sqlx::query_as!(
+        EventShock,
+        "INSERT INTO event_shocks (plan_id, event_name, shock_month, impact_type, impact_value, duration_months) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at",
+        payload.plan_id,
+        payload.event_name,
+        payload.shock_month,
+        payload.impact_type,
+        payload.impact_value,
+        payload.duration_months
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(new_shock))
+}
+
+pub async fn get_event_shock(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<EventShock>, AppError> {
+    let shock = sqlx::query_as!(
+        EventShock,
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Event shock not found".to_string()))?;
+
+    Ok(Json(shock))
+}
+
+pub async fn get_plan_event_shocks(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(plan_id): Path<Uuid>,
+) -> Result<Json<Vec<EventShock>>, AppError> {
+    let shocks = sqlx::query_as!(
+        EventShock,
+        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        plan_id,
+        claims.tenant_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(shocks))
+}
+
+pub async fn delete_event_shock(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let result = sqlx::query!(
+        "DELETE FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        id,
+        claims.tenant_id
+    )
+    .execute(&pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Event shock not found".to_string()));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+--- END FILE: backend/src/handlers/events.rs ---
+
+--- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
+
+
+# ARCHITECTURAL_CONTEXT_CLI.md
+# Status: UNIVERSAL CONSTITUTION (Read by every agent)
+# Role: Immutable Constraints & Patterns
+
+## 1. PROJECT GOAL
+**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
+**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Identity:** Username-based (No PII/Email required for MVP).
+
+## 2. TECHNOLOGY STACK (Immutable)
+* **Backend:**
+    * **Language:** Rust (Edition 2021).
+    * **Web Framework:** `axum` (with `tokio`).
+    * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
+    * **Math:** `rust_decimal` for ALL currency/rates. `f64` is **BANNED** for money.
+    * **Serialization:** `serde` / `serde_json`.
+* **Frontend:**
+    * **Framework:** Next.js 14+ (App Router).
+    * **Language:** TypeScript.
+    * **Styling:** Tailwind CSS (Utility classes).
+    * **HTTP Client:** Axios (via `lib/api.ts`).
+    * **Visualization:** Chart.js (`react-chartjs-2`).
+
+## 3.1. CORE ENGINE LOGIC (`backend/src/projection.rs`)
+* **Mechanism:** Breadth-First Traversal (Time-step based).
+* **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.
+* **Monte Carlo:** Runs 1000+ iterations (if enabled). Calculates percentiles (P5, P50, P95).
+* **Insolvency:** Logic stops simulation trajectory if `cash < -credit_limit`.
+
+## 3.2. CORE PATTERNS (The "Local Customs")
+* **Backend API:**
+    * **Injection:** Always inject DB pool via `State(pool): State<Pool<Postgres>>`.
+    * **Errors:** Handlers return `Result<Json<T>, AppError>`. Never return raw Results.
+    * **Structure:** No generic "Envelope" wrapper. Return the struct/vector directly.
+* **Frontend Data:**
+    * **Fetching:** Use `useEffect` + `api.ts` (Axios wrapper).
+    * **State:** Local State preferred. No Redux/Zustand unless specified.
+    * **Ids:** Treat all IDs as strings on the Frontend; `Uuid` on the Backend.
+
+## 4. DIRECTORY MAP & TOOLING
+* **Backend Structure:**
+    * `backend/src/handlers/` -> All API route logic (grouped by resource).
+    * `backend/src/models.rs` -> shared Structs and DB schemas.
+    * `backend/migrations/` -> SQLx migration files (SQL).
+* **Frontend Structure:**
+    * `frontend/app/` -> Next.js Pages and Layouts.
+    * `frontend/lib/api.ts` -> Central Axios client.
+    * `frontend/components/` -> UI elements (Tailwind).
+* **Migration Command:**
+    * Use `sqlx migrate add <name>` to create.
+    * Use `sqlx migrate run` to apply (automated in `main.rs`, but good to know).
+
+## 5. THE "IRON LAWS" (Stage 3 Strictness)
+* **Tenant Isolation:**
+    * **Strict Rule:** Every business entity (Fund, Company) MUST belong to a `tenant_id`.
+    * **Query Rule:** Every SQL `SELECT`, `UPDATE`, or `DELETE` must explicitly filter `WHERE tenant_id = $1`.
+    * **Injection:** `tenant_id` comes from the JWT Claims (Extension), NEVER from the user request body.
+* **Code Style:**
+    * **Database/API:** `snake_case` (e.g., `growth_rate`, `tenant_id`).
+    * **Rust Structs:** `PascalCase` (Internal Type Names).
+    * **TS Interfaces:** Match the API (`snake_case`). Do not map to camelCase.
+
+## 6. UNIVERSAL BUILDER PROTOCOL
+* **File Operations:**
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
+    * Do not use placeholders like `// ... existing code ...`.
+* **Testing:**
+    * If `last_error.log` is provided, priority #1 is fixing that error.
+* **Dependencies:**
+    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.--- END FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 
 </source_code>

@@ -1,0 +1,75 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE financial_plans \n         SET name = COALESCE($1, name), \n             start_month = COALESCE($2, start_month), \n             pooling_fraction = COALESCE($3, pooling_fraction),\n             initial_cash = COALESCE($4, initial_cash),\n             updated_at = NOW() \n         WHERE id = $5 AND tenant_id = $6\n         RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "company_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "initial_cash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "pooling_fraction",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Numeric",
+        "Numeric",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8c5019e76e95ec72cd0b78225e7aa0626ee55243a276d4ef524ef473e60892d5"
+}

@@ -187,7 +187,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           setDividendPolicy(div);
           setDivEnabled(div.is_enabled);
           setDivThreshold(div.safety_threshold.toString());
-          setDivRatio(div.payout_ratio.toString());
+          // Convert decimal (0.2) to percentage (20) for display
+          setDivRatio((Number(div.payout_ratio) * 100).toString());
         } catch { /* No policy set */ }
 
         try {

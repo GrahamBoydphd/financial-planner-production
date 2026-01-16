@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM dividend_policies WHERE plan_id = $1",
+  "query": "SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at FROM credit_facilities WHERE plan_id = $1",
   "describe": {
     "columns": [
       {
@@ -15,18 +15,23 @@
       },
       {
         "ordinal": 2,
-        "name": "is_enabled",
-        "type_info": "Bool"
+        "name": "facility_limit",
+        "type_info": "Numeric"
       },
       {
         "ordinal": 3,
-        "name": "safety_threshold",
+        "name": "interest_rate",
         "type_info": "Numeric"
       },
       {
         "ordinal": 4,
-        "name": "payout_ratio",
-        "type_info": "Numeric"
+        "name": "is_annual_rate",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -39,8 +44,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "4bf593b645f1275d205da5d1b3026bbf2c23e79b8e424c4e1263c3d1f11f37cb"
+  "hash": "d2c18421b9afcf41b1d9514931b0d024f07f4b58d8bc177d5a8b58e2aa96135f"
 }

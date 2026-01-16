@@ -143,7 +143,7 @@ pub async fn create_expense_item(
             volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-        RETURNING *
+        RETURNING id, plan_id, name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at
         "#,
         payload.plan_id, payload.name, payload.category, payload.start_month, payload.end_month, 
         initial_amount, growth_rate_percent, payload.frequency, pct_of_revenue,
@@ -164,7 +164,7 @@ pub async fn get_expense_items(
     let items = sqlx::query_as!(
         ExpenseItem,
         r#"
-        SELECT * FROM expense_items 
+        SELECT id, plan_id, name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM expense_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
         ORDER BY start_month ASC
@@ -256,7 +256,7 @@ pub async fn update_expense_item(
             vol_mean = $13, vol_scale = $14, vol_freedom = $15, vol_alpha = $16, vol_beta = $17
         WHERE id = $18
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $19)
-        RETURNING *
+        RETURNING id, plan_id, name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at
         "#,
         payload.name, payload.category, payload.start_month, payload.end_month, 
         initial_amount, growth_rate_percent, payload.frequency, pct_of_revenue,

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
+  "query": "SELECT id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at FROM financial_plans WHERE tenant_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -10,28 +10,28 @@
       },
       {
         "ordinal": 1,
+        "name": "company_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 4,
         "name": "start_month",
         "type_info": "Date"
       },
       {
-        "ordinal": 3,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 4,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
-      },
-      {
         "ordinal": 5,
-        "name": "company_id",
-        "type_info": "Uuid"
+        "name": "initial_cash",
+        "type_info": "Numeric"
       },
       {
         "ordinal": 6,
@@ -40,13 +40,13 @@
       },
       {
         "ordinal": 7,
-        "name": "tenant_id",
-        "type_info": "Uuid"
+        "name": "created_at",
+        "type_info": "Timestamptz"
       },
       {
         "ordinal": 8,
-        "name": "initial_cash",
-        "type_info": "Numeric"
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -66,5 +66,5 @@
       false
     ]
   },
-  "hash": "cde678c7d68d1efb997a10514bc3c0dbd4d6a0e4f7f99cc7fc9d2c30be0d2e2f"
+  "hash": "242cd2839f60b7740da7a259cf8111ccb8a877b4608d3e7ba0d9da4c4e37949e"
 }

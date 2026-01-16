@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+  "query": "INSERT INTO financial_plans (company_id, name, start_month, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, company_id, tenant_id, name, start_month, initial_cash, pooling_fraction, created_at, updated_at",
   "describe": {
     "columns": [
       {
@@ -10,28 +10,28 @@
       },
       {
         "ordinal": 1,
+        "name": "company_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 4,
         "name": "start_month",
         "type_info": "Date"
       },
       {
-        "ordinal": 3,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 4,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
-      },
-      {
         "ordinal": 5,
-        "name": "company_id",
-        "type_info": "Uuid"
+        "name": "initial_cash",
+        "type_info": "Numeric"
       },
       {
         "ordinal": 6,
@@ -40,18 +40,20 @@
       },
       {
         "ordinal": 7,
-        "name": "tenant_id",
-        "type_info": "Uuid"
+        "name": "created_at",
+        "type_info": "Timestamptz"
       },
       {
         "ordinal": 8,
-        "name": "initial_cash",
-        "type_info": "Numeric"
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
+        "Text",
+        "Date",
         "Uuid"
       ]
     },
@@ -67,5 +69,5 @@
       false
     ]
   },
-  "hash": "c97957c99483c45d9d96a3bd9f3f7be781136c4dee634e0f9e8c2b196bbf576d"
+  "hash": "af9df09922bc387039400783334f27305f8368bfd97b1be68e24b8b5ed40412e"
 }
