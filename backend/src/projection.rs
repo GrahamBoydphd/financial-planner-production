@@ -104,8 +104,9 @@ fn create_sampler(
     let model = match v_type.map(|s| s.as_str()) {
         Some("flat") => VolatilityModel::Flat {
             average: avg,
-            min: min.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
-            max: max.unwrap_or(dec!(0.0)).to_f64().unwrap_or(0.0),
+            // Use rate as default if min/max are missing to prevent 0-growth bug
+            min: min.unwrap_or(rate).to_f64().unwrap_or(0.0),
+            max: max.unwrap_or(rate).to_f64().unwrap_or(0.0),
             intervals: intv.unwrap_or(1),
         },
         Some("student_t") => VolatilityModel::StudentsT {
@@ -153,7 +154,7 @@ fn run_iteration(
     let mut expense_states: HashMap<Uuid, ItemState> = HashMap::new();
 
     let mut cap_growth_sampler = if let Some(policy) = capital_growth_policy {
-        Some(create_sampler(force_deterministic, policy.volatility_type.as_ref(), policy.vol_mean.unwrap_or(dec!(0.0)), 
+        Some(create_sampler(force_deterministic, policy.volatility_type.as_ref(), policy.growth_rate_percent.unwrap_or(dec!(0.0)),
             policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
     } else {
         None
@@ -255,10 +256,10 @@ fn run_iteration(
                     };
 
                     if current_headcount > 0 {
-                        let years_passed = (m - 1) / 12;
+                        let years_passed = (m - role.start_month) / 12;
                         let mut current_annual_salary = role.annual_salary;
                         if years_passed > 0 {
-                             let multiplier = dec!(1.0) + role.annual_increase;
+                             let multiplier = dec!(1.0) + (role.annual_increase_percent / dec!(100.0));
                              for _ in 0..years_passed {
                                  current_annual_salary *= multiplier;
                              }
@@ -410,7 +411,7 @@ fn run_monte_carlo_breadth_first(
         }
 
         let cap_growth_sampler = if let Some(policy) = capital_growth_policy {
-            Some(create_sampler(false, policy.volatility_type.as_ref(), policy.vol_mean.unwrap_or(dec!(0.0)), 
+            Some(create_sampler(false, policy.volatility_type.as_ref(), policy.growth_rate_percent.unwrap_or(dec!(0.0)),
                 policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
         } else {
             None
@@ -502,10 +503,10 @@ fn run_monte_carlo_breadth_first(
                         };
 
                         if current_headcount > 0 {
-                            let years_passed = (m - 1) / 12;
+                            let years_passed = (m - role.start_month) / 12;
                             let mut current_annual_salary = role.annual_salary;
                             if years_passed > 0 {
-                                 let multiplier = dec!(1.0) + role.annual_increase;
+                                 let multiplier = dec!(1.0) + (role.annual_increase_percent / dec!(100.0));
                                  for _ in 0..years_passed {
                                      current_annual_salary *= multiplier;
                                  }

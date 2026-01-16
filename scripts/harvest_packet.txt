@@ -1,0 +1,3489 @@
+<task>
+Scan these files and create a detailed Technical Reference for a User Manual.
+Focus on: Input labels, placeholders, validation logic, and the math/descriptions for Investment Policies.
+</task>
+<source_code>
+--- FILE: frontend/components/forms/StaffingForm.tsx ---
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { Plus, Trash2, Edit2, Save, X, Users, DollarSign, Calendar, TrendingUp, Briefcase } from "lucide-react"
+import { StaffingRole } from "@/lib/api"
+import Card from "@/components/ui/Card"
+import Button from "@/components/ui/Button"
+import Tooltip from "@/components/ui/Tooltip"
+
+interface StaffingFormProps {
+  planId: string
+  initialRoles: StaffingRole[]
+  onSave: (role: Omit<StaffingRole, "id" | "plan_id"> & { id?: string }) => Promise<void>
+  onDelete: (roleId: string) => Promise<void>
+}
+
+// Local interface for form state to handle string inputs for precision
+interface StaffingRoleFormState {
+  id?: string
+  role_name: string
+  annual_salary: string
+  start_month: number
+  target_count: number
+  hiring_plan: "fixed_count" | "monthly_rate"
+  hiring_rate?: number
+  annual_increase: string
+}
+
+// Helper to format currency
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+export default function StaffingForm({ planId, initialRoles, onSave, onDelete }: StaffingFormProps) {
+  const [roles, setRoles] = useState<StaffingRole[]>(initialRoles)
+  const [isEditing, setIsEditing] = useState(false)
+
+  // State uses string for money/percent fields to allow precise editing
+  const [currentRole, setCurrentRole] = useState<Partial<StaffingRoleFormState>>({})
+
+  const [globalError, setGlobalError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Update local state when initialRoles changes
+  useEffect(() => {
+    setRoles(initialRoles)
+  }, [initialRoles])
+
+  const handleAddNew = () => {
+    setCurrentRole({
+      role_name: "",
+      annual_salary: "50000",
+      start_month: 1,
+      target_count: 1,
+      hiring_plan: "fixed_count",
+      hiring_rate: 1,
+      annual_increase: "3.0"
+    })
+    setIsEditing(true)
+    setGlobalError(null)
+    setFieldErrors({})
+  }
+
+  const handleEdit = (role: StaffingRole) => {
+    setCurrentRole({
+      id: role.id,
+      role_name: role.role_name,
+      annual_salary: role.annual_salary.toString(),
+      start_month: role.start_month,
+      target_count: role.target_count,
+      hiring_plan: role.hiring_plan,
+      hiring_rate: role.hiring_rate ? Number(role.hiring_rate) : undefined,
+      // Convert decimal (0.03) to percentage (3.0) for editing
+      annual_increase: ((Number(role.annual_increase) || 0) * 100).toString()
+    })
+    setIsEditing(true)
+    setGlobalError(null)
+    setFieldErrors({})
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this role?")) {
+      try {
+        setIsLoading(true)
+        await onDelete(id)
+        setRoles(roles.filter(r => r.id !== id))
+      } catch (err) {
+        console.error("Failed to delete role:", err)
+        setGlobalError("Failed to delete role. Please try again.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setCurrentRole({})
+    setGlobalError(null)
+    setFieldErrors({})
+  }
+
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!currentRole.role_name?.trim()) {
+      errors.role_name = "Role Name is required"
+    }
+
+    if (!currentRole.annual_salary || isNaN(parseFloat(currentRole.annual_salary))) {
+      errors.annual_salary = "Valid Annual Salary is required"
+    }
+
+    if (!currentRole.target_count || currentRole.target_count < 1) {
+      errors.target_count = "Target count must be at least 1"
+    }
+
+    if (!currentRole.start_month || currentRole.start_month < 1) {
+      errors.start_month = "Start month must be at least 1"
+    }
+
+    if (currentRole.hiring_plan === "monthly_rate") {
+        if (!currentRole.hiring_rate || currentRole.hiring_rate < 1) {
+            errors.hiring_rate = "Hiring pace must be at least 1"
+        }
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validate()) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+
+      // Prepare payload
+      const salaryVal = parseFloat(currentRole.annual_salary || "0")
+      const salaryPayload = salaryVal.toFixed(2) // "50000.00"
+
+      const increaseVal = parseFloat(currentRole.annual_increase || "0")
+      const increasePayload = (increaseVal / 100).toString() // "0.03"
+
+      const roleData = {
+        role_name: currentRole.role_name!,
+        annual_salary: salaryPayload,
+        start_month: Number(currentRole.start_month) || 1,
+        target_count: Number(currentRole.target_count) || 1,
+        hiring_plan: currentRole.hiring_plan || "fixed_count",
+        hiring_rate: currentRole.hiring_plan === "monthly_rate" ? (Number(currentRole.hiring_rate) || 1) : undefined,
+        annual_increase: increasePayload
+      }
+
+      // Cast to any to satisfy TS if onSave expects numbers, as we are sending strings for precision
+      await onSave({
+        ...roleData,
+        id: currentRole.id
+      } as any)
+
+      setIsEditing(false)
+      setCurrentRole({})
+      setFieldErrors({})
+    } catch (err) {
+      console.error("Failed to save role:", err)
+      setGlobalError("Failed to save role. Please check your inputs.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Card className="w-full">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Staffing & Payroll
+            </h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Manage headcount, salaries, and hiring timelines.
+            </p>
+          </div>
+          {!isEditing && (
+            <Button onClick={handleAddNew} className="gap-1 flex items-center text-sm">
+              <Plus className="h-4 w-4" /> Add Role
+            </Button>
+          )}
+        </div>
+
+        {globalError && (
+          <div className="bg-red-50 text-red-700 p-3 rounded mb-4 border border-red-200">
+            <h4 className="font-bold text-sm">Error</h4>
+            <p className="text-sm">{globalError}</p>
+          </div>
+        )}
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit} className="space-y-4 border p-4 rounded-md bg-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="role_name" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  Role Name <span className="text-red-500">*</span>
+                  <Tooltip content="Title of the position (e.g., 'Sales Rep', 'Developer')." />
+                </label>
+                <input
+                  id="role_name"
+                  value={currentRole.role_name || ""}
+                  onChange={(e) => setCurrentRole({ ...currentRole, role_name: e.target.value })}
+                  placeholder="e.g. Sales Representative"
+                  className={`w-full rounded border p-2 text-sm ${fieldErrors.role_name ? 'border-red-500' : 'border-gray-300'}`}
+                />
+                {fieldErrors.role_name && <p className="text-xs text-red-500">{fieldErrors.role_name}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="annual_salary" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  Annual Salary <span className="text-red-500">*</span>
+                  <Tooltip content="Base annual salary per person in this role." />
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    id="annual_salary"
+                    type="number"
+                    min="0"
+                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.annual_salary ? 'border-red-500' : 'border-gray-300'}`}
+                    value={currentRole.annual_salary || ""}
+                    onChange={(e) => setCurrentRole({ ...currentRole, annual_salary: e.target.value })}
+                  />
+                </div>
+                {fieldErrors.annual_salary && <p className="text-xs text-red-500">{fieldErrors.annual_salary}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="hiring_plan" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  Hiring Plan
+                  <Tooltip content="How employees are added over time." />
+                </label>
+                <div className="relative">
+                  <Briefcase className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <select
+                    id="hiring_plan"
+                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm bg-white"
+                    value={currentRole.hiring_plan || "fixed_count"}
+                    onChange={(e) => setCurrentRole({ ...currentRole, hiring_plan: e.target.value as any })}
+                  >
+                    <option value="fixed_count">Fixed Count (All at once)</option>
+                    <option value="monthly_rate">Ramp Up (Over time)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="target_count" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  Target Headcount <span className="text-red-500">*</span>
+                  <Tooltip content="Maximum number of people to hire for this role." />
+                </label>
+                <div className="relative">
+                  <Users className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    id="target_count"
+                    type="number"
+                    min="1"
+                    step="1"
+                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.target_count ? 'border-red-500' : 'border-gray-300'}`}
+                    value={currentRole.target_count || ""}
+                    onChange={(e) => setCurrentRole({ ...currentRole, target_count: parseInt(e.target.value) })}
+                  />
+                </div>
+                {fieldErrors.target_count && <p className="text-xs text-red-500">{fieldErrors.target_count}</p>}
+              </div>
+
+              {currentRole.hiring_plan === "monthly_rate" && (
+                <div className="space-y-2">
+                  <label htmlFor="hiring_rate" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    Hiring Pace (Months per Hire) <span className="text-red-500">*</span>
+                    <Tooltip content="Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly)." />
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <input
+                      id="hiring_rate"
+                      type="number"
+                      min="1"
+                      step="1"
+                      className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.hiring_rate ? 'border-red-500' : 'border-gray-300'}`}
+                      value={currentRole.hiring_rate || ""}
+                      onChange={(e) => setCurrentRole({ ...currentRole, hiring_rate: parseInt(e.target.value) })}
+                    />
+                  </div>
+                  {fieldErrors.hiring_rate && <p className="text-xs text-red-500">{fieldErrors.hiring_rate}</p>}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="start_month" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  Start Month <span className="text-red-500">*</span>
+                  <Tooltip content="Month number (1-60) when hiring begins." />
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    id="start_month"
+                    type="number"
+                    min="1"
+                    max="60"
+                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.start_month ? 'border-red-500' : 'border-gray-300'}`}
+                    value={currentRole.start_month || ""}
+                    onChange={(e) => setCurrentRole({ ...currentRole, start_month: parseInt(e.target.value) })}
+                  />
+                </div>
+                {fieldErrors.start_month && <p className="text-xs text-red-500">{fieldErrors.start_month}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="annual_increase" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  Annual Increase (%)
+                  <Tooltip content="Expected annual salary increase (e.g., 3.5 for 3.5%)." />
+                </label>
+                <div className="relative">
+                  <TrendingUp className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    id="annual_increase"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    className="w-full rounded border-gray-300 border p-2 pl-8 text-sm"
+                    value={currentRole.annual_increase || ""}
+                    onChange={(e) => setCurrentRole({ ...currentRole, annual_increase: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 text-right">
+                  Enters as: {currentRole.annual_increase}%
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={handleCancel} disabled={isLoading} className="flex items-center">
+                <X className="h-4 w-4 mr-1" /> Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading} className="flex items-center">
+                <Save className="h-4 w-4 mr-1" /> {currentRole.id ? "Update Role" : "Add Role"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="rounded-md border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Role Name</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Salary (Annual)</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Plan</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Target</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Start</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {roles.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-gray-500">
+                      No staffing roles defined yet. Click "Add Role" to begin.
+                    </td>
+                  </tr>
+                ) : (
+                  roles.map((role) => (
+                    <tr key={role.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium">{role.role_name}</td>
+                      <td className="px-4 py-3">{formatCurrency(Number(role.annual_salary))}</td>
+                      <td className="px-4 py-3">
+                        {role.hiring_plan === "monthly_rate"
+                          ? `Ramp (1/${role.hiring_rate || 1}mo)`
+                          : "Fixed"}
+                      </td>
+                      <td className="px-4 py-3">{role.target_count}</td>
+                      <td className="px-4 py-3">Month {role.start_month}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(role)}
+                            className="p-1 text-blue-600 hover:text-blue-800 rounded hover:bg-blue-50"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(role.id)}
+                            className="p-1 text-red-600 hover:text-red-800 rounded hover:bg-red-50"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+    </Card>
+  )
+}
+
+--- FILE: frontend/components/forms/RevenueForm.tsx ---
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api, RevenueItem } from '@/lib/api';
+import VolatilityInputs from './shared/VolatilityInputs';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+  itemToEdit?: RevenueItem | null;
+  onCancel?: () => void;
+}
+
+export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
+  const [name, setName] = useState('');
+  const [source, setSource] = useState('Sales');
+  const [amount, setAmount] = useState('');
+  const [growth, setGrowth] = useState('0');
+  const [startMonth, setStartMonth] = useState('1');
+  const [endMonth, setEndMonth] = useState('');
+  const [freq, setFreq] = useState('Monthly');
+  const [cogsPercent, setCogsPercent] = useState('');
+
+  // Volatility
+  const [volType, setVolType] = useState('none');
+  const [volMin, setVolMin] = useState('');
+  const [volMax, setVolMax] = useState('');
+  const [volIntervals, setVolIntervals] = useState('');
+  const [volMean, setVolMean] = useState('');
+  const [volScale, setVolScale] = useState('');
+  const [volFreedom, setVolFreedom] = useState('');
+  const [volAlpha, setVolAlpha] = useState('');
+  const [volBeta, setVolBeta] = useState('');
+
+  // UI State for Simple/Advanced Mode
+  const [isAdvanced, setIsAdvanced] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  // --- EFFECT: POPULATE FORM ON EDIT ---
+  useEffect(() => {
+    if (itemToEdit) {
+      setName(itemToEdit.name);
+      setSource(itemToEdit.source);
+      setAmount(itemToEdit.initial_amount.toString());
+      setGrowth(itemToEdit.growth_rate_percent.toString());
+      setStartMonth(itemToEdit.start_month.toString());
+      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
+      setFreq(itemToEdit.frequency);
+      setCogsPercent(itemToEdit.cost_of_revenue_percent ? itemToEdit.cost_of_revenue_percent.toString() : '');
+
+      const vType = itemToEdit.volatility_type || 'none';
+      setVolType(vType);
+      setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
+      setVolMax(itemToEdit.vol_max ? itemToEdit.vol_max.toString() : '');
+      setVolIntervals(itemToEdit.vol_intervals ? itemToEdit.vol_intervals.toString() : '');
+      setVolMean(itemToEdit.vol_mean ? itemToEdit.vol_mean.toString() : '');
+      setVolScale(itemToEdit.vol_scale ? itemToEdit.vol_scale.toString() : '');
+      setVolFreedom(itemToEdit.vol_freedom ? itemToEdit.vol_freedom.toString() : '');
+      setVolAlpha(itemToEdit.vol_alpha ? itemToEdit.vol_alpha.toString() : '');
+      setVolBeta(itemToEdit.vol_beta ? itemToEdit.vol_beta.toString() : '');
+
+      // Default to Simple Mode
+    } else {
+      clearForm();
+    }
+  }, [itemToEdit]);
+
+  const clearForm = () => {
+    setName('');
+    setSource('Sales');
+    setAmount('');
+    setGrowth('0');
+    setStartMonth('1');
+    setEndMonth('');
+    setFreq('Monthly');
+    setCogsPercent('');
+    setVolType('none');
+    setVolMin(''); setVolMax(''); setVolIntervals('');
+    setVolMean(''); setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
+    setIsAdvanced(false);
+    setErrors([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
+
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
+
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+
+    try {
+        const payload = {
+            plan_id: planId,
+            name,
+            source,
+            initial_amount: amount, // Send as string
+            growth_rate_percent: growth, // Send as string
+            start_month: Number(startMonth), // Int
+            end_month: endMonth ? Number(endMonth) : undefined, // Int
+            frequency: freq,
+            cost_of_revenue_percent: cogsPercent ? cogsPercent : undefined, // String
+
+            volatility_type: volType !== 'none' ? volType as any : undefined,
+            vol_min: volType === 'flat' && volMin ? volMin : undefined, // String
+            vol_max: volType === 'flat' && volMax ? volMax : undefined, // String
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined, // Int
+            vol_mean: volMean ? volMean : undefined, // String
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? volScale : undefined, // String
+            vol_freedom: volType === 'student_t' && volFreedom ? volFreedom : undefined, // String
+            vol_alpha: volType === 'nrig' && volAlpha ? volAlpha : undefined, // String
+            vol_beta: volType === 'nrig' && volBeta ? volBeta : undefined, // String
+        };
+
+        if (itemToEdit) {
+            await api.updateRevenueItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createRevenueItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess();
+    } catch (err) {
+        console.error(err);
+        setErrors(["Failed to save revenue item. Please check your inputs."]);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
+      <div className="flex justify-between items-center mb-2">
+         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
+         {itemToEdit && (
+            <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
+         )}
+      </div>
+
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Name</label>
+          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Source Type</label>
+          <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
+            <option>Sales</option>
+            <option>Subscription</option>
+            <option>Service</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Initial Amount ($)</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Growth Rate (%/mo)</label>
+          <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={growth} onChange={e => setGrowth(e.target.value)} />
+        </div>
+        <div>
+            <label className="text-xs text-gray-500">Cost of Rev (%)</label>
+            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Frequency</label>
+          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
+            <option>Monthly</option>
+            <option>One-time</option>
+            <option>Quarterly</option>
+            <option>Annually</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Start Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">End Month (Opt)</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+        </div>
+      </div>
+
+      {/* SHARED VOLATILITY COMPONENT */}
+      <VolatilityInputs
+        volType={volType} setVolType={setVolType}
+        volMean={volMean} setVolMean={setVolMean}
+        volMin={volMin} setVolMin={setVolMin}
+        volMax={volMax} setVolMax={setVolMax}
+        volIntervals={volIntervals} setVolIntervals={setVolIntervals}
+        volScale={volScale} setVolScale={setVolScale}
+        volFreedom={volFreedom} setVolFreedom={setVolFreedom}
+        volAlpha={volAlpha} setVolAlpha={setVolAlpha}
+        volBeta={volBeta} setVolBeta={setVolBeta}
+        isAdvanced={isAdvanced} setIsAdvanced={setIsAdvanced}
+      />
+
+      <button className={`w-full text-white p-2 rounded font-bold ${itemToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+        {itemToEdit ? 'Update Stream' : 'Add Stream'}
+      </button>
+    </form>
+  );
+}
+
+--- FILE: frontend/components/forms/ValuationForm.tsx ---
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+}
+
+interface FormErrors {
+  multiple?: string;
+  general?: string;
+}
+
+export default function ValuationForm({ planId, onSuccess }: Props) {
+  const [method, setMethod] = useState<'revenue' | 'ebitda'>('revenue');
+  const [revenueMultiple, setRevenueMultiple] = useState('');
+  const [ebitdaMultiple, setEbitdaMultiple] = useState('');
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [activeValuation, setActiveValuation] = useState<any>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.getValuation(planId).then(data => {
+        if (!active) return;
+        console.log("DEBUG VALUATION FETCH:", data);
+
+        // Check if data is an array and has items
+        if (Array.isArray(data) && data.length > 0) {
+            // Take the LAST item (assuming chronological order)
+            const lastItem = data[data.length - 1];
+
+            setActiveValuation(lastItem);
+            setMethod(lastItem.method);
+
+            if (lastItem.method === 'revenue') {
+                setRevenueMultiple(lastItem.multiplier.toString());
+                setEbitdaMultiple('');
+            } else {
+                setEbitdaMultiple(lastItem.multiplier.toString());
+                setRevenueMultiple('');
+            }
+        }
+    }).catch((error) => {
+        console.error("DEBUG VALUATION ERROR:", error);
+    });
+    return () => { active = false; };
+  }, [planId]);
+
+  const handleSave = async () => {
+    setErrors({});
+
+    // Validation
+    if (method === 'revenue' && !revenueMultiple) {
+        setErrors({ multiple: "Revenue multiple is required." });
+        return;
+    }
+    if (method === 'ebitda' && !ebitdaMultiple) {
+        setErrors({ multiple: "EBITDA multiple is required." });
+        return;
+    }
+
+    try {
+        const payload = {
+            plan_id: planId,
+            name: 'Valuation',
+            method: method,
+            multiplier: method === 'revenue' ? revenueMultiple : ebitdaMultiple,
+            date_applied: new Date().toISOString().split('T')[0]
+        };
+        await api.createValuation(payload);
+
+        setActiveValuation(payload);
+        onSuccess();
+    } catch (e) {
+        setErrors({ general: "Failed to save valuation logic." });
+    }
+  };
+
+  return (
+    <div className="space-y-3 bg-gray-50 p-4 rounded border">
+        <h3 className="font-bold text-gray-700 text-sm">Exit Valuation Model</h3>
+
+        <div className="flex gap-4 text-xs">
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                    type="radio"
+                    name="valMethod"
+                    checked={method === 'revenue'}
+                    onChange={() => setMethod('revenue')}
+                />
+                Revenue Multiple
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                    type="radio"
+                    name="valMethod"
+                    checked={method === 'ebitda'}
+                    onChange={() => setMethod('ebitda')}
+                />
+                EBITDA Multiple
+            </label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+            {method === 'revenue' && (
+                <div>
+                    <label className="text-xs text-gray-500">Revenue Multiple (x)</label>
+                    <input
+                        type="number"
+                        step="0.1"
+                        className={`w-full border p-1 rounded ${errors.multiple ? 'border-red-500' : ''}`}
+                        value={revenueMultiple}
+                        onChange={e => {
+                            setRevenueMultiple(e.target.value);
+                            if (errors.multiple) setErrors({});
+                        }}
+                        placeholder="e.g. 5.0"
+                    />
+                    {errors.multiple && <p className="text-red-500 text-xs mt-1">{errors.multiple}</p>}
+                </div>
+            )}
+            {method === 'ebitda' && (
+                <div>
+                    <label className="text-xs text-gray-500">EBITDA Multiple (x)</label>
+                    <input
+                        type="number"
+                        step="0.1"
+                        className={`w-full border p-1 rounded ${errors.multiple ? 'border-red-500' : ''}`}
+                        value={ebitdaMultiple}
+                        onChange={e => {
+                            setEbitdaMultiple(e.target.value);
+                            if (errors.multiple) setErrors({});
+                        }}
+                        placeholder="e.g. 12.0"
+                    />
+                    {errors.multiple && <p className="text-red-500 text-xs mt-1">{errors.multiple}</p>}
+                </div>
+            )}
+        </div>
+
+        {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
+
+        {/* Summary Card */}
+        {activeValuation && (
+            <div className="mt-4 p-3 bg-white rounded border border-gray-200 text-xs shadow-sm">
+                <h4 className="font-bold text-gray-700 mb-1">Current Model: {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'} ({activeValuation.multiplier}x)</h4>
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Method:</span>
+                    <span className="font-mono font-semibold text-purple-700">
+                        {activeValuation.method === 'revenue' ? 'Revenue Multiple' : 'EBITDA Multiple'}
+                    </span>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                    <span className="text-gray-600">Multiplier:</span>
+                    <span className="font-mono font-semibold text-purple-700">
+                        {activeValuation.multiplier}x
+                    </span>
+                </div>
+            </div>
+        )}
+
+        <button onClick={handleSave} className="w-full bg-purple-600 text-white py-1 rounded text-sm font-bold">
+            {activeValuation ? 'Update Valuation Logic' : 'Set Valuation Logic'}
+        </button>
+    </div>
+  );
+}
+
+--- FILE: frontend/components/forms/CapitalList.tsx ---
+'use client';
+
+import { useState } from 'react';
+import { api } from '@/lib/api';
+
+// Define the shape of a Capital Item based on your backend response
+export interface CapitalItem {
+  id: string;
+  name: string;
+  amount: string; // Strict Type: String from backend (Decimal)
+  month: number;
+}
+
+interface Props {
+  items: CapitalItem[];
+  onDelete: () => void; // Trigger data refresh after deletion
+}
+
+export default function CapitalList({ items, onDelete }: Props) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await api.deleteCapitalInjection(id);
+      onDelete(); // Refresh parent data
+    } catch (error) {
+      console.error("Failed to delete injection", error);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+        <p className="text-gray-400 italic text-sm">
+          No capital injections recorded yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 mt-4">
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="flex justify-between items-center border border-gray-200 p-3 rounded-lg bg-white hover:border-green-300 transition-colors shadow-sm"
+        >
+          {/* Left: Name and Month */}
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">{item.name}</p>
+            <p className="text-xs text-gray-500">Deposited in Month {item.month}</p>
+          </div>
+
+          {/* Right: Amount and Delete */}
+          <div className="flex items-center gap-4">
+            <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded text-sm">
+              +${Number(item.amount).toLocaleString()}
+            </span>
+
+            <button
+              onClick={() => handleDelete(item.id)}
+              disabled={deletingId === item.id}
+              className="text-gray-400 hover:text-red-600 transition-colors p-1"
+              title="Delete Injection"
+            >
+              {deletingId === item.id ? (
+                // Simple Loading Spinner
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-red-600 rounded-full animate-spin"></div>
+              ) : (
+                // Trash Icon (Heroicons style)
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+--- FILE: frontend/components/forms/CompanyForm.tsx ---
+import { useState } from 'react';
+import { api, Fund } from '@/lib/api';
+import Button from '@/components/ui/Button';
+
+// --- IMT Options ---
+const INDUSTRY_OPTIONS = [
+  "Clean Energy / Decarbonization", "Regenerative Ag / Food Systems", "Circular Economy / Waste",
+  "WASH (Water/Sanitation)", "Disaster Relief / Resilience", "Affordable Housing",
+  "Education / EdTech", "Health / Bio / Pharma", "Fintech / Financial Inclusion",
+  "Logistics / Supply Chain", "Manufacturing / Industrial", "Other"
+];
+
+const MODEL_OPTIONS = [
+  "SaaS / Subscription", "Marketplace / Platform", "Carbon Markets / Ecosystem Services",
+  "Circular / Product-as-a-Service", "Cooperative / Community Ownership",
+  "Cross-Subsidization", "Social Impact Bond", "Hardware Sales", "Service / Agency", "Other"
+];
+
+const TECH_OPTIONS = [
+  "CleanTech", "CCUS (Carbon Capture)", "AgriTech / Bio-Systems",
+  "Off-Grid / Decentralized Infra", "Appropriate Tech / Frugal Innovation",
+  "AI / ML", "Web / Mobile", "Blockchain / ReFi", "Material Science", "Other"
+];
+
+export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () => void, funds?: Fund[] }) {
+  const [name, setName] = useState('');
+  const [selectedFund, setSelectedFund] = useState('');
+
+  // IMT State
+  const [industry, setIndustry] = useState('');
+  const [customIndustry, setCustomIndustry] = useState('');
+
+  const [model, setModel] = useState('');
+  const [customModel, setCustomModel] = useState('');
+
+  const [tech, setTech] = useState('');
+  const [customTech, setCustomTech] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFund) return alert('Select a fund');
+
+    // Resolve "Other" fields
+    const finalIndustry = industry === 'Other' ? customIndustry : industry;
+    const finalModel = model === 'Other' ? customModel : model;
+    const finalTech = tech === 'Other' ? customTech : tech;
+
+    try {
+      // No user_id passed here, relying on Auth header
+      await api.createCompany(name, selectedFund, finalIndustry, finalModel, finalTech);
+      setName('');
+      setIndustry(''); setCustomIndustry('');
+      setModel(''); setCustomModel('');
+      setTech(''); setCustomTech('');
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create company');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded shadow">
+      <h3 className="text-lg font-semibold text-gray-800">New Company</h3>
+
+      {/* Fund Selection */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Parent Fund</label>
+        <select
+          value={selectedFund}
+          onChange={(e) => setSelectedFund(e.target.value)}
+          className="w-full p-2 border rounded"
+          required
+        >
+          <option value="">Select a Fund</option>
+          {funds.map(f => (
+            <option key={f.id} value={f.id}>{f.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Name */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Company Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full p-2 border rounded"
+          placeholder="e.g. GreenFuture Ltd"
+          required
+        />
+      </div>
+
+      {/* Industry */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Industry (Sector)</label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Industry</option>
+            {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {industry === 'Other' && (
+            <input
+              type="text"
+              placeholder="Specify Industry..."
+              value={customIndustry}
+              onChange={(e) => setCustomIndustry(e.target.value)}
+              className="mt-2 w-full p-2 border rounded text-sm"
+            />
+          )}
+        </div>
+
+        {/* Business Model */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Business Model</label>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Model</option>
+            {MODEL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {model === 'Other' && (
+            <input
+              type="text"
+              placeholder="Specify Model..."
+              value={customModel}
+              onChange={(e) => setCustomModel(e.target.value)}
+              className="mt-2 w-full p-2 border rounded text-sm"
+            />
+          )}
+        </div>
+
+        {/* Technology */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Technology</label>
+          <select
+            value={tech}
+            onChange={(e) => setTech(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Tech</option>
+            {TECH_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {tech === 'Other' && (
+            <input
+              type="text"
+              placeholder="Specify Tech..."
+              value={customTech}
+              onChange={(e) => setCustomTech(e.target.value)}
+              className="mt-2 w-full p-2 border rounded text-sm"
+            />
+          )}
+        </div>
+      </div>
+
+      <Button type="submit" disabled={!selectedFund}>Create Company</Button>
+    </form>
+  );
+}
+
+--- FILE: frontend/components/forms/PlanForm.tsx ---
+import { useState, useEffect } from 'react';
+import { api, Company, FinancialPlan } from '@/lib/api';
+import Button from '@/components/ui/Button';
+
+interface PlanFormProps {
+  companies: Company[];
+  onSuccess: () => void;
+  initialData?: FinancialPlan;
+}
+
+export default function PlanForm({ companies, onSuccess, initialData }: PlanFormProps) {
+  const [name, setName] = useState(initialData?.name || '');
+  const [startMonth, setStartMonth] = useState(initialData?.start_month || '');
+  const [selectedCompany, setSelectedCompany] = useState(initialData?.company_id || '');
+
+  // Pooling fraction state (0-100 for UI, mapped to 0.0-1.0 for API)
+  // Only relevant for updates, as createPlan doesn't accept it.
+  const [poolingFraction, setPoolingFraction] = useState<number>(
+    initialData?.pooling_fraction ? parseFloat(initialData.pooling_fraction) * 100 : 0
+  );
+
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name);
+      setStartMonth(initialData.start_month);
+      setSelectedCompany(initialData.company_id);
+      setPoolingFraction(initialData.pooling_fraction ? parseFloat(initialData.pooling_fraction) * 100 : 0);
+    }
+  }, [initialData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany) return alert('Please select a company');
+
+    try {
+      if (initialData) {
+        // Update Mode: Can send pooling_fraction
+        await api.updatePlan(initialData.id, {
+          name,
+          start_month: startMonth,
+          pooling_fraction: (poolingFraction / 100).toString(),
+        });
+      } else {
+        // Create Mode: Strict payload { company_id, name, start_month }
+        await api.createPlan(selectedCompany, name, startMonth);
+      }
+
+      if (!initialData) {
+        setName('');
+        setStartMonth('');
+        setPoolingFraction(0);
+        setSelectedCompany('');
+      }
+      onSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save plan');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-1">Company</label>
+        <select
+          className="w-full p-2 border rounded disabled:bg-gray-100"
+          value={selectedCompany}
+          onChange={(e) => setSelectedCompany(e.target.value)}
+          required
+          disabled={!!initialData}
+        >
+          <option value="">Select a Company</option>
+          {companies.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Plan Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full p-2 border rounded"
+          placeholder="e.g. 2025 Growth Plan"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Start Month</label>
+        <input
+          type="date"
+          value={startMonth}
+          onChange={(e) => setStartMonth(e.target.value)}
+          className="w-full p-2 border rounded"
+          required
+        />
+      </div>
+
+      {/* Non-Ergodicity Correction Slider - Only show in Update mode or if we decide to chain calls later.
+          For now, hiding in Create mode to strictly follow API payload rules. */}
+      {initialData && (
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label
+              className="block text-sm font-medium cursor-help underline decoration-dotted"
+              title="Strength of the correction factor for non-ergodicity. Pooling this fraction of profits reduces variance across the ensemble."
+            >
+              Non-Ergodicity Correction
+            </label>
+            <span className="text-sm font-mono text-gray-700">{poolingFraction.toFixed(0)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={poolingFraction}
+            onChange={(e) => setPoolingFraction(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Pooling profits reduces variance (risk) at the cost of potential upside outliers.
+          </p>
+        </div>
+      )}
+
+      <Button type="submit" disabled={!selectedCompany}>
+        {initialData ? 'Update Plan' : 'Create Plan'}
+      </Button>
+    </form>
+  );
+}
+
+--- FILE: frontend/components/forms/ExpenseForm.tsx ---
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api, ExpenseItem } from '@/lib/api';
+import VolatilityInputs from './shared/VolatilityInputs';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+  itemToEdit?: ExpenseItem | null;
+  onCancel?: () => void;
+}
+
+export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('OpEx');
+  const [amount, setAmount] = useState('');
+  const [growth, setGrowth] = useState('0');
+  const [startMonth, setStartMonth] = useState('1');
+  const [endMonth, setEndMonth] = useState('');
+  const [freq, setFreq] = useState('Monthly');
+  const [pctRevenue, setPctRevenue] = useState('');
+
+  // Volatility
+  const [volType, setVolType] = useState('none');
+  const [volMin, setVolMin] = useState('');
+  const [volMax, setVolMax] = useState('');
+  const [volIntervals, setVolIntervals] = useState('');
+  const [volMean, setVolMean] = useState('');
+  const [volScale, setVolScale] = useState('');
+  const [volFreedom, setVolFreedom] = useState('');
+  const [volAlpha, setVolAlpha] = useState('');
+  const [volBeta, setVolBeta] = useState('');
+
+  // UI State for Simple/Advanced Mode
+  const [isAdvanced, setIsAdvanced] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  // --- POPULATE ON EDIT ---
+  useEffect(() => {
+    if (itemToEdit) {
+      setName(itemToEdit.name);
+      setCategory(itemToEdit.category);
+      setAmount(itemToEdit.initial_amount.toString());
+      setGrowth(itemToEdit.growth_rate_percent.toString());
+      setStartMonth(itemToEdit.start_month.toString());
+      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
+      setFreq(itemToEdit.frequency);
+      setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
+
+      const vType = itemToEdit.volatility_type || 'none';
+      setVolType(vType);
+      setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
+      setVolMax(itemToEdit.vol_max ? itemToEdit.vol_max.toString() : '');
+      setVolIntervals(itemToEdit.vol_intervals ? itemToEdit.vol_intervals.toString() : '');
+      setVolMean(itemToEdit.vol_mean ? itemToEdit.vol_mean.toString() : '');
+      setVolScale(itemToEdit.vol_scale ? itemToEdit.vol_scale.toString() : '');
+      setVolFreedom(itemToEdit.vol_freedom ? itemToEdit.vol_freedom.toString() : '');
+      setVolAlpha(itemToEdit.vol_alpha ? itemToEdit.vol_alpha.toString() : '');
+      setVolBeta(itemToEdit.vol_beta ? itemToEdit.vol_beta.toString() : '');
+    } else {
+      clearForm();
+    }
+  }, [itemToEdit]);
+
+  const clearForm = () => {
+    setName('');
+    setCategory('OpEx');
+    setAmount('');
+    setGrowth('0');
+    setStartMonth('1');
+    setEndMonth('');
+    setFreq('Monthly');
+    setPctRevenue('');
+    setVolType('none');
+    setVolMin(''); setVolMax(''); setVolIntervals('');
+    setVolMean(''); setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
+    setIsAdvanced(false);
+    setErrors([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
+
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
+
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+
+    try {
+        const payload = {
+            plan_id: planId,
+            name,
+            category,
+            initial_amount: amount, // Send as string
+            growth_rate_percent: growth, // Send as string
+            start_month: Number(startMonth), // Int
+            end_month: endMonth ? Number(endMonth) : undefined, // Int
+            frequency: freq,
+            pct_of_revenue: pctRevenue ? pctRevenue : undefined, // String
+
+            volatility_type: volType !== 'none' ? volType as any : undefined,
+            vol_min: volType === 'flat' && volMin ? volMin : undefined, // String
+            vol_max: volType === 'flat' && volMax ? volMax : undefined, // String
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined, // Int
+            vol_mean: volMean ? volMean : undefined, // String
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? volScale : undefined, // String
+            vol_freedom: volType === 'student_t' && volFreedom ? volFreedom : undefined, // String
+            vol_alpha: volType === 'nrig' && volAlpha ? volAlpha : undefined, // String
+            vol_beta: volType === 'nrig' && volBeta ? volBeta : undefined, // String
+        };
+
+        if (itemToEdit) {
+            await api.updateExpenseItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createExpenseItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess();
+    } catch (err) {
+        console.error(err);
+        setErrors(["Failed to save expense item. Please check your inputs."]);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
+      <div className="flex justify-between items-center mb-2">
+         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Expense' : 'Add Expense'}</h3>
+         {itemToEdit && (
+            <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
+         )}
+      </div>
+
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Name</label>
+          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. Salaries" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Category</label>
+          <select className="w-full border p-2 rounded text-sm" value={category} onChange={e => setCategory(e.target.value)}>
+            <option>OpEx</option>
+            <option>CapEx</option>
+            <option>Payroll</option>
+            <option>Marketing</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Initial Amount ($)</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Growth Rate (%/mo)</label>
+          <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={growth} onChange={e => setGrowth(e.target.value)} />
+        </div>
+        <div>
+            <label className="text-xs text-gray-500">% of Revenue</label>
+            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={pctRevenue} onChange={e => setPctRevenue(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Frequency</label>
+          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
+            <option>Monthly</option>
+            <option>One-time</option>
+            <option>Quarterly</option>
+            <option>Annually</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Start Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">End Month (Opt)</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+        </div>
+      </div>
+
+      {/* SHARED VOLATILITY COMPONENT */}
+      <VolatilityInputs
+        volType={volType} setVolType={setVolType}
+        volMean={volMean} setVolMean={setVolMean}
+        volMin={volMin} setVolMin={setVolMin}
+        volMax={volMax} setVolMax={setVolMax}
+        volIntervals={volIntervals} setVolIntervals={setVolIntervals}
+        volScale={volScale} setVolScale={setVolScale}
+        volFreedom={volFreedom} setVolFreedom={setVolFreedom}
+        volAlpha={volAlpha} setVolAlpha={setVolAlpha}
+        volBeta={volBeta} setVolBeta={setVolBeta}
+        isAdvanced={isAdvanced} setIsAdvanced={setIsAdvanced}
+      />
+
+      <button className={`w-full text-white p-2 rounded font-bold ${itemToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-red-600 hover:bg-red-700'}`}>
+        {itemToEdit ? 'Update Expense' : 'Add Expense'}
+      </button>
+    </form>
+  );
+}
+
+--- FILE: frontend/components/forms/CapitalForm.tsx ---
+'use client';
+
+import { useState } from 'react';
+import { api } from '@/lib/api';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+}
+
+interface FormErrors {
+  name?: string;
+  amount?: string;
+  month?: string;
+}
+
+export default function CapitalForm({ planId, onSuccess }: Props) {
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [month, setMonth] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    const newErrors: FormErrors = {};
+    if (!name.trim()) newErrors.name = 'Source Name is required';
+    if (!amount) newErrors.amount = 'Amount is required';
+    if (!month) newErrors.month = 'Month is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // Clear errors and submit
+    setErrors({});
+    setIsSubmitting(true);
+
+    try {
+      // Force 2 decimal places for Rust strictness
+      const formattedAmount = parseFloat(amount).toFixed(2);
+
+      const payload = {
+        plan_id: planId,
+        name,
+        amount: formattedAmount,
+        month: parseInt(month, 10)
+      };
+
+      console.log("Submitting Capital:", payload);
+
+      await api.createCapitalInjection(payload);
+
+      // Reset form on success
+      setName('');
+      setAmount('');
+      setMonth('');
+      onSuccess();
+    } catch (error: any) {
+      console.error("Failed to add capital injection", error);
+      alert(JSON.stringify(error.response?.data || error.message));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="font-bold text-gray-800 text-sm">Add New Injection</h3>
+        <span className="text-xs text-gray-400">Fixed Amount</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+        {/* Name Input */}
+        <div className="md:col-span-5">
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Source Name <span className="text-red-500">*</span></label>
+          <input
+            className={`w-full border p-2 rounded text-sm focus:ring-2 outline-none transition ${
+              errors.name
+                ? 'border-red-500 focus:ring-red-200'
+                : 'border-gray-300 focus:ring-green-500 focus:border-green-500'
+            }`}
+            placeholder="e.g. Seed Round, Founder Cash"
+            value={name}
+            onChange={e => {
+              setName(e.target.value);
+              if (errors.name) setErrors({ ...errors, name: undefined });
+            }}
+          />
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+        </div>
+
+        {/* Amount Input */}
+        <div className="md:col-span-4">
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Amount ($) <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            min="0"
+            step="1000"
+            className={`w-full border p-2 rounded text-sm focus:ring-2 outline-none transition ${
+              errors.amount
+                ? 'border-red-500 focus:ring-red-200'
+                : 'border-gray-300 focus:ring-green-500 focus:border-green-500'
+            }`}
+            placeholder="0.00"
+            value={amount}
+            onChange={e => {
+              setAmount(e.target.value);
+              if (errors.amount) setErrors({ ...errors, amount: undefined });
+            }}
+          />
+          {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+        </div>
+
+        {/* Month Input */}
+        <div className="md:col-span-3">
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Month <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            min="1"
+            max="120"
+            className={`w-full border p-2 rounded text-sm focus:ring-2 outline-none transition ${
+              errors.month
+                ? 'border-red-500 focus:ring-red-200'
+                : 'border-gray-300 focus:ring-green-500 focus:border-green-500'
+            }`}
+            placeholder="1"
+            value={month}
+            onChange={e => {
+              setMonth(e.target.value);
+              if (errors.month) setErrors({ ...errors, month: undefined });
+            }}
+          />
+          {errors.month && <p className="text-red-500 text-xs mt-1">{errors.month}</p>}
+        </div>
+      </div>
+
+      <button
+        disabled={isSubmitting}
+        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-md text-sm font-bold transition-colors flex justify-center items-center gap-2"
+      >
+        {isSubmitting ? 'Adding...' : 'Add Capital Injection'}
+      </button>
+    </form>
+  );
+}
+
+--- FILE: frontend/components/forms/FundForm.tsx ---
+import { useState } from 'react';
+import { api } from '@/lib/api';
+import Button from '@/components/ui/Button';
+
+export default function FundForm({ onSuccess }: { onSuccess?: () => void }) {
+  const [name, setName] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Removed placeholder user_id, relying on Auth header
+      await api.createFund(name);
+      setName('');
+      onSuccess?.();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create fund');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-1">Fund Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full p-2 border rounded"
+          placeholder="e.g. My VC Fund I"
+          required
+        />
+      </div>
+      <Button type="submit">Create Fund</Button>
+    </form>
+  );
+}
+
+--- FILE: frontend/components/forms/CapitalGrowthForm.tsx ---
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+}
+
+interface FormErrors {
+  mean?: string;
+  volMin?: string;
+  volMax?: string;
+  volIntervals?: string;
+  alpha?: string;
+  beta?: string;
+  scale?: string;
+  freedom?: string;
+  general?: string;
+}
+
+export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
+  const [volType, setVolType] = useState('none');
+
+  // Flat / Student-T / NRIG Params
+  const [mean, setMean] = useState('');     // Mean / Mu
+  const [volMin, setVolMin] = useState(''); // Min
+  const [volMax, setVolMax] = useState(''); // Max
+  const [volIntervals, setVolIntervals] = useState('');
+
+  // Specific NRIG / Student-T Params
+  const [alpha, setAlpha] = useState('');
+  const [beta, setBeta] = useState('');
+  const [scale, setScale] = useState(''); // Delta / Scale
+  const [freedom, setFreedom] = useState('');
+
+  // UI State
+  const [isAdvanced, setIsAdvanced] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // Active Strategy (Saved in DB)
+  const [savedConfig, setSavedConfig] = useState<any>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.getCapitalGrowth(planId).then(p => {
+      if (!active) return;
+      setSavedConfig(p); // Store initial fetched config as "Active"
+
+      const vType = p.volatility_type || 'none';
+      setVolType(vType);
+      setMean(p.vol_mean !== undefined ? p.vol_mean.toString() : '');
+      setVolMin(p.vol_min !== undefined ? p.vol_min.toString() : '');
+      setVolMax(p.vol_max !== undefined ? p.vol_max.toString() : '');
+      setVolIntervals(p.vol_intervals !== undefined ? p.vol_intervals.toString() : '');
+
+      setAlpha(p.vol_alpha !== undefined ? p.vol_alpha.toString() : '');
+      setBeta(p.vol_beta !== undefined ? p.vol_beta.toString() : '');
+      setScale(p.vol_scale !== undefined ? p.vol_scale.toString() : '');
+      setFreedom(p.vol_freedom !== undefined ? p.vol_freedom.toString() : '');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [planId]);
+
+  const handleSave = async () => {
+    setErrors({});
+    const newErrors: FormErrors = {};
+
+    // Validation
+    if (volType !== 'none') {
+        if (!mean) newErrors.mean = "Mean (Expected Monthly Return) is required.";
+    }
+
+    if (volType === 'flat') {
+        if (!volMin) newErrors.volMin = "Min % is required.";
+        if (!volMax) newErrors.volMax = "Max % is required.";
+        if (!volIntervals) newErrors.volIntervals = "Intervals are required.";
+
+        if (volMin && volMax && Number(volMin) >= Number(volMax)) {
+            newErrors.volMin = "Min % must be less than Max %.";
+        }
+    } else if (volType === 'nrig') {
+        if (!alpha) newErrors.alpha = "Alpha is required.";
+        if (!beta) newErrors.beta = "Beta is required.";
+        if (!scale) newErrors.scale = "Scale is required.";
+    } else if (volType === 'student_t') {
+        if (!scale) newErrors.scale = "Scale is required.";
+        if (!freedom) newErrors.freedom = "Freedom is required.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+
+    try {
+        const payload = {
+            plan_id: planId,
+            volatility_type: volType as any,
+
+            // Common / Student T / NRIG
+            vol_mean: mean || undefined,
+
+            // Flat Only
+            vol_min: volType === 'flat' && volMin ? volMin : undefined,
+            vol_max: volType === 'flat' && volMax ? volMax : undefined,
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
+
+            // NRIG Only
+            vol_alpha: volType === 'nrig' && alpha ? alpha : undefined,
+            vol_beta: volType === 'nrig' && beta ? beta : undefined,
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? scale : undefined,
+            vol_freedom: volType === 'student_t' && freedom ? freedom : undefined,
+        };
+
+        await api.upsertCapitalGrowth(payload);
+        setSavedConfig(payload); // Update active strategy
+        onSuccess();
+    } catch (err) {
+        setErrors({ general: "Failed to save configuration." });
+    }
+  };
+
+  // Helper to find description
+  const getAlphaDesc = () => ALPHA_OPTIONS.find(o => o.value.toString() === alpha)?.description;
+  const getBetaDesc = () => BETA_OPTIONS.find(o => o.value.toString() === beta)?.description;
+  const getScaleDesc = () => SCALE_OPTIONS.find(o => o.value.toString() === scale)?.description;
+
+  // Render Summary Card Content
+  const renderActiveStrategy = () => {
+    if (!savedConfig) return "Loading...";
+    const type = savedConfig.volatility_type || 'none';
+
+    if (type === 'none') return "Standard (No Volatility)";
+
+    let details = `Mean: ${savedConfig.vol_mean}%`;
+
+    if (type === 'flat') {
+        details += `, Range: ${savedConfig.vol_min}% to ${savedConfig.vol_max}%`;
+    } else if (type === 'student_t') {
+        details += `, Scale: ${savedConfig.vol_scale}, DoF: ${savedConfig.vol_freedom}`;
+    } else if (type === 'nrig') {
+        details += `, α: ${savedConfig.vol_alpha}, β: ${savedConfig.vol_beta}, δ: ${savedConfig.vol_scale}`;
+    }
+
+    const typeLabel = type === 'student_t' ? 'Student-T' : type.toUpperCase();
+    return `Active Strategy: ${typeLabel} (${details})`;
+  };
+
+  return (
+    <div className="space-y-3">
+        <div className="flex justify-between items-center">
+            <label className="text-xs text-gray-500 block">Investment Strategy (Risk Model)</label>
+             {volType !== 'none' && (
+                 <button type="button" onClick={() => setIsAdvanced(!isAdvanced)} className="text-xs text-indigo-600 underline">
+                     {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
+                 </button>
+             )}
+        </div>
+
+        <div>
+            <select className="w-full border p-2 rounded text-sm" value={volType} onChange={e => setVolType(e.target.value)}>
+                <option value="none">Standard averages</option>
+                <option value="flat">Simple volatility (min/max)</option>
+                <option value="nrig">Comprehensive volatility</option>
+                <option value="student_t">Student's t distribution</option>
+            </select>
+        </div>
+
+        {volType !== 'none' && (
+            <div className="bg-indigo-50 p-3 rounded text-sm space-y-3">
+
+                 {/* MEAN / MU - Common (Always Visible) */}
+                 <div>
+                    <label className="text-xs text-gray-500">Expected Monthly Return (Mean %)</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        className={`w-full border p-1 ${errors.mean ? 'border-red-500' : ''}`}
+                        value={mean}
+                        onChange={e => setMean(e.target.value)}
+                        placeholder="e.g. 0.5"
+                    />
+                    {errors.mean && <p className="text-red-500 text-xs mt-1">{errors.mean}</p>}
+                 </div>
+
+                 {/* SIMPLE MODE DROPDOWNS (NRIG Only) */}
+                 {!isAdvanced && volType === 'nrig' && (
+                     <div className="space-y-3">
+                         <div>
+                             <label className="text-xs text-gray-500 block">Likelyhood of outliers (tail weight)</label>
+                             <select
+                                className={`w-full border p-1 rounded text-xs ${errors.alpha ? 'border-red-500' : ''}`}
+                                value={alpha}
+                                onChange={e => setAlpha(e.target.value)}
+                             >
+                                 <option value="">-- Select --</option>
+                                 {ALPHA_OPTIONS.map(o => (
+                                     <option key={o.value} value={o.value}>{o.label}</option>
+                                 ))}
+                             </select>
+                             {errors.alpha && <p className="text-red-500 text-xs mt-1">{errors.alpha}</p>}
+                             <p className="text-xs text-gray-400 italic mt-1">{getAlphaDesc()}</p>
+                         </div>
+
+                         <div>
+                             <label className="text-xs text-gray-500 block">Volatility imbalance (downside / upside tail is fatter)</label>
+                             <select
+                                className={`w-full border p-1 rounded text-xs ${errors.beta ? 'border-red-500' : ''}`}
+                                value={beta}
+                                onChange={e => setBeta(e.target.value)}
+                             >
+                                 <option value="">-- Select --</option>
+                                 {BETA_OPTIONS.map(o => (
+                                     <option key={o.value} value={o.value}>{o.label}</option>
+                                 ))}
+                             </select>
+                             {errors.beta && <p className="text-red-500 text-xs mt-1">{errors.beta}</p>}
+                             <p className="text-xs text-gray-400 italic mt-1">{getBetaDesc()}</p>
+                         </div>
+
+                         <div>
+                             <label className="text-xs text-gray-500 block">Delta/Scale (Volatility)</label>
+                             <select
+                                className={`w-full border p-1 rounded text-xs ${errors.scale ? 'border-red-500' : ''}`}
+                                value={scale}
+                                onChange={e => setScale(e.target.value)}
+                             >
+                                 <option value="">-- Select --</option>
+                                 {SCALE_OPTIONS.map(o => (
+                                     <option key={o.value} value={o.value}>{o.label}</option>
+                                 ))}
+                             </select>
+                             {errors.scale && <p className="text-red-500 text-xs mt-1">{errors.scale}</p>}
+                             <p className="text-xs text-gray-400 italic mt-1">{getScaleDesc()}</p>
+                         </div>
+                     </div>
+                 )}
+
+                 {/* ADVANCED INPUTS */}
+                 {(isAdvanced || volType !== 'nrig') && (
+                     <>
+                        {/* FLAT PARAMETERS */}
+                        {volType === 'flat' && (
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-400">Min %</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.volMin ? 'border-red-500' : ''}`}
+                                        value={volMin}
+                                        onChange={e => setVolMin(e.target.value)}
+                                    />
+                                    {errors.volMin && <p className="text-red-500 text-xs">{errors.volMin}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400">Max %</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.volMax ? 'border-red-500' : ''}`}
+                                        value={volMax}
+                                        onChange={e => setVolMax(e.target.value)}
+                                    />
+                                    {errors.volMax && <p className="text-red-500 text-xs">{errors.volMax}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400">Steps</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.volIntervals ? 'border-red-500' : ''}`}
+                                        value={volIntervals}
+                                        onChange={e => setVolIntervals(e.target.value)}
+                                    />
+                                    {errors.volIntervals && <p className="text-red-500 text-xs">{errors.volIntervals}</p>}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STUDENT-T PARAMETERS */}
+                        {volType === 'student_t' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-400">Scale (Vol)</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.scale ? 'border-red-500' : ''}`}
+                                        value={scale}
+                                        onChange={e => setScale(e.target.value)}
+                                        placeholder="e.g. 1.0"
+                                    />
+                                    {errors.scale && <p className="text-red-500 text-xs">{errors.scale}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400">Freedom (Deg)</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.freedom ? 'border-red-500' : ''}`}
+                                        value={freedom}
+                                        onChange={e => setFreedom(e.target.value)}
+                                        placeholder="e.g. 5.0"
+                                    />
+                                    {errors.freedom && <p className="text-red-500 text-xs">{errors.freedom}</p>}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* NRIG PARAMETERS (Advanced) */}
+                        {volType === 'nrig' && (
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-400">Likelyhood of outliers (Alpha)</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.alpha ? 'border-red-500' : ''}`}
+                                        value={alpha}
+                                        onChange={e => setAlpha(e.target.value)}
+                                        placeholder="e.g. 1.0"
+                                    />
+                                    {errors.alpha && <p className="text-red-500 text-xs">{errors.alpha}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400">Imbalance (Beta)</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.beta ? 'border-red-500' : ''}`}
+                                        value={beta}
+                                        onChange={e => setBeta(e.target.value)}
+                                        placeholder="e.g. 0.0"
+                                    />
+                                    {errors.beta && <p className="text-red-500 text-xs">{errors.beta}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400">Delta (Scale)</label>
+                                    <input
+                                        className={`w-full border p-1 ${errors.scale ? 'border-red-500' : ''}`}
+                                        value={scale}
+                                        onChange={e => setScale(e.target.value)}
+                                        placeholder="e.g. 1.0"
+                                    />
+                                    {errors.scale && <p className="text-red-500 text-xs">{errors.scale}</p>}
+                                </div>
+                            </div>
+                        )}
+                     </>
+                 )}
+
+                 <p className="text-xs text-gray-400">
+                    Calculated on positive cash balance at month end.
+                 </p>
+            </div>
+        )}
+
+        {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
+
+        {/* Summary Card */}
+        <div className="mt-4 p-3 bg-gray-100 rounded border text-xs">
+            <h4 className="font-bold text-gray-700 mb-1">Active Policy Summary</h4>
+            <div className="text-gray-600">
+                {renderActiveStrategy()}
+            </div>
+        </div>
+
+        <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1 rounded text-sm font-bold">Update Investment Policy</button>
+    </div>
+  );
+}
+
+--- FILE: frontend/components/forms/DividendForm.tsx ---
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
+
+interface Props {
+  planId: string;
+}
+
+interface FormErrors {
+  threshold?: string;
+  ratio?: string;
+}
+
+interface SavedPolicy {
+  enabled: boolean;
+  threshold: string;
+  ratio: string;
+}
+
+export default function DividendForm({ planId }: Props) {
+  const [enabled, setEnabled] = useState(false);
+  const [threshold, setThreshold] = useState('');
+  const [ratio, setRatio] = useState(''); // Stored as 0-100 string
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [savedPolicy, setSavedPolicy] = useState<SavedPolicy | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.getDividends(planId).then(d => {
+        if(!active) return;
+        setEnabled(d.is_enabled);
+        setThreshold(d.safety_threshold.toString());
+        // Convert 0-1 ratio to 0-100 percentage
+        const ratioPct = (Number(d.payout_ratio) * 100).toString();
+        setRatio(ratioPct);
+        setSavedPolicy({ enabled: d.is_enabled, threshold: d.safety_threshold.toString(), ratio: ratioPct });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [planId]);
+
+  const handleSave = async () => {
+    const newErrors: FormErrors = {};
+    if (enabled) {
+        if (!threshold) newErrors.threshold = "Threshold is required";
+        if (!ratio) newErrors.ratio = "Payout ratio is required";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+    setErrors({});
+
+    try {
+        // Convert 0-100 percentage to 0-1 ratio string
+        const ratioVal = parseFloat(ratio);
+        const ratioDecimal = (ratioVal / 100).toString();
+
+        await api.upsertDividends({
+            plan_id: planId,
+            is_enabled: enabled,
+            safety_threshold: threshold, // Send as string
+            payout_ratio: ratioDecimal   // Send as string
+        });
+        setSavedPolicy({ enabled, threshold, ratio });
+        alert("Dividend policy saved");
+    } catch (e) {
+        console.error(e);
+        alert("Failed to save dividend policy");
+    }
+  };
+
+  return (
+    <div className="space-y-4 bg-gray-50 p-4 rounded border">
+        <div className="flex justify-between items-center">
+            <h3 className="font-bold text-gray-700 text-sm">Dividend Policy</h3>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+                Enable Dividends
+            </label>
+        </div>
+
+        {enabled && (
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="text-xs text-gray-500 font-medium">Safety Threshold ($) <span className="text-red-500">*</span></label>
+                    <input
+                        type="number"
+                        className={`w-full border p-1 rounded ${errors.threshold ? 'border-red-500' : 'border-gray-300'}`}
+                        value={threshold}
+                        onChange={e => setThreshold(e.target.value)}
+                    />
+                    {errors.threshold && <p className="text-red-500 text-[10px] mt-1">{errors.threshold}</p>}
+                </div>
+                <div>
+                    <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                        Payout Percentage (0-100) <span className="text-red-500">*</span>
+                        <Tooltip content="% of surplus cash distributed." />
+                    </label>
+                    <input
+                        type="number"
+                        step="0.1"
+                        className={`w-full border p-1 rounded ${errors.ratio ? 'border-red-500' : 'border-gray-300'}`}
+                        value={ratio}
+                        onChange={e => setRatio(e.target.value)}
+                    />
+                    {errors.ratio && <p className="text-red-500 text-[10px] mt-1">{errors.ratio}</p>}
+                </div>
+            </div>
+        )}
+
+        {/* Summary Card */}
+        {savedPolicy && (
+            <div className={`p-3 rounded border shadow-sm text-xs ${savedPolicy.enabled ? 'bg-blue-50 border-blue-100' : 'bg-gray-100 border-gray-200'}`}>
+                <h4 className={`font-semibold mb-1 ${savedPolicy.enabled ? 'text-blue-900' : 'text-gray-500'}`}>
+                    Status: {savedPolicy.enabled ? 'Active' : 'Disabled'}
+                </h4>
+                {savedPolicy.enabled && (
+                    <div className="text-gray-700">
+                        Payout <span className="font-bold">{savedPolicy.ratio}%</span> of surplus above <span className="font-bold">${Number(savedPolicy.threshold).toLocaleString()}</span>.
+                    </div>
+                )}
+            </div>
+        )}
+
+        <button onClick={handleSave} className="w-full bg-blue-600 text-white py-1 rounded text-sm font-bold hover:bg-blue-700 transition-colors">Update Policy</button>
+    </div>
+  );
+}
+
+--- FILE: frontend/components/forms/AuthForm.tsx ---
+"use client";
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+
+interface AuthFormProps {
+  mode: 'login' | 'register';
+  onSubmit: (data: any) => Promise<void>;
+}
+
+export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
+  const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [isStudent, setIsStudent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleStudentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsStudent(checked);
+    if (checked) {
+      setCompanyName('Individual');
+    } else {
+      setCompanyName('');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!username || !password) {
+      setError('Username and password are required.');
+      return;
+    }
+
+    if (mode === 'register') {
+      if (!fullName) {
+        setError('Full Name is required.');
+        return;
+      }
+      if (!email) {
+        setError('Email is required.');
+        return;
+      }
+      if (!companyName) {
+        setError('Company / Organization Name is required.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      if (mode === 'register') {
+        await onSubmit({ username, email, password, full_name: fullName, company_name: companyName });
+      } else {
+        await onSubmit({ username, password });
+      }
+    } catch (err: any) {
+      console.error(err);
+
+      // Debugging 422: Show raw JSON
+      setError(JSON.stringify(err.response?.data) || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
+        <h2 className="mb-6 text-center text-2xl font-bold text-gray-900">
+          {mode === 'login' ? 'Sign In' : 'Create Account'}
+        </h2>
+
+        {error && (
+          <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-500 border border-red-200 break-words whitespace-pre-wrap">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="username">
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter your username"
+              required
+            />
+          </div>
+
+          {mode === 'register' && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="fullName">
+                Full Name
+              </label>
+              <input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter your full name"
+                required
+              />
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="companyName">
+                Company / Organization Name
+              </label>
+              <input
+                id="companyName"
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                disabled={isStudent}
+                className={`w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${isStudent ? 'bg-gray-100 text-gray-500' : ''}`}
+                placeholder={isStudent ? "Individual" : "Enter company name"}
+                required={!isStudent}
+              />
+              <div className="mt-2 flex items-center">
+                <input
+                  id="isStudent"
+                  type="checkbox"
+                  checked={isStudent}
+                  onChange={handleStudentChange}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="isStudent" className="ml-2 block text-sm text-gray-900">
+                  I am a student / individual
+                </label>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          {mode === 'register' && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="confirmPassword">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Confirm your password"
+                required
+              />
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded bg-blue-600 py-2 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+          >
+            {loading ? 'Processing...' : mode === 'login' ? 'Login' : 'Register'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-sm text-gray-600">
+          {mode === 'login' ? (
+            <p>
+              Don't have an account?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:underline">
+                Register
+              </Link>
+            </p>
+          ) : (
+            <p>
+              Already have an account?{' '}
+              <Link href="/login" className="font-medium text-blue-600 hover:underline">
+                Login
+              </Link>
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- FILE: frontend/components/forms/CreditForm.tsx ---
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+
+interface Props {
+  planId: string;
+}
+
+interface FormErrors {
+  limit?: string;
+  rate?: string;
+}
+
+interface SavedConfig {
+  limit: string;
+  rate: string;
+  isAnnual: boolean;
+}
+
+export default function CreditForm({ planId }: Props) {
+  const [limit, setLimit] = useState('');
+  const [rate, setRate] = useState('');
+  const [isAnnual, setIsAnnual] = useState(true);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [savedConfig, setSavedConfig] = useState<SavedConfig | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.getCredit(planId).then(c => {
+        if(!active) return;
+        const l = c.facility_limit.toString();
+        const r = c.interest_rate.toString();
+        const ann = c.is_annual_rate !== undefined ? c.is_annual_rate : true;
+
+        setLimit(l);
+        setRate(r);
+        setIsAnnual(ann);
+        setSavedConfig({ limit: l, rate: r, isAnnual: ann });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [planId]);
+
+  const handleSave = async () => {
+    // Validation
+    const newErrors: FormErrors = {};
+    if (!limit) newErrors.limit = 'Limit is required';
+    if (!rate) newErrors.rate = 'Rate is required';
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+    setErrors({});
+
+    try {
+        await api.upsertCredit({
+            plan_id: planId,
+            facility_limit: limit, // Send as string
+            interest_rate: rate,   // Send as string
+            is_annual_rate: isAnnual
+        });
+        setSavedConfig({ limit, rate, isAnnual });
+        alert("Credit facility saved");
+    } catch (e) {
+        console.error(e);
+        alert("Failed to save credit facility");
+    }
+  };
+
+  return (
+    <div className="space-y-4 bg-gray-50 p-4 rounded border">
+        <h3 className="font-bold text-gray-700 text-sm">Revolving Credit Facility</h3>
+
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+                <label className="text-xs text-gray-500 font-medium">Max Limit ($) <span className="text-red-500">*</span></label>
+                <input
+                    type="number"
+                    className={`w-full border p-1 rounded ${errors.limit ? 'border-red-500' : 'border-gray-300'}`}
+                    value={limit}
+                    onChange={e => setLimit(e.target.value)}
+                />
+                {errors.limit && <p className="text-red-500 text-[10px] mt-1">{errors.limit}</p>}
+            </div>
+            <div>
+                <label className="text-xs text-gray-500 font-medium">Interest Rate (%) <span className="text-red-500">*</span></label>
+                <input
+                    type="number"
+                    step="0.1"
+                    className={`w-full border p-1 rounded ${errors.rate ? 'border-red-500' : 'border-gray-300'}`}
+                    value={rate}
+                    onChange={e => setRate(e.target.value)}
+                />
+                {errors.rate && <p className="text-red-500 text-[10px] mt-1">{errors.rate}</p>}
+            </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs text-gray-600">
+            <span className="font-semibold">Rate Type:</span>
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                    type="radio"
+                    name="rateType"
+                    checked={isAnnual}
+                    onChange={() => setIsAnnual(true)}
+                />
+                Annual (APR)
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                    type="radio"
+                    name="rateType"
+                    checked={!isAnnual}
+                    onChange={() => setIsAnnual(false)}
+                />
+                Monthly
+            </label>
+        </div>
+
+        {/* Summary Card */}
+        {savedConfig && (
+            <div className="bg-white p-3 rounded border border-indigo-100 shadow-sm text-xs mt-2">
+                <h4 className="font-semibold text-indigo-900 mb-1">Active Facility Settings</h4>
+                <div className="flex justify-between text-gray-600">
+                    <span>Limit: <span className="font-mono text-gray-900 font-bold">${Number(savedConfig.limit).toLocaleString()}</span></span>
+                    <span>Rate: <span className="font-mono text-gray-900 font-bold">{savedConfig.rate}%</span> {savedConfig.isAnnual ? '(APR)' : '(Monthly)'}</span>
+                </div>
+            </div>
+        )}
+
+        <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1 rounded text-sm font-bold hover:bg-indigo-700 transition-colors">Update Facility</button>
+    </div>
+  );
+}
+
+--- FILE: frontend/components/forms/shared/VolatilityInputs.tsx ---
+'use client';
+
+import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
+import Tooltip from '@/components/ui/Tooltip';
+
+interface VolatilityInputsProps {
+  volType: string;
+  setVolType: (val: string) => void;
+
+  // Parameters
+  volMean: string;
+  setVolMean: (val: string) => void;
+  volMin: string;
+  setVolMin: (val: string) => void;
+  volMax: string;
+  setVolMax: (val: string) => void;
+  volIntervals: string;
+  setVolIntervals: (val: string) => void;
+  volScale: string;
+  setVolScale: (val: string) => void;
+  volFreedom: string;
+  setVolFreedom: (val: string) => void;
+  volAlpha: string;
+  setVolAlpha: (val: string) => void;
+  volBeta: string;
+  setVolBeta: (val: string) => void;
+
+  // UI Mode
+  isAdvanced: boolean;
+  setIsAdvanced: (val: boolean) => void;
+
+  // Optional Overrides
+  meanLabel?: string;
+  alwaysShowMean?: boolean;
+}
+
+export default function VolatilityInputs({
+  volType, setVolType,
+  volMean, setVolMean,
+  volMin, setVolMin,
+  volMax, setVolMax,
+  volIntervals, setVolIntervals,
+  volScale, setVolScale,
+  volFreedom, setVolFreedom,
+  volAlpha, setVolAlpha,
+  volBeta, setVolBeta,
+  isAdvanced, setIsAdvanced,
+  meanLabel,
+  alwaysShowMean
+}: VolatilityInputsProps) {
+
+  // Helper to find description
+  const getAlphaDesc = () => ALPHA_OPTIONS.find(o => o.value.toString() === volAlpha)?.description;
+  const getBetaDesc = () => BETA_OPTIONS.find(o => o.value.toString() === volBeta)?.description;
+  const getScaleDesc = () => SCALE_OPTIONS.find(o => o.value.toString() === volScale)?.description;
+
+  return (
+    <div className="border-t pt-2 mt-2">
+      <div className="flex justify-between items-center mb-1">
+           <label className="text-xs font-bold text-gray-700">Uncertainty / Risk Model</label>
+           {volType !== 'none' && (
+               <button type="button" onClick={() => setIsAdvanced(!isAdvanced)} className="text-xs text-blue-600 underline">
+                   {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
+               </button>
+           )}
+      </div>
+      <div className="space-y-2">
+          <div>
+              <label className="text-xs text-gray-500">Model Type</label>
+              <select className="w-full border p-1 rounded text-xs" value={volType} onChange={e => setVolType(e.target.value)}>
+                  <option value="none">Just the averages</option>
+                  <option value="flat">Simple volatility (min/max)</option>
+                  <option value="nrig">Comprehensive volatility</option>
+                  <option value="student_t">Student's t distribution</option>
+              </select>
+          </div>
+
+          {volType !== 'none' && (
+            <div className="bg-gray-100 p-2 rounded">
+
+               {/* SIMPLE MODE DROPDOWNS (NRIG Only) */}
+               {!isAdvanced && volType === 'nrig' && (
+                   <div className="space-y-3">
+                       <div className="text-xs text-gray-600 italic mb-2">
+                          Tier 1: Configure the shape of uncertainty.
+                       </div>
+                       <div>
+                           <label className="text-xs text-gray-500 flex items-center gap-1">
+                              Likelyhood of outliers (tail weight)
+                              <Tooltip content="Controls how often extreme events (white and black swans) occur." />
+                           </label>
+                           <select className="w-full border p-1 rounded text-xs" value={volAlpha} onChange={e => setVolAlpha(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {ALPHA_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label} </option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getAlphaDesc()}</p>
+                       </div>
+
+                       <div>
+                           <label className="text-xs text-gray-500 flex items-center gap-1">
+                              Volatility imbalance (downside / upside)
+                              <Tooltip content="Skewness: Are surprises more likely to be positive or negative?" />
+                           </label>
+                           <select className="w-full border p-1 rounded text-xs" value={volBeta} onChange={e => setVolBeta(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {BETA_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label}</option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getBetaDesc()}</p>
+                       </div>
+
+                       <div>
+                           <label className="text-xs text-gray-500 block">Delta/Scale (Volatility)</label>
+                           <select className="w-full border p-1 rounded text-xs" value={volScale} onChange={e => setVolScale(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {SCALE_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label}</option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getScaleDesc()}</p>
+                       </div>
+                   </div>
+               )}
+
+               {/* ADVANCED INPUTS OR OTHER MODELS */}
+               {/* Hidden if in Simple NRIG mode, unless we need to show the Mean (Capital Growth) */}
+               <div className={`grid grid-cols-3 gap-2 items-end ${(!isAdvanced && volType === 'nrig' && !alwaysShowMean) ? 'hidden' : ''}`}>
+
+                   {/* Common Mean */}
+                   {(isAdvanced || alwaysShowMean) && (
+                     <div className="col-span-3">
+                         <label className="text-xs text-gray-400">{meanLabel || "Mean / Drift (Optional Override)"}</label>
+                         <input
+                            type="number"
+                            step="any"
+                            placeholder="Default = Growth Rate"
+                            className="w-full border p-1 text-xs"
+                            value={volMean}
+                            onChange={e => setVolMean(e.target.value)}
+                         />
+                     </div>
+                   )}
+
+                   {/* Flat Params */}
+                   {volType === 'flat' && (
+                      <>
+                          <div className="col-span-3 flex items-center gap-2 mb-1 mt-2">
+                              <span className="text-xs font-bold text-gray-500">Range Settings</span>
+                              <Tooltip content="Define a hard minimum and maximum percentage deviation." />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Min %</label>
+                              <input className="w-full border p-1 text-xs" value={volMin} onChange={e => setVolMin(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Max %</label>
+                              <input className="w-full border p-1 text-xs" value={volMax} onChange={e => setVolMax(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Steps</label>
+                              <input className="w-full border p-1 text-xs" value={volIntervals} onChange={e => setVolIntervals(e.target.value)} />
+                          </div>
+                      </>
+                   )}
+
+                   {/* Student-T Params */}
+                   {volType === 'student_t' && (
+                      <>
+                          <div>
+                              <label className="text-xs text-gray-400">Scale (Vol)</label>
+                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Freedom (Deg)</label>
+                              <input className="w-full border p-1 text-xs" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
+                          </div>
+                      </>
+                   )}
+
+                   {/* NRIG Params (Advanced) */}
+                   {volType === 'nrig' && isAdvanced && (
+                      <>
+                          <div>
+                              <label className="text-xs text-gray-400">Likelyhood (Alpha)</label>
+                              <input className="w-full border p-1 text-xs" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Skew (Imbalance, Beta)</label>
+                              <input className="w-full border p-1 text-xs" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Scale (Delta)</label>
+                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                          </div>
+                      </>
+                   )}
+               </div>
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+--- FILE: frontend/app/plan/[planId]/inputs/page.tsx ---
+'use client';
+
+import { useEffect, useState } from 'react';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import DeleteButton from '@/components/ui/DeleteButton';
+import { api, RevenueItem, ExpenseItem, FinancialPlan, CapitalInjection, StaffingRole } from '@/lib/api';
+
+// IMPORT ALL FORMS
+import RevenueForm from '@/components/forms/RevenueForm';
+import ExpenseForm from '@/components/forms/ExpenseForm';
+import CapitalGrowthForm from '@/components/forms/CapitalGrowthForm';
+import CapitalForm from '@/components/forms/CapitalForm';
+import CapitalList from '@/components/forms/CapitalList';
+import DividendForm from '@/components/forms/DividendForm';
+import CreditForm from '@/components/forms/CreditForm';
+import ValuationForm from '@/components/forms/ValuationForm';
+import StaffingForm from '@/components/forms/StaffingForm';
+
+type TabType = 'operations' | 'capital' | 'settings';
+
+export default function InputsPage({ params }: { params: { planId: string } }) {
+  const { planId } = params;
+  const [plan, setPlan] = useState<FinancialPlan | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('operations');
+
+  // Lists Data
+  const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
+  const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
+  const [staffingRoles, setStaffingRoles] = useState<StaffingRole[]>([]);
+
+  // New State for Opening Balance
+  const [initialCash, setInitialCash] = useState("0");
+
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Edit State
+  const [editingRevenue, setEditingRevenue] = useState<RevenueItem | null>(null);
+  const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
+
+  const fetchData = async () => {
+    // Note: We don't set loading=true here to avoid full page flicker on updates
+    // only initial load sets it.
+    try {
+      // 1. Fetch Plan (Critical) - Only if not already loaded or explicit refresh needed
+      if (!plan) {
+        try {
+            const p = await api.getPlan(planId);
+            setPlan(p);
+            // Ensure we handle potential number/string mismatch safely
+            setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
+        } catch (e) {
+            console.error("Failed to load plan", e);
+            setErrorMsg("Plan not found or API error");
+            setLoading(false);
+            return;
+        }
+      }
+
+      // 2. Fetch Other Data (Non-Critical or Partial)
+      const results = await Promise.allSettled([
+        api.getRevenueItems(planId),
+        api.getExpenseItems(planId),
+        api.getCapitalInjections(planId),
+        api.getStaffingRoles(planId)
+      ]);
+
+      // Handle Results
+      if (results[0].status === 'fulfilled') setRevenueItems(results[0].value);
+      if (results[1].status === 'fulfilled') setExpenseItems(results[1].value);
+      if (results[2].status === 'fulfilled') setCapitalItems(results[2].value);
+
+      if (results[3].status === 'fulfilled') {
+          setStaffingRoles(results[3].value);
+      } else {
+          console.error("Failed to load staffing roles", results[3].reason);
+      }
+
+      setEditingRevenue(null);
+      setEditingExpense(null);
+
+    } catch (error) {
+      console.error("Unexpected error loading inputs", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [planId]);
+
+  // Handlers for StaffingForm
+  const handleSaveRole = async (roleData: Omit<StaffingRole, "id" | "plan_id"> & { id?: string }) => {
+    try {
+        if (roleData.id) {
+           // Update
+           await api.updateStaffingRole({
+               ...roleData,
+               id: roleData.id,
+               plan_id: planId
+           } as StaffingRole);
+        } else {
+           // Create
+           await api.createStaffingRole({
+               ...roleData,
+               plan_id: planId
+           });
+        }
+        await fetchData(); // Refresh data
+    } catch (err) {
+        console.error("Error saving role:", err);
+        throw err; // Let form handle error display
+    }
+  };
+
+  const handleDeleteRole = async (id: string) => {
+    try {
+        await api.deleteStaffingRole(id);
+        await fetchData();
+    } catch (err) {
+        console.error("Error deleting role:", err);
+        throw err;
+    }
+  };
+
+  // Handler for Initial Cash
+  const handleSaveInitialCash = async () => {
+    try {
+        console.log("Saving Initial Cash Payload:", { initial_cash: initialCash });
+
+        // Update the plan with the new initial_cash value
+        // Ensure strictly string to match API requirements
+        await api.updatePlan(planId, { initial_cash: String(initialCash) });
+
+        window.alert("Opening Balance Saved");
+
+        // Refresh the plan data to ensure sync
+        const p = await api.getPlan(planId);
+        setPlan(p);
+        setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
+
+        await fetchData();
+    } catch (err) {
+        console.error("Error saving initial cash:", err);
+        window.alert("Failed to save");
+    }
+  };
+
+  if (loading) return <Layout>Loading...</Layout>;
+  if (errorMsg || !plan) return <Layout>{errorMsg || "Plan not found"}</Layout>;
+
+  return (
+    <Layout>
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{plan.name}</h1>
+          <p className="text-gray-500 text-sm">Plan ID: {plan.id}</p>
+        </div>
+        <a
+          href={`/plan/${planId}/results`}
+          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-medium shadow-sm transition-colors"
+        >
+          View Projections &rarr;
+        </a>
+      </div>
+
+      {/* TABS NAVIGATION */}
+      <div className="border-b border-gray-200 mb-8">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('operations')}
+            className={`${
+              activeTab === 'operations'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Operations (P&L)
+          </button>
+
+          <button
+            onClick={() => setActiveTab('capital')}
+            className={`${
+              activeTab === 'capital'
+                ? 'border-green-500 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Capital Structure
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`${
+              activeTab === 'settings'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Treasury & Valuation
+          </button>
+        </nav>
+      </div>
+
+      {/* --- TAB CONTENT: OPERATIONS --- */}
+      {activeTab === 'operations' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+
+          {/* REVENUE COLUMN */}
+          <section className="space-y-6">
+            <Card id="revenue-form">
+                <h2 className="text-xl font-bold mb-4 text-blue-600 flex items-center gap-2">
+                    Revenue Streams
+                </h2>
+                <RevenueForm
+                    planId={planId}
+                    onSuccess={fetchData}
+                    itemToEdit={editingRevenue}
+                    onCancel={() => setEditingRevenue(null)}
+                />
+            </Card>
+
+            <div className="space-y-4">
+                {revenueItems.map((item) => (
+                <Card key={item.id} className={`border-l-4 transition-all ${editingRevenue?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-blue-500 hover:shadow-md'}`}>
+                    <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="font-bold text-gray-900">{item.name}</h3>
+                        <p className="text-sm text-gray-600">{item.source} • {item.frequency}</p>
+                        {item.volatility_type !== 'none' && (
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
+                                Risk: {item.volatility_type}
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg">${Number(item.initial_amount).toLocaleString()}</p>
+                        <p className="text-xs font-medium text-green-600">+{item.growth_rate_percent}% / mo</p>
+                    </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+                    <span>Starts Month: {item.start_month}</span>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                setEditingRevenue(item);
+                                document.getElementById('revenue-form')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-semibold"
+                        >
+                            Edit
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <DeleteButton onDelete={async () => {
+                            await api.deleteRevenueItem(item.id);
+                            fetchData();
+                        }} />
+                    </div>
+                    </div>
+                </Card>
+                ))}
+                {revenueItems.length === 0 && (
+                    <div className="text-center p-8 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        No revenue streams added yet.
+                    </div>
+                )}
+            </div>
+          </section>
+
+          {/* EXPENSES COLUMN */}
+          <section className="space-y-6">
+            <Card id="expense-form">
+                <h2 className="text-xl font-bold mb-4 text-red-600">Expenses</h2>
+                <ExpenseForm
+                    planId={planId}
+                    onSuccess={fetchData}
+                    itemToEdit={editingExpense}
+                    onCancel={() => setEditingExpense(null)}
+                />
+            </Card>
+
+            <div className="space-y-4">
+                {expenseItems.map((item) => (
+                <Card key={item.id} className={`border-l-4 transition-all ${editingExpense?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-red-500 hover:shadow-md'}`}>
+                    <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="font-bold text-gray-900">{item.name}</h3>
+                        <p className="text-sm text-gray-600">{item.category} • {item.frequency}</p>
+                        {item.volatility_type !== 'none' && (
+                             <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
+                                Risk: {item.volatility_type}
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg">${Number(item.initial_amount).toLocaleString()}</p>
+                        <p className="text-xs font-medium text-red-600">+{item.growth_rate_percent}% / mo</p>
+                    </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+                    <span>Starts Month: {item.start_month}</span>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                setEditingExpense(item);
+                                document.getElementById('expense-form')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-semibold"
+                        >
+                            Edit
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <DeleteButton onDelete={async () => {
+                            await api.deleteExpenseItem(item.id);
+                            fetchData();
+                        }} />
+                    </div>
+                    </div>
+                </Card>
+                ))}
+                 {expenseItems.length === 0 && (
+                    <div className="text-center p-8 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        No expenses added yet.
+                    </div>
+                )}
+            </div>
+          </section>
+
+          {/* STAFFING COLUMN (Full Width) */}
+          <div className="col-span-1 lg:col-span-2 mt-8">
+                <StaffingForm
+                    planId={planId}
+                    initialRoles={staffingRoles}
+                    onSave={handleSaveRole}
+                    onDelete={handleDeleteRole}
+                />
+            </div>
+        </div>
+      )}
+
+      {/* --- TAB CONTENT: CAPITAL STRUCTURE --- */}
+      {activeTab === 'capital' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+
+            {/* EQUITY / CAPITAL INJECTIONS */}
+            <section className="space-y-6">
+                <Card>
+                    <h2 className="text-xl font-bold mb-4 text-green-600">Equity & Capital Injections</h2>
+                    <p className="text-sm text-gray-500 mb-6">Add one-time cash injections (e.g. Seed rounds, Owner contributions).</p>
+
+                    {/* OPENING BALANCE INPUT */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Opening Cash Balance ($)
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="number"
+                                value={initialCash}
+                                onChange={(e) => setInitialCash(e.target.value)}
+                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
+                                placeholder="0.00"
+                            />
+                            <button
+                                onClick={handleSaveInitialCash}
+                                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium"
+                            >
+                                Save
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                            Starting cash on hand at Month 0.
+                        </p>
+                    </div>
+
+                    {/* INPUT FORM */}
+                    <CapitalForm planId={planId} onSuccess={fetchData} />
+
+                    {/* LIST OF ITEMS */}
+                    <CapitalList items={capitalItems} onDelete={fetchData} />
+                </Card>
+            </section>
+
+            {/* DEBT & DIVIDENDS */}
+            <section className="space-y-6">
+                <Card>
+                    <h2 className="text-xl font-bold mb-4 text-orange-600">Debt & Credit Facilities</h2>
+                     <p className="text-sm text-gray-500 mb-6">Manage lines of credit, interest rates, and loan terms.</p>
+                    <CreditForm planId={planId} />
+                </Card>
+
+                <Card>
+                    <h2 className="text-xl font-bold mb-4 text-cyan-600">Dividends</h2>
+                    <p className="text-sm text-gray-500 mb-6">Set rules for profit distribution to shareholders.</p>
+                    <DividendForm planId={planId} />
+                </Card>
+            </section>
+        </div>
+      )}
+
+      {/* --- TAB CONTENT: SETTINGS & TREASURY --- */}
+      {activeTab === 'settings' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+             {/* TREASURY */}
+             <section>
+                 <Card>
+                    <h2 className="text-xl font-bold mb-4 text-indigo-600">Treasury Management</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Configure how idle cash is invested. Set a minimum cash buffer and an interest yield for surplus cash.
+                    </p>
+                    <CapitalGrowthForm planId={planId} onSuccess={fetchData} />
+                 </Card>
+            </section>
+
+             {/* VALUATION */}
+             <section>
+                 <Card>
+                    <h2 className="text-xl font-bold mb-4 text-purple-600">Valuation Settings</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Define the multiples (Revenue/EBITDA) used to estimate your company's value over time.
+                    </p>
+                    <ValuationForm planId={planId} onSuccess={fetchData} />
+                 </Card>
+            </section>
+        </div>
+      )}
+    </Layout>
+  );
+}
+
+--- FILE: frontend/app/plan/[planId]/inputs/ClientPage.tsx ---
+'use client';
+export default function ClientPage({ params }: { params: { planId: string } }) {
+  return <div>Plan Inputs for {params.planId}</div>;
+}
+
+--- FILE: frontend/lib/api.ts ---
+import axios from 'axios';
+
+// If the environment variable is set (Production), use it.
+// Otherwise, fall back to localhost (Development).
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// --- AXIOS INSTANCE (Auth Injection) ---
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor: Inject Token
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Handle 401 & Debug 422
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Debugging 422 errors
+      if (error.response.status === 422) {
+        console.error("DEBUG 422 DETAIL:", error.response.data);
+      }
+
+      if (error.response.status === 401) {
+        // Token expired or invalid
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          // Optional: Redirect to login if not already there
+          // window.location.href = '/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// --- INTERFACES ---
+export interface AuthResponse {
+  token: string;
+}
+
+export interface Fund {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface Company {
+  id: string;
+  fund_id: string;
+  name: string;
+  industry?: string;
+  business_model?: string;
+  created_at: string;
+}
+
+export interface FinancialPlan {
+  id: string;
+  company_id: string;
+  name: string;
+  start_month: string;
+  initial_cash: string;
+  pooling_fraction: string;
+}
+
+export interface UpdatePlanRequest {
+  name?: string;
+  start_month?: string;
+  initial_cash?: string;
+  pooling_fraction?: string;
+}
+
+export interface RevenueItem {
+  id: string;
+  plan_id: string;
+  name: string;
+  source: string;
+  initial_amount: string;
+  growth_rate_percent: string;
+  start_month: number;
+  end_month?: number;
+  frequency: string;
+  cost_of_revenue_percent?: string;
+  volatility_type?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface ExpenseItem {
+  id: string;
+  plan_id: string;
+  name: string;
+  category: string;
+  initial_amount: string;
+  growth_rate_percent: string;
+  start_month: number;
+  end_month?: number;
+  frequency: string;
+  pct_of_revenue?: string;
+  volatility_type?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface CapitalGrowthPolicy {
+  id: string;
+  plan_id: string;
+  volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface CapitalInjection {
+  id: string;
+  plan_id: string;
+  name: string;
+  amount: string; // Strict Type: String for Decimal precision
+  month: number;
+}
+
+export interface DividendPolicy {
+  id: string;
+  plan_id: string;
+  is_enabled: boolean;
+  safety_threshold: string;
+  payout_ratio: string;
+}
+
+export interface CreditFacility {
+  id: string;
+  plan_id: string;
+  facility_limit: string;
+  interest_rate: string;
+  is_annual_rate: boolean;
+}
+
+export interface ValuationAssumption {
+  id: string;
+  plan_id: string;
+  name: string;
+  method: 'revenue' | 'ebitda';
+  multiplier: string;
+  date_applied: string;
+}
+
+export interface StaffingRole {
+  id: string;
+  plan_id: string;
+  role_name: string;
+  annual_salary: string;
+  start_month: number;
+  target_count: number;
+  hiring_plan: 'fixed_count' | 'monthly_rate';
+  hiring_rate?: string;
+  annual_increase: string;
+}
+
+export interface MonthlyData {
+  month_index: number;
+  date: string;
+  revenue: string;
+  cogs: string;
+  gross_profit: string;
+  opex: string;
+  interest_expense: string;
+  net_income: string;
+  cash_balance: string;
+  dividend_paid: string;
+  cumulative_dividends: string;
+  cumulative_external_capital: string;
+  cumulative_pool_received: string;
+  current_debt: string;
+  total_value: string;
+  is_insolvent: boolean;
+}
+
+export interface SimulationResult {
+  labels: string[];
+  valuation_method: string;
+  deterministic_data: MonthlyData[];
+  single_run_data?: MonthlyData[];
+  single_run_value?: string[];
+
+  p0_value?: string[];
+  p10_value?: string[];
+  p25_value?: string[];
+  p50_value?: string[];
+  p75_value?: string[];
+  p90_value?: string[];
+  p100_value?: string[];
+
+  p50_pool_cumulative?: string[];
+
+  deterministic_runway?: number;
+  deterministic_valuation: string;
+
+  single_run_runway?: number;
+  single_run_valuation?: string;
+
+  p50_runway?: number;
+  p50_valuation?: string;
+}
+
+// --- API OBJECT ---
+export const api = {
+  // AUTH
+  login: async (username: string, password: string) => {
+    const payload = { username, password };
+    return (await apiClient.post<AuthResponse>('/api/auth/login', payload)).data;
+  },
+
+  register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
+    const payload = { username, email, password, full_name, company_name };
+    return (await apiClient.post<AuthResponse>('/api/auth/register', payload)).data;
+  },
+
+  // FUNDS
+  getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
+  getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
+  createFund: async (name: string) =>
+    (await apiClient.post<Fund>('/api/funds', { name })).data,
+  deleteFund: async (id: string) => {
+    await apiClient.delete(`/api/funds/${id}`);
+  },
+
+  // COMPANIES
+  getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
+  getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
+  createCompany: async (name: string, fund_id: string, industry?: string, business_model?: string, technology?: string) =>
+    (await apiClient.post<Company>('/api/companies', { name, fund_id, industry, business_model, technology })).data,
+  deleteCompany: async (id: string) => {
+    await apiClient.delete(`/api/companies/${id}`);
+  },
+
+  // PLANS
+  getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
+  getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
+  // STRICT PAYLOAD: { company_id, name, start_month }
+  createPlan: async (company_id: string, name: string, start_month: string) =>
+    (await apiClient.post<FinancialPlan>('/api/plans', { company_id, name, start_month })).data,
+  updatePlan: async (id: string, updates: UpdatePlanRequest) =>
+    (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
+  getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) =>
+    (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
+
+  // REVENUE
+  getRevenueItems: async (planId: string) => (await apiClient.get<RevenueItem[]>(`/api/plans/${planId}/revenue`)).data,
+  createRevenueItem: async (item: Omit<RevenueItem, 'id'>) => (await apiClient.post<RevenueItem>('/api/revenue', item)).data,
+  updateRevenueItem: async (id: string, item: Partial<RevenueItem>) => (await apiClient.put<RevenueItem>(`/api/revenue/${id}`, item)).data,
+  deleteRevenueItem: async (id: string) => (await apiClient.delete(`/api/revenue/${id}`)),
+
+  // EXPENSES
+  getExpenseItems: async (planId: string) => (await apiClient.get<ExpenseItem[]>(`/api/plans/${planId}/expenses`)).data,
+  createExpenseItem: async (item: Omit<ExpenseItem, 'id'>) => (await apiClient.post<ExpenseItem>('/api/expenses', item)).data,
+  updateExpenseItem: async (id: string, item: Partial<ExpenseItem>) => (await apiClient.put<ExpenseItem>(`/api/expenses/${id}`, item)).data,
+  deleteExpenseItem: async (id: string) => (await apiClient.delete(`/api/expenses/${id}`)),
+
+  // STAFFING
+  getStaffingRoles: async (planId: string) => (await apiClient.get<StaffingRole[]>(`/api/plans/${planId}/staffing`)).data,
+  createStaffingRole: async (role: Omit<StaffingRole, 'id'>) => (await apiClient.post<StaffingRole>('/api/staffing', role)).data,
+  updateStaffingRole: async (role: Omit<StaffingRole, 'plan_id'> & { plan_id?: string }) => (await apiClient.put<StaffingRole>(`/api/staffing/${role.id}`, role)).data,
+  deleteStaffingRole: async (id: string) => (await apiClient.delete(`/api/staffing/${id}`)).data,
+
+  // CAPITAL GROWTH (Treasury)
+  getCapitalGrowth: async (planId: string) => (await apiClient.get<CapitalGrowthPolicy>(`/api/plans/${planId}/capital-growth`)).data,
+  upsertCapitalGrowth: async (item: Omit<CapitalGrowthPolicy, 'id'>) =>
+    (await apiClient.post<CapitalGrowthPolicy>('/api/capital-growth', item)).data,
+
+  // CAPITAL INJECTIONS
+  getCapitalInjections: async (planId: string) =>
+    (await apiClient.get<CapitalInjection[]>(`/api/plans/${planId}/capital`)).data,
+  createCapitalInjection: async (item: Omit<CapitalInjection, 'id'>) =>
+    (await apiClient.post<CapitalInjection>('/api/capital', item)).data,
+  deleteCapitalInjection: async (id: string) =>
+    (await apiClient.delete(`/api/capital/${id}`)),
+
+  // DIVIDENDS
+  getDividends: async (planId: string) =>
+    (await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`)).data,
+  upsertDividends: async (item: Omit<DividendPolicy, 'id'>) =>
+    (await apiClient.post<DividendPolicy>('/api/dividends', item)).data,
+
+  // CREDIT
+  getCredit: async (planId: string) =>
+    (await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`)).data,
+  upsertCredit: async (item: Omit<CreditFacility, 'id'>) =>
+    (await apiClient.post<CreditFacility>('/api/credit', item)).data,
+
+  // VALUATION
+  getValuation: async (planId: string) =>
+    (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
+  createValuation: async (item: { plan_id: string, name: string, method: string, multiplier: string, date_applied: string }) =>
+    (await apiClient.post('/api/valuation', item)).data,
+};
+
+--- FILE: frontend/lib/presets.ts ---
+// NRIG Parameter Helper Options
+// Used to translate qualitative descriptions into specific math parameters
+
+export const ALPHA_OPTIONS = [
+  { label: "Normal Distribution (Bell Curve)", value: 50.0, description: "Standard, predictable probabilities. Rare extreme events." },
+  { label: "Heavy Tails (Frequent Surprises)", value: 2.0, description: "Higher chance of extreme outcomes (good or bad)." },
+  { label: "Very Heavy Tails (White and Black Swans)", value: 0.5, description: "Extreme events are common. Expect the unexpected." }
+];
+
+export const BETA_OPTIONS = [
+  { label: "Downside tail is a lot fatter (Black swans)", value: -5.0, description: "More likely to crash/drop than to spike up." },
+  { label: "Downside tail is a little fatter", value: -2.0, description: "Slight negative skew." },
+  { label: "Symmetric (Even Chance)", value: 0.0, description: "Upside and downside risks are equal." },
+  { label: "Upside tail is a little fatter", value: 2.0, description: "Slight positive skew." },
+  { label: "Upside tail is a lot fatter (White swans)", value: 5.0, description: "More likely to surprise on the upside than the downside." }
+];
+
+export const SCALE_OPTIONS = [
+  { label: "Low Volatility (Stable)", value: 1.0, description: "Prices/Values move slower than normal." },
+  { label: "Medium Volatility", value: 5.0, description: "Standard market movement." },
+  { label: "High Volatility", value: 15.0, description: "Larger swings." }
+];
+
+</source_code>

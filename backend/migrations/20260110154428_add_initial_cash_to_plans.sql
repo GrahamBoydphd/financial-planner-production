@@ -1,0 +1,1 @@
+ALTER TABLE financial_plans ADD COLUMN initial_cash DECIMAL NOT NULL DEFAULT 0;

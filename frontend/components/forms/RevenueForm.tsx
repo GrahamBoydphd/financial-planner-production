@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api, RevenueItem } from '@/lib/api';
 import VolatilityInputs from './shared/VolatilityInputs';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
@@ -13,12 +14,12 @@ interface Props {
 
 export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
   const [name, setName] = useState('');
-  const [source, setSource] = useState('Sales');
+  const [source, setSource] = useState('sales');
   const [amount, setAmount] = useState('');
   const [growth, setGrowth] = useState('0');
   const [startMonth, setStartMonth] = useState('1');
   const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('Monthly');
+  const [freq, setFreq] = useState('monthly');
   const [cogsPercent, setCogsPercent] = useState('');
 
   // Volatility
@@ -34,6 +35,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
   // UI State for Simple/Advanced Mode
   const [isAdvanced, setIsAdvanced] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
 
   // --- EFFECT: POPULATE FORM ON EDIT ---
   useEffect(() => {
@@ -66,91 +68,124 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
 
   const clearForm = () => {
     setName('');
-    setSource('Sales');
+    setSource('sales');
     setAmount('');
     setGrowth('0');
     setStartMonth('1');
     setEndMonth('');
-    setFreq('Monthly');
+    setFreq('monthly');
     setCogsPercent('');
     setVolType('none');
     setVolMin(''); setVolMax(''); setVolIntervals('');
     setVolMean(''); setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
     setIsAdvanced(false);
+    setErrors([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !amount) return;
+    setErrors([]);
 
-    const payload = {
-      plan_id: planId,
-      name,
-      source,
-      initial_amount: Number(amount),
-      growth_rate_percent: Number(growth),
-      start_month: Number(startMonth),
-      end_month: endMonth ? Number(endMonth) : undefined,
-      frequency: freq,
-      cost_of_revenue_percent: cogsPercent ? Number(cogsPercent) : undefined,
-      
-      volatility_type: volType !== 'none' ? volType as any : undefined,
-      vol_min: volType === 'flat' && volMin ? Number(volMin) : undefined,
-      vol_max: volType === 'flat' && volMax ? Number(volMax) : undefined,
-      vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
-      vol_mean: volMean ? Number(volMean) : undefined,
-      vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? Number(volScale) : undefined,
-      vol_freedom: volType === 'student_t' && volFreedom ? Number(volFreedom) : undefined,
-      vol_alpha: volType === 'nrig' && volAlpha ? Number(volAlpha) : undefined,
-      vol_beta: volType === 'nrig' && volBeta ? Number(volBeta) : undefined,
-    };
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
 
-    if (itemToEdit) {
-      await api.updateRevenueItem(itemToEdit.id, payload);
-    } else {
-      await api.createRevenueItem(payload);
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
     }
 
-    clearForm();
-    onSuccess(); 
+    try {
+        const payload = {
+            plan_id: planId,
+            name,
+            source: source.toLowerCase(),
+            initial_amount: String(amount),
+            growth_rate_percent: String(growth),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
+            frequency: freq.toLowerCase(),
+            cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
+
+            volatility_type: volType !== 'none' ? volType as any : undefined,
+            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
+            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
+            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
+            vol_mean: volMean ? String(volMean) : undefined,
+            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
+            vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
+            vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
+            vol_beta: volType === 'nrig' && volBeta ? String(volBeta) : undefined,
+        };
+
+        if (itemToEdit) {
+            await api.updateRevenueItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createRevenueItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess();
+    } catch (err) {
+        console.error(err);
+        setErrors(["Failed to save revenue item. Please check your inputs."]);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-1">
          <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
          {itemToEdit && (
             <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
          )}
       </div>
+      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
+
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs text-gray-500">Name</label>
+          <label className="text-xs text-gray-500">Name *</label>
           <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
         </div>
         <div>
           <label className="text-xs text-gray-500">Source Type</label>
           <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
-            <option>Sales</option>
-            <option>Subscription</option>
-            <option>Service</option>
-            <option>Other</option>
+            <option value="sales">Sales</option>
+            <option value="subscription">Subscription</option>
+            <option value="service">Service</option>
+            <option value="other">Other</option>
           </select>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="text-xs text-gray-500">Initial Amount ($)</label>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Initial Amount ($) *
+            <Tooltip content="Initial amount of revenue in Starting Month" />
+          </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Growth Rate (%/mo)</label>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Growth Rate (%/mo)
+            <Tooltip content="Monthly growth rate percentage." />
+          </label>
           <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={growth} onChange={e => setGrowth(e.target.value)} />
         </div>
         <div>
-            <label className="text-xs text-gray-500">Cost of Rev (%)</label>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              Cost of Rev (%)
+              <Tooltip content="Cost of revenue percentage." />
+            </label>
             <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} />
         </div>
       </div>
@@ -159,19 +194,19 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
         <div>
           <label className="text-xs text-gray-500">Frequency</label>
           <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-            <option>Monthly</option>
-            <option>One-time</option>
-            <option>Quarterly</option>
-            <option>Annually</option>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-gray-500">Start Month</label>
+          <label className="text-xs text-gray-500">Start Month *</label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-500">End Month (Opt)</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
         </div>
       </div>
 

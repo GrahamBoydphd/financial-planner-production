@@ -1,8 +1,9 @@
 #!/bin/bash
 # Save as: pack_context.sh in the root folder
+# Context file for the CLI builder agents only
 
 # 1. CONSTANTS
-CONTEXT_FILE="./scripts/ARCHITECTURAL_CONTEXT.md"
+CONTEXT_FILE="./docs/ARCHITECTURAL_CONTEXT_CLI.md"
 ERROR_FILE="./scripts/last_error.log"
 OUTPUT_FILE="./scripts/ai_prompt_packet.txt"
 

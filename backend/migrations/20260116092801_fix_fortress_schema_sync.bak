@@ -1,0 +1,12 @@
+-- 1. Standardize Event Shocks
+ALTER TABLE event_shocks RENAME COLUMN name TO event_name;
+
+-- 2. Add missing audit columns to support standard SELECT queries
+ALTER TABLE revenue_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE capital_injections ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE dividend_policies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- 3. Fix Credit Facility naming for consistency
+-- Your previous error showed 'limit_amount' doesn't exist; it is likely 'facility_limit'
+ALTER TABLE credit_facilities RENAME COLUMN limit_amount TO facility_limit;

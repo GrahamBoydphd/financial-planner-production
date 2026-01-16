@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api, Fund } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
@@ -22,9 +22,8 @@ const TECH_OPTIONS = [
   "AI / ML", "Web / Mobile", "Blockchain / ReFi", "Material Science", "Other"
 ];
 
-export default function CompanyForm({ onSuccess }: { onSuccess: () => void }) {
+export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () => void, funds?: Fund[] }) {
   const [name, setName] = useState('');
-  const [funds, setFunds] = useState<Fund[]>([]);
   const [selectedFund, setSelectedFund] = useState('');
 
   // IMT State
@@ -37,10 +36,6 @@ export default function CompanyForm({ onSuccess }: { onSuccess: () => void }) {
   const [tech, setTech] = useState('');
   const [customTech, setCustomTech] = useState('');
 
-  useEffect(() => {
-    api.getFunds().then(setFunds).catch(console.error);
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFund) return alert('Select a fund');
@@ -51,12 +46,13 @@ export default function CompanyForm({ onSuccess }: { onSuccess: () => void }) {
     const finalTech = tech === 'Other' ? customTech : tech;
 
     try {
+      // No user_id passed here, relying on Auth header
       await api.createCompany(name, selectedFund, finalIndustry, finalModel, finalTech);
       setName('');
       setIndustry(''); setCustomIndustry('');
       setModel(''); setCustomModel('');
       setTech(''); setCustomTech('');
-      onSuccess();
+      if (onSuccess) onSuccess();
     } catch (err) {
       console.error(err);
       alert('Failed to create company');

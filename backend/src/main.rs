@@ -3,19 +3,30 @@ use axum::{
     Router,
 };
 use tower_http::cors::{CorsLayer, Any};
+use tower_http::trace::TraceLayer;
 use std::net::SocketAddr;
 use sqlx::postgres::PgPoolOptions;
 use dotenvy::dotenv;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod models;
 mod handlers;
 mod errors;
 mod projection;
 mod distributions;
+mod middleware;
+
+use crate::handlers::{valuation, events};
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
+
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let pool = PgPoolOptions::new()
@@ -34,28 +45,32 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new()
+    // Public Routes (No Auth)
+    let public_routes = Router::new()
+        .route("/api/auth/register", post(handlers::auth::register))
+        .route("/api/auth/login", post(handlers::auth::login));
+
+    // Protected Routes (Require Auth)
+    let protected_routes = Router::new()
         // Funds
         .route("/api/funds", post(handlers::funds::create_fund).get(handlers::funds::get_funds))
-        .route("/api/funds/:id", get(handlers::funds::get_fund)) // <--- ADD THIS LINE
-        .route("/api/funds/:id", delete(handlers::funds::delete_fund))
-                
+        .route("/api/funds/:id", get(handlers::funds::get_fund).delete(handlers::funds::delete_fund))
+
         // Companies
         .route("/api/companies", post(handlers::companies::create_company).get(handlers::companies::get_companies))
-        .route("/api/companies/:id", get(handlers::companies::get_company)) // <--- ADD THIS
-        .route("/api/companies/:id", delete(handlers::companies::delete_company))
+        .route("/api/companies/:id", get(handlers::companies::get_company).delete(handlers::companies::delete_company))
         
         // Plans
         .route("/api/plans", post(handlers::plans::create_plan).get(handlers::plans::get_all_plans))
         .route("/api/plans/:id", get(handlers::plans::get_plan).put(handlers::plans::update_plan).delete(handlers::plans::delete_plan))
         .route("/api/plans/:id/projection", get(handlers::plans::get_plan_projection))
         
-        // Revenue (Create, List, Delete+Edit)
+        // Revenue
         .route("/api/revenue", post(handlers::revenue::create_revenue_item))
         .route("/api/plans/:id/revenue", get(handlers::revenue::get_revenue_items))
         .route("/api/revenue/:id", delete(handlers::revenue::delete_revenue_item).put(handlers::revenue::update_revenue_item))
 
-        // Expenses (Create, List, Delete+Edit)
+        // Expenses
         .route("/api/expenses", post(handlers::expenses::create_expense_item))
         .route("/api/plans/:id/expenses", get(handlers::expenses::get_expense_items))
         .route("/api/expenses/:id", delete(handlers::expenses::delete_expense_item).put(handlers::expenses::update_expense_item))
@@ -73,7 +88,7 @@ async fn main() {
         .route("/api/credit", post(handlers::credit::upsert_credit_facility))
         .route("/api/plans/:id/credit", get(handlers::credit::get_credit_facility))
 
-        // Capital Growth (Treasury) - Note: Handles POST (Insert) and PUT (Update)
+        // Capital Growth
         .route(
             "/api/capital-growth", 
             post(handlers::capital_growth::upsert_capital_growth)
@@ -82,14 +97,26 @@ async fn main() {
         .route("/api/plans/:id/capital-growth", get(handlers::capital_growth::get_capital_growth))
 
         // Valuation
-        .route("/api/valuation", post(handlers::valuation::create_valuation_assumption))
+        .route("/api/valuation", post(handlers::valuation::upsert_valuation_assumption))
+        .route("/api/plans/:id/valuation", get(handlers::valuation::get_valuation_assumption))
+
+        // Events
+        .route("/api/events", post(handlers::events::create_event_shock))
+        .route("/api/events/:id", get(handlers::events::get_event_shock).delete(handlers::events::delete_event_shock))
+        .route("/api/plans/:id/events", get(handlers::events::get_plan_event_shocks))
 
         // Staffing
         .route("/api/staffing", post(handlers::staffing::create_staffing_role))
         .route("/api/plans/:id/staffing", get(handlers::staffing::get_staffing_roles))
         .route("/api/staffing/:id", delete(handlers::staffing::delete_staffing_role).put(handlers::staffing::update_staffing_role))
 
+        .route_layer(axum::middleware::from_fn(middleware::auth));
+
+    let app = Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .layer(cors)
+        .layer(TraceLayer::new_for_http())
         .with_state(pool);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));

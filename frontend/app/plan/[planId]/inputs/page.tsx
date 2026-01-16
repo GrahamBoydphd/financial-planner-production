@@ -11,7 +11,7 @@ import RevenueForm from '@/components/forms/RevenueForm';
 import ExpenseForm from '@/components/forms/ExpenseForm';
 import CapitalGrowthForm from '@/components/forms/CapitalGrowthForm';
 import CapitalForm from '@/components/forms/CapitalForm';
-import CapitalList from '@/components/forms/CapitalList'; // Make sure this path matches where you saved CapitalList.tsx
+import CapitalList from '@/components/forms/CapitalList';
 import DividendForm from '@/components/forms/DividendForm';
 import CreditForm from '@/components/forms/CreditForm';
 import ValuationForm from '@/components/forms/ValuationForm';
@@ -30,6 +30,9 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
   const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
   const [staffingRoles, setStaffingRoles] = useState<StaffingRole[]>([]);
   
+  // New State for Opening Balance
+  const [initialCash, setInitialCash] = useState("0");
+
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -46,6 +49,8 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
         try {
             const p = await api.getPlan(planId);
             setPlan(p);
+            // Ensure we handle potential number/string mismatch safely
+            setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
         } catch (e) {
             console.error("Failed to load plan", e);
             setErrorMsg("Plan not found or API error");
@@ -118,6 +123,29 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
     } catch (err) {
         console.error("Error deleting role:", err);
         throw err;
+    }
+  };
+
+  // Handler for Initial Cash
+  const handleSaveInitialCash = async () => {
+    try {
+        console.log("Saving Initial Cash Payload:", { initial_cash: initialCash });
+
+        // Update the plan with the new initial_cash value
+        // Ensure strictly string to match API requirements
+        await api.updatePlan(planId, { initial_cash: String(initialCash) });
+
+        window.alert("Opening Balance Saved");
+
+        // Refresh the plan data to ensure sync
+        const p = await api.getPlan(planId);
+        setPlan(p);
+        setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
+
+        await fetchData();
+    } catch (err) {
+        console.error("Error saving initial cash:", err);
+        window.alert("Failed to save");
     }
   };
 
@@ -210,7 +238,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                         )}
                     </div>
                     <div className="text-right">
-                        <p className="font-bold text-lg">${item.initial_amount.toLocaleString()}</p>
+                        <p className="font-bold text-lg">${Number(item.initial_amount).toLocaleString()}</p>
                         <p className="text-xs font-medium text-green-600">+{item.growth_rate_percent}% / mo</p>
                     </div>
                     </div>
@@ -269,7 +297,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                         )}
                     </div>
                     <div className="text-right">
-                        <p className="font-bold text-lg">${item.initial_amount.toLocaleString()}</p>
+                        <p className="font-bold text-lg">${Number(item.initial_amount).toLocaleString()}</p>
                         <p className="text-xs font-medium text-red-600">+{item.growth_rate_percent}% / mo</p>
                     </div>
                     </div>
@@ -324,6 +352,31 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     <h2 className="text-xl font-bold mb-4 text-green-600">Equity & Capital Injections</h2>
                     <p className="text-sm text-gray-500 mb-6">Add one-time cash injections (e.g. Seed rounds, Owner contributions).</p>
                     
+                    {/* OPENING BALANCE INPUT */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Opening Cash Balance ($)
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="number"
+                                value={initialCash}
+                                onChange={(e) => setInitialCash(e.target.value)}
+                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
+                                placeholder="0.00"
+                            />
+                            <button
+                                onClick={handleSaveInitialCash}
+                                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium"
+                            >
+                                Save
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                            Starting cash on hand at Month 0.
+                        </p>
+                    </div>
+
                     {/* INPUT FORM */}
                     <CapitalForm planId={planId} onSuccess={fetchData} />
 
