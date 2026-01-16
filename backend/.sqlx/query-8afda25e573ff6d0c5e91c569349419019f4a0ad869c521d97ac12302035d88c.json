@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT * FROM capital_injections \n        WHERE plan_id = $1 \n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2) \n        ORDER BY month ASC\n        ",
+  "query": "SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at FROM credit_facilities WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
   "describe": {
     "columns": [
       {
@@ -15,18 +15,18 @@
       },
       {
         "ordinal": 2,
-        "name": "name",
-        "type_info": "Text"
+        "name": "facility_limit",
+        "type_info": "Numeric"
       },
       {
         "ordinal": 3,
-        "name": "amount",
+        "name": "interest_rate",
         "type_info": "Numeric"
       },
       {
         "ordinal": 4,
-        "name": "month",
-        "type_info": "Int4"
+        "name": "is_annual_rate",
+        "type_info": "Bool"
       },
       {
         "ordinal": 5,
@@ -49,5 +49,5 @@
       false
     ]
   },
-  "hash": "95dea1a6bd2b62a42e4637cd47dce811de195f4471ac1ad4a2ff30d9f043062b"
+  "hash": "8afda25e573ff6d0c5e91c569349419019f4a0ad869c521d97ac12302035d88c"
 }

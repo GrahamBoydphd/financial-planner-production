@@ -92,7 +92,9 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         )}
 
         <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">Valuation (Est)</h3>
+            <h3 className="text-gray-500 text-sm uppercase">
+                {simMode === 'monte_carlo' ? 'Valuation (EST) of middle (P50 median)' : 'Valuation (Est)'}
+            </h3>
             <p className="text-2xl font-bold text-green-600">{fmt(valuation)}</p>
             <p className="text-xs text-gray-400 mt-1">
                 {valuationMethod === 'ebitda' ? 'Based on EBITDA' : 'Based on Final Revenue'}
@@ -187,15 +189,16 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           setDividendPolicy(div);
           setDivEnabled(div.is_enabled);
           setDivThreshold(div.safety_threshold.toString());
-          // Convert decimal (0.2) to percentage (20) for display
-          setDivRatio((Number(div.payout_ratio) * 100).toString());
+          // Convert decimal (0.2) to percentage (20) for display, rounded to avoid artifacts
+          setDivRatio((Number(div.payout_ratio) * 100).toFixed(0));
         } catch { /* No policy set */ }
 
         try {
           const cred = await api.getCredit(planId);
           setCreditFacility(cred);
           setCreditLimit(cred.facility_limit.toString());
-          setCreditRate(cred.interest_rate.toString());
+          // Round to avoid floating point artifacts in input
+          setCreditRate(Number(cred.interest_rate).toFixed(0));
           setCreditIsAnnual(cred.is_annual_rate);
         } catch { /* No credit set */ }
 
@@ -415,7 +418,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                         {updatingPooling ? (
                             <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
                         ) : (
-                            <span className="text-xs font-bold text-blue-600">{poolingFraction}%</span>
+                            <span className="text-xs font-bold text-blue-600">{Math.round(poolingFraction)}%</span>
                         )}
                     </div>
                     <input 
@@ -564,7 +567,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     value={divThreshold} onChange={e => setDivThreshold(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 block">Payout Ratio (%)</label>
+                  <label className="text-xs text-gray-500 block">Payout Ratio ({Math.round(Number(divRatio))}%)</label>
                   <input type="number" className="border p-1 w-full text-sm rounded" 
                     value={divRatio} onChange={e => setDivRatio(e.target.value)} />
                 </div>
@@ -581,7 +584,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 block">Rate (%)</label>
+                  <label className="text-xs text-gray-500 block">Rate ({Math.round(Number(creditRate))}%)</label>
                   <input type="number" className="border p-1 w-full text-sm rounded" 
                     value={creditRate} onChange={e => setCreditRate(e.target.value)} />
                 </div>

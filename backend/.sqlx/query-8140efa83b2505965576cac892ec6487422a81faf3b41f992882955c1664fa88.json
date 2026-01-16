@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM valuation_assumptions WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+  "query": "SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at FROM valuation_assumptions WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
   "describe": {
     "columns": [
       {
@@ -55,5 +55,5 @@
       false
     ]
   },
-  "hash": "76de177a87acbacdc71367c923483bab66f69761ef928aec1dc13dedbeedfdb4"
+  "hash": "8140efa83b2505965576cac892ec6487422a81faf3b41f992882955c1664fa88"
 }

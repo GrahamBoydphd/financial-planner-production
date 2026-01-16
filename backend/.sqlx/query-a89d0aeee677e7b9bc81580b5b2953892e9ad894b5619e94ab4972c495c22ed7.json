@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO capital_growth_policies (\n            plan_id, volatility_type, growth_rate_percent, vol_min, vol_max, vol_intervals, \n            vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n        RETURNING *\n        ",
+  "query": "\n        INSERT INTO capital_growth_policies (\n            plan_id, volatility_type, growth_rate_percent, vol_min, vol_max, vol_intervals, \n            vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n        RETURNING \n            id, plan_id, volatility_type, \n            growth_rate_percent as \"growth_rate_percent!\", \n            vol_min, vol_max, vol_intervals, \n            vol_mean, vol_scale, vol_freedom, \n            vol_alpha, vol_beta, \n            created_at as \"created_at!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -20,53 +20,53 @@
       },
       {
         "ordinal": 3,
-        "name": "vol_min",
+        "name": "growth_rate_percent!",
         "type_info": "Numeric"
       },
       {
         "ordinal": 4,
-        "name": "vol_max",
+        "name": "vol_min",
         "type_info": "Numeric"
       },
       {
         "ordinal": 5,
+        "name": "vol_max",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
         "name": "vol_intervals",
         "type_info": "Int4"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "vol_mean",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "vol_scale",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "vol_freedom",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "vol_alpha",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "vol_beta",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 11,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
         "ordinal": 12,
-        "name": "growth_rate_percent",
-        "type_info": "Numeric"
+        "name": "created_at!",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -88,6 +88,7 @@
       false,
       false,
       true,
+      false,
       true,
       true,
       true,
@@ -96,9 +97,8 @@
       true,
       true,
       true,
-      true,
-      false
+      true
     ]
   },
-  "hash": "f3380919ce0250de4cef9fe6d96b2c7ae7e87659936072c3c2b00b3fa93c0366"
+  "hash": "a89d0aeee677e7b9bc81580b5b2953892e9ad894b5619e94ab4972c495c22ed7"
 }

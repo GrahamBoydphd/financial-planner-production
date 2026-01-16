@@ -164,7 +164,7 @@ pub struct EventShock {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Serialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct CapitalGrowthPolicy {
     pub id: Uuid,
     pub plan_id: Uuid,
@@ -177,8 +177,8 @@ pub struct CapitalGrowthPolicy {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub growth_rate_percent: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+    pub growth_rate_percent: Decimal,
 }
 
 #[derive(Deserialize, Debug)]

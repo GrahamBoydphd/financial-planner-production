@@ -78,7 +78,13 @@ pub async fn upsert_capital_growth(
             vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING *
+        RETURNING 
+            id, plan_id, volatility_type, 
+            growth_rate_percent as "growth_rate_percent!", 
+            vol_min, vol_max, vol_intervals, 
+            vol_mean, vol_scale, vol_freedom, 
+            vol_alpha, vol_beta, 
+            created_at as "created_at!"
         "#,
         payload.plan_id,
         payload.volatility_type,
@@ -108,7 +114,15 @@ pub async fn get_capital_growth(
     let policy = sqlx::query_as!(
         CapitalGrowthPolicy,
         r#"
-        SELECT * FROM capital_growth_policies 
+        SELECT 
+            id, plan_id, volatility_type, 
+            growth_rate_percent as "growth_rate_percent!", 
+            vol_min, vol_max, vol_intervals, 
+            vol_mean, vol_scale, vol_freedom, 
+            vol_alpha, vol_beta, 
+            created_at as "created_at!"
+        FROM capital_growth_policies
+
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
         "#,

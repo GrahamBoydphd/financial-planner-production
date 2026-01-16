@@ -10,7 +10,7 @@ use crate::models::{FinancialPlan, Claims};
 use crate::errors::AppError;
 use crate::projection::{generate_simulation, SimulationResult};
 use rust_decimal::Decimal;
-use rust_decimal::prelude::FromPrimitive;
+use rust_decimal_macros::dec;
 use chrono::NaiveDate;
 use std::str::FromStr;
 
@@ -242,14 +242,14 @@ pub async fn get_plan_projection(
 
     let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
         crate::models::CapitalGrowthPolicy,
-        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent FROM capital_growth_policies WHERE plan_id = $1",
+        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at as \"created_at!\", growth_rate_percent as \"growth_rate_percent!\" FROM capital_growth_policies WHERE plan_id = $1",
         id
     )
     .fetch_optional(&pool)
     .await.ok().flatten();
     
     // Run Simulation
-    let initial_cash = params.initial_cash.unwrap_or(Decimal::from_f64(0.0).unwrap());
+    let initial_cash = params.initial_cash.unwrap_or(dec!(0.0));
     let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
     let stop_insolvency = params.stop_insolvency.unwrap_or(false);
 

@@ -41,7 +41,7 @@ pub async fn upsert_dividend_policy(
 
     let policy = sqlx::query_as!(
         DividendPolicy,
-        "INSERT INTO dividend_policies (plan_id, is_enabled, safety_threshold, payout_ratio) VALUES ($1, $2, $3, $4) RETURNING *",
+        "INSERT INTO dividend_policies (plan_id, is_enabled, safety_threshold, payout_ratio) VALUES ($1, $2, $3, $4) RETURNING id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at",
         payload.plan_id,
         payload.is_enabled,
         payload.safety_threshold,
@@ -62,7 +62,7 @@ pub async fn get_dividend_policy(
 ) -> Result<Json<DividendPolicy>, AppError> {
     let policy: Option<DividendPolicy> = sqlx::query_as!(
         DividendPolicy,
-        "SELECT * FROM dividend_policies WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        "SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at FROM dividend_policies WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
         plan_id,
         claims.tenant_id
     )

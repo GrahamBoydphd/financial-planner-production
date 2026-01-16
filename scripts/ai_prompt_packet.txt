@@ -81,7 +81,7 @@ CRITICAL OUTPUT RULES:
     * Do not add new crates/packages unless explicitly instructed by the Architect prompt.</architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Resolve 23 build errors by aligning Models and Handlers. ACTION: 1) In 'backend/src/models.rs', add 'pub created_at: DateTime<Utc>' to RevenueItem, ExpenseItem, CapitalInjection, DividendPolicy, CreditFacility, and ValuationAssumption. 2) In 'backend/src/handlers/plans.rs', update 'capital_injections' query: change 'description' to 'name'. 3) In 'plans.rs', update 'valuation_assumptions' query: change 'amount' to 'valuation_name' and ensure 'multiplier' is present. 4) In 'plans.rs', update 'credit_facilities': change 'limit_amount' to 'facility_limit'. 5) In 'backend/src/handlers/events.rs', ensure 'event_name' and 'created_at' are used in all queries. CONSTRAINTS: This resolves E0277 errors by matching mandatory DB columns to the Rust structs.
+CONTEXT: Resolve persistent CapitalGrowthPolicy trait errors. ACTION: 1) In 'backend/src/models.rs', locate 'CapitalGrowthPolicy'. 2) Change 'pub created_at: Option<chrono::DateTime<chrono::Utc>>' to 'pub created_at: DateTime<Utc>'. 3) Change 'pub growth_rate_percent: Option<Decimal>' to 'pub growth_rate_percent: Decimal'. 4) In 'backend/src/handlers/plans.rs', ensure the 'capital_growth' query matches these non-nullable fields. CONSTRAINTS: This alignment satisfies the trait bound requirement for DateTime mapping.
 </task_instruction>
 
 <source_code>
@@ -252,7 +252,7 @@ pub struct EventShock {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Serialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct CapitalGrowthPolicy {
     pub id: Uuid,
     pub plan_id: Uuid,
@@ -265,8 +265,8 @@ pub struct CapitalGrowthPolicy {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub growth_rate_percent: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+    pub growth_rate_percent: Decimal,
 }
 
 #[derive(Deserialize, Debug)]
@@ -348,7 +348,7 @@ use crate::models::{FinancialPlan, Claims};
 use crate::errors::AppError;
 use crate::projection::{generate_simulation, SimulationResult};
 use rust_decimal::Decimal;
-use rust_decimal::prelude::FromPrimitive;
+use rust_decimal_macros::dec;
 use chrono::NaiveDate;
 use std::str::FromStr;
 
@@ -580,14 +580,14 @@ pub async fn get_plan_projection(
 
     let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
         crate::models::CapitalGrowthPolicy,
-        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent FROM capital_growth_policies WHERE plan_id = $1",
+        "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at as \"created_at!\", growth_rate_percent as \"growth_rate_percent!\" FROM capital_growth_policies WHERE plan_id = $1",
         id
     )
     .fetch_optional(&pool)
     .await.ok().flatten();
     
     // Run Simulation
-    let initial_cash = params.initial_cash.unwrap_or(Decimal::from_f64(0.0).unwrap());
+    let initial_cash = params.initial_cash.unwrap_or(dec!(0.0));
     let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
     let stop_insolvency = params.stop_insolvency.unwrap_or(false);
 
@@ -612,120 +612,6 @@ pub async fn get_plan_projection(
     Ok(Json(result))
 }
 --- END FILE: backend/src/handlers/plans.rs ---
-
---- START FILE: backend/src/handlers/events.rs ---
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    Json,
-    Extension,
-};
-use serde::{Deserialize};
-use sqlx::{Pool, Postgres};
-use uuid::Uuid;
-use rust_decimal::Decimal;
-use crate::models::{EventShock, Claims};
-use crate::errors::AppError;
-
-#[derive(Deserialize)]
-pub struct CreateShockRequest {
-    pub plan_id: Uuid,
-    pub event_name: String,
-    pub shock_month: i32,
-    pub impact_type: String,
-    pub impact_value: Decimal,
-    pub duration_months: Option<i32>,
-}
-
-pub async fn create_event_shock(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<CreateShockRequest>,
-) -> Result<Json<EventShock>, AppError> {
-    // Verify plan ownership
-    let plan_exists = sqlx::query!(
-        "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
-        payload.plan_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    if plan_exists.is_none() {
-        return Err(AppError::NotFound("Financial plan not found".to_string()));
-    }
-
-    let new_shock = sqlx::query_as!(
-        EventShock,
-        "INSERT INTO event_shocks (plan_id, event_name, shock_month, impact_type, impact_value, duration_months) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at",
-        payload.plan_id,
-        payload.event_name,
-        payload.shock_month,
-        payload.impact_type,
-        payload.impact_value,
-        payload.duration_months
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(new_shock))
-}
-
-pub async fn get_event_shock(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<EventShock>, AppError> {
-    let shock = sqlx::query_as!(
-        EventShock,
-        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?
-    .ok_or(AppError::NotFound("Event shock not found".to_string()))?;
-
-    Ok(Json(shock))
-}
-
-pub async fn get_plan_event_shocks(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(plan_id): Path<Uuid>,
-) -> Result<Json<Vec<EventShock>>, AppError> {
-    let shocks = sqlx::query_as!(
-        EventShock,
-        "SELECT id, plan_id, event_name, shock_month, impact_type, impact_value, duration_months, created_at FROM event_shocks WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
-        plan_id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    Ok(Json(shocks))
-}
-
-pub async fn delete_event_shock(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, AppError> {
-    let result = sqlx::query!(
-        "DELETE FROM event_shocks WHERE id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
-        id,
-        claims.tenant_id
-    )
-    .execute(&pool)
-    .await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound("Event shock not found".to_string()));
-    }
-
-    Ok(StatusCode::NO_CONTENT)
-}
---- END FILE: backend/src/handlers/events.rs ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 

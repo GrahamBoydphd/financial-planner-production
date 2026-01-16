@@ -38,7 +38,7 @@ pub async fn create_capital_injection(
 
     let item = sqlx::query_as!(
         CapitalInjection,
-        "INSERT INTO capital_injections (plan_id, name, amount, month) VALUES ($1, $2, $3, $4) RETURNING *",
+        "INSERT INTO capital_injections (plan_id, name, amount, month) VALUES ($1, $2, $3, $4) RETURNING id, plan_id, name, amount, month, created_at",
         payload.plan_id,
         payload.name,
         payload.amount,
@@ -58,7 +58,7 @@ pub async fn get_capital_injections(
     let items = sqlx::query_as!(
         CapitalInjection,
         r#"
-        SELECT * FROM capital_injections 
+        SELECT id, plan_id, name, amount, month, created_at FROM capital_injections 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2) 
         ORDER BY month ASC

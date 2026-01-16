@@ -46,7 +46,7 @@ pub async fn upsert_valuation_assumption(
 
     let assumption: ValuationAssumption = sqlx::query_as!(
         ValuationAssumption,
-        "INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        "INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) VALUES ($1, $2, $3, $4, $5) RETURNING id, plan_id, valuation_name, method, multiplier, date_applied, created_at",
         payload.plan_id,
         payload.valuation_name,
         payload.method,
@@ -68,7 +68,7 @@ pub async fn get_valuation_assumption(
 ) -> Result<Json<ValuationAssumption>, AppError> {
     let assumption: Option<ValuationAssumption> = sqlx::query_as!(
         ValuationAssumption,
-        "SELECT * FROM valuation_assumptions WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        "SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at FROM valuation_assumptions WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
         plan_id,
         claims.tenant_id
     )

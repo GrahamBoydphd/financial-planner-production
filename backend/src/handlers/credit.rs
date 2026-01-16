@@ -40,7 +40,7 @@ pub async fn upsert_credit_facility(
 
     let facility = sqlx::query_as!(
         CreditFacility,
-        "INSERT INTO credit_facilities (plan_id, facility_limit, interest_rate) VALUES ($1, $2, $3) RETURNING *",
+        "INSERT INTO credit_facilities (plan_id, facility_limit, interest_rate) VALUES ($1, $2, $3) RETURNING id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at",
         payload.plan_id,
         payload.facility_limit,
         payload.interest_rate
@@ -60,7 +60,7 @@ pub async fn get_credit_facility(
 ) -> Result<Json<CreditFacility>, AppError> {
     let facility: Option<CreditFacility> = sqlx::query_as!(
         CreditFacility,
-        "SELECT * FROM credit_facilities WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        "SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at FROM credit_facilities WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
         plan_id,
         claims.tenant_id
     )

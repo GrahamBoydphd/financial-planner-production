@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+  "query": "INSERT INTO credit_facilities (plan_id, facility_limit, interest_rate) VALUES ($1, $2, $3) RETURNING id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at",
   "describe": {
     "columns": [
       {
@@ -15,26 +15,21 @@
       },
       {
         "ordinal": 2,
-        "name": "valuation_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 3,
-        "name": "method",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 4,
-        "name": "multiplier",
+        "name": "facility_limit",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 5,
-        "name": "date_applied",
-        "type_info": "Date"
+        "ordinal": 3,
+        "name": "interest_rate",
+        "type_info": "Numeric"
       },
       {
-        "ordinal": 6,
+        "ordinal": 4,
+        "name": "is_annual_rate",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -42,10 +37,8 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Text",
         "Numeric",
-        "Date"
+        "Numeric"
       ]
     },
     "nullable": [
@@ -54,9 +47,8 @@
       false,
       false,
       false,
-      true,
       false
     ]
   },
-  "hash": "20d69bec5115d276007a2ec5988bdad05ed926b8975a9f7e5bc59b75a8578303"
+  "hash": "1d257c5770421ea27b9975f8ad59f294a3d833cf1cf9602e4160f58ace42d958"
 }

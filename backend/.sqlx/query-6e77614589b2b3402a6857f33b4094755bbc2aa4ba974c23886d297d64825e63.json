@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO capital_injections (plan_id, name, amount, month) VALUES ($1, $2, $3, $4) RETURNING *",
+  "query": "SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at FROM dividend_policies WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
   "describe": {
     "columns": [
       {
@@ -15,18 +15,18 @@
       },
       {
         "ordinal": 2,
-        "name": "name",
-        "type_info": "Text"
+        "name": "is_enabled",
+        "type_info": "Bool"
       },
       {
         "ordinal": 3,
-        "name": "amount",
+        "name": "safety_threshold",
         "type_info": "Numeric"
       },
       {
         "ordinal": 4,
-        "name": "month",
-        "type_info": "Int4"
+        "name": "payout_ratio",
+        "type_info": "Numeric"
       },
       {
         "ordinal": 5,
@@ -37,9 +37,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Numeric",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -51,5 +49,5 @@
       false
     ]
   },
-  "hash": "15585c27e6e36ac147f19db2758dfe756f01ef17222f28aeb65fbaf8b5edc4d8"
+  "hash": "6e77614589b2b3402a6857f33b4094755bbc2aa4ba974c23886d297d64825e63"
 }

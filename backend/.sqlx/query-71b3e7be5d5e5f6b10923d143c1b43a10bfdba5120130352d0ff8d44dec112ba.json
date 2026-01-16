@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT * FROM capital_growth_policies \n        WHERE plan_id = $1 \n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ",
+  "query": "SELECT id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at as \"created_at!\", growth_rate_percent as \"growth_rate_percent!\" FROM capital_growth_policies WHERE plan_id = $1",
   "describe": {
     "columns": [
       {
@@ -60,18 +60,17 @@
       },
       {
         "ordinal": 11,
-        "name": "created_at",
+        "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 12,
-        "name": "growth_rate_percent",
+        "name": "growth_rate_percent!",
         "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -91,5 +90,5 @@
       false
     ]
   },
-  "hash": "e2d4549331708caf368a80c8755ce15f70c46ea7c81b5f7c1d2ae74b4e7aaa8c"
+  "hash": "71b3e7be5d5e5f6b10923d143c1b43a10bfdba5120130352d0ff8d44dec112ba"
 }

@@ -154,7 +154,7 @@ fn run_iteration(
     let mut expense_states: HashMap<Uuid, ItemState> = HashMap::new();
 
     let mut cap_growth_sampler = if let Some(policy) = capital_growth_policy {
-        Some(create_sampler(force_deterministic, policy.volatility_type.as_ref(), policy.growth_rate_percent.unwrap_or(dec!(0.0)), 
+        Some(create_sampler(force_deterministic, policy.volatility_type.as_ref(), policy.growth_rate_percent, 
             policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
     } else {
         None
@@ -411,7 +411,7 @@ fn run_monte_carlo_breadth_first(
         }
 
         let cap_growth_sampler = if let Some(policy) = capital_growth_policy {
-            Some(create_sampler(false, policy.volatility_type.as_ref(), policy.growth_rate_percent.unwrap_or(dec!(0.0)), 
+            Some(create_sampler(false, policy.volatility_type.as_ref(), policy.growth_rate_percent, 
                 policy.vol_min, policy.vol_max, policy.vol_intervals, policy.vol_scale, policy.vol_freedom, policy.vol_alpha, policy.vol_beta))
         } else {
             None
@@ -707,16 +707,30 @@ pub fn generate_simulation(
             staffing_roles, stop_on_insolvency, pooling_fraction
         );
 
+        // Sort runs by total value to find the "Representative Run" (Median Outcome by Wealth)
+        // This ensures P50 Net Value is a coherent path, not a statistical artifact.
+        full_runs.sort_by(|a, b| {
+            let val_a = a.last().unwrap().total_value;
+            let val_b = b.last().unwrap().total_value;
+            val_a.partial_cmp(&val_b).unwrap()
+        });
+
         let iterations = full_runs.len();
+        let median_idx = iterations / 2;
+        let median_run = &full_runs[median_idx];
+
+        // Extract P50 Trajectories from the Median Run
+        p50_value = Some(median_run.iter().map(|d| d.total_value).collect());
+        p50_pool_cumulative = Some(median_run.iter().map(|d| d.cumulative_pool_received).collect());
+
+        // Calculate Distribution Percentiles (Cone of Uncertainty)
         let mut p0 = Vec::with_capacity(months as usize);
         let mut p10 = Vec::with_capacity(months as usize);
         let mut p25 = Vec::with_capacity(months as usize);
-        let mut p50 = Vec::with_capacity(months as usize);
+        // p50 is already set from the median path
         let mut p75 = Vec::with_capacity(months as usize);
         let mut p90 = Vec::with_capacity(months as usize);
         let mut p100 = Vec::with_capacity(months as usize);
-        
-        let mut p50_pool = Vec::with_capacity(months as usize); 
 
         for m in 0..(months as usize) {
             let mut values: Vec<Decimal> = full_runs.iter().map(|r| r[m].total_value).collect();
@@ -724,48 +738,39 @@ pub fn generate_simulation(
 
             let idx_10 = (iterations as f64 * 0.10) as usize;
             let idx_25 = (iterations as f64 * 0.25) as usize;
-            let idx_50 = (iterations as f64 * 0.50) as usize;
             let idx_75 = (iterations as f64 * 0.75) as usize;
             let idx_90 = (iterations as f64 * 0.90) as usize;
             
             p0.push(values[0]);
             p10.push(values[idx_10]);
             p25.push(values[idx_25]);
-            p50.push(values[idx_50]);
             p75.push(values[idx_75]);
             p90.push(values[idx_90]);
             p100.push(values[iterations - 1]);
-
-            // Calculate P50 Pool Cumulative
-            let mut pool_values: Vec<Decimal> = full_runs.iter().map(|r| r[m].cumulative_pool_received).collect();
-            pool_values.sort();
-            p50_pool.push(pool_values[idx_50]);
         }
 
         p0_value = Some(p0);
         p10_value = Some(p10);
         p25_value = Some(p25);
-        p50_value = Some(p50);
         p75_value = Some(p75);
         p90_value = Some(p90);
         p100_value = Some(p100);
+
+        // Metrics from Median Run
+        let med_last = median_run.last().unwrap();
+        p50_valuation = Some(calc_val(med_last));
         
-        p50_pool_cumulative = Some(p50_pool); 
-
-        full_runs.sort_by(|a, b| {
-            let val_a = a.last().unwrap().total_value;
-            let val_b = b.last().unwrap().total_value;
-            val_a.partial_cmp(&val_b).unwrap()
-        });
-
-        let median_run_idx = (iterations as f64 * 0.50) as usize;
-        let median_run = &full_runs[median_run_idx];
-        let median_last = median_run.last().unwrap();
-
-        p50_valuation = Some(calc_val(median_last));
-        p50_runway = calculate_runway(median_last.cash_balance, median_last.net_income);
+        // Calculate P50 Runway based on the Median Run's trajectory
+        if let Some(idx) = median_run.iter().position(|d| d.is_insolvent) {
+             // If insolvent, runway is the month index where it happened
+             p50_runway = Some(median_run[idx].month_index);
+        } else {
+             // If not insolvent, calculate remaining runway based on last month's burn
+             let remaining = calculate_runway(med_last.cash_balance, med_last.net_income);
+             p50_runway = remaining.map(|r| months + r);
+        }
         
-        // Populate single_run_data with the median run so frontend can visualize details (like pool)
+        // Populate single_run_data with the median run so frontend can visualize details
         single_run_data = Some(median_run.clone());
 
     } else {
