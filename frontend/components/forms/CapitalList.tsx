@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 // Define the shape of a Capital Item based on your backend response
 export interface CapitalItem {
   id: string;
-  name: string;
+  injection_name: string; // Updated to match API V3 (Scoped Naming)
   amount: string; // Strict Type: String from backend (Decimal)
   month: number;
 }
@@ -50,7 +50,7 @@ export default function CapitalList({ items, onDelete }: Props) {
         >
           {/* Left: Name and Month */}
           <div>
-            <p className="font-semibold text-gray-900 text-sm">{item.name}</p>
+            <p className="font-semibold text-gray-900 text-sm">{item.injection_name}</p>
             <p className="text-xs text-gray-500">Deposited in Month {item.month}</p>
           </div>
 
