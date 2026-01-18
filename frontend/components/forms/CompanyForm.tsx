@@ -78,7 +78,7 @@ export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () 
         >
           <option value="">Select a Fund</option>
           {funds.map(f => (
-            <option key={f.id} value={f.id}>{f.name}</option>
+            <option key={f.id} value={f.id}>{f.fund_name}</option>
           ))}
         </select>
       </div>

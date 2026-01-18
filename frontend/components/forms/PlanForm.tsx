@@ -11,7 +11,7 @@ interface PlanFormProps {
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY', 'INR'];
 
 export default function PlanForm({ companies, onSuccess, initialData }: PlanFormProps) {
-  const [name, setName] = useState(initialData?.name || '');
+  const [name, setName] = useState(initialData?.plan_name || '');
   const [startMonth, setStartMonth] = useState(initialData?.start_month || '');
   const [selectedCompany, setSelectedCompany] = useState(initialData?.company_id || '');
   const [currency, setCurrency] = useState(initialData?.currency_code || 'USD');
@@ -24,7 +24,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
 
   useEffect(() => {
     if (initialData) {
-      setName(initialData.name);
+      setName(initialData.plan_name);
       setStartMonth(initialData.start_month);
       setSelectedCompany(initialData.company_id);
       setCurrency(initialData.currency_code || 'USD');
@@ -50,7 +50,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
       if (initialData) {
         // Update Mode: Can send pooling_fraction
         await api.updatePlan(initialData.id, {
-          name,
+          plan_name: name,
           start_month: startMonth,
           pooling_fraction: (poolingFraction / 100).toString(),
         });
@@ -86,7 +86,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
         >
           <option value="">Select a Company</option>
           {companies.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>{c.company_name}</option>
           ))}
         </select>
       </div>
