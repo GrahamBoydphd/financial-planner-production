@@ -8,10 +8,13 @@ interface PlanFormProps {
   initialData?: FinancialPlan;
 }
 
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY', 'INR'];
+
 export default function PlanForm({ companies, onSuccess, initialData }: PlanFormProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [startMonth, setStartMonth] = useState(initialData?.start_month || '');
   const [selectedCompany, setSelectedCompany] = useState(initialData?.company_id || '');
+  const [currency, setCurrency] = useState(initialData?.currency_code || 'USD');
   
   // Pooling fraction state (0-100 for UI, mapped to 0.0-1.0 for API)
   // Only relevant for updates, as createPlan doesn't accept it.
@@ -24,9 +27,20 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
       setName(initialData.name);
       setStartMonth(initialData.start_month);
       setSelectedCompany(initialData.company_id);
+      setCurrency(initialData.currency_code || 'USD');
       setPoolingFraction(initialData.pooling_fraction ? parseFloat(initialData.pooling_fraction) * 100 : 0);
     }
   }, [initialData]);
+
+  // Sync currency with selected company in Create mode
+  useEffect(() => {
+    if (!initialData && selectedCompany) {
+      const company = companies.find(c => c.id === selectedCompany);
+      if (company && company.currency_code) {
+        setCurrency(company.currency_code);
+      }
+    }
+  }, [selectedCompany, companies, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +55,8 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
           pooling_fraction: (poolingFraction / 100).toString(),
         });
       } else {
-        // Create Mode: Strict payload { company_id, name, start_month }
-        await api.createPlan(selectedCompany, name, startMonth);
+        // Create Mode: Strict payload { company_id, name, start_month, currency }
+        await api.createPlan(selectedCompany, name, startMonth, currency);
       }
       
       if (!initialData) {
@@ -50,6 +64,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
         setStartMonth('');
         setPoolingFraction(0);
         setSelectedCompany('');
+        setCurrency('USD');
       }
       onSuccess();
     } catch (err) {
@@ -75,6 +90,22 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
           ))}
         </select>
       </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Currency</label>
+        <select
+          className="w-full p-2 border rounded disabled:bg-gray-100"
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
+          required
+          disabled={!!initialData}
+        >
+          {CURRENCIES.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+
       <div>
         <label className="block text-sm font-medium mb-1">Plan Name</label>
         <input

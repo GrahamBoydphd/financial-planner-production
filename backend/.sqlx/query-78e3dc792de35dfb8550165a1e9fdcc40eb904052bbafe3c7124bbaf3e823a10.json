@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\"\n        FROM financial_plans \n        WHERE id = $1 AND tenant_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "company_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "plan_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "currency_code!",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "initial_cash!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "pooling_fraction!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "78e3dc792de35dfb8550165a1e9fdcc40eb904052bbafe3c7124bbaf3e823a10"
+}

@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import CashFlowChart from '@/components/CashFlowChart';
 import Button from '@/components/ui/Button';
-import { api, FinancialPlan, CapitalInjection, DividendPolicy, CreditFacility, ValuationAssumption } from '@/lib/api';
+import { api, FinancialPlan, CapitalInjection, DividendPolicy, CreditFacility, Company } from '@/lib/api';
 
 // --- COMPONENT: KPI CARDS ---
 interface KPIProps {
@@ -24,7 +24,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
 
     // Helper to format with currency
     const fmt = (n: any) => 
-        `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+        `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
     const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1] || lastData;
@@ -37,7 +37,12 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
 
     const checkInsolvency = (dataArray: any[]) => {
         if (!dataArray) return -1;
-        const idx = dataArray.findIndex(m => m.is_insolvent || Number(m.cash_balance) < -(Number(creditLimit) || 0));
+        // Check for explicit flag (is_solvent = false) or calculation
+        const idx = dataArray.findIndex(m => 
+            (m.is_solvent === false) || 
+            (m.is_insolvent === true) || 
+            Number(m.cash_balance) < -(Number(creditLimit) || 0)
+        );
         return idx !== -1 ? dataArray[idx].month_index : -1;
     };
 
@@ -62,7 +67,26 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         totalVal = projection.p50_value?.[projection.p50_value.length - 1] || 0;
         valuation = projection.p50_valuation;
         subtitle = 'Median (P50)';
-        runwayVal = projection.p50_runway ?? 'Infinite';
+        
+        // Fix P50 Runway Logic: Check if last month is insolvent or cash <= 0
+        const lastP50 = projection.p50_data?.[projection.p50_data.length - 1];
+        const isP50Insolvent = lastP50 && (
+            lastP50.is_solvent === false || 
+            Number(lastP50.cash_balance) <= 0
+        );
+
+        const backendRunway = projection.p50_runway ?? 'Infinite';
+
+        if (isP50Insolvent) {
+            // Regression Test: Check if the company is insolvent BUT 'proj.p50_runway' > 0
+            if (backendRunway !== 'Infinite' && Number(backendRunway) > 0) {
+                console.warn('Backend Data Mismatch: Insolvent P50 run has positive runway');
+            }
+            // Strictly show '0 Mo' if insolvent, ignoring positive backend value
+            runwayVal = 0;
+        } else {
+            runwayVal = backendRunway;
+        }
         
     } else {
         // Standard
@@ -72,8 +96,34 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
 
     const p90Val = projection.p90_value?.[projection.p90_value.length - 1] || 0;
 
+    // --- NEW LOGIC: Risk & Variance ---
+    const survivalRate = projection.survival_rate?.[projection.survival_rate.length - 1] ?? 0;
+    const finalSurvival = survivalRate * 100;
+    
+    const p50Cash = projection.p50_data?.[projection.p50_data.length - 1]?.cash_balance ?? 0;
+    const detCash = projection.deterministic_data?.[projection.deterministic_data.length - 1]?.cash_balance ?? 0;
+    const cashDelta = Number(p50Cash) - Number(detCash);
+
     return (
       <>
+        {simMode === 'monte_carlo' && (
+            <Card className="text-center border-b-4 border-orange-500 mb-4">
+                <h3 className="text-orange-700 text-xs uppercase font-bold">Risk & Variance</h3>
+                <div className="mt-2 mb-2">
+                    <p className="text-xs text-gray-500">Probability of Survival</p>
+                    <p className={`text-xl font-bold ${finalSurvival < 50 ? 'text-red-600' : 'text-green-600'}`}>
+                        {finalSurvival.toFixed(1)}%
+                    </p>
+                </div>
+                <div className="border-t pt-2">
+                    <p className="text-xs text-gray-500">Cash Delta vs. Conventional</p>
+                    <p className={`text-lg font-bold ${cashDelta < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {cashDelta > 0 ? '+' : ''}{fmt(cashDelta)}
+                    </p>
+                </div>
+            </Card>
+        )}
+
         <Card className="text-center border-b-4 border-gray-500 mb-4">
           <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value (Cash+Divs)</h3>
           <p className={`text-2xl font-bold ${totalVal < 0 ? 'text-red-600' : 'text-gray-700'}`}>
@@ -128,6 +178,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
 export default function ResultsPage({ params }: { params: { planId: string } }) {
   const { planId } = params;
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   const [projection, setProjection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updatingPooling, setUpdatingPooling] = useState(false);
@@ -160,14 +211,14 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [years, setYears] = useState(5);
   const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
   const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
-  const [stopInsolvency, setStopInsolvency] = useState(false);
+  const [stopInsolvency, setStopInsolvency] = useState(true); // Default to TRUE
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // Non-Ergodicity State
   const [poolingFraction, setPoolingFraction] = useState(0);
   
   // UI Settings
-  const [currency, setCurrency] = useState(''); // Default None
+  const [currency, setCurrency] = useState('USD'); // Default USD
 
   // --- DATA LOADING ---
   useEffect(() => {
@@ -177,9 +228,22 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         setError(null);
         const p = await api.getPlan(planId);
         setPlan(p);
+
+        if (p.company_id) {
+            try {
+                const c = await api.getCompany(p.company_id);
+                setCompany(c);
+            } catch (e) {
+                console.error("Failed to fetch company", e);
+            }
+        }
+
         setInitialCash(p.initial_cash || "0");
         // Sync slider with DB state on reload
         setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
+        
+        // Set currency from plan
+        setCurrency(p.currency_code || 'USD');
         
         const caps = await api.getCapitalInjections(planId);
         setCapitalItems(caps);
@@ -191,7 +255,16 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           setDivThreshold(div.safety_threshold.toString());
           // Convert decimal (0.2) to percentage (20) for display, rounded to avoid artifacts
           setDivRatio((Number(div.payout_ratio) * 100).toFixed(0));
-        } catch { /* No policy set */ }
+        } catch (e: any) {
+            if (e.response && e.response.status === 404) {
+                setDividendPolicy(null);
+                setDivEnabled(false);
+                setDivThreshold('50000');
+                setDivRatio('20');
+            } else {
+                console.error("Failed to fetch dividends", e);
+            }
+        }
 
         try {
           const cred = await api.getCredit(planId);
@@ -200,7 +273,16 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
           // Round to avoid floating point artifacts in input
           setCreditRate(Number(cred.interest_rate).toFixed(0));
           setCreditIsAnnual(cred.is_annual_rate);
-        } catch { /* No credit set */ }
+        } catch (e: any) {
+            if (e.response && e.response.status === 404) {
+                setCreditFacility(null);
+                setCreditLimit('0');
+                setCreditRate('10');
+                setCreditIsAnnual(true);
+            } else {
+                console.error("Failed to fetch credit", e);
+            }
+        }
 
         try {
           const vals = await api.getValuation(planId);
@@ -208,7 +290,13 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
              const latest = vals[vals.length - 1];
              setValuationMethod(latest.method);
           }
-        } catch { /* No valuation set */ }
+        } catch (e: any) {
+            if (e.response && e.response.status === 404) {
+                setValuationMethod('revenue');
+            } else {
+                console.error("Failed to fetch valuation", e);
+            }
+        }
 
         // Use standard or monte_carlo depending on UI
         const backendMode = simMode === 'monte_carlo' ? 'monte_carlo' : 'single';
@@ -225,28 +313,14 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         
         // --- DATA MAPPING FOR TABLE ---
         let sourceData = proj.deterministic_data;
-        if (backendMode === 'single' && proj.single_run_data) {
-           sourceData = proj.single_run_data;
+        
+        if (simMode === 'monte_carlo' && proj.p50_data) {
+            sourceData = proj.p50_data;
+        } else if (simMode === 'single' && proj.single_run_data) {
+            sourceData = proj.single_run_data;
         }
 
-        const tableData = sourceData.map((m: any, i: number) => {
-           let cumulative_pool_received = m.cumulative_pool_received;
-           let total_value = m.total_value;
-           let cash_balance = m.cash_balance;
-
-           // If Monte Carlo, override specific columns with P50 data to match chart
-           if (simMode === 'monte_carlo') {
-               if (proj.p50_pool_cumulative && proj.p50_pool_cumulative[i] !== undefined) {
-                   cumulative_pool_received = proj.p50_pool_cumulative[i];
-               }
-               if (proj.p50_value && proj.p50_value[i] !== undefined) {
-                   total_value = proj.p50_value[i];
-                   // Derive cash balance to keep row consistent: Cash = Total - Divs
-                   // We use the median run's dividends as the approximation for P50 dividends
-                   cash_balance = Number(total_value) - Number(m.cumulative_dividends);
-               }
-           }
-
+        const tableData = sourceData.map((m: any) => {
            return {
                month_index: m.month_index,
                date: m.date,
@@ -255,11 +329,11 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                gross_profit: m.gross_profit,
                opex: m.opex,
                net_income: m.net_income,
-               cumulative_pool_received, // Overridden if MC
-               cash_balance, // Overridden if MC
-               total_value, // Overridden if MC
+               cumulative_pool_received: m.cumulative_pool_received,
+               cash_balance: m.cash_balance,
+               total_value: m.total_value,
                dividend_paid: m.dividend_paid,
-               is_insolvent: m.is_insolvent
+               is_solvent: m.is_solvent
            };
         });
         
@@ -320,7 +394,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     setUpdatingPooling(true);
     try {
         // Strictly await the update before triggering refresh
-        await api.updatePlan(planId, { pooling_fraction: (poolingFraction / 100.0).toString() });
+        const pf = Number(poolingFraction);
+        await api.updatePlan(planId, { pooling_fraction: (pf / 100.0).toString() });
         
         // Trigger refresh, set loading to true to bridge gap until useEffect runs
         setLoading(true);
@@ -334,7 +409,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
   // Helper
   const fmt = (n: any) => 
-    `${currency}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   if (!plan) return <Layout>Loading...</Layout>;
 
@@ -349,7 +424,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{plan.name} - Projections</h1>
+          <h1 className="text-2xl font-bold">Plan {plan.plan_name} <span className="text-gray-500 font-normal">for {company?.company_name}</span> - Projections</h1>
           <p className="text-gray-500">Financial Simulation Engine v2.0</p>
         </div>
         
@@ -384,20 +459,12 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 </select>
               </div>
 
-              {/* Currency Selector */}
+              {/* Currency Badge */}
               <div className="flex items-center gap-2 border-l pl-4">
                   <span className="text-xs text-gray-500">Currency:</span>
-                  <select 
-                    className="border rounded p-1 text-sm font-bold"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                      <option value="">None</option>
-                      <option value="$">$</option>
-                      <option value="€">€</option>
-                      <option value="£">£</option>
-                      <option value="¥">¥</option>
-                  </select>
+                  <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-700 border">
+                      {plan.currency_code || 'USD'}
+                  </span>
               </div>
 
               {/* Insolvency Checkbox */}
@@ -465,7 +532,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     isLog={isLogScale} 
                     mode="standard" 
                     creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
+                    currencySymbol={`${currency} `}
                   />
                 </div>
               </Card>
@@ -480,7 +547,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     isLog={isLogScale} 
                     mode="single" 
                     creditLimit={Number(creditLimit)}
-                    currencySymbol={currency}
+                    currencySymbol={`${currency} `}
                   />
                 </div>
               </Card>
@@ -499,7 +566,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                       isLog={isLogScale} 
                       mode={simMode} 
                       creditLimit={Number(creditLimit)}
-                      currencySymbol={currency}
+                      currencySymbol={`${currency} `}
                     />
                   </div>
                 </Card>
@@ -546,7 +613,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               <div className="grid grid-cols-2 gap-2">
                 <input placeholder="Name" className="border p-1 text-xs rounded col-span-2" 
                   value={newCapName} onChange={e => setNewCapName(e.target.value)} />
-                <input type="number" placeholder="$" className="border p-1 text-xs rounded" 
+                <input type="number" placeholder={currency} className="border p-1 text-xs rounded" 
                   value={newCapAmount} onChange={e => setNewCapAmount(e.target.value)} />
                 <input type="number" placeholder="Mo" className="border p-1 text-xs rounded" 
                   value={newCapMonth} onChange={e => setNewCapMonth(e.target.value)} />
@@ -562,7 +629,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                   <input type="checkbox" checked={divEnabled} onChange={e => setDivEnabled(e.target.checked)} className="h-4 w-4" />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 block">Safety Threshold ($)</label>
+                  <label className="text-xs text-gray-500 block">Safety Threshold ({currency})</label>
                   <input type="number" className="border p-1 w-full text-sm rounded" 
                     value={divThreshold} onChange={e => setDivThreshold(e.target.value)} />
                 </div>
@@ -579,7 +646,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               <h3 className="text-md font-bold text-gray-800 mb-4 border-b pb-2">Credit / Overdraft</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-500 block">Limit ($)</label>
+                  <label className="text-xs text-gray-500 block">Limit ({currency})</label>
                   <input type="number" className="border p-1 w-full text-sm rounded" 
                     value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
                 </div>
@@ -618,21 +685,24 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 </tr>
               </thead>
               <tbody>
-                {(projection as any).cash_flow_data.map((row: any) => (
-                  <tr key={row.month_index} className={`border-b hover:bg-gray-50 ${row.is_insolvent ? 'bg-red-50' : 'bg-white'}`}>
+                {(projection as any).cash_flow_data.map((row: any) => {
+                  const isRowInsolvent = !row.is_solvent;
+                  return (
+                  <tr key={row.month_index} className={`border-b ${isRowInsolvent ? 'bg-gray-50 text-gray-400' : 'hover:bg-gray-50 bg-white'}`}>
                     <td className="px-4 py-2 font-medium">{row.month_index}</td>
                     <td className="px-4 py-2">{fmt(row.revenue)}</td>
                     <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
                     <td className="px-4 py-2">{fmt(row.opex)}</td>
-                    <td className={`px-4 py-2 ${row.net_income < 0 ? 'text-red-500' : 'text-green-600'}`}>{fmt(row.net_income)}</td>
-                    <td className="px-4 py-2 text-orange-600">{fmt(row.cumulative_pool_received)}</td>
-                    <td className={`px-4 py-2 font-bold ${row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmt(row.cash_balance)}</td>
-                    <td className="px-4 py-2 text-green-600">{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
-                    <td className={`px-4 py-2 font-bold ${row.total_value < 0 ? 'text-red-600' : 'text-blue-700'}`}>
+                    <td className={`px-4 py-2 ${isRowInsolvent ? '' : (row.net_income < 0 ? 'text-red-500' : 'text-green-600')}`}>{fmt(row.net_income)}</td>
+                    <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-orange-600'}`}>{fmt(row.cumulative_pool_received)}</td>
+                    <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900')}`}>{fmt(row.cash_balance)}</td>
+                    <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-green-600'}`}>{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
+                    <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.total_value < 0 ? 'text-red-600' : 'text-blue-700')}`}>
                       {fmt(row.total_value)}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </Card>

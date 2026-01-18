@@ -13,7 +13,7 @@ use crate::errors::AppError;
 #[derive(Deserialize)]
 pub struct CreateCapitalRequest {
     pub plan_id: Uuid,
-    pub name: String,
+    pub injection_name: String,
     pub amount: Decimal,
     pub month: i32,
 }
@@ -23,6 +23,11 @@ pub async fn create_capital_injection(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateCapitalRequest>,
 ) -> Result<Json<CapitalInjection>, AppError> {
+    // Length Validation
+    if payload.injection_name.len() > 255 {
+        return Err(AppError::ValidationError("Name exceeds 255 characters".to_string()));
+    }
+
     // Verify plan ownership
     let plan_exists = sqlx::query!(
         "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
@@ -38,9 +43,15 @@ pub async fn create_capital_injection(
 
     let item = sqlx::query_as!(
         CapitalInjection,
-        "INSERT INTO capital_injections (plan_id, name, amount, month) VALUES ($1, $2, $3, $4) RETURNING id, plan_id, name, amount, month, created_at",
+        r#"
+        INSERT INTO capital_injections (plan_id, injection_name, amount, month) 
+        VALUES ($1, $2, $3, $4) 
+        RETURNING 
+            id as "id!", plan_id as "plan_id!", injection_name as "injection_name!", 
+            amount as "amount!", month as "month!", created_at as "created_at!"
+        "#,
         payload.plan_id,
-        payload.name,
+        payload.injection_name,
         payload.amount,
         payload.month
     )
@@ -58,7 +69,10 @@ pub async fn get_capital_injections(
     let items = sqlx::query_as!(
         CapitalInjection,
         r#"
-        SELECT id, plan_id, name, amount, month, created_at FROM capital_injections 
+        SELECT 
+            id as "id!", plan_id as "plan_id!", injection_name as "injection_name!", 
+            amount as "amount!", month as "month!", created_at as "created_at!"
+        FROM capital_injections 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2) 
         ORDER BY month ASC

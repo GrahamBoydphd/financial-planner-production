@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO companies (fund_id, company_name, currency_code, industry, business_model, technology, tenant_id) \n         VALUES ($1, $2, $3, $4, $5, $6, $7) \n         RETURNING id, fund_id, company_name, currency_code, created_at, industry, business_model, technology, tenant_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "fund_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "company_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "industry",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "business_model",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "technology",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bpchar",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "9f4c6314efa03d05a37e9b62f48c0404a10efb5c1357b2ee9f2e97fccb6efe37"
+}

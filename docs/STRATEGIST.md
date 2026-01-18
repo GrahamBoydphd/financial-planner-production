@@ -1,5 +1,158 @@
 # STRATEGIST: Tactical Mission Orders
 
+=== STRATEGIST: REVISED TACTICS (STAGE 4) ===
+
+**The Core Shift:** We are moving from `Vector<CompanyPath>` (independent trajectories) to `Vector<FundPath>`.
+
+- **Old Engine:** Run Company A Scenario X (t=0→t=End). 
+    
+- **New Engine (The "Lockstep" Loop):** For each Month t:
+    
+    1. Advance Company A Scenario X, B Scenario Y, ... N Scenario Z by one step (calculate raw cashflow).
+        
+    2. **The Interceptor:** Calculate Total Fund Surplus/Deficit.
+        
+    3. **The Redistributor:** Move cash from Profitable Companies to Struggling Companies (Pooling Logic).
+        
+    4. Finalize Month t balances.
+        
+
+This requires a fundamental rewrite of the inner simulation loop.
+
+---
+
+### PROMPT 1: For the Backend Architect
+
+**ACT AS:** Backend Architect (Rust, Domain Modeling). **REPORT TO:** Lead Strategist. 
+
+**PROJECT CONTEXT:** Stage 4: Investor Track. We are implementing **Multi-Company Monte Carlo with Vertical Pooling**.
+
+**YOUR MISSION:** You must implement the `FundSimulation` engine. This is a "Meta-Simulation" that coordinates multiple companies stepping through time together.
+
+**TECHNICAL SPECIFICATIONS:**
+
+**1. The Data Structure (`domain/fund.rs`)**
+
+- **Fund:** Contains a list of `CompanyConfig` objects.
+    
+- **PoolingConfig:** Parameters defining _how_ money is pooled (e.g., "Cover 100% of burn if Fund Balance > X").
+    
+
+**2. The Simulation Logic (`engine/waterfall.rs`)**
+
+- **Constraint:** You cannot run companies in isolation. They must run in **Lockstep**.
+    
+- **The Loop:**
+    
+    Rust
+    
+    ```
+    // Psuedocode for one MC Path
+    for month in 0..months {
+        let mut fund_pool = 0.0;
+        let mut company_states = vec![];
+    
+        // Step 1: Calculate Raw Performance
+        for company in companies {
+            let cashflow = company.step(month); // Standard stochastic step
+            fund_pool += cashflow;
+            company_states.push(cashflow);
+        }
+    
+        // Step 2: The Pooling Logic (The "Correction")
+        // If FundPool is positive, distribute to companies with negative cashflow?
+        // If FundPool is negative, who breaks first?
+        distribute_pool(&mut fund_pool, &mut company_states);
+    }
+    ```
+    
+- **Output:** The simulation must return a `FundTrajectory` struct, aggregating the Net Asset Value (NAV) and individual company survivability over time.
+    
+
+**3. API Layer**
+
+- `POST /simulate/fund`:
+    
+    - Input: `fund_id` (fetches all attached companies).
+        
+    - Output: Aggregated Monte Carlo results (e.g., "Probability of Fund Return > 3x").
+        
+
+**DELIVERABLES:**
+
+1. **The Lockstep Engine:** The Rust code implementing the loop described above.
+    
+2. **The Pooling Logic:** A simple "Pro-Rata Burn Coverage" algorithm (e.g., successful companies cover the burn of failing ones up to the limit of free cash flow).
+    
+3. **Refactor Note:** Ensure the existing `Company` struct exposes a `step()` method that can be called incrementally (stateful), rather than just `run_all()`.
+    
+
+**Execute.**
+
+---
+
+### PROMPT 2: For the Frontend Architect
+
+**ACT AS:** Frontend Architect (React, Recharts). **REPORT TO:** Lead Strategist. 
+
+**PROJECT CONTEXT:** Stage 4: Investor Track. We are visualizing the **Aggregated Fund Performance**.
+
+**YOUR MISSION:** The user needs to understand not just how _one_ company does, but how the _Portfolio_ performs when companies use a profit pooling mechanism each time step.
+
+**Overarching requirement:** this app will eventually be full production code with sensitive data for different users. Build accordingly. For example we choose strictness for the database.
+* Always check before an action that may relax security. 
+* Always examine existing files to check if a change might compromise existing functionality or security.
+
+=== **TECHNICAL SPECIFICATIONS:** ===
+
+**1. The "Fund Dashboard" (`/fund/:id`)**
+
+- **Concept:** This is the control room.
+    
+- **Top Metric:** "Fund Survival Rate" (The % of Monte Carlo runs where the Fund returns positive ROI).
+    
+- **The List:** A table of Companies in the Fund.
+    
+    - Columns: Name, Starting Capital, **Pooled Contribution** (Calculated field).
+        
+
+**2. The "Aggregate Graph" (Visualizing Pooling)**
+
+- We need a new Chart: **"Fund Consolidated Cashflow"**.
+    
+- **X-Axis:** Time (Months).
+    
+- **Lines:**
+    
+    - Line A (Grey): Sum of Cashflows _without_ pooling (Hypothetical).
+        
+    - Line B (Green): Sum of Cashflows _with_ pooling (Actual).
+        
+    - _Insight:_ The user should see how pooling smooths out the volatility (the "Ergodic" effect).
+        
+
+**3. The Interaction**
+
+- **Button:** "Run Fund Simulation".
+    
+- **State:** This triggers the heavy calculation on the backend. Show a progress bar or "Simulating Fund Scenario..." loader.
+    
+
+**DELIVERABLES:**
+
+1. **UI Component:** `FundSimulationView.tsx`.
+    
+2. **Chart Design:** A Recharts composition showing the "Pooled vs. Unpooled" comparison.
+    
+3. **Data Fetching:** handling the POST request to the new `simulate/fund` endpoint.
+    
+
+**Execute.**
+
+
+
+
+# Old stage 3 
 **Current Phase:** Company Stage 3 - Cloud Implementation (User Layer)
 **Objective:** Implement the "Identity & Isolation" layer.
 **Critical Context:** This layer to support *both* Companies and Investors in the future.
@@ -69,4 +222,3 @@ Error Handling: Display clear error messages from the backend (e.g., "Username a
 1.  [ ] Database migration creates `users` and `tenants` tables (linked).
 2.  [ ] Registration flow works with Username only.
 3.  [ ] A user sees *only* their own Funds/Companies (verified by SQL check).
-4.  [ ] `do_task.sh` audit confirms no `email` fields exist in the codebase.

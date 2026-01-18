@@ -1,4 +1,4 @@
-# 🛡️ Evolutesix Financial Engine API Standards (V3 Hardened)
+# 🛡️ Evolutesix Financial Engine API Standards (V3 Hardened) for the FE to use to talk to the BE.
 
 ## 1. The Percentage Standard
 To ensure mathematical precision and prevent "compounding drift," all growth, return, and interest fields MUST be sent as **whole percentage numbers**. The Backend projection engine performs the division by 100 internally.

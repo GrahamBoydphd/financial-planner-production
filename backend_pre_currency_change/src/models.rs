@@ -1,0 +1,279 @@
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
+use chrono::{NaiveDate, DateTime, Utc};
+use rust_decimal::Decimal;
+
+// --- Phase 0: Multi-Tenancy & Auth ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Tenant {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub full_name: String,
+    pub tenant_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+// --- Phase 3: Portfolio Structure ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Fund {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub currency_code: String,
+    pub created_at: DateTime<Utc>,
+    pub tenant_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Company {
+    pub id: Uuid,
+    pub fund_id: Uuid,
+    pub name: String,
+    pub currency_code: String,
+    pub created_at: DateTime<Utc>,
+    pub industry: Option<String>,
+    pub business_model: Option<String>,
+    pub technology: Option<String>,
+    pub tenant_id: Uuid,
+}
+
+// Add New Struct for Exchange Rates
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ExchangeRate {
+    pub id: Uuid,
+    pub from_currency: String,
+    pub to_currency: String,
+    pub rate: Decimal,
+    pub rate_month: NaiveDate,
+    pub created_at: DateTime<Utc>,
+    pub tenant_id: Uuid,
+}
+
+// --- Phase 1 & 2: Financial Models ---
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct FinancialPlan {
+    pub id: Uuid,
+    pub company_id: Uuid,
+    pub name: String,
+    pub start_month: NaiveDate,
+    pub currency_code: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub initial_cash: Decimal,
+    pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
+    pub tenant_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct RevenueItem {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub source: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub growth_rate_percent: Decimal,
+    pub frequency: String,
+    pub cost_of_revenue_percent: Option<Decimal>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ExpenseItem {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub growth_rate_percent: Decimal,
+    pub frequency: String,
+    pub pct_of_revenue: Option<Decimal>,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CapitalInjection {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub name: String,
+    pub amount: Decimal,
+    pub month: i32,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct DividendPolicy {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub is_enabled: bool,
+    pub safety_threshold: Decimal,
+    pub payout_ratio: Decimal,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CreditFacility {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub facility_limit: Decimal,
+    pub interest_rate: Decimal,
+    pub is_annual_rate: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ValuationAssumption {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub valuation_name: String,
+    pub method: String,
+    pub multiplier: Decimal,
+    pub date_applied: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct EventShock {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub event_name: String,
+    pub shock_month: i32,
+    pub impact_type: String,
+    pub impact_value: Decimal,
+    pub duration_months: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CapitalGrowthPolicy {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+    pub created_at: DateTime<Utc>,
+    pub growth_rate_percent: Decimal,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateFundRequest {
+    pub name: String,
+    pub currency_code: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateFundRequest {
+    pub name: String,
+    pub currency_code: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateCompanyRequest {
+    pub fund_id: uuid::Uuid,
+    pub name: String,
+    pub business_model: Option<String>,
+    pub industry: Option<String>,
+    pub technology: Option<String>,
+    pub currency_code: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateCompanyRequest {
+    pub name: String,
+    pub business_model: Option<String>,
+    pub industry: Option<String>,
+    pub technology: Option<String>,
+    pub currency_code: String,
+}
+
+// --- Point 9: Staffing & Payroll ---
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct StaffingRole {
+    pub id: Uuid,
+    pub plan_id: Uuid,
+    pub role_name: String,
+    pub annual_salary: Decimal,
+    pub start_month: i32,
+    
+    // Renamed from 'count' to 'target_count' to match sophisticated logic
+    // Assumes DB column is 'target_count'
+    pub target_count: i32, 
+    
+    // New Fields for Sophisticated Logic
+    pub hiring_plan: String, // "fixed_count" or "monthly_rate"
+    pub hiring_rate: Option<i32>, // e.g., 1 = hire every month, 2 = hire every 2 months
+    
+    pub annual_increase_percent: Decimal,
+    pub created_at: DateTime<Utc>,
+}
+
+// --- Auth DTOs ---
+
+#[derive(Deserialize, Debug)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+    pub full_name: String,
+    pub email: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user_id: Uuid,
+    pub tenant_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub tenant_id: uuid::Uuid,
+    pub exp: usize,
+}

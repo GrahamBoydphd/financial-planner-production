@@ -47,7 +47,7 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
       </nav>
 
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">{fund.name} <span className="text-gray-400 text-lg">Portfolio</span></h1>
+        <h1 className="text-3xl font-bold text-gray-900">{fund.fund_name} [{fund.currency_code}]</h1>
         <div className="flex flex-col items-end">
           <Link 
             href="/structure#add-company"
@@ -71,7 +71,7 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
             {companies.map(co => (
                 <Link key={co.id} href={`/company/${co.id}`}>
                     <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-purple-500 h-full">
-                        <h2 className="text-xl font-bold text-gray-800">{co.name}</h2>
+                        <h2 className="text-xl font-bold text-gray-800">{co.company_name}</h2>
                         <p className="text-sm text-gray-500 mt-1">{co.industry || 'General'}</p>
                     </Card>
                 </Link>

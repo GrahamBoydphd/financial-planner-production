@@ -25,6 +25,14 @@ pub async fn upsert_valuation_assumption(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<UpsertValuationRequest>,
 ) -> Result<Json<ValuationAssumption>, AppError> {
+    // Length Validation
+    if payload.valuation_name.len() > 255 {
+        return Err(AppError::ValidationError("Valuation name exceeds 255 characters".to_string()));
+    }
+    if payload.method.len() > 255 {
+        return Err(AppError::ValidationError("Method name exceeds 255 characters".to_string()));
+    }
+
     // Verify plan ownership first
     let plan_exists: Option<_> = sqlx::query!(
         "SELECT id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
@@ -40,13 +48,29 @@ pub async fn upsert_valuation_assumption(
 
     let mut tx = pool.begin().await?;
 
-    let _result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM valuation_assumptions WHERE plan_id = $1", payload.plan_id)
-        .execute(&mut *tx)
-        .await?;
+    // Clear existing assumption for this plan to ensure 1:1 relationship
+    let _result = sqlx::query!(
+        "DELETE FROM valuation_assumptions WHERE plan_id = $1", 
+        payload.plan_id
+    )
+    .execute(&mut *tx)
+    .await?;
 
-    let assumption: ValuationAssumption = sqlx::query_as!(
+    // Insert new assumption with strict column mapping
+    let assumption = sqlx::query_as!(
         ValuationAssumption,
-        "INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) VALUES ($1, $2, $3, $4, $5) RETURNING id, plan_id, valuation_name, method, multiplier, date_applied, created_at",
+        r#"
+        INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) 
+        VALUES ($1, $2, $3, $4, $5) 
+        RETURNING 
+            id as "id!", 
+            plan_id as "plan_id!", 
+            valuation_name as "valuation_name!", 
+            method as "method!", 
+            multiplier as "multiplier!", 
+            date_applied as "date_applied!", 
+            created_at as "created_at!"
+        "#,
         payload.plan_id,
         payload.valuation_name,
         payload.method,
@@ -66,9 +90,21 @@ pub async fn get_valuation_assumption(
     Extension(claims): Extension<Claims>,
     Path(plan_id): Path<Uuid>,
 ) -> Result<Json<ValuationAssumption>, AppError> {
-    let assumption: Option<ValuationAssumption> = sqlx::query_as!(
+    let assumption = sqlx::query_as!(
         ValuationAssumption,
-        "SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at FROM valuation_assumptions WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+        r#"
+        SELECT 
+            id as "id!", 
+            plan_id as "plan_id!", 
+            valuation_name as "valuation_name!", 
+            method as "method!", 
+            multiplier as "multiplier!", 
+            date_applied as "date_applied!", 
+            created_at as "created_at!" 
+        FROM valuation_assumptions 
+        WHERE plan_id = $1 
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
+        "#,
         plan_id,
         claims.tenant_id
     )

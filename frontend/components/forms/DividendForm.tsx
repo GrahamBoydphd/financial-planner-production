@@ -6,6 +6,7 @@ import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
+  currencySymbol?: string;
 }
 
 interface FormErrors {
@@ -19,7 +20,7 @@ interface SavedPolicy {
   ratio: string;
 }
 
-export default function DividendForm({ planId }: Props) {
+export default function DividendForm({ planId, currencySymbol = '$' }: Props) {
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState('');
   const [ratio, setRatio] = useState(''); // Stored as 0-100 string
@@ -36,7 +37,17 @@ export default function DividendForm({ planId }: Props) {
         const ratioPct = (Number(d.payout_ratio) * 100).toString();
         setRatio(ratioPct);
         setSavedPolicy({ enabled: d.is_enabled, threshold: d.safety_threshold.toString(), ratio: ratioPct });
-    }).catch(() => {});
+    }).catch((error) => {
+        if (!active) return;
+        if (error.response && error.response.status === 404) {
+            setEnabled(false);
+            setThreshold('');
+            setRatio('');
+            setSavedPolicy(null);
+        } else {
+            console.error(error);
+        }
+    });
     return () => { active = false; };
   }, [planId]);
 
@@ -86,7 +97,7 @@ export default function DividendForm({ planId }: Props) {
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                        Safety Threshold ($) <span className="text-red-500">*</span>
+                        Safety Threshold ({currencySymbol}) <span className="text-red-500">*</span>
                         <Tooltip content="Minimum cash balance required before dividends are paid." />
                     </label>
                     <input 
@@ -122,7 +133,7 @@ export default function DividendForm({ planId }: Props) {
                 </h4>
                 {savedPolicy.enabled && (
                     <div className="text-gray-700">
-                        Payout <span className="font-bold">{savedPolicy.ratio}%</span> of surplus above <span className="font-bold">${Number(savedPolicy.threshold).toLocaleString()}</span>.
+                        Payout <span className="font-bold">{savedPolicy.ratio}%</span> of surplus above <span className="font-bold">{currencySymbol}{Number(savedPolicy.threshold).toLocaleString()}</span>.
                     </div>
                 )}
             </div>

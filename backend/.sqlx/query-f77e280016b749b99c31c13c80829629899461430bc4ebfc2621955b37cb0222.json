@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO valuation_assumptions (plan_id, valuation_name, method, multiplier, date_applied) \n        VALUES ($1, $2, $3, $4, $5) \n        RETURNING \n            id as \"id!\", \n            plan_id as \"plan_id!\", \n            valuation_name as \"valuation_name!\", \n            method as \"method!\", \n            multiplier as \"multiplier!\", \n            date_applied as \"date_applied!\", \n            created_at as \"created_at!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "valuation_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "method!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "multiplier!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "date_applied!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Numeric",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f77e280016b749b99c31c13c80829629899461430bc4ebfc2621955b37cb0222"
+}

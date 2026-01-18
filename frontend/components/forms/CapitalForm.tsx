@@ -7,6 +7,7 @@ import Tooltip from '@/components/ui/Tooltip';
 interface Props {
   planId: string;
   onSuccess: () => void;
+  currencySymbol?: string;
 }
 
 interface FormErrors {
@@ -15,7 +16,7 @@ interface FormErrors {
   month?: string;
 }
 
-export default function CapitalForm({ planId, onSuccess }: Props) {
+export default function CapitalForm({ planId, onSuccess, currencySymbol = '$' }: Props) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [month, setMonth] = useState('');
@@ -46,7 +47,7 @@ export default function CapitalForm({ planId, onSuccess }: Props) {
 
       const payload = {
         plan_id: planId,
-        name,
+        injection_name: name,
         amount: formattedAmount,
         month: parseInt(month, 10)
       };
@@ -98,7 +99,7 @@ export default function CapitalForm({ planId, onSuccess }: Props) {
         {/* Amount Input */}
         <div className="md:col-span-4">
           <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
-            Amount ($) <span className="text-red-500">*</span>
+            Amount ({currencySymbol}) <span className="text-red-500">*</span>
             <Tooltip content="Amount of capital injection." />
           </label>
           <input 

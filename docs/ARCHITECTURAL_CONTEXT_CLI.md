@@ -1,20 +1,21 @@
 
 
-# ARCHITECTURAL_CONTEXT_CLI.md
 # Status: UNIVERSAL CONSTITUTION (Read by every agent)
 # Role: Immutable Constraints & Patterns
 
 ## 1. PROJECT GOAL
 **Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
 **Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
-**Identity:** Username-based (No PII/Email required for MVP).
+**Identity:** Username-based.
 
-## 2. TECHNOLOGY STACK (Immutable)
+
+# 2. IMMUTABLE
+## 2.1. TECHNOLOGY STACK (Immutable)
 * **Backend:**
     * **Language:** Rust (Edition 2021).
     * **Web Framework:** `axum` (with `tokio`).
     * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
-    * **Math:** `rust_decimal` for ALL currency/rates. `f64` is **BANNED** for money.
+    * **Math:**  **Hybrid Architecture**: **Storage & API:** Strict `rust_decimal` (The Fortress Standard) ; **Simulation Engine:** `f64` (The Performance Standard).
     * **Serialization:** `serde` / `serde_json`.
 * **Frontend:**
     * **Framework:** Next.js 14+ (App Router).
@@ -23,6 +24,54 @@
     * **HTTP Client:** Axios (via `lib/api.ts`).
     * **Visualization:** Chart.js (`react-chartjs-2`).
 
+
+## 2.2. The Immutable Data Contract
+
+These rules govern the communication between the Frontend and Backend.
+
+- **The String-Decimal Standard**: All Currency, Decimals, and Percentages MUST be transmitted as **Strings** (e.g., `"1250.50"`, `"3.0"`).
+    
+- **The Percent Standard**: Rates must be sent as **whole-number strings** (e.g., `"3.0"` for 3%) and include the **`_percent` suffix** in the key (e.g., `growth_rate_percent`).
+    
+- **Scoped Naming**: Fields must be scoped to their entity (e.g., `role_name`, `expense_name`) and never named simply `name`.
+    
+- **Lowercase Normalization**: All category, frequency, and type indicators (e.g., `fixed_count`, `student_t`) must be transmitted in **lowercase**.
+    
+- **Identifiers**: All resource IDs must be valid **UUID v4**. 
+
+- **Audit Metadata**: Every core financial table must include a non-nullable `created_at: DateTime<Utc>` field.
+    
+- **Explicit SQL**: The use of `SELECT *` is strictly forbidden.
+    
+- **Query Safety**: Every query must explicitly list columns and utilize the SQLx "Force Non-Null" `!` syntax (e.g., `column as "column!"`) where necessary.
+    
+
+### 🏁 Unified Identity Contract for the Frontend Architect
+
+| **Entity**   | **Field**   | **Source of Truth**                                    |
+| ------------ | ----------- | ------------------------------------------------------ |
+| **Identity** | `user_id`   | **UUID** (Stored in JWT and returned in AuthResponse)  |
+| **Auth**     | `sub`       | **Username** (String, used only for display)           |
+| **Security** | `tenant_id` | **UUID** (The primary filter for ALL database queries) |
+### 🏁 Standardized `AuthResponse` Contract
+
+To stop the loop, the Backend and Frontend must agree on this exact JSON structure for the login and registration responses:
+
+| **Field**       | **Type** | **Description**                                                      |
+| --------------- | -------- | -------------------------------------------------------------------- |
+| **`token`**     | `String` | The JWT used for all subsequent "Protected Routes".                  |
+| **`user_id`**   | `Uuid`   | The database primary key of the user (Mandatory for Frontend state). |
+| **`username`**  | `String` | The human-readable name for UI display (e.g., "GB3").                |
+| **`tenant_id`** | `Uuid`   | The organization ID required for data isolation.                     |
+final "Source of Truth" points to your Frontend Architect:
+        
+- **Identity Mapping**: The `user_id` is the database primary key; the `username` is for display.
+    
+- **JWT Claims**: The token contains `sub` (the username) and `tenant_id`.
+    
+- **Debugging Status**: The backend will continue to return a `401` on auth failure. The frontend must be the one to disable the automatic redirect for inspection.
+
+# 3. CORE
 ## 3.1. CORE ENGINE LOGIC (`backend/src/projection.rs`)
 * **Mechanism:** Breadth-First Traversal (Time-step based).
 * **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.

@@ -46,9 +46,9 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
   }, [companyId]);
 
   const handleCreatePlan = async () => {
-    if (!newPlanName || !startMonth) return;
+    if (!newPlanName || !startMonth || !company) return;
     try {
-        await api.createPlan(companyId, newPlanName, startMonth);
+        await api.createPlan(companyId, newPlanName, startMonth, company.currency_code);
         setNewPlanName('');
         setIsCreating(false);
         loadData();
@@ -73,14 +73,14 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <Link href="/" className="hover:underline">Dashboard</Link>
         <span>/</span>
-        {fund && <Link href={`/fund/${fund.id}`} className="hover:underline">{fund.name}</Link>}
+        {fund && <Link href={`/fund/${fund.id}`} className="hover:underline">{fund.fund_name}</Link>}
         {fund && <span>/</span>}
-        <span>{company.name}</span>
+        <span>{company.company_name}</span>
       </div>
 
       <div className="flex justify-between items-center mb-8">
         <div>
-            <h1 className="text-3xl font-bold text-gray-900">{company.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{company.company_name} [{company.currency_code}]</h1>
             <p className="text-gray-500">{company.industry} • {company.business_model || 'Business Model'}</p>
         </div>
         <button 
@@ -126,7 +126,7 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
             {plans.map(plan => (
                 <Card key={plan.id} className="hover:shadow-lg transition-shadow border-l-4 border-teal-500 h-full flex flex-col justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800">{plan.name}</h2>
+                        <h2 className="text-xl font-bold text-gray-800">{plan.plan_name}</h2>
                         <p className="text-xs text-gray-400 mt-1">Starts: {plan.start_month}</p>
                     </div>
                     

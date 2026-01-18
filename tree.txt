@@ -1,5 +1,6 @@
 .
 ├── backend
+│   ├── 20260116163008_multi_currency_support.sql
 │   ├── Cargo.lock
 │   ├── Cargo.toml
 │   ├── Dockerfile
@@ -24,63 +25,72 @@
 │   │   ├── 20260110154428_add_initial_cash_to_plans.sql
 │   │   ├── 20260113083505_standardize_capital_growth.sql
 │   │   ├── 20260113095020_standardize_staffing_naming.sql
-│   │   └── 20260116081601_standardize_valuation_naming.sql
+│   │   ├── 20260116081601_standardize_valuation_naming.sql
+│   │   ├── 20260116092316_sync_fortress_names.sql
+│   │   ├── 20260116092801_fix_fortress_schema_sync.bak
+│   │   ├── 20260116093208_align_models_and_audit.bak
+│   │   ├── 20260116093903_final_fortress_sync.sql
+│   │   ├── 20260116094310_ensure_audit_columns.sql
+│   │   ├── 20260116095602_fortress_repair_and_sync.sql
+│   │   ├── 20260116113044_hardened_net_value_audit.sql
+│   │   └── 20260116163008_multi_currency_support.sql
 │   ├── .sqlx
 │   │   ├── query-052a4dd2b1dd8ca8b4393fb0268e36208200db764098f736736c9e2731f1cd28.json
-│   │   ├── query-07b75ef48873f25f84ec047fa5e9991a231afa56ab5266ef1a2bb155d5934eb1.json
 │   │   ├── query-11564b17dd54f87e483bf304cdec5d3ec1dd6b09b4c97ed5c24a20474615d318.json
-│   │   ├── query-154646ae645865f7559d7fbae2be0051ac641f5afe0a90e719e7a5bac00d0ba9.json
-│   │   ├── query-15585c27e6e36ac147f19db2758dfe756f01ef17222f28aeb65fbaf8b5edc4d8.json
-│   │   ├── query-15b953e185f9399490b8fc5bfbb2ca91666fad1c452730a17fce78e7233aaf23.json
 │   │   ├── query-16521ffd5bd15667c1c2beaf6457f4ed7bcec0214ffefd142a2e3d4e459551d9.json
-│   │   ├── query-1e77b5df95a91b1a062eed7d7ed4bbd0cf28f4d6a48d2734c628760eaababa91.json
-│   │   ├── query-20d69bec5115d276007a2ec5988bdad05ed926b8975a9f7e5bc59b75a8578303.json
+│   │   ├── query-1a5730a5bcbbdba55efc60ceab7893dac8709d5d52ed67413bb7640ad3338c16.json
+│   │   ├── query-1d257c5770421ea27b9975f8ad59f294a3d833cf1cf9602e4160f58ace42d958.json
+│   │   ├── query-1e75f0ae7624c71f21ffa124335dd0dfe9a10af5ac9bbd972409e5d06e3abec3.json
+│   │   ├── query-200e0ed63812368f70e6f7fa0a7ac774d7e9e3d9b9beb068888d60f80da37ac5.json
+│   │   ├── query-296fc81de77179dbf79661ac2efcff558ad3a7254cb0a7d6ff8a61a1eb321ce2.json
 │   │   ├── query-2f8e7e732fd5f8fb5dec2fef3ec711da2eefe38a80fd8efa52033be5f66e7ff3.json
-│   │   ├── query-37b8d3066acedd73c2d723fd04eb83fcdd5245d069c26bd6a01d5879f7f7d42b.json
-│   │   ├── query-4408098f8a1b6a65b2c77d426e84200ec3e4376ea07e18f1a6e6ef43fc829380.json
-│   │   ├── query-490be8e57ae2efa0aec964bfd4e3c01d79f4cf454e781f8e71d7b9abefe6e18a.json
-│   │   ├── query-4bf593b645f1275d205da5d1b3026bbf2c23e79b8e424c4e1263c3d1f11f37cb.json
-│   │   ├── query-4cb7abef3816c33d0aea906b82c61066449b7753abc1f8e85cab405ad0ce9154.json
+│   │   ├── query-3132860a2ec7394e87335d935ee9d7ed069f48018765d4b9e8794393628e18da.json
+│   │   ├── query-3bfabd6d6af9b0caa57b335575ab9df5a914854c0cd83dfd65d8f973973f1556.json
+│   │   ├── query-485f91dccc7be41083f22bfbe16e2e133127b33e31dc490670a3a19bb3eae76e.json
+│   │   ├── query-4fcf4a6d4ff73dc6658a9a593ed975dddf0fe26686e9a9226a1e2b14661128c2.json
+│   │   ├── query-4fec0068e51b8b6ce6c765f972588e409b96f4b235cafb9f3655da795573173d.json
 │   │   ├── query-504bb10d9d1acaa8b1a604c343d9e75d9961201b0b561201fb47543b68397540.json
-│   │   ├── query-51d2bad9d120cc551757a8a5139dde5d9daa4679388ec6165c268ef962cbe680.json
-│   │   ├── query-5227f62158bac790d2369f3ac94e8486af9de25bcdf8a1632a1a43fcc487bf3f.json
-│   │   ├── query-5f61482142561b6917fd3011df2d9e1219674d1b9c808a1a2c1d6c7b6db8babb.json
-│   │   ├── query-608e1595550889327d412b8d2af21b3004ab06a1c44ca0acd119680ed82c760b.json
-│   │   ├── query-628f87154f50aaa825a16668a8cb3c3ed66ff26d2078f1eafa8a7174beed3563.json
+│   │   ├── query-52f517e492d6bbdc895e8ad582d05ab55a0b888e0341c056b972194e006b5305.json
+│   │   ├── query-61bc66b0bac6280c1f9faa5670f5a98302cbd6d665623f1615397080c92abff8.json
 │   │   ├── query-6ae5b1b7c90cf1741f7c255b998683a60c43659705252e2165524eada9ba60fc.json
-│   │   ├── query-6de90d7ca080014cc0ab8531d550903b50dc66aa2f855c445b60f30604e512d0.json
-│   │   ├── query-6edd507bc4c90f9580e6b7ab9af24da6aa1bdbdeaa581ab9a2f8285eb34a7922.json
-│   │   ├── query-76de177a87acbacdc71367c923483bab66f69761ef928aec1dc13dedbeedfdb4.json
+│   │   ├── query-6e0b0a6d76316c7dfc932c066ea08289310e89dd3443d47d1c5822e75d6781c5.json
+│   │   ├── query-6e77614589b2b3402a6857f33b4094755bbc2aa4ba974c23886d297d64825e63.json
+│   │   ├── query-71b3e7be5d5e5f6b10923d143c1b43a10bfdba5120130352d0ff8d44dec112ba.json
 │   │   ├── query-7792ef7b58a03a353102fb3c1d047ffd791c22dffb762f69308cf84b27574aaf.json
 │   │   ├── query-7afabe363d2c059e950eebbe6edfed2babcbed6db82e4200faa913b8573e774e.json
+│   │   ├── query-7b11b74918e98b6b91749ba282268a7eae083443e3f4b8a922826b7da726f255.json
 │   │   ├── query-7b4880944fa59a005fa38b3bf541dd37fea87165bfcf86d6247c803570a33864.json
-│   │   ├── query-7d42e33ce15d432e4ed4b058d3e1144ea813812b4c2b5144db75996b75d9d5c0.json
-│   │   ├── query-81b4801c3b9060d9f9afc9d0368e3706ec7125b2942882db073c8fecc7ff77b7.json
-│   │   ├── query-8455dda062e680707825abd2498f2240463145a547a007b595ddd85fab2a0fab.json
+│   │   ├── query-7d970554ae497c10211575644dbab57aa0fd3abfbd85c82fa8fbf1a002a6e220.json
+│   │   ├── query-7dbf37b91713dd6f096c442422ea81df620f6b294a6e468aac2f41097feab1bc.json
+│   │   ├── query-8140efa83b2505965576cac892ec6487422a81faf3b41f992882955c1664fa88.json
+│   │   ├── query-887ad203289a9815b2081544d6fb7b0c82c9bf486affe9158ba2a443df1ab9e8.json
 │   │   ├── query-898bb2d087add25d6c181482f9ccc7442cc5fe6a1dbcaf9bed89472acc976808.json
+│   │   ├── query-8afda25e573ff6d0c5e91c569349419019f4a0ad869c521d97ac12302035d88c.json
+│   │   ├── query-8e895d1cc03a95179ede3faab37f810232327f4b0a069fb5ed6d93da3310281f.json
 │   │   ├── query-8f117f8122686bf5ff7a9f1b532a6b0c6be4490d228c06d19ff1dd09f5363f1a.json
-│   │   ├── query-90abb47cb9afc9cc282ac5e0fbbf793662c581be3faa6ba36f9cd13ad49b9b73.json
-│   │   ├── query-95dea1a6bd2b62a42e4637cd47dce811de195f4471ac1ad4a2ff30d9f043062b.json
-│   │   ├── query-98cf86cf373d709fa2ddb2c86348735f1465cee35d7d952a80f143ccc2fb3323.json
-│   │   ├── query-99c2d3fe8123ddf1c0074758abc6298d66c4cabd19d56b4517313e25df37f63a.json
-│   │   ├── query-a53dc54c7518a86f4282576cfe5f128be11f73315efb1086cbd0138cc7464acd.json
-│   │   ├── query-ac9b94ea2f9543a3e00e98ea66a2796426d62f6f839810c6d20d5bb3120ef008.json
-│   │   ├── query-b2ee1d84226b9c0f89f5663d6e6be3a67f614ced17cb72d6bfb1ddd81688f6ab.json
-│   │   ├── query-b358c44bc854ea78d293a61f300ca620702d91e966cf4e8ec6a5340f99fed5a0.json
+│   │   ├── query-9474f819a84cbd594bb099ad735f4906555434fcdc06df56eaed98f6567667b6.json
+│   │   ├── query-9f216853eee2ad11dea025b3b4c32fd4889ff997ac56e48d2b0d3be26ae0d126.json
+│   │   ├── query-a89d0aeee677e7b9bc81580b5b2953892e9ad894b5619e94ab4972c495c22ed7.json
+│   │   ├── query-a9c4392fa64bf3f81f654c99caa524af66097cdd16502f582bc5341e9b90d11a.json
+│   │   ├── query-abb96fe5fd9d0860530fd5a740b80f4d9dd793a37e730287accbca8001bbe8ee.json
+│   │   ├── query-abe6c991cc2b6c0688c4f0b47660a5b8c63d7e9ae347814e8eba6af7fef307f9.json
+│   │   ├── query-b07409d023777a6b68b8c7551cf726ec0030555cf7e506ad67ab9b8b27ab8452.json
+│   │   ├── query-b0e1e399fac61ff97e90730cae93eb6eb528838618038a565d585c94b40ba0f0.json
+│   │   ├── query-b396496f4c2abd33c8f1a5c00c256011bab909ca19b48778b6921adbd018a3b0.json
+│   │   ├── query-bed32ccba1ae5422ef67c9b635429ab3f561ed7dd45a1f804e7479ad3ea72d89.json
 │   │   ├── query-c6cdbc5efb46c9a2b5c14db63bb7c4086d21ae20ac73638bd2787d34adc3d750.json
-│   │   ├── query-c97957c99483c45d9d96a3bd9f3f7be781136c4dee634e0f9e8c2b196bbf576d.json
+│   │   ├── query-c9a4dc6984eef36fa69936e80235a8c9374ee1c1880349a253a043471b964da2.json
+│   │   ├── query-c9d90d0e7ae9ed8b7a2811c4fcfe304fa9eb5e898901e16dd312f08ed234681a.json
 │   │   ├── query-ccda82c8abc414e4de464ca11b4060878e8a088fac3395485420d9e1fa8e82ac.json
-│   │   ├── query-cd18c58251caaab7f3c14f19ef5fbeb39f52fb70eac3b194e2c8789bf2b51bf9.json
-│   │   ├── query-cde678c7d68d1efb997a10514bc3c0dbd4d6a0e4f7f99cc7fc9d2c30be0d2e2f.json
+│   │   ├── query-d2c18421b9afcf41b1d9514931b0d024f07f4b58d8bc177d5a8b58e2aa96135f.json
+│   │   ├── query-d6bde7bce0d8fa0eaf9708fa356ba1afacff0aaa7d5e74215757771674df290d.json
 │   │   ├── query-d6d8844892f1b568bbea629e59e47323e1eef8387e0193511e695ebc1a95a7bb.json
-│   │   ├── query-dd99e48b1572e25db38f03da95984fda1072913b29bb6b3753a0d351583dfff6.json
-│   │   ├── query-e2d4549331708caf368a80c8755ce15f70c46ea7c81b5f7c1d2ae74b4e7aaa8c.json
+│   │   ├── query-dee40ca7d9b192ea007ad7b97f023d7a51d0081b55fb4b5464949b8c7e87f458.json
 │   │   ├── query-e881ef1e06a3956b9e69be1e17773b3754e05ceee7dcc3fa628a3a662d0335ce.json
 │   │   ├── query-eeb771500badb4e97eb811503153ae4427d6570aff0fbb4f8f4a4c3d7e1cd7a7.json
-│   │   ├── query-f10beae3778c476529e65c0fe832970bb6f54c6dcccaf55a77766072b15a614e.json
-│   │   ├── query-f3380919ce0250de4cef9fe6d96b2c7ae7e87659936072c3c2b00b3fa93c0366.json
 │   │   ├── query-f3eb31a860213723bddd7a653963e36d6a0526dba4a0420a4708b225cefbf2fb.json
-│   │   └── query-fc32adc6af79ce153a759209b959dde9287014daa505c7049960b87e1317992e.json
+│   │   ├── query-f4b7dbf3fa89f381ce180715a73b205c59799c1bd9ef6e81d40b7a42d52914e6.json
+│   │   └── query-fd93de5546c8ded2268c28070589fe0056570eabdfaa8434a02d828042bd1ebe.json
 │   ├── src
 │   │   ├── distributions.rs
 │   │   ├── errors.rs
@@ -93,7 +103,6 @@
 │   │   │   ├── dividends.rs
 │   │   │   ├── events.rs
 │   │   │   ├── expenses.rs
-│   │   │   ├── financials.rs.bak
 │   │   │   ├── funds.rs
 │   │   │   ├── mod.rs
 │   │   │   ├── plans.rs
@@ -105,6 +114,122 @@
 │   │   ├── models.rs
 │   │   └── projection.rs
 │   └── tree.txt
+├── backend_pre_currency_change
+│   ├── 20260116163008_multi_currency_support.sql
+│   ├── Cargo.lock
+│   ├── Cargo.toml
+│   ├── Dockerfile
+│   ├── .env -> ../.env
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── migrations
+│   │   ├── 20251207202039_initial_schema.sql
+│   │   ├── 20251207204450_financial_data_models.sql
+│   │   ├── 20251212144500_add_multi_company_model.sql
+│   │   ├── 20251213150000_update_expense_logic.sql
+│   │   ├── 20251213170000_add_volatility_params.sql
+│   │   ├── 20251213180000_add_nrig_fields.sql
+│   │   ├── 20251214180000_add_v2_features.sql
+│   │   ├── 20251218081052_add_cascade_delete.sql
+│   │   ├── 20251219140000_add_staffing_roles.sql
+│   │   ├── 20251220100000_upgrade_staffing_schema.sql
+│   │   ├── 20260103144940_add_pooling_fraction.sql
+│   │   ├── 20260109104134_init_auth_tables.sql
+│   │   ├── 20260109114841_enforce_tenant_not_null.sql
+│   │   ├── 20260110131527_ensure_cascade_deletes.sql
+│   │   ├── 20260110154428_add_initial_cash_to_plans.sql
+│   │   ├── 20260113083505_standardize_capital_growth.sql
+│   │   ├── 20260113095020_standardize_staffing_naming.sql
+│   │   ├── 20260116081601_standardize_valuation_naming.sql
+│   │   ├── 20260116092316_sync_fortress_names.sql
+│   │   ├── 20260116092801_fix_fortress_schema_sync.bak
+│   │   ├── 20260116093208_align_models_and_audit.bak
+│   │   ├── 20260116093903_final_fortress_sync.sql
+│   │   ├── 20260116094310_ensure_audit_columns.sql
+│   │   ├── 20260116095602_fortress_repair_and_sync.sql
+│   │   ├── 20260116113044_hardened_net_value_audit.sql
+│   │   └── 20260116163008_multi_currency_support.sql
+│   ├── .sqlx
+│   │   ├── query-052a4dd2b1dd8ca8b4393fb0268e36208200db764098f736736c9e2731f1cd28.json
+│   │   ├── query-11564b17dd54f87e483bf304cdec5d3ec1dd6b09b4c97ed5c24a20474615d318.json
+│   │   ├── query-16521ffd5bd15667c1c2beaf6457f4ed7bcec0214ffefd142a2e3d4e459551d9.json
+│   │   ├── query-1a5730a5bcbbdba55efc60ceab7893dac8709d5d52ed67413bb7640ad3338c16.json
+│   │   ├── query-1d257c5770421ea27b9975f8ad59f294a3d833cf1cf9602e4160f58ace42d958.json
+│   │   ├── query-1e75f0ae7624c71f21ffa124335dd0dfe9a10af5ac9bbd972409e5d06e3abec3.json
+│   │   ├── query-200e0ed63812368f70e6f7fa0a7ac774d7e9e3d9b9beb068888d60f80da37ac5.json
+│   │   ├── query-296fc81de77179dbf79661ac2efcff558ad3a7254cb0a7d6ff8a61a1eb321ce2.json
+│   │   ├── query-2f8e7e732fd5f8fb5dec2fef3ec711da2eefe38a80fd8efa52033be5f66e7ff3.json
+│   │   ├── query-3132860a2ec7394e87335d935ee9d7ed069f48018765d4b9e8794393628e18da.json
+│   │   ├── query-3bfabd6d6af9b0caa57b335575ab9df5a914854c0cd83dfd65d8f973973f1556.json
+│   │   ├── query-485f91dccc7be41083f22bfbe16e2e133127b33e31dc490670a3a19bb3eae76e.json
+│   │   ├── query-4fcf4a6d4ff73dc6658a9a593ed975dddf0fe26686e9a9226a1e2b14661128c2.json
+│   │   ├── query-4fec0068e51b8b6ce6c765f972588e409b96f4b235cafb9f3655da795573173d.json
+│   │   ├── query-504bb10d9d1acaa8b1a604c343d9e75d9961201b0b561201fb47543b68397540.json
+│   │   ├── query-52f517e492d6bbdc895e8ad582d05ab55a0b888e0341c056b972194e006b5305.json
+│   │   ├── query-61bc66b0bac6280c1f9faa5670f5a98302cbd6d665623f1615397080c92abff8.json
+│   │   ├── query-6ae5b1b7c90cf1741f7c255b998683a60c43659705252e2165524eada9ba60fc.json
+│   │   ├── query-6e0b0a6d76316c7dfc932c066ea08289310e89dd3443d47d1c5822e75d6781c5.json
+│   │   ├── query-6e77614589b2b3402a6857f33b4094755bbc2aa4ba974c23886d297d64825e63.json
+│   │   ├── query-71b3e7be5d5e5f6b10923d143c1b43a10bfdba5120130352d0ff8d44dec112ba.json
+│   │   ├── query-7792ef7b58a03a353102fb3c1d047ffd791c22dffb762f69308cf84b27574aaf.json
+│   │   ├── query-7afabe363d2c059e950eebbe6edfed2babcbed6db82e4200faa913b8573e774e.json
+│   │   ├── query-7b11b74918e98b6b91749ba282268a7eae083443e3f4b8a922826b7da726f255.json
+│   │   ├── query-7b4880944fa59a005fa38b3bf541dd37fea87165bfcf86d6247c803570a33864.json
+│   │   ├── query-7d970554ae497c10211575644dbab57aa0fd3abfbd85c82fa8fbf1a002a6e220.json
+│   │   ├── query-7dbf37b91713dd6f096c442422ea81df620f6b294a6e468aac2f41097feab1bc.json
+│   │   ├── query-8140efa83b2505965576cac892ec6487422a81faf3b41f992882955c1664fa88.json
+│   │   ├── query-887ad203289a9815b2081544d6fb7b0c82c9bf486affe9158ba2a443df1ab9e8.json
+│   │   ├── query-898bb2d087add25d6c181482f9ccc7442cc5fe6a1dbcaf9bed89472acc976808.json
+│   │   ├── query-8afda25e573ff6d0c5e91c569349419019f4a0ad869c521d97ac12302035d88c.json
+│   │   ├── query-8e895d1cc03a95179ede3faab37f810232327f4b0a069fb5ed6d93da3310281f.json
+│   │   ├── query-8f117f8122686bf5ff7a9f1b532a6b0c6be4490d228c06d19ff1dd09f5363f1a.json
+│   │   ├── query-9474f819a84cbd594bb099ad735f4906555434fcdc06df56eaed98f6567667b6.json
+│   │   ├── query-9f216853eee2ad11dea025b3b4c32fd4889ff997ac56e48d2b0d3be26ae0d126.json
+│   │   ├── query-a89d0aeee677e7b9bc81580b5b2953892e9ad894b5619e94ab4972c495c22ed7.json
+│   │   ├── query-a9c4392fa64bf3f81f654c99caa524af66097cdd16502f582bc5341e9b90d11a.json
+│   │   ├── query-abb96fe5fd9d0860530fd5a740b80f4d9dd793a37e730287accbca8001bbe8ee.json
+│   │   ├── query-abe6c991cc2b6c0688c4f0b47660a5b8c63d7e9ae347814e8eba6af7fef307f9.json
+│   │   ├── query-b07409d023777a6b68b8c7551cf726ec0030555cf7e506ad67ab9b8b27ab8452.json
+│   │   ├── query-b0e1e399fac61ff97e90730cae93eb6eb528838618038a565d585c94b40ba0f0.json
+│   │   ├── query-b396496f4c2abd33c8f1a5c00c256011bab909ca19b48778b6921adbd018a3b0.json
+│   │   ├── query-bed32ccba1ae5422ef67c9b635429ab3f561ed7dd45a1f804e7479ad3ea72d89.json
+│   │   ├── query-c6cdbc5efb46c9a2b5c14db63bb7c4086d21ae20ac73638bd2787d34adc3d750.json
+│   │   ├── query-c9a4dc6984eef36fa69936e80235a8c9374ee1c1880349a253a043471b964da2.json
+│   │   ├── query-c9d90d0e7ae9ed8b7a2811c4fcfe304fa9eb5e898901e16dd312f08ed234681a.json
+│   │   ├── query-ccda82c8abc414e4de464ca11b4060878e8a088fac3395485420d9e1fa8e82ac.json
+│   │   ├── query-d2c18421b9afcf41b1d9514931b0d024f07f4b58d8bc177d5a8b58e2aa96135f.json
+│   │   ├── query-d6bde7bce0d8fa0eaf9708fa356ba1afacff0aaa7d5e74215757771674df290d.json
+│   │   ├── query-d6d8844892f1b568bbea629e59e47323e1eef8387e0193511e695ebc1a95a7bb.json
+│   │   ├── query-dee40ca7d9b192ea007ad7b97f023d7a51d0081b55fb4b5464949b8c7e87f458.json
+│   │   ├── query-e881ef1e06a3956b9e69be1e17773b3754e05ceee7dcc3fa628a3a662d0335ce.json
+│   │   ├── query-eeb771500badb4e97eb811503153ae4427d6570aff0fbb4f8f4a4c3d7e1cd7a7.json
+│   │   ├── query-f3eb31a860213723bddd7a653963e36d6a0526dba4a0420a4708b225cefbf2fb.json
+│   │   ├── query-f4b7dbf3fa89f381ce180715a73b205c59799c1bd9ef6e81d40b7a42d52914e6.json
+│   │   └── query-fd93de5546c8ded2268c28070589fe0056570eabdfaa8434a02d828042bd1ebe.json
+│   ├── src
+│   │   ├── distributions.rs
+│   │   ├── errors.rs
+│   │   ├── handlers
+│   │   │   ├── auth.rs
+│   │   │   ├── capital_growth.rs
+│   │   │   ├── capital.rs
+│   │   │   ├── companies.rs
+│   │   │   ├── credit.rs
+│   │   │   ├── dividends.rs
+│   │   │   ├── events.rs
+│   │   │   ├── expenses.rs
+│   │   │   ├── funds.rs
+│   │   │   ├── mod.rs
+│   │   │   ├── plans.rs
+│   │   │   ├── revenue.rs
+│   │   │   ├── staffing.rs
+│   │   │   └── valuation.rs
+│   │   ├── main.rs
+│   │   ├── middleware.rs
+│   │   ├── models.rs
+│   │   └── projection.rs
+│   └── tree.txt
+├── cleanup.sh
 ├── docker-compose.prod.yml
 ├── docker-compose.yml
 ├── .dockerignore
@@ -113,8 +238,10 @@
 │   ├── ARCHITECT_FE.md
 │   ├── ARCHITECTURAL_CONTEXT_CLI.md
 │   ├── ARCHITECTURAL_CONTEXT_PRODUCTION.md
+│   ├── Architectural_Reference_the_fortress_standard_260116.md
 │   ├── audit_baseline.md
 │   ├── audit_MVP_freeze_auth-check.md
+│   ├── AUDIT_REPORT_Jules_260116_Pre_Currency.md
 │   ├── autopsy_userlayer1.md
 │   ├── BACKEND_ANCHOR.md
 │   ├── Backend to Frontend handover packets.md
@@ -130,7 +257,8 @@
 │   ├── .obsidian
 │   │   ├── appearance.json
 │   │   ├── app.json
-│   │   └── core-plugins.json
+│   │   ├── core-plugins.json
+│   │   └── workspace.json
 │   ├── PRODUCTION_LEARNINGS_V1.md
 │   ├── Progess.md
 │   ├── ROADMAP.md
@@ -203,6 +331,7 @@
 │   ├── .gitignore
 │   ├── lib
 │   │   ├── api.ts
+│   │   ├── api.ts.bak
 │   │   └── presets.ts
 │   ├── .next
 │   │   ├── app-build-manifest.json
@@ -296,30 +425,11 @@
 │   │   ├── react-loadable-manifest.json
 │   │   ├── server
 │   │   │   ├── app
-│   │   │   │   ├── company
-│   │   │   │   │   └── [companyId]
-│   │   │   │   │       ├── page_client-reference-manifest.js
-│   │   │   │   │       └── page.js
-│   │   │   │   ├── fund
-│   │   │   │   │   └── [fundId]
-│   │   │   │   │       ├── page_client-reference-manifest.js
-│   │   │   │   │       └── page.js
-│   │   │   │   ├── help
-│   │   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   │   └── page.js
 │   │   │   │   ├── login
 │   │   │   │   │   ├── page_client-reference-manifest.js
 │   │   │   │   │   └── page.js
 │   │   │   │   ├── page_client-reference-manifest.js
 │   │   │   │   ├── page.js
-│   │   │   │   ├── plan
-│   │   │   │   │   └── [planId]
-│   │   │   │   │       ├── inputs
-│   │   │   │   │       │   ├── page_client-reference-manifest.js
-│   │   │   │   │       │   └── page.js
-│   │   │   │   │       └── results
-│   │   │   │   │           ├── page_client-reference-manifest.js
-│   │   │   │   │           └── page.js
 │   │   │   │   └── structure
 │   │   │   │       ├── page_client-reference-manifest.js
 │   │   │   │       └── page.js
@@ -337,7 +447,6 @@
 │   │   │   │   ├── asynckit.js
 │   │   │   │   ├── axios.js
 │   │   │   │   ├── call-bind-apply-helpers.js
-│   │   │   │   ├── chart.js.js
 │   │   │   │   ├── combined-stream.js
 │   │   │   │   ├── debug.js
 │   │   │   │   ├── delayed-stream.js
@@ -356,7 +465,6 @@
 │   │   │   │   ├── hasown.js
 │   │   │   │   ├── has-symbols.js
 │   │   │   │   ├── has-tostringtag.js
-│   │   │   │   ├── @kurkle.js
 │   │   │   │   ├── lucide-react.js
 │   │   │   │   ├── math-intrinsics.js
 │   │   │   │   ├── mime-db.js
@@ -364,31 +472,16 @@
 │   │   │   │   ├── ms.js
 │   │   │   │   ├── next.js
 │   │   │   │   ├── proxy-from-env.js
-│   │   │   │   ├── react-chartjs-2.js
 │   │   │   │   ├── supports-color.js
 │   │   │   │   └── @swc.js
 │   │   │   └── webpack-runtime.js
 │   │   ├── static
 │   │   │   ├── chunks
 │   │   │   │   ├── app
-│   │   │   │   │   ├── company
-│   │   │   │   │   │   └── [companyId]
-│   │   │   │   │   │       └── page.js
-│   │   │   │   │   ├── fund
-│   │   │   │   │   │   └── [fundId]
-│   │   │   │   │   │       └── page.js
-│   │   │   │   │   ├── help
-│   │   │   │   │   │   └── page.js
 │   │   │   │   │   ├── layout.js
 │   │   │   │   │   ├── login
 │   │   │   │   │   │   └── page.js
 │   │   │   │   │   ├── page.js
-│   │   │   │   │   ├── plan
-│   │   │   │   │   │   └── [planId]
-│   │   │   │   │   │       ├── inputs
-│   │   │   │   │   │       │   └── page.js
-│   │   │   │   │   │       └── results
-│   │   │   │   │   │           └── page.js
 │   │   │   │   │   └── structure
 │   │   │   │   │       └── page.js
 │   │   │   │   ├── app-pages-internals.js
@@ -410,121 +503,288 @@
 │   │   │   │   ├── df0a9ae256c0569c-s.woff2
 │   │   │   │   └── e4af272ccee01ff0-s.p.woff2
 │   │   │   └── webpack
-│   │   │       ├── 1932c07213f56657.webpack.hot-update.json
-│   │   │       ├── 33c62bc1982de5f9.webpack.hot-update.json
-│   │   │       ├── 36725c022a7cdc00.webpack.hot-update.json
-│   │   │       ├── 3f4f970d50eb27f7.webpack.hot-update.json
-│   │   │       ├── 43e8d80c7fbf1d4c.webpack.hot-update.json
-│   │   │       ├── 479db59b85249ed6.webpack.hot-update.json
-│   │   │       ├── 5adb87cd5f646b26.webpack.hot-update.json
+│   │   │       ├── 16bc2f16b8941f27.webpack.hot-update.json
 │   │   │       ├── 633457081244afec._.hot-update.json
-│   │   │       ├── 8d0fb777d59a1b54.webpack.hot-update.json
-│   │   │       ├── 94f854241b0d8b21.webpack.hot-update.json
-│   │   │       ├── 9c0ce344f1de589b.webpack.hot-update.json
-│   │   │       ├── a21a17ecdba3344b.webpack.hot-update.json
-│   │   │       ├── afcede650b5519d7.webpack.hot-update.json
 │   │   │       ├── app
-│   │   │       │   ├── company
-│   │   │       │   │   └── [companyId]
-│   │   │       │   │       ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   │       ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   │       ├── page.a21a17ecdba3344b.hot-update.js
-│   │   │       │   │       └── page.e26695942ed9a206.hot-update.js
-│   │   │       │   ├── fund
-│   │   │       │   │   └── [fundId]
-│   │   │       │   │       ├── page.1932c07213f56657.hot-update.js
-│   │   │       │   │       ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   │       ├── page.8d0fb777d59a1b54.hot-update.js
-│   │   │       │   │       ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   │       ├── page.e26695942ed9a206.hot-update.js
-│   │   │       │   │       └── page.edc06bc8b36d9868.hot-update.js
-│   │   │       │   ├── help
-│   │   │       │   │   ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   │   ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   │   └── page.e26695942ed9a206.hot-update.js
-│   │   │       │   ├── layout.1932c07213f56657.hot-update.js
-│   │   │       │   ├── layout.33c62bc1982de5f9.hot-update.js
-│   │   │       │   ├── layout.36725c022a7cdc00.hot-update.js
-│   │   │       │   ├── layout.3f4f970d50eb27f7.hot-update.js
-│   │   │       │   ├── layout.479db59b85249ed6.hot-update.js
-│   │   │       │   ├── layout.8d0fb777d59a1b54.hot-update.js
-│   │   │       │   ├── layout.9c0ce344f1de589b.hot-update.js
-│   │   │       │   ├── layout.a21a17ecdba3344b.hot-update.js
-│   │   │       │   ├── layout.da1a46afb3232777.hot-update.js
-│   │   │       │   ├── layout.e26695942ed9a206.hot-update.js
-│   │   │       │   ├── layout.edc06bc8b36d9868.hot-update.js
-│   │   │       │   ├── login
-│   │   │       │   │   ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   │   ├── page.479db59b85249ed6.hot-update.js
-│   │   │       │   │   ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   │   └── page.e26695942ed9a206.hot-update.js
-│   │   │       │   ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   ├── page.8d0fb777d59a1b54.hot-update.js
-│   │   │       │   ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   ├── page.e26695942ed9a206.hot-update.js
-│   │   │       │   ├── plan
-│   │   │       │   │   └── [planId]
-│   │   │       │   │       ├── inputs
-│   │   │       │   │       │   ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   │       │   ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   │       │   ├── page.da1a46afb3232777.hot-update.js
-│   │   │       │   │       │   └── page.e26695942ed9a206.hot-update.js
-│   │   │       │   │       └── results
-│   │   │       │   │           ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │   │           ├── page.3f4f970d50eb27f7.hot-update.js
-│   │   │       │   │           ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │   │           ├── page.da1a46afb3232777.hot-update.js
-│   │   │       │   │           └── page.e26695942ed9a206.hot-update.js
-│   │   │       │   └── structure
-│   │   │       │       ├── page.36725c022a7cdc00.hot-update.js
-│   │   │       │       ├── page.8d0fb777d59a1b54.hot-update.js
-│   │   │       │       ├── page.9c0ce344f1de589b.hot-update.js
-│   │   │       │       └── page.e26695942ed9a206.hot-update.js
-│   │   │       ├── b5f4ad588ec84415.webpack.hot-update.json
-│   │   │       ├── be3995ed29fa9e08.webpack.hot-update.json
-│   │   │       ├── da1a46afb3232777.webpack.hot-update.json
-│   │   │       ├── e02373c296097517.webpack.hot-update.json
-│   │   │       ├── e26695942ed9a206.webpack.hot-update.json
-│   │   │       ├── edc06bc8b36d9868.webpack.hot-update.json
-│   │   │       ├── webpack.1932c07213f56657.hot-update.js
-│   │   │       ├── webpack.33c62bc1982de5f9.hot-update.js
-│   │   │       ├── webpack.36725c022a7cdc00.hot-update.js
-│   │   │       ├── webpack.3f4f970d50eb27f7.hot-update.js
-│   │   │       ├── webpack.43e8d80c7fbf1d4c.hot-update.js
-│   │   │       ├── webpack.479db59b85249ed6.hot-update.js
-│   │   │       ├── webpack.5adb87cd5f646b26.hot-update.js
-│   │   │       ├── webpack.8d0fb777d59a1b54.hot-update.js
-│   │   │       ├── webpack.94f854241b0d8b21.hot-update.js
-│   │   │       ├── webpack.9c0ce344f1de589b.hot-update.js
-│   │   │       ├── webpack.a21a17ecdba3344b.hot-update.js
-│   │   │       ├── webpack.afcede650b5519d7.hot-update.js
-│   │   │       ├── webpack.b5f4ad588ec84415.hot-update.js
-│   │   │       ├── webpack.be3995ed29fa9e08.hot-update.js
-│   │   │       ├── webpack.da1a46afb3232777.hot-update.js
-│   │   │       ├── webpack.e02373c296097517.hot-update.js
-│   │   │       ├── webpack.e26695942ed9a206.hot-update.js
-│   │   │       └── webpack.edc06bc8b36d9868.hot-update.js
+│   │   │       │   └── layout.e737933f8c716795.hot-update.js
+│   │   │       ├── b2aee5a3654d595a.webpack.hot-update.json
+│   │   │       ├── e737933f8c716795.webpack.hot-update.json
+│   │   │       ├── webpack.16bc2f16b8941f27.hot-update.js
+│   │   │       ├── webpack.b2aee5a3654d595a.hot-update.js
+│   │   │       └── webpack.e737933f8c716795.hot-update.js
 │   │   ├── trace
 │   │   └── types
 │   │       ├── app
-│   │       │   ├── company
-│   │       │   │   └── [companyId]
-│   │       │   │       └── page.ts
-│   │       │   ├── fund
-│   │       │   │   └── [fundId]
-│   │       │   │       └── page.ts
-│   │       │   ├── help
-│   │       │   │   └── page.ts
 │   │       │   ├── layout.ts
 │   │       │   ├── login
 │   │       │   │   └── page.ts
 │   │       │   ├── page.ts
-│   │       │   ├── plan
-│   │       │   │   └── [planId]
-│   │       │   │       ├── inputs
-│   │       │   │       │   └── page.ts
-│   │       │   │       └── results
-│   │       │   │           └── page.ts
+│   │       │   └── structure
+│   │       │       └── page.ts
+│   │       └── package.json
+│   ├── next.config.js
+│   ├── next-env.d.ts
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── logo.png
+│   ├── tailwind.config.ts
+│   ├── tree.txt
+│   ├── tsconfig.json
+│   └── tsconfig.tsbuildinfo
+├── frontend_pre_currency_change
+│   ├── app
+│   │   ├── company
+│   │   │   └── [companyId]
+│   │   │       ├── ClientPage.tsx
+│   │   │       └── page.tsx
+│   │   ├── fund
+│   │   │   └── [fundId]
+│   │   │       ├── ClientPage.tsx
+│   │   │       └── page.tsx
+│   │   ├── globals.css
+│   │   ├── help
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── login
+│   │   │   └── page.tsx
+│   │   ├── page.tsx
+│   │   ├── plan
+│   │   │   └── [planId]
+│   │   │       ├── inputs
+│   │   │       │   ├── ClientPage.tsx
+│   │   │       │   └── page.tsx
+│   │   │       ├── page.tsx
+│   │   │       └── results
+│   │   │           ├── ClientPage.tsx
+│   │   │           └── page.tsx
+│   │   ├── register
+│   │   │   └── page.tsx
+│   │   └── structure
+│   │       └── page.tsx
+│   ├── components
+│   │   ├── CashFlowChart.tsx
+│   │   ├── forms
+│   │   │   ├── AuthForm.tsx
+│   │   │   ├── CapitalForm.tsx
+│   │   │   ├── CapitalGrowthForm.tsx
+│   │   │   ├── CapitalList.tsx
+│   │   │   ├── CompanyForm.tsx
+│   │   │   ├── CreditForm.tsx
+│   │   │   ├── DividendForm.tsx
+│   │   │   ├── ExpenseForm.tsx
+│   │   │   ├── FundForm.tsx
+│   │   │   ├── PlanForm.tsx
+│   │   │   ├── RevenueForm.tsx
+│   │   │   ├── shared
+│   │   │   │   └── VolatilityInputs.tsx
+│   │   │   ├── StaffingForm.tsx
+│   │   │   └── ValuationForm.tsx
+│   │   ├── Layout.tsx
+│   │   ├── Navbar.tsx
+│   │   └── ui
+│   │       ├── Button.tsx
+│   │       ├── Card.tsx
+│   │       ├── DeleteButton.tsx
+│   │       ├── InfoTag.tsx
+│   │       └── Tooltip.tsx
+│   ├── context
+│   │   └── AuthContext.tsx
+│   ├── Dockerfile
+│   ├── .env.local
+│   ├── frontend.log
+│   ├── .gitignore
+│   ├── lib
+│   │   ├── api.ts
+│   │   ├── api.ts.bak
+│   │   └── presets.ts
+│   ├── .next
+│   │   ├── app-build-manifest.json
+│   │   ├── build-manifest.json
+│   │   ├── cache
+│   │   │   ├── swc
+│   │   │   │   └── plugins
+│   │   │   │       └── v7_linux_x86_64_0.106.15
+│   │   │   ├── .tsbuildinfo
+│   │   │   └── webpack
+│   │   │       ├── client-development
+│   │   │       │   ├── 0.pack.gz
+│   │   │       │   ├── 10.pack.gz
+│   │   │       │   ├── 11.pack.gz
+│   │   │       │   ├── 12.pack.gz
+│   │   │       │   ├── 13.pack.gz
+│   │   │       │   ├── 14.pack.gz
+│   │   │       │   ├── 15.pack.gz
+│   │   │       │   ├── 16.pack.gz
+│   │   │       │   ├── 17.pack.gz
+│   │   │       │   ├── 18.pack.gz
+│   │   │       │   ├── 19.pack.gz
+│   │   │       │   ├── 1.pack.gz
+│   │   │       │   ├── 20.pack.gz
+│   │   │       │   ├── 21.pack.gz
+│   │   │       │   ├── 22.pack.gz
+│   │   │       │   ├── 23.pack.gz
+│   │   │       │   ├── 2.pack.gz
+│   │   │       │   ├── 3.pack.gz
+│   │   │       │   ├── 4.pack.gz
+│   │   │       │   ├── 5.pack.gz
+│   │   │       │   ├── 6.pack.gz
+│   │   │       │   ├── 7.pack.gz
+│   │   │       │   ├── 8.pack.gz
+│   │   │       │   ├── 9.pack.gz
+│   │   │       │   ├── index.pack.gz
+│   │   │       │   └── index.pack.gz.old
+│   │   │       ├── client-development-fallback
+│   │   │       │   ├── 0.pack.gz
+│   │   │       │   └── index.pack.gz.old
+│   │   │       ├── client-production
+│   │   │       │   ├── 0.pack
+│   │   │       │   ├── 10.pack
+│   │   │       │   ├── 11.pack
+│   │   │       │   ├── 12.pack
+│   │   │       │   ├── 1.pack
+│   │   │       │   ├── 2.pack
+│   │   │       │   ├── 3.pack
+│   │   │       │   ├── 4.pack
+│   │   │       │   ├── 5.pack
+│   │   │       │   ├── 6.pack
+│   │   │       │   ├── 7.pack
+│   │   │       │   ├── 8.pack
+│   │   │       │   ├── 9.pack
+│   │   │       │   ├── index.pack
+│   │   │       │   └── index.pack.old
+│   │   │       ├── edge-server-production
+│   │   │       │   ├── 0.pack
+│   │   │       │   └── index.pack
+│   │   │       ├── server-development
+│   │   │       │   ├── 0.pack.gz
+│   │   │       │   ├── 10.pack.gz
+│   │   │       │   ├── 11.pack.gz
+│   │   │       │   ├── 12.pack.gz
+│   │   │       │   ├── 13.pack.gz
+│   │   │       │   ├── 14.pack.gz
+│   │   │       │   ├── 15.pack.gz
+│   │   │       │   ├── 16.pack.gz
+│   │   │       │   ├── 17.pack.gz
+│   │   │       │   ├── 18.pack.gz
+│   │   │       │   ├── 1.pack.gz
+│   │   │       │   ├── 2.pack.gz
+│   │   │       │   ├── 3.pack.gz
+│   │   │       │   ├── 4.pack.gz
+│   │   │       │   ├── 5.pack.gz
+│   │   │       │   ├── 6.pack.gz
+│   │   │       │   ├── 7.pack.gz
+│   │   │       │   ├── 8.pack.gz
+│   │   │       │   ├── 9.pack.gz
+│   │   │       │   ├── index.pack.gz
+│   │   │       │   └── index.pack.gz.old
+│   │   │       └── server-production
+│   │   │           ├── 0.pack
+│   │   │           ├── 1.pack
+│   │   │           ├── 2.pack
+│   │   │           ├── 3.pack
+│   │   │           ├── 4.pack
+│   │   │           ├── index.pack
+│   │   │           └── index.pack.old
+│   │   ├── package.json
+│   │   ├── react-loadable-manifest.json
+│   │   ├── server
+│   │   │   ├── app
+│   │   │   │   ├── login
+│   │   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   │   └── page.js
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   ├── page.js
+│   │   │   │   └── structure
+│   │   │   │       ├── page_client-reference-manifest.js
+│   │   │   │       └── page.js
+│   │   │   ├── app-paths-manifest.json
+│   │   │   ├── interception-route-rewrite-manifest.js
+│   │   │   ├── middleware-build-manifest.js
+│   │   │   ├── middleware-manifest.json
+│   │   │   ├── middleware-react-loadable-manifest.js
+│   │   │   ├── next-font-manifest.js
+│   │   │   ├── next-font-manifest.json
+│   │   │   ├── pages-manifest.json
+│   │   │   ├── server-reference-manifest.js
+│   │   │   ├── server-reference-manifest.json
+│   │   │   ├── vendor-chunks
+│   │   │   │   ├── asynckit.js
+│   │   │   │   ├── axios.js
+│   │   │   │   ├── call-bind-apply-helpers.js
+│   │   │   │   ├── combined-stream.js
+│   │   │   │   ├── debug.js
+│   │   │   │   ├── delayed-stream.js
+│   │   │   │   ├── dunder-proto.js
+│   │   │   │   ├── es-define-property.js
+│   │   │   │   ├── es-errors.js
+│   │   │   │   ├── es-object-atoms.js
+│   │   │   │   ├── es-set-tostringtag.js
+│   │   │   │   ├── follow-redirects.js
+│   │   │   │   ├── form-data.js
+│   │   │   │   ├── function-bind.js
+│   │   │   │   ├── get-intrinsic.js
+│   │   │   │   ├── get-proto.js
+│   │   │   │   ├── gopd.js
+│   │   │   │   ├── has-flag.js
+│   │   │   │   ├── hasown.js
+│   │   │   │   ├── has-symbols.js
+│   │   │   │   ├── has-tostringtag.js
+│   │   │   │   ├── lucide-react.js
+│   │   │   │   ├── math-intrinsics.js
+│   │   │   │   ├── mime-db.js
+│   │   │   │   ├── mime-types.js
+│   │   │   │   ├── ms.js
+│   │   │   │   ├── next.js
+│   │   │   │   ├── proxy-from-env.js
+│   │   │   │   ├── supports-color.js
+│   │   │   │   └── @swc.js
+│   │   │   └── webpack-runtime.js
+│   │   ├── static
+│   │   │   ├── chunks
+│   │   │   │   ├── app
+│   │   │   │   │   ├── layout.js
+│   │   │   │   │   ├── login
+│   │   │   │   │   │   └── page.js
+│   │   │   │   │   ├── page.js
+│   │   │   │   │   └── structure
+│   │   │   │   │       └── page.js
+│   │   │   │   ├── app-pages-internals.js
+│   │   │   │   ├── main-app.js
+│   │   │   │   ├── polyfills.js
+│   │   │   │   └── webpack.js
+│   │   │   ├── css
+│   │   │   │   └── app
+│   │   │   │       └── layout.css
+│   │   │   ├── development
+│   │   │   │   ├── _buildManifest.js
+│   │   │   │   └── _ssgManifest.js
+│   │   │   ├── media
+│   │   │   │   ├── 19cfc7226ec3afaa-s.woff2
+│   │   │   │   ├── 21350d82a1f187e9-s.woff2
+│   │   │   │   ├── 8e9860b6e62d6359-s.woff2
+│   │   │   │   ├── ba9851c3c22cd980-s.woff2
+│   │   │   │   ├── c5fe6dc8356a8c31-s.woff2
+│   │   │   │   ├── df0a9ae256c0569c-s.woff2
+│   │   │   │   └── e4af272ccee01ff0-s.p.woff2
+│   │   │   └── webpack
+│   │   │       ├── 34bdcae95fde04bc.webpack.hot-update.json
+│   │   │       ├── 633457081244afec._.hot-update.json
+│   │   │       ├── app
+│   │   │       │   └── layout.ec921e4a4ed1ac54.hot-update.js
+│   │   │       ├── da8da93d78dfa740.webpack.hot-update.json
+│   │   │       ├── ec921e4a4ed1ac54.webpack.hot-update.json
+│   │   │       ├── webpack.34bdcae95fde04bc.hot-update.js
+│   │   │       ├── webpack.da8da93d78dfa740.hot-update.js
+│   │   │       └── webpack.ec921e4a4ed1ac54.hot-update.js
+│   │   ├── trace
+│   │   └── types
+│   │       ├── app
+│   │       │   ├── layout.ts
+│   │       │   ├── login
+│   │       │   │   └── page.ts
+│   │       │   ├── page.ts
 │   │       │   └── structure
 │   │       │       └── page.ts
 │   │       └── package.json
@@ -581,4 +841,4 @@
 │   └── verify_auth.sh
 └── tree.txt
 
-102 directories, 480 files
+122 directories, 720 files

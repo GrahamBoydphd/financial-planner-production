@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id as \"id!\", plan_id as \"plan_id!\", role_name as \"role_name!\", \n            annual_salary as \"annual_salary!\", start_month as \"start_month!\", \n            target_count as \"target_count!\", hiring_plan as \"hiring_plan!\", \n            hiring_rate, annual_increase_percent as \"annual_increase_percent!\", \n            created_at as \"created_at!\"\n        FROM staffing_roles \n        WHERE plan_id = $1 \n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ORDER BY start_month ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "role_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "annual_salary!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "target_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "hiring_plan!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "hiring_rate",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "annual_increase_percent!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "c89473e846f3eaad6bc0a9809fb32b8218428441259615f3386d72582089e6f3"
+}

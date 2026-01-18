@@ -10,9 +10,10 @@ interface Props {
   onSuccess: () => void;
   itemToEdit?: RevenueItem | null;
   onCancel?: () => void;
+  currencySymbol?: string;
 }
 
-export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
+export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
   const [name, setName] = useState('');
   const [source, setSource] = useState('sales');
   const [amount, setAmount] = useState('');
@@ -40,7 +41,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
   // --- EFFECT: POPULATE FORM ON EDIT ---
   useEffect(() => {
     if (itemToEdit) {
-      setName(itemToEdit.name);
+      setName(itemToEdit.revenue_name);
       setSource(itemToEdit.source);
       setAmount(itemToEdit.initial_amount.toString());
       setGrowth(itemToEdit.growth_rate_percent.toString());
@@ -99,7 +100,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
     try {
         const payload = {
             plan_id: planId,
-            name,
+            revenue_name: name,
             source: source.toLowerCase(),
             initial_amount: String(amount),
             growth_rate_percent: String(growth),
@@ -169,7 +170,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel }:
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1">
-            Initial Amount ($) *
+            Initial Amount ({currencySymbol}) *
             <Tooltip content="Initial amount of revenue in Starting Month" />
           </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />

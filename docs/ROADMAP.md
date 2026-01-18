@@ -1,4 +1,4 @@
-# ROADMAP: The Master Vision (Stages 1-6)
+# ROADMAP: The Master Vision (Stages 1-7)
 
 **Mission:** To build an enterprise-grade financial simulation engine that reveals the *non-ergodic* truth of startup growth for two distinct audiences: **Founders (Micro)** and **Investors (Macro)**.
 

@@ -17,10 +17,13 @@ apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
+      console.log('DEBUG: Outgoing Token:', token);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    // Debugging headers
+    console.log('Request Headers:', config.headers);
     return config;
   },
   (error) => Promise.reject(error)
@@ -40,7 +43,7 @@ apiClient.interceptors.response.use(
         // Token expired or invalid
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
-          // Optional: Redirect to login if not already there
+          // Prevent redirect loops by not forcing reload/redirect here
           // window.location.href = '/login'; 
         }
       }
@@ -52,18 +55,23 @@ apiClient.interceptors.response.use(
 // --- INTERFACES ---
 export interface AuthResponse {
   token: string;
+  user_id: string;
+  username: string;
+  tenant_id: string;
 }
 
 export interface Fund {
   id: string;
-  name: string;
+  fund_name: string;
+  currency_code?: string;
   created_at: string;
 }
 
 export interface Company {
   id: string;
   fund_id: string;
-  name: string;
+  company_name: string;
+  currency_code: string;
   industry?: string;
   business_model?: string;
   created_at: string;
@@ -72,14 +80,15 @@ export interface Company {
 export interface FinancialPlan {
   id: string;
   company_id: string;
-  name: string;
+  plan_name: string;
+  currency_code: string;
   start_month: string;
   initial_cash: string;
   pooling_fraction: string;
 }
 
 export interface UpdatePlanRequest {
-  name?: string;
+  plan_name?: string;
   start_month?: string;
   initial_cash?: string;
   pooling_fraction?: string;
@@ -88,7 +97,7 @@ export interface UpdatePlanRequest {
 export interface RevenueItem {
   id: string;
   plan_id: string;
-  name: string;
+  revenue_name: string;
   source: string;
   initial_amount: string;
   growth_rate_percent: string;
@@ -110,7 +119,7 @@ export interface RevenueItem {
 export interface ExpenseItem {
   id: string;
   plan_id: string;
-  name: string;
+  expense_name: string;
   category: string;
   initial_amount: string;
   growth_rate_percent: string;
@@ -147,7 +156,7 @@ export interface CapitalGrowthPolicy {
 export interface CapitalInjection {
   id: string;
   plan_id: string;
-  name: string;
+  injection_name: string;
   amount: string; // Strict Type: String for Decimal precision
   month: number;
 }
@@ -189,6 +198,12 @@ export interface StaffingRole {
   annual_increase_percent: string;
 }
 
+export interface EventShock {
+  id: string;
+  shock_name: string;
+  shock_month: number;
+}
+
 export interface MonthlyData {
   month_index: number;
   date: string;
@@ -205,7 +220,7 @@ export interface MonthlyData {
   cumulative_pool_received: string; 
   current_debt: string;
   total_value: string;
-  is_insolvent: boolean;
+  is_solvent: boolean;
 }
 
 export interface SimulationResult {
@@ -224,6 +239,8 @@ export interface SimulationResult {
   p100_value?: string[];
 
   p50_pool_cumulative?: string[]; 
+  p50_data: MonthlyData[];
+  survival_rate: number[];
 
   deterministic_runway?: number;
   deterministic_valuation: string;
@@ -245,14 +262,16 @@ export const api = {
   
   register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
     const payload = { username, email, password, full_name, company_name };
-    return (await apiClient.post<AuthResponse>('/api/auth/register', payload)).data;
+    // Backend V2 returns 201 Created with no body (or ignored body).
+    // We do not expect AuthResponse here anymore.
+    await apiClient.post('/api/auth/register', payload);
   },
 
   // FUNDS
   getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
   getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
-  createFund: async (name: string) => 
-    (await apiClient.post<Fund>('/api/funds', { name })).data,
+  createFund: async (fund_name: string, currency_code: string) => 
+    (await apiClient.post<Fund>('/api/funds', { fund_name, currency_code })).data,
   deleteFund: async (id: string) => {
     await apiClient.delete(`/api/funds/${id}`);
   },
@@ -260,8 +279,8 @@ export const api = {
   // COMPANIES
   getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
   getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
-  createCompany: async (name: string, fund_id: string, industry?: string, business_model?: string, technology?: string) => 
-    (await apiClient.post<Company>('/api/companies', { name, fund_id, industry, business_model, technology })).data,
+  createCompany: async (company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.post<Company>('/api/companies', { company_name, fund_id, currency_code, industry, business_model, technology })).data,
   deleteCompany: async (id: string) => {
     await apiClient.delete(`/api/companies/${id}`);
   },  
@@ -269,9 +288,11 @@ export const api = {
   // PLANS
   getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
   getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
-  // STRICT PAYLOAD: { company_id, name, start_month }
-  createPlan: async (company_id: string, name: string, start_month: string) => 
-    (await apiClient.post<FinancialPlan>('/api/plans', { company_id, name, start_month })).data,
+  // STRICT PAYLOAD: { company_id, plan_name, start_month, currency_code }
+  createPlan: async (company_id: string, plan_name: string, start_month: string, currency_code: string) => {
+    console.log("DEBUG: Payload:", { company_id, plan_name, start_month, currency_code });
+    return (await apiClient.post<FinancialPlan>('/api/plans', { company_id, plan_name, start_month, currency_code })).data;
+  },
   updatePlan: async (id: string, updates: UpdatePlanRequest) => 
     (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
   getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 
@@ -309,14 +330,44 @@ export const api = {
     (await apiClient.delete(`/api/capital/${id}`)),
 
   // DIVIDENDS
-  getDividends: async (planId: string) => 
-    (await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`)).data,
+  getDividends: async (planId: string): Promise<DividendPolicy> => {
+    try {
+      const response = await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return {
+          id: '',
+          plan_id: planId,
+          is_enabled: false,
+          safety_threshold: '0',
+          payout_ratio: '0',
+        };
+      }
+      throw error;
+    }
+  },
   upsertDividends: async (item: Omit<DividendPolicy, 'id'>) => 
     (await apiClient.post<DividendPolicy>('/api/dividends', item)).data,
 
   // CREDIT
-  getCredit: async (planId: string) => 
-    (await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`)).data,
+  getCredit: async (planId: string): Promise<CreditFacility> => {
+    try {
+      const response = await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return {
+          id: '',
+          plan_id: planId,
+          facility_limit: '0',
+          interest_rate: '0',
+          is_annual_rate: true,
+        };
+      }
+      throw error;
+    }
+  },
   upsertCredit: async (item: Omit<CreditFacility, 'id'>) => 
     (await apiClient.post<CreditFacility>('/api/credit', item)).data,
 

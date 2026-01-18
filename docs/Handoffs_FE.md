@@ -1,6 +1,35 @@
 Note that the dates below are in YYMMDD format and in reverse order, latest first. Alert me to any case of conflict; most likely the version coming first in this list, i.e., the most recent date, is the current version. 
 
 
+**Backend requirement: V3 Architecture Update - Standardizing Scoped Identifiers**
+
+Context: As we move to the V3 Portfolio view (Funds > Companies > Plans), generic field names like name are causing ambiguity in our data structures. To ensure type safety and prevent collisions in flat-data visualizations, we are standardizing on Scoped Identifiers.
+
+The Change:
+
+We are deprecating the generic name field in favor of entity-specific naming.
+
+| **Entity**            | **Old Field**    | **New Field**    |
+| --------------------- | ---------------- | ---------------- |
+| **Fund**              | `name`           | `fund_name`      |
+| **Company**           | `name`           | `company_name`   |
+| **Financial Plan**    | `name`           | `plan_name`      |
+| **Revenue Item**      | `name`           | `revenue_name`   |
+| **Expense Item**      | `name`           | `expense_name`   |
+| **Capital Injection** | `name`           | `injection_name` |
+| _Staffing Role_       | `role_name`      | `role_name`      |
+| _Valuation_           | `valuation_name` | `valuation_name` |
+| _Event Shock_         | `event_name`     | `event_name`     |
+
+**Impact on Frontend:**
+
+1. **Forms**: Inputs previously mapped to `name` must be re-bound to the new scoped keys (e.g., `revenue_name`).
+    
+2. **Tables**: Column definitions for "Name" need to point to the specific field for that entity type.
+    
+3. **Types**: TypeScript interfaces must be updated to match the new JSON contracts.
+
+
 ## 🔎 V3_ Final Audit Checklist for the Strategist
 
 | **Component**         | **Final Standard**                                     | **Status** |

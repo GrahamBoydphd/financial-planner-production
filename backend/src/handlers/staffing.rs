@@ -40,11 +40,23 @@ pub async fn get_staffing_roles(
 ) -> Result<Json<Vec<StaffingRole>>, AppError> {
     let roles = sqlx::query_as!(
         StaffingRole,
-        "SELECT id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at 
-         FROM staffing_roles 
-         WHERE plan_id = $1 
-         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-         ORDER BY start_month ASC",
+        r#"
+        SELECT 
+            id as "id!", 
+            plan_id as "plan_id!", 
+            role_name as "role_name!", 
+            annual_salary as "annual_salary!", 
+            start_month as "start_month!", 
+            target_count as "target_count!", 
+            hiring_plan as "hiring_plan!", 
+            hiring_rate, 
+            annual_increase_percent as "annual_increase_percent!", 
+            created_at as "created_at!"
+        FROM staffing_roles 
+        WHERE plan_id = $1 
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
+        ORDER BY start_month ASC
+        "#,
         plan_id,
         claims.tenant_id
     )
@@ -59,6 +71,14 @@ pub async fn create_staffing_role(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateStaffingRoleRequest>,
 ) -> Result<Json<StaffingRole>, AppError> {
+    // Length Validation
+    if payload.role_name.len() > 255 {
+        return Err(AppError::ValidationError("Role name exceeds 255 characters".to_string()));
+    }
+    if payload.hiring_plan.len() > 255 {
+        return Err(AppError::ValidationError("Hiring plan exceeds 255 characters".to_string()));
+    }
+
     // Parse Decimals
     let annual_salary = Decimal::from_str(&payload.annual_salary)
         .map_err(|_| AppError::ValidationError("Invalid format for annual_salary".to_string()))?;
@@ -89,9 +109,21 @@ pub async fn create_staffing_role(
 
     let role = sqlx::query_as!(
         StaffingRole,
-        "INSERT INTO staffing_roles (plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at",
+        r#"
+        INSERT INTO staffing_roles (plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        RETURNING 
+            id as "id!", 
+            plan_id as "plan_id!", 
+            role_name as "role_name!", 
+            annual_salary as "annual_salary!", 
+            start_month as "start_month!", 
+            target_count as "target_count!", 
+            hiring_plan as "hiring_plan!", 
+            hiring_rate, 
+            annual_increase_percent as "annual_increase_percent!", 
+            created_at as "created_at!"
+        "#,
         payload.plan_id,
         payload.role_name,
         annual_salary,
@@ -113,6 +145,18 @@ pub async fn update_staffing_role(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateStaffingRoleRequest>,
 ) -> Result<Json<StaffingRole>, AppError> {
+    // Length Validation
+    if let Some(ref name) = payload.role_name {
+        if name.len() > 255 {
+            return Err(AppError::ValidationError("Role name exceeds 255 characters".to_string()));
+        }
+    }
+    if let Some(ref plan) = payload.hiring_plan {
+        if plan.len() > 255 {
+            return Err(AppError::ValidationError("Hiring plan exceeds 255 characters".to_string()));
+        }
+    }
+
     // Parse Decimals
     let annual_salary = match &payload.annual_salary {
         Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for annual_salary".to_string()))?),
@@ -136,7 +180,8 @@ pub async fn update_staffing_role(
 
     let role = sqlx::query_as!(
         StaffingRole,
-        "UPDATE staffing_roles SET
+        r#"
+        UPDATE staffing_roles SET
             role_name = COALESCE($1, role_name),
             annual_salary = COALESCE($2, annual_salary),
             start_month = COALESCE($3, start_month),
@@ -144,9 +189,20 @@ pub async fn update_staffing_role(
             hiring_plan = COALESCE($5, hiring_plan),
             hiring_rate = COALESCE($6, hiring_rate),
             annual_increase_percent = COALESCE($7, annual_increase_percent)
-         WHERE id = $8
-         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)
-         RETURNING id, plan_id, role_name, annual_salary, start_month, target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at",
+        WHERE id = $8
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)
+        RETURNING 
+            id as "id!", 
+            plan_id as "plan_id!", 
+            role_name as "role_name!", 
+            annual_salary as "annual_salary!", 
+            start_month as "start_month!", 
+            target_count as "target_count!", 
+            hiring_plan as "hiring_plan!", 
+            hiring_rate, 
+            annual_increase_percent as "annual_increase_percent!", 
+            created_at as "created_at!"
+        "#,
         payload.role_name,
         annual_salary,
         payload.start_month,

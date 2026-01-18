@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at \n        FROM credit_facilities \n        WHERE plan_id = $1\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "facility_limit",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "interest_rate",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_annual_rate",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "21fe97c0f75b080d627cc5a7d1138793f6e87e1baf2141cf897626a749e0d90d"
+}

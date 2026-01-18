@@ -10,9 +10,10 @@ interface Props {
   onSuccess: () => void;
   itemToEdit?: ExpenseItem | null;
   onCancel?: () => void;
+  currencySymbol?: string;
 }
 
-export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }: Props) {
+export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('opex');
   const [amount, setAmount] = useState('');
@@ -40,7 +41,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
   // --- POPULATE ON EDIT ---
   useEffect(() => {
     if (itemToEdit) {
-      setName(itemToEdit.name);
+      setName(itemToEdit.expense_name);
       setCategory(itemToEdit.category);
       setAmount(itemToEdit.initial_amount.toString());
       setGrowth(itemToEdit.growth_rate_percent.toString());
@@ -97,7 +98,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
     try {
         const payload = {
             plan_id: planId,
-            name,
+            expense_name: name,
             category,
             initial_amount: String(amount),
             growth_rate_percent: String(growth),
@@ -167,7 +168,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel }:
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1">
-            Initial Amount ($) *
+            Initial Amount ({currencySymbol}) *
             <Tooltip content="Initial amount of expense in Starting Month" />
           </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />

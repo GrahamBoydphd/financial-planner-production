@@ -25,6 +25,7 @@ const TECH_OPTIONS = [
 export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () => void, funds?: Fund[] }) {
   const [name, setName] = useState('');
   const [selectedFund, setSelectedFund] = useState('');
+  const [currency, setCurrency] = useState('USD');
 
   // IMT State
   const [industry, setIndustry] = useState('');
@@ -47,8 +48,11 @@ export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () 
 
     try {
       // No user_id passed here, relying on Auth header
-      await api.createCompany(name, selectedFund, finalIndustry, finalModel, finalTech);
+      // FIXED: Argument order updated to match api.ts: (name, fund_id, currency, industry, model, tech)
+      await api.createCompany(name, selectedFund, currency, finalIndustry, finalModel, finalTech);
+      
       setName('');
+      setCurrency('USD');
       setIndustry(''); setCustomIndustry('');
       setModel(''); setCustomModel('');
       setTech(''); setCustomTech('');
@@ -90,6 +94,20 @@ export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () 
           placeholder="e.g. GreenFuture Ltd"
           required
         />
+      </div>
+
+      {/* Currency */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Currency</label>
+        <select
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+        </select>
       </div>
 
       {/* Industry */}

@@ -1,5 +1,4 @@
 use axum::{extract::State, Json};
-use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use argon2::{
@@ -9,35 +8,11 @@ use argon2::{
 use jsonwebtoken::{encode, EncodingKey, Header};
 use std::env;
 use crate::errors::AppError;
-use crate::models::Claims;
-
-// --- DTOs ---
-
-#[derive(Deserialize)]
-pub struct RegisterRequest {
-    pub username: String,
-    pub password: String,
-    pub email: String,
-    pub full_name: String,
-}
-
-#[derive(Deserialize)]
-pub struct LoginRequest {
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Serialize)]
-pub struct AuthResponse {
-    pub token: String,
-    pub username: String,
-    pub tenant_id: Uuid,
-}
+use crate::models::{Claims, RegisterRequest, LoginRequest, AuthResponse};
 
 // Internal struct for query mapping
 #[derive(sqlx::FromRow)]
 struct UserAuthData {
-    #[allow(dead_code)]
     id: Uuid,
     password_hash: String,
     tenant_id: Uuid,
@@ -87,10 +62,11 @@ pub async fn register(
     tx.commit().await.map_err(|e| AppError::InternalServerError(e.to_string()))?;
 
     // 6. Generate JWT
-    let token = create_jwt(&payload.username, tenant_id)?;
+    let token = create_jwt(&payload.username, user_id, tenant_id)?;
 
     Ok(Json(AuthResponse {
         token,
+        user_id,
         username: payload.username,
         tenant_id,
     }))
@@ -123,10 +99,11 @@ pub async fn login(
         .map_err(|_| AppError::AuthError("Invalid credentials".to_string()))?;
 
     // 3. Generate JWT
-    let token = create_jwt(&payload.username, user.tenant_id)?;
+    let token = create_jwt(&payload.username, user.id, user.tenant_id)?;
 
     Ok(Json(AuthResponse {
         token,
+        user_id: user.id,
         username: payload.username,
         tenant_id: user.tenant_id,
     }))
@@ -134,7 +111,7 @@ pub async fn login(
 
 // --- Helpers ---
 
-fn create_jwt(username: &str, tenant_id: Uuid) -> Result<String, AppError> {
+fn create_jwt(username: &str, user_id: Uuid, tenant_id: Uuid) -> Result<String, AppError> {
     let expiration = chrono::Utc::now()
         .checked_add_signed(chrono::Duration::hours(24))
         .expect("valid timestamp")
@@ -142,6 +119,7 @@ fn create_jwt(username: &str, tenant_id: Uuid) -> Result<String, AppError> {
 
     let claims = Claims {
         sub: username.to_owned(),
+        user_id,
         tenant_id,
         exp: expiration,
     };

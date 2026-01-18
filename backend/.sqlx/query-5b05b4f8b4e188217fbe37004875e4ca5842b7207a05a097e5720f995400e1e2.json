@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO funds (user_id, fund_name, currency_code, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "fund_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bpchar",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5b05b4f8b4e188217fbe37004875e4ca5842b7207a05a097e5720f995400e1e2"
+}

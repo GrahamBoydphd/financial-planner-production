@@ -6,6 +6,7 @@ import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
   planId: string;
+  currencySymbol?: string;
 }
 
 interface FormErrors {
@@ -19,7 +20,7 @@ interface SavedConfig {
   isAnnual: boolean;
 }
 
-export default function CreditForm({ planId }: Props) {
+export default function CreditForm({ planId, currencySymbol = '$' }: Props) {
   const [limit, setLimit] = useState('');
   const [rate, setRate] = useState('');
   const [isAnnual, setIsAnnual] = useState(true);
@@ -38,7 +39,17 @@ export default function CreditForm({ planId }: Props) {
         setRate(r);
         setIsAnnual(ann);
         setSavedConfig({ limit: l, rate: r, isAnnual: ann });
-    }).catch(() => {});
+    }).catch((error) => {
+        if (!active) return;
+        if (error.response && error.response.status === 404) {
+            setLimit('');
+            setRate('');
+            setIsAnnual(true);
+            setSavedConfig(null);
+        } else {
+            console.error(error);
+        }
+    });
     return () => { active = false; };
   }, [planId]);
 
@@ -76,7 +87,7 @@ export default function CreditForm({ planId }: Props) {
         <div className="grid grid-cols-2 gap-4">
             <div>
                 <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                    Max Limit ($) <span className="text-red-500">*</span>
+                    Max Limit ({currencySymbol}) <span className="text-red-500">*</span>
                     <Tooltip content="Maximum credit facility limit." />
                 </label>
                 <input 
@@ -130,7 +141,7 @@ export default function CreditForm({ planId }: Props) {
             <div className="bg-white p-3 rounded border border-indigo-100 shadow-sm text-xs mt-2">
                 <h4 className="font-semibold text-indigo-900 mb-1">Active Facility Settings</h4>
                 <div className="flex justify-between text-gray-600">
-                    <span>Limit: <span className="font-mono text-gray-900 font-bold">${Number(savedConfig.limit).toLocaleString()}</span></span>
+                    <span>Limit: <span className="font-mono text-gray-900 font-bold">{currencySymbol}{Number(savedConfig.limit).toLocaleString()}</span></span>
                     <span>Rate: <span className="font-mono text-gray-900 font-bold">{savedConfig.rate}%</span> {savedConfig.isAnnual ? '(APR)' : '(Monthly)'}</span>
                 </div>
             </div>

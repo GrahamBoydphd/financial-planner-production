@@ -82,7 +82,7 @@ export default function StructurePage() {
                     <Link href={`/fund/${f.id}`} key={f.id} className="block group hover:bg-gray-50 rounded p-2 -mx-2 transition-colors">
                         <div className="flex justify-between items-center">
                             <div>
-                                <span className="font-medium text-gray-900 group-hover:text-blue-600">{f.name}</span>
+                                <span className="font-medium text-gray-900 group-hover:text-blue-600">{f.fund_name}</span>
                                 <span className="text-xs text-gray-400 font-mono ml-2">{f.id.slice(0,8)}...</span>
                             </div>
                             <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
@@ -130,7 +130,8 @@ export default function StructurePage() {
                     <Link href={`/company/${c.id}`} key={c.id} className="block group hover:bg-gray-50 rounded p-2 -mx-2 transition-colors">
                         <div className="flex justify-between items-center">
                             <div>
-                                <span className="font-medium text-gray-900 group-hover:text-blue-600">{c.name}</span>
+                                <span className="font-medium text-gray-900 group-hover:text-blue-600">{c.company_name}</span>
+                                <span className="text-gray-400 text-sm ml-2">[{c.currency_code}]</span>
                                 <span className="text-xs text-gray-400 font-mono ml-2">{c.id.slice(0,8)}...</span>
                             </div>
                             <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">

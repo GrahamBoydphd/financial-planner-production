@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 export interface User {
+  id: string;
+  user_id: string;
   username: string;
   full_name: string;
+  tenant_id: string;
 }
 
 export interface LoginPayload {
@@ -62,17 +65,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (payload: LoginPayload) => {
     try {
       const response = await api.login(payload.username, payload.password);
-      const newToken = response.token;
       
-      // Use full_name from response if available, otherwise fallback to username
-      // Casting to any to avoid TS errors if api types aren't updated yet
-      const fullName = (response as any).full_name || payload.username;
-      const userObj: User = { username: payload.username, full_name: fullName };
+      // Debug login response
+      console.log('DEBUG: Login Response:', response);
+      
+      // Destructure fields from response
+      // Casting to any to handle dynamic API response fields
+      const { token, user_id, username, tenant_id, full_name } = response as any;
+      
+      // Use full_name from response if available, otherwise fallback to payload username
+      const fullName = full_name || payload.username;
+      const validUsername = username || payload.username;
+      
+      // Ensure user_id is mapped to User.id
+      const userObj: User = { 
+        id: user_id,
+        user_id: user_id,
+        username: validUsername, 
+        full_name: fullName,
+        tenant_id: tenant_id
+      };
 
-      localStorage.setItem('token', newToken);
+      // Store ALL fields in localStorage
+      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userObj));
       
-      setToken(newToken);
+      if (user_id) localStorage.setItem('user_id', user_id);
+      if (tenant_id) localStorage.setItem('tenant_id', tenant_id);
+      if (validUsername) localStorage.setItem('username', validUsername);
+      
+      setToken(token);
       setUser(userObj);
       
       router.push('/'); // Redirect to dashboard
@@ -84,20 +106,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (payload: RegisterPayload) => {
     try {
-      const response = await api.register(payload.username, payload.email, payload.password, payload.full_name, payload.company_name);
-      const newToken = response.token;
+      // 1. Call register API
+      await api.register(
+        payload.username, 
+        payload.email, 
+        payload.password, 
+        payload.full_name, 
+        payload.company_name
+      );
       
-      // Use full_name from response if available, otherwise fallback to username
-      const fullName = (response as any).full_name || payload.username;
-      const userObj: User = { username: payload.username, full_name: fullName };
-
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userObj));
-      
-      setToken(newToken);
-      setUser(userObj);
-      
-      router.push('/'); // Redirect to dashboard
+      // 2. Immediately login to establish session
+      await login({ 
+        username: payload.username, 
+        password: payload.password 
+      });
     } catch (error) {
       console.error("Registration failed", error);
       throw error;
@@ -107,6 +129,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('tenant_id');
+    localStorage.removeItem('username');
     setToken(null);
     setUser(null);
     router.push('/login');

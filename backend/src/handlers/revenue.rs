@@ -15,7 +15,7 @@ use std::str::FromStr;
 #[derive(Deserialize)]
 pub struct CreateRevenueRequest {
     pub plan_id: Uuid,
-    pub name: String,
+    pub revenue_name: String,
     pub source: String,
     pub start_month: i32,
     pub end_month: Option<i32>,
@@ -36,7 +36,7 @@ pub struct CreateRevenueRequest {
 
 #[derive(Deserialize)]
 pub struct UpdateRevenueRequest {
-    pub name: String,
+    pub revenue_name: String,
     pub source: String,
     pub start_month: i32,
     pub end_month: Option<i32>,
@@ -60,6 +60,14 @@ pub async fn create_revenue_item(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateRevenueRequest>,
 ) -> Result<Json<RevenueItem>, AppError> {
+    // Length Validation
+    if payload.revenue_name.len() > 255 {
+        return Err(AppError::ValidationError("Name exceeds 255 characters".to_string()));
+    }
+    if payload.source.len() > 255 {
+        return Err(AppError::ValidationError("Source exceeds 255 characters".to_string()));
+    }
+
     // Parse Decimals from Strings
     let initial_amount = Decimal::from_str(&payload.initial_amount)
         .map_err(|_| AppError::ValidationError("Invalid format for initial_amount".to_string()))?;
@@ -149,13 +157,19 @@ pub async fn create_revenue_item(
         RevenueItem,
         r#"
         INSERT INTO revenue_items (
-            plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent,
+            plan_id, revenue_name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent,
             volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-        RETURNING id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at
+        RETURNING 
+            id as "id!", plan_id as "plan_id!", revenue_name as "revenue_name!", source as "source!", 
+            start_month as "start_month!", end_month, 
+            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
+            frequency as "frequency!", cost_of_revenue_percent, 
+            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            created_at as "created_at!"
         "#,
-        payload.plan_id, payload.name, payload.source, payload.start_month, payload.end_month, 
+        payload.plan_id, payload.revenue_name, payload.source, payload.start_month, payload.end_month, 
         initial_amount, growth_rate_percent, payload.frequency, cost_of_revenue_percent,
         payload.volatility_type, vol_min, vol_max, payload.vol_intervals,
         vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta
@@ -175,7 +189,14 @@ pub async fn get_revenue_items(
     let items = sqlx::query_as!(
         RevenueItem,
         r#"
-        SELECT id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at FROM revenue_items 
+        SELECT 
+            id as "id!", plan_id as "plan_id!", revenue_name as "revenue_name!", source as "source!", 
+            start_month as "start_month!", end_month, 
+            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
+            frequency as "frequency!", cost_of_revenue_percent, 
+            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            created_at as "created_at!"
+        FROM revenue_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
         ORDER BY start_month ASC
@@ -195,6 +216,14 @@ pub async fn update_revenue_item(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateRevenueRequest>,
 ) -> Result<Json<RevenueItem>, AppError> {
+    // Length Validation
+    if payload.revenue_name.len() > 255 {
+        return Err(AppError::ValidationError("Name exceeds 255 characters".to_string()));
+    }
+    if payload.source.len() > 255 {
+        return Err(AppError::ValidationError("Source exceeds 255 characters".to_string()));
+    }
+
     // Parse Decimals from Strings
     let initial_amount = Decimal::from_str(&payload.initial_amount)
         .map_err(|_| AppError::ValidationError("Invalid format for initial_amount".to_string()))?;
@@ -271,15 +300,21 @@ pub async fn update_revenue_item(
         RevenueItem,
         r#"
         UPDATE revenue_items SET
-            name = $1, source = $2, start_month = $3, end_month = $4,
+            revenue_name = $1, source = $2, start_month = $3, end_month = $4,
             initial_amount = $5, growth_rate_percent = $6, frequency = $7, cost_of_revenue_percent = $8,
             volatility_type = $9, vol_min = $10, vol_max = $11, vol_intervals = $12,
             vol_mean = $13, vol_scale = $14, vol_freedom = $15, vol_alpha = $16, vol_beta = $17
         WHERE id = $18
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $19)
-        RETURNING id, plan_id, name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, created_at
+        RETURNING 
+            id as "id!", plan_id as "plan_id!", revenue_name as "revenue_name!", source as "source!", 
+            start_month as "start_month!", end_month, 
+            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
+            frequency as "frequency!", cost_of_revenue_percent, 
+            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            created_at as "created_at!"
         "#,
-        payload.name, payload.source, payload.start_month, payload.end_month, 
+        payload.revenue_name, payload.source, payload.start_month, payload.end_month, 
         initial_amount, growth_rate_percent, payload.frequency, cost_of_revenue_percent,
         payload.volatility_type, vol_min, vol_max, payload.vol_intervals,
         vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,

@@ -1,0 +1,322 @@
+.
+├── app
+│   ├── company
+│   │   └── [companyId]
+│   │       ├── ClientPage.tsx
+│   │       └── page.tsx
+│   ├── fund
+│   │   └── [fundId]
+│   │       ├── ClientPage.tsx
+│   │       └── page.tsx
+│   ├── globals.css
+│   ├── help
+│   │   └── page.tsx
+│   ├── layout.tsx
+│   ├── login
+│   │   └── page.tsx
+│   ├── page.tsx
+│   ├── plan
+│   │   └── [planId]
+│   │       ├── inputs
+│   │       │   ├── ClientPage.tsx
+│   │       │   └── page.tsx
+│   │       ├── page.tsx
+│   │       └── results
+│   │           ├── ClientPage.tsx
+│   │           └── page.tsx
+│   ├── register
+│   │   └── page.tsx
+│   └── structure
+│       └── page.tsx
+├── components
+│   ├── CashFlowChart.tsx
+│   ├── forms
+│   │   ├── AuthForm.tsx
+│   │   ├── CapitalForm.tsx
+│   │   ├── CapitalGrowthForm.tsx
+│   │   ├── CapitalList.tsx
+│   │   ├── CompanyForm.tsx
+│   │   ├── CreditForm.tsx
+│   │   ├── DividendForm.tsx
+│   │   ├── ExpenseForm.tsx
+│   │   ├── FundForm.tsx
+│   │   ├── PlanForm.tsx
+│   │   ├── RevenueForm.tsx
+│   │   ├── shared
+│   │   │   └── VolatilityInputs.tsx
+│   │   ├── StaffingForm.tsx
+│   │   └── ValuationForm.tsx
+│   ├── Layout.tsx
+│   ├── Navbar.tsx
+│   └── ui
+│       ├── Button.tsx
+│       ├── Card.tsx
+│       ├── DeleteButton.tsx
+│       ├── InfoTag.tsx
+│       └── Tooltip.tsx
+├── context
+│   └── AuthContext.tsx
+├── Dockerfile
+├── .env.local
+├── frontend.log
+├── .gitignore
+├── lib
+│   ├── api.ts
+│   ├── api.ts.bak
+│   └── presets.ts
+├── .next
+│   ├── app-build-manifest.json
+│   ├── build-manifest.json
+│   ├── cache
+│   │   ├── swc
+│   │   │   └── plugins
+│   │   │       └── v7_linux_x86_64_0.106.15
+│   │   ├── .tsbuildinfo
+│   │   └── webpack
+│   │       ├── client-development
+│   │       │   ├── 0.pack.gz
+│   │       │   ├── 10.pack.gz
+│   │       │   ├── 11.pack.gz
+│   │       │   ├── 12.pack.gz
+│   │       │   ├── 13.pack.gz
+│   │       │   ├── 14.pack.gz
+│   │       │   ├── 15.pack.gz
+│   │       │   ├── 16.pack.gz
+│   │       │   ├── 17.pack.gz
+│   │       │   ├── 18.pack.gz
+│   │       │   ├── 19.pack.gz
+│   │       │   ├── 1.pack.gz
+│   │       │   ├── 20.pack.gz
+│   │       │   ├── 21.pack.gz
+│   │       │   ├── 22.pack.gz
+│   │       │   ├── 23.pack.gz
+│   │       │   ├── 2.pack.gz
+│   │       │   ├── 3.pack.gz
+│   │       │   ├── 4.pack.gz
+│   │       │   ├── 5.pack.gz
+│   │       │   ├── 6.pack.gz
+│   │       │   ├── 7.pack.gz
+│   │       │   ├── 8.pack.gz
+│   │       │   ├── 9.pack.gz
+│   │       │   ├── index.pack.gz
+│   │       │   └── index.pack.gz.old
+│   │       ├── client-development-fallback
+│   │       │   ├── 0.pack.gz
+│   │       │   └── index.pack.gz.old
+│   │       ├── client-production
+│   │       │   ├── 0.pack
+│   │       │   ├── 10.pack
+│   │       │   ├── 11.pack
+│   │       │   ├── 12.pack
+│   │       │   ├── 1.pack
+│   │       │   ├── 2.pack
+│   │       │   ├── 3.pack
+│   │       │   ├── 4.pack
+│   │       │   ├── 5.pack
+│   │       │   ├── 6.pack
+│   │       │   ├── 7.pack
+│   │       │   ├── 8.pack
+│   │       │   ├── 9.pack
+│   │       │   ├── index.pack
+│   │       │   └── index.pack.old
+│   │       ├── edge-server-production
+│   │       │   ├── 0.pack
+│   │       │   └── index.pack
+│   │       ├── server-development
+│   │       │   ├── 0.pack.gz
+│   │       │   ├── 10.pack.gz
+│   │       │   ├── 11.pack.gz
+│   │       │   ├── 12.pack.gz
+│   │       │   ├── 13.pack.gz
+│   │       │   ├── 14.pack.gz
+│   │       │   ├── 15.pack.gz
+│   │       │   ├── 16.pack.gz
+│   │       │   ├── 17.pack.gz
+│   │       │   ├── 18.pack.gz
+│   │       │   ├── 1.pack.gz
+│   │       │   ├── 2.pack.gz
+│   │       │   ├── 3.pack.gz
+│   │       │   ├── 4.pack.gz
+│   │       │   ├── 5.pack.gz
+│   │       │   ├── 6.pack.gz
+│   │       │   ├── 7.pack.gz
+│   │       │   ├── 8.pack.gz
+│   │       │   ├── 9.pack.gz
+│   │       │   ├── index.pack.gz
+│   │       │   └── index.pack.gz.old
+│   │       └── server-production
+│   │           ├── 0.pack
+│   │           ├── 1.pack
+│   │           ├── 2.pack
+│   │           ├── 3.pack
+│   │           ├── 4.pack
+│   │           ├── index.pack
+│   │           └── index.pack.old
+│   ├── package.json
+│   ├── react-loadable-manifest.json
+│   ├── server
+│   │   ├── app
+│   │   │   ├── help
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   └── page.js
+│   │   │   ├── login
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   └── page.js
+│   │   │   ├── page_client-reference-manifest.js
+│   │   │   ├── page.js
+│   │   │   ├── register
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   └── page.js
+│   │   │   └── structure
+│   │   │       ├── page_client-reference-manifest.js
+│   │   │       └── page.js
+│   │   ├── app-paths-manifest.json
+│   │   ├── interception-route-rewrite-manifest.js
+│   │   ├── middleware-build-manifest.js
+│   │   ├── middleware-manifest.json
+│   │   ├── middleware-react-loadable-manifest.js
+│   │   ├── next-font-manifest.js
+│   │   ├── next-font-manifest.json
+│   │   ├── pages-manifest.json
+│   │   ├── server-reference-manifest.js
+│   │   ├── server-reference-manifest.json
+│   │   ├── vendor-chunks
+│   │   │   ├── asynckit.js
+│   │   │   ├── axios.js
+│   │   │   ├── call-bind-apply-helpers.js
+│   │   │   ├── combined-stream.js
+│   │   │   ├── debug.js
+│   │   │   ├── delayed-stream.js
+│   │   │   ├── dunder-proto.js
+│   │   │   ├── es-define-property.js
+│   │   │   ├── es-errors.js
+│   │   │   ├── es-object-atoms.js
+│   │   │   ├── es-set-tostringtag.js
+│   │   │   ├── follow-redirects.js
+│   │   │   ├── form-data.js
+│   │   │   ├── function-bind.js
+│   │   │   ├── get-intrinsic.js
+│   │   │   ├── get-proto.js
+│   │   │   ├── gopd.js
+│   │   │   ├── has-flag.js
+│   │   │   ├── hasown.js
+│   │   │   ├── has-symbols.js
+│   │   │   ├── has-tostringtag.js
+│   │   │   ├── lucide-react.js
+│   │   │   ├── math-intrinsics.js
+│   │   │   ├── mime-db.js
+│   │   │   ├── mime-types.js
+│   │   │   ├── ms.js
+│   │   │   ├── next.js
+│   │   │   ├── proxy-from-env.js
+│   │   │   ├── supports-color.js
+│   │   │   └── @swc.js
+│   │   └── webpack-runtime.js
+│   ├── static
+│   │   ├── chunks
+│   │   │   ├── app
+│   │   │   │   ├── help
+│   │   │   │   │   └── page.js
+│   │   │   │   ├── layout.js
+│   │   │   │   ├── login
+│   │   │   │   │   └── page.js
+│   │   │   │   ├── page.js
+│   │   │   │   ├── register
+│   │   │   │   │   └── page.js
+│   │   │   │   └── structure
+│   │   │   │       └── page.js
+│   │   │   ├── app-pages-internals.js
+│   │   │   ├── main-app.js
+│   │   │   ├── polyfills.js
+│   │   │   └── webpack.js
+│   │   ├── css
+│   │   │   └── app
+│   │   │       └── layout.css
+│   │   ├── development
+│   │   │   ├── _buildManifest.js
+│   │   │   └── _ssgManifest.js
+│   │   ├── media
+│   │   │   ├── 19cfc7226ec3afaa-s.woff2
+│   │   │   ├── 21350d82a1f187e9-s.woff2
+│   │   │   ├── 8e9860b6e62d6359-s.woff2
+│   │   │   ├── ba9851c3c22cd980-s.woff2
+│   │   │   ├── c5fe6dc8356a8c31-s.woff2
+│   │   │   ├── df0a9ae256c0569c-s.woff2
+│   │   │   └── e4af272ccee01ff0-s.p.woff2
+│   │   └── webpack
+│   │       ├── 2aa3bce409532d7a.webpack.hot-update.json
+│   │       ├── 58c8f4fb35c709d6.webpack.hot-update.json
+│   │       ├── 633457081244afec._.hot-update.json
+│   │       ├── 6c66d6fabba12064.webpack.hot-update.json
+│   │       ├── 85cd3214d569a6f6.webpack.hot-update.json
+│   │       ├── app
+│   │       │   ├── help
+│   │       │   │   ├── page.58c8f4fb35c709d6.hot-update.js
+│   │       │   │   ├── page.6c66d6fabba12064.hot-update.js
+│   │       │   │   ├── page.c73027030732f6e9.hot-update.js
+│   │       │   │   └── page.f8c8775e15c903ef.hot-update.js
+│   │       │   ├── layout.58c8f4fb35c709d6.hot-update.js
+│   │       │   ├── layout.6c66d6fabba12064.hot-update.js
+│   │       │   ├── layout.c73027030732f6e9.hot-update.js
+│   │       │   ├── layout.d2ab9352f0e553c3.hot-update.js
+│   │       │   ├── layout.f8c8775e15c903ef.hot-update.js
+│   │       │   ├── login
+│   │       │   │   ├── page.58c8f4fb35c709d6.hot-update.js
+│   │       │   │   ├── page.6c66d6fabba12064.hot-update.js
+│   │       │   │   ├── page.c73027030732f6e9.hot-update.js
+│   │       │   │   └── page.f8c8775e15c903ef.hot-update.js
+│   │       │   ├── page.58c8f4fb35c709d6.hot-update.js
+│   │       │   ├── page.6c66d6fabba12064.hot-update.js
+│   │       │   ├── page.c73027030732f6e9.hot-update.js
+│   │       │   ├── page.f8c8775e15c903ef.hot-update.js
+│   │       │   ├── register
+│   │       │   │   ├── page.58c8f4fb35c709d6.hot-update.js
+│   │       │   │   ├── page.6c66d6fabba12064.hot-update.js
+│   │       │   │   ├── page.c73027030732f6e9.hot-update.js
+│   │       │   │   └── page.f8c8775e15c903ef.hot-update.js
+│   │       │   └── structure
+│   │       │       ├── page.58c8f4fb35c709d6.hot-update.js
+│   │       │       ├── page.6c66d6fabba12064.hot-update.js
+│   │       │       ├── page.c73027030732f6e9.hot-update.js
+│   │       │       └── page.f8c8775e15c903ef.hot-update.js
+│   │       ├── c73027030732f6e9.webpack.hot-update.json
+│   │       ├── d2ab9352f0e553c3.webpack.hot-update.json
+│   │       ├── d806eb76bab4dffe.webpack.hot-update.json
+│   │       ├── f29a3ec7ca8ebc11.webpack.hot-update.json
+│   │       ├── f8c8775e15c903ef.webpack.hot-update.json
+│   │       ├── webpack.2aa3bce409532d7a.hot-update.js
+│   │       ├── webpack.58c8f4fb35c709d6.hot-update.js
+│   │       ├── webpack.6c66d6fabba12064.hot-update.js
+│   │       ├── webpack.85cd3214d569a6f6.hot-update.js
+│   │       ├── webpack.c73027030732f6e9.hot-update.js
+│   │       ├── webpack.d2ab9352f0e553c3.hot-update.js
+│   │       ├── webpack.d806eb76bab4dffe.hot-update.js
+│   │       ├── webpack.f29a3ec7ca8ebc11.hot-update.js
+│   │       └── webpack.f8c8775e15c903ef.hot-update.js
+│   ├── trace
+│   └── types
+│       ├── app
+│       │   ├── help
+│       │   │   └── page.ts
+│       │   ├── layout.ts
+│       │   ├── login
+│       │   │   └── page.ts
+│       │   ├── page.ts
+│       │   ├── register
+│       │   │   └── page.ts
+│       │   └── structure
+│       │       └── page.ts
+│       └── package.json
+├── next.config.js
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.js
+├── public
+│   └── logo.png
+├── tailwind.config.ts
+├── tree.txt
+├── tsconfig.json
+└── tsconfig.tsbuildinfo
+
+63 directories, 257 files

@@ -31,7 +31,8 @@ pub struct User {
 pub struct Fund {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub name: String,
+    pub fund_name: String, // Renamed from name
+    pub currency_code: String,
     pub created_at: DateTime<Utc>,
     pub tenant_id: Uuid,
 }
@@ -40,11 +41,24 @@ pub struct Fund {
 pub struct Company {
     pub id: Uuid,
     pub fund_id: Uuid,
-    pub name: String,
+    pub company_name: String, // Renamed from name
+    pub currency_code: String,
     pub created_at: DateTime<Utc>,
     pub industry: Option<String>,
     pub business_model: Option<String>,
     pub technology: Option<String>,
+    pub tenant_id: Uuid,
+}
+
+// Add New Struct for Exchange Rates
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ExchangeRate {
+    pub id: Uuid,
+    pub from_currency: String,
+    pub to_currency: String,
+    pub rate: Decimal,
+    pub rate_month: NaiveDate,
+    pub created_at: DateTime<Utc>,
     pub tenant_id: Uuid,
 }
 
@@ -54,12 +68,13 @@ pub struct Company {
 pub struct FinancialPlan {
     pub id: Uuid,
     pub company_id: Uuid,
-    pub name: String,
+    pub plan_name: String, // Renamed from name
     pub start_month: NaiveDate,
+    pub currency_code: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
     pub initial_cash: Decimal,
-    pub pooling_fraction: Decimal, // Added for Non-Ergodicity Module
+    pub pooling_fraction: Decimal, 
     pub tenant_id: Uuid,
 }
 
@@ -67,7 +82,7 @@ pub struct FinancialPlan {
 pub struct RevenueItem {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub revenue_name: String, // Renamed from name
     pub source: String,
     pub start_month: i32,
     pub end_month: Option<i32>,
@@ -91,7 +106,7 @@ pub struct RevenueItem {
 pub struct ExpenseItem {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub expense_name: String, // Renamed from name
     pub category: String,
     pub start_month: i32,
     pub end_month: Option<i32>,
@@ -115,7 +130,7 @@ pub struct ExpenseItem {
 pub struct CapitalInjection {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub name: String,
+    pub injection_name: String, // Renamed from name
     pub amount: Decimal,
     pub month: i32,
     pub created_at: DateTime<Utc>,
@@ -156,7 +171,7 @@ pub struct ValuationAssumption {
 pub struct EventShock {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub event_name: String,
+    pub shock_name: String, // Renamed from event_name
     pub shock_month: i32,
     pub impact_type: String,
     pub impact_value: Decimal,
@@ -183,16 +198,33 @@ pub struct CapitalGrowthPolicy {
 
 #[derive(Deserialize, Debug)]
 pub struct CreateFundRequest {
-    pub name: String,
+    pub fund_name: String,
+    pub currency_code: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateFundRequest {
+    pub fund_name: String,
+    pub currency_code: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct CreateCompanyRequest {
-    pub fund_id: uuid::Uuid,
-    pub name: String,
+    pub fund_id: Uuid,
+    pub company_name: String,
     pub business_model: Option<String>,
     pub industry: Option<String>,
     pub technology: Option<String>,
+    pub currency_code: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateCompanyRequest {
+    pub company_name: String,
+    pub business_model: Option<String>,
+    pub industry: Option<String>,
+    pub technology: Option<String>,
+    pub currency_code: String,
 }
 
 // --- Point 9: Staffing & Payroll ---
@@ -203,15 +235,9 @@ pub struct StaffingRole {
     pub role_name: String,
     pub annual_salary: Decimal,
     pub start_month: i32,
-    
-    // Renamed from 'count' to 'target_count' to match sophisticated logic
-    // Assumes DB column is 'target_count'
     pub target_count: i32, 
-    
-    // New Fields for Sophisticated Logic
-    pub hiring_plan: String, // "fixed_count" or "monthly_rate"
-    pub hiring_rate: Option<i32>, // e.g., 1 = hire every month, 2 = hire every 2 months
-    
+    pub hiring_plan: String, 
+    pub hiring_rate: Option<i32>, 
     pub annual_increase_percent: Decimal,
     pub created_at: DateTime<Utc>,
 }
@@ -236,12 +262,14 @@ pub struct LoginRequest {
 pub struct AuthResponse {
     pub token: String,
     pub user_id: Uuid,
+    pub username: String,
     pub tenant_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub sub: String,
-    pub tenant_id: uuid::Uuid,
+    pub user_id: Uuid,
+    pub tenant_id: Uuid,
     pub exp: usize,
 }

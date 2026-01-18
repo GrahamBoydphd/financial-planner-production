@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM capital_growth_policies WHERE plan_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e881ef1e06a3956b9e69be1e17773b3754e05ceee7dcc3fa628a3a662d0335ce"
+}

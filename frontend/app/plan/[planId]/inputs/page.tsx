@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import DeleteButton from '@/components/ui/DeleteButton';
-import { api, RevenueItem, ExpenseItem, FinancialPlan, CapitalInjection, StaffingRole } from '@/lib/api';
+import { api, RevenueItem, ExpenseItem, FinancialPlan, CapitalInjection, StaffingRole, Company } from '@/lib/api';
+import { getCurrencySymbol } from '@/lib/currency';
 
 // IMPORT ALL FORMS
 import RevenueForm from '@/components/forms/RevenueForm';
@@ -22,6 +23,7 @@ type TabType = 'operations' | 'capital' | 'settings';
 export default function InputsPage({ params }: { params: { planId: string } }) {
   const { planId } = params;
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('operations');
   
   // Lists Data
@@ -40,6 +42,9 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
   const [editingRevenue, setEditingRevenue] = useState<RevenueItem | null>(null);
   const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
 
+  // Derived Currency Symbol
+  const currencySymbol = plan ? getCurrencySymbol(plan.currency_code) : "$";
+
   const fetchData = async () => {
     // Note: We don't set loading=true here to avoid full page flicker on updates
     // only initial load sets it.
@@ -51,6 +56,15 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
             setPlan(p);
             // Ensure we handle potential number/string mismatch safely
             setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
+
+            if (p.company_id) {
+                try {
+                    const c = await api.getCompany(p.company_id);
+                    setCompany(c);
+                } catch (e) {
+                    console.error("Failed to fetch company", e);
+                }
+            }
         } catch (e) {
             console.error("Failed to load plan", e);
             setErrorMsg("Plan not found or API error");
@@ -157,7 +171,10 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{plan.name}</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            Plan {plan.plan_name} <span className="text-gray-500 font-normal">for {company?.company_name}</span>
+            <span className="text-gray-400 text-sm">[{plan.currency_code}]</span>
+          </h1>
           <p className="text-gray-500 text-sm">Plan ID: {plan.id}</p>
         </div>
         <a 
@@ -221,6 +238,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     onSuccess={fetchData} 
                     itemToEdit={editingRevenue}
                     onCancel={() => setEditingRevenue(null)}
+                    currencySymbol={currencySymbol}
                 />
             </Card>
             
@@ -229,7 +247,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                 <Card key={item.id} className={`border-l-4 transition-all ${editingRevenue?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-blue-500 hover:shadow-md'}`}>
                     <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="font-bold text-gray-900">{item.name}</h3>
+                        <h3 className="font-bold text-gray-900">{item.revenue_name}</h3>
                         <p className="text-sm text-gray-600">{item.source} • {item.frequency}</p>
                         {item.volatility_type !== 'none' && (
                             <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
@@ -238,7 +256,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                         )}
                     </div>
                     <div className="text-right">
-                        <p className="font-bold text-lg">${Number(item.initial_amount).toLocaleString()}</p>
+                        <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
                         <p className="text-xs font-medium text-green-600">+{item.growth_rate_percent}% / mo</p>
                     </div>
                     </div>
@@ -280,6 +298,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     onSuccess={fetchData} 
                     itemToEdit={editingExpense}
                     onCancel={() => setEditingExpense(null)}
+                    currencySymbol={currencySymbol}
                 />
             </Card>
 
@@ -288,7 +307,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                 <Card key={item.id} className={`border-l-4 transition-all ${editingExpense?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-red-500 hover:shadow-md'}`}>
                     <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="font-bold text-gray-900">{item.name}</h3>
+                        <h3 className="font-bold text-gray-900">{item.expense_name}</h3>
                         <p className="text-sm text-gray-600">{item.category} • {item.frequency}</p>
                         {item.volatility_type !== 'none' && (
                              <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
@@ -297,7 +316,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                         )}
                     </div>
                     <div className="text-right">
-                        <p className="font-bold text-lg">${Number(item.initial_amount).toLocaleString()}</p>
+                        <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
                         <p className="text-xs font-medium text-red-600">+{item.growth_rate_percent}% / mo</p>
                     </div>
                     </div>
@@ -355,7 +374,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     {/* OPENING BALANCE INPUT */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Opening Cash Balance ($)
+                            Opening Cash Balance ({currencySymbol})
                         </label>
                         <div className="flex gap-2">
                             <input 
@@ -378,7 +397,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     </div>
 
                     {/* INPUT FORM */}
-                    <CapitalForm planId={planId} onSuccess={fetchData} />
+                    <CapitalForm planId={planId} onSuccess={fetchData} currencySymbol={currencySymbol} />
 
                     {/* LIST OF ITEMS */}
                     <CapitalList items={capitalItems} onDelete={fetchData} />
@@ -390,13 +409,13 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                 <Card>
                     <h2 className="text-xl font-bold mb-4 text-orange-600">Debt & Credit Facilities</h2>
                      <p className="text-sm text-gray-500 mb-6">Manage lines of credit, interest rates, and loan terms.</p>
-                    <CreditForm planId={planId} />
+                    <CreditForm planId={planId} currencySymbol={currencySymbol} />
                 </Card>
 
                 <Card>
                     <h2 className="text-xl font-bold mb-4 text-cyan-600">Dividends</h2>
                     <p className="text-sm text-gray-500 mb-6">Set rules for profit distribution to shareholders.</p>
-                    <DividendForm planId={planId} />
+                    <DividendForm planId={planId} currencySymbol={currencySymbol} />
                 </Card>
             </section>
         </div>

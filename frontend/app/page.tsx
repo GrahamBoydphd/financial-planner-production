@@ -91,10 +91,11 @@ export default function Dashboard() {
                 {/* FUND HEADER */}
                 <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-800">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                       <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
-                        {fund.name}
+                        {fund.fund_name}
                       </Link>
+                      <span className="text-gray-400 text-sm">[{fund.currency_code || 'USD'}]</span>
                     </h2>
                     <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
                   </div>
@@ -115,7 +116,7 @@ export default function Dashboard() {
                           >
                             <div className="flex justify-between items-center">
                               <span className="font-medium text-gray-700 group-hover:text-indigo-700">
-                                {company.name}
+                                {company.company_name}
                               </span>
                               <span className="text-gray-400 group-hover:text-indigo-400 text-sm">View &rarr;</span>
                             </div>

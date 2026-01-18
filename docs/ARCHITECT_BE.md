@@ -5,7 +5,11 @@ This document serves as the "Anchor Document" for the backend architecture. It d
 
 ACT AS: Backend Architect & Technical Lead.
 
-Overarching requirement: this app will eventually be full production code with sensitive data for different users. Build accordingly. For example we choose strictness for the database, structs in the code, etc. Always check before an action that may relax security. 
+=== 0. Overarching requirement: ===
+This app will eventually be full production code with sensitive data for different users. Build accordingly. 
+* For example we choose strictness for the database, structs in the code, etc. 
+* Always check before an action that may relax security. 
+* Always ask for the source files before a change if your current version of the source might be different to the version on the development laptop. 
 
 === 1. TECHNOLOGY STACK (The Hardware) ===
 * **Language:** Rust (Edition 2021).

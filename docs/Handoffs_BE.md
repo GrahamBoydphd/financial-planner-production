@@ -1,6 +1,51 @@
 Note that the dates below are in YYMMDD format and in reverse order, latest first. Alert me to any case of conflict; most likely the version coming first in this list, i.e., the most recent date, is the current version. 
 
 
+## 🏛️ Architectural Context: Monte Carlo Engine (V3) 260117
+
+### 1. Survival Logic & State Erasure
+
+The engine now enforces a **"Hard-Stop Insolvency"** model to prevent "Zombie" companies from skewing portfolio valuations.
+
+- **Trigger**: Insolvency is triggered at the end of any month $X$ if `cash_balance < 0`.
+    
+- **Phase Lag**: Month $X$ (the "Month of Death") records the actual financial transactions that caused the failure.
+    
+- **Total Erasure**: Starting in Month $X+1$, the simulation forces all financial flows (Revenue, OpEx, Gross Profit, etc.) and the `cash_balance` to exactly **0.00**.
+    
+- **Boolean State**: The engine uses a single boolean flag, `is_solvent`, as the source of truth for a trajectory's viability.
+    
+
+### 2. Statistical Integrity: The Anchored Median
+
+To solve the "Frankenstein Data" issue—where a single row in the results table might mistakenly combine metrics from different simulation runs—the engine now uses **Anchored Trajectories**.
+
+- **Primary Anchor**: For every month, the engine sorts all 1,000 runs strictly by their `cash_balance`.
+    
+- **Representative P50**: The P50 (median) row is no longer a collection of independent statistical medians. Instead, it is a **snapshot of the 500th run's entire state**.
+    
+- **Internal Consistency**: This ensures that if the median run is insolvent, the Revenue and Cash Balance for that month "snap" to zero simultaneously in the user's table.
+    
+
+### 3. Portfolio Mortality Metric
+
+The engine now exposes the aggregate risk profile of the 1,000 runs through a temporal survival analysis.
+
+- **Survival Rate**: A new metric, `survival_rate`, is calculated for every month in the simulation.
+    
+- **Formula**: $\text{Survival Rate}_m = \frac{\text{Count of Runs where } is\_solvent = true}{\text{Total Simulation Runs}}$.
+    
+- **Purpose**: This allows the UI to plot the "Cliff of Failure," showing exactly when a strategy's probability of survival begins to degrade.
+    
+
+### 4. Data Scoping & Identity
+
+All financial and structural entities have been migrated to **Scoped Naming** to support the V3 Fund-Level views.
+
+- Generic `name` fields are replaced by context-specific keys (e.g., `fund_name`, `company_name`, `revenue_name`) to prevent key collisions during multi-company aggregation.
+    
+- All queries enforce `tenant_id` isolation to ensure strict multi-tenancy security across the simulation engine.
+
 # 🚀 V3 Strategic Brief: High-Precision Multi-Entity Analytics 
 
 **Status:** Architecture Locked & Simulation-Ready
@@ -55,13 +100,13 @@ The Strategist Agent can now leverage these capabilities to design:
 ## 1. The Percentage Standard
 To ensure mathematical precision and prevent "compounding drift," all growth, return, and interest fields MUST be sent as **whole percentage numbers**. The Backend projection engine performs the division by 100 internally.
 
-| Domain | API Field Key | Format | Example | Treatment |
-| :--- | :--- | :--- | :--- | :--- |
-| **Revenue** | `growth_rate_percent` | String | `"3.0"` | Monthly Growth / 100 |
-| **Expenses** | `growth_rate_percent` | String | `"2.5"` | Monthly Growth / 100 |
-| **Treasury** | `growth_rate_percent` | String | `"1.2"` | Monthly Return / 100 |
-| **Staffing** | `annual_increase_percent` | String | `"3.0"` | Annual Inflation / 100 |
-| **Debt** | `interest_rate` | String | `"8.0"` | Annual/Monthly Rate / 100 |
+| Domain       | API Field Key             | Format | Example | Treatment                 |
+| :----------- | :------------------------ | :----- | :------ | :------------------------ |
+| **Revenue**  | `growth_rate_percent`     | String | `"3.0"` | Monthly Growth / 100      |
+| **Expenses** | `growth_rate_percent`     | String | `"2.5"` | Monthly Growth / 100      |
+| **Treasury** | `growth_rate_percent`     | String | `"1.2"` | Monthly Return / 100      |
+| **Staffing** | `annual_increase_percent` | String | `"3.0"` | Annual Inflation / 100    |
+| **Debt**     | `interest_rate`           | String | `"8.0"` | Annual/Monthly Rate / 100 |
 
 ## 2. Data Types & Precision
 * **Currency/Decimals**: MUST be transmitted as **Strings** (e.g., `"1250.50"`) to avoid floating-point rounding errors during JSON serialization.

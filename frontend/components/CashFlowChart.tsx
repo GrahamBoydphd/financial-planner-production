@@ -57,7 +57,7 @@ interface Props {
 
 export default function CashFlowChart({ data, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
   const labels = data.labels;
-  const datasets = [];
+  const datasets: any[] = [];
 
   // --- 0. DETERMINE SOURCE DATA ---
   // We use single_run_data if available (even in MC mode, it now holds the median run)
@@ -68,14 +68,15 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
 
   // --- 1. The "Red Line" (Cumulative Investment) ---
   // Clamp negative values in Log mode to avoid breaks
-  const investmentData = data.deterministic_data.map(d => {
-      const val = Number(d.cumulative_external_capital);
+  const rawInvestmentData = data.deterministic_data.map(d => Number(d.cumulative_external_capital));
+  const investmentData = rawInvestmentData.map(val => {
       return (isLog && val <= 100) ? 100 : val;
   });
 
   datasets.push({
     label: 'Cumulative Investment',
     data: investmentData,
+    rawValues: rawInvestmentData,
     borderColor: 'rgb(220, 38, 38)', // Red-600
     borderWidth: 2,
     pointRadius: 0,
@@ -89,13 +90,14 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
   if (mode === 'standard' || mode === 'single') {
     
     // A. Net Value (Blue Solid)
-    const valueData = sourceData.map(d => {
-        const val = Number(d.total_value);
+    const rawValueData = sourceData.map(d => Number(d.total_value));
+    const valueData = rawValueData.map(val => {
         return (isLog && val <= 100) ? 100 : val;
     });
     datasets.push({
       label: 'Net Value (Cash+Divs)',
       data: valueData,
+      rawValues: rawValueData,
       borderColor: 'rgb(37, 99, 235)', // Blue-600
       borderWidth: 3,
       pointRadius: 0,
@@ -106,13 +108,14 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     });
 
     // B. Cash on Hand (Teal Solid)
-    const cashData = sourceData.map(d => {
-        const val = Number(d.cash_balance);
+    const rawCashData = sourceData.map(d => Number(d.cash_balance));
+    const cashData = rawCashData.map(val => {
         return (isLog && val <= 100) ? 100 : val;
     });
     datasets.push({
       label: 'Cash on Hand',
       data: cashData,
+      rawValues: rawCashData,
       borderColor: 'rgb(20, 184, 166)', // Teal-500
       borderWidth: 2,
       pointRadius: 0,
@@ -123,13 +126,14 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     });
 
     // C. Cumulative Dividends (Gold Solid)
-    const divData = sourceData.map(d => {
-        const val = Number(d.cumulative_dividends);
+    const rawDivData = sourceData.map(d => Number(d.cumulative_dividends));
+    const divData = rawDivData.map(val => {
         return (isLog && val <= 100) ? 100 : val;
     });
     datasets.push({
       label: 'Cum. Dividends',
       data: divData,
+      rawValues: rawDivData,
       borderColor: 'rgb(234, 179, 8)', // Yellow-500
       borderWidth: 2,
       pointRadius: 0,
@@ -140,13 +144,14 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     });
 
     // D. Monthly Revenue (Green Dashed)
-    const revData = sourceData.map(d => {
-        const val = Number(d.revenue);
+    const rawRevData = sourceData.map(d => Number(d.revenue));
+    const revData = rawRevData.map(val => {
         return (isLog && val <= 100) ? 100 : val;
     });
     datasets.push({
       label: 'Monthly Revenue',
       data: revData,
+      rawValues: rawRevData,
       borderColor: 'rgb(34, 197, 94)', // Green-500
       borderDash: [5, 5],
       borderWidth: 2,
@@ -158,13 +163,14 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     });
 
     // E. Monthly Costs (Red Dashed)
-    const costData = sourceData.map(d => {
-        const val = Number(d.cogs) + Number(d.opex) + Number(d.interest_expense);
+    const rawCostData = sourceData.map(d => Number(d.cogs) + Number(d.opex) + Number(d.interest_expense));
+    const costData = rawCostData.map(val => {
         return (isLog && val <= 100) ? 100 : val;
     });
     datasets.push({
       label: 'Monthly Costs',
       data: costData,
+      rawValues: rawCostData,
       borderColor: 'rgb(239, 68, 68)', // Red-500
       borderDash: [2, 2],
       borderWidth: 2,
@@ -182,11 +188,13 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     });
 
     // 1. Covered Overdraft (Solid Purple)
-    const debtCovered = rawDebtData.map(debt => Math.min(debt, creditLimit));
+    const debtCoveredRaw = rawDebtData.map(debt => Math.min(debt, creditLimit));
+    const debtCovered = debtCoveredRaw.map(v => (isLog && v <= 100) ? 100 : v);
 
     datasets.push({
       label: 'Covered Overdraft',
-      data: debtCovered.map(v => (isLog && v <= 100) ? 100 : v),
+      data: debtCovered,
+      rawValues: debtCoveredRaw,
       borderColor: 'transparent',
       backgroundColor: 'rgba(147, 51, 234, 0.3)', // Solid Purple
       borderWidth: 0,
@@ -198,11 +206,13 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     });
 
     // 2. Fantasy Debt (Hatched Purple)
-    const debtFantasy = rawDebtData.map(debt => debt); 
+    const debtFantasyRaw = rawDebtData; 
+    const debtFantasy = debtFantasyRaw.map(v => (isLog && v <= 100) ? 100 : v);
 
     datasets.push({
       label: 'Fantasy Debt (Excess)',
-      data: debtFantasy.map(v => (isLog && v <= 100) ? 100 : v),
+      data: debtFantasy,
+      rawValues: debtFantasyRaw,
       borderColor: 'transparent', 
       backgroundColor: createDiagonalPattern('rgba(147, 51, 234, 0.6)'), 
       borderWidth: 0,
@@ -215,11 +225,21 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
   }
 
   // --- 3. Monte Carlo Mode ---
-  if (mode === 'monte_carlo' && data.p50_value) {
+  // Check for p50_data (preferred) or p50_value (legacy)
+  if (mode === 'monte_carlo' && (data.p50_data || data.p50_value)) {
     
+    // Extract P50 values for clamping calculations
+    let p50Vals: number[] = [];
+    if (data.p50_data) {
+        // Map from pathwise data (Total Value)
+        p50Vals = data.p50_data.map(d => Number(d.total_value));
+    } else if (data.p50_value) {
+        // Legacy fallback
+        p50Vals = data.p50_value.map(v => Number(v));
+    }
+
     // CALCULATE CLAMPING FLOORS
     // Linear Floor: 2x lower than P50 min
-    const p50Vals = data.p50_value.map(v => Number(v));
     const minP50 = Math.min(...p50Vals);
     // If minP50 is positive, floor is 0? If negative, floor is 2 * minP50?
     const linearFloor = minP50 >= 0 ? 0 : minP50 * 2.0;
@@ -237,10 +257,16 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
         });
     };
 
+    const getRaw = (vals: (number | string)[] | undefined) => {
+        if (!vals) return [];
+        return vals.map(v => Number(v));
+    };
+
     // LAYER 1: P100 (Max)
     datasets.push({
       label: 'Max (Top Edge)',
       data: clamp(data.p100_value),
+      rawValues: getRaw(data.p100_value),
       borderColor: 'transparent',
       pointRadius: 0,
       fill: false,
@@ -250,6 +276,7 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     datasets.push({
       label: 'Top 10% (P90-Max)',
       data: clamp(data.p90_value),
+      rawValues: getRaw(data.p90_value),
       borderColor: 'transparent',
       backgroundColor: 'rgba(30, 58, 138, 0.6)', 
       pointRadius: 0,
@@ -261,6 +288,7 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     datasets.push({
       label: 'Upper 15% (P75-P90)',
       data: clamp(data.p75_value),
+      rawValues: getRaw(data.p75_value),
       borderColor: 'transparent',
       backgroundColor: 'rgba(37, 99, 235, 0.4)', 
       pointRadius: 0,
@@ -272,6 +300,7 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     datasets.push({
       label: 'Typical 50% (P25-P75)',
       data: clamp(data.p25_value),
+      rawValues: getRaw(data.p25_value),
       borderColor: 'transparent',
       backgroundColor: 'rgba(147, 197, 253, 0.4)', 
       pointRadius: 0,
@@ -283,6 +312,7 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     datasets.push({
       label: 'Lower 15% (P10-P25)',
       data: clamp(data.p10_value),
+      rawValues: getRaw(data.p10_value),
       borderColor: 'transparent',
       backgroundColor: 'rgba(37, 99, 235, 0.4)', 
       pointRadius: 0,
@@ -294,6 +324,7 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     datasets.push({
       label: 'Bottom 10% (Min-P10)',
       data: clamp(data.p0_value),
+      rawValues: getRaw(data.p0_value),
       borderColor: 'transparent',
       backgroundColor: 'rgba(30, 58, 138, 0.6)', 
       pointRadius: 0,
@@ -304,7 +335,8 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
     // LAYER 7: Median
     datasets.push({
       label: 'Median (P50)',
-      data: clamp(data.p50_value),
+      data: clamp(p50Vals),
+      rawValues: p50Vals,
       borderColor: 'rgb(37, 99, 235)', 
       borderWidth: 2,
       pointRadius: 0,
@@ -313,12 +345,29 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
       pointStyle: 'line', 
       order: 40, 
     });
+
+    // NEW: Survival Rate (y1 axis)
+    if (data.survival_rate) {
+        datasets.push({
+            label: 'Survival Rate',
+            data: data.survival_rate,
+            rawValues: data.survival_rate,
+            borderColor: 'rgb(75, 85, 99)', // Gray-600
+            borderWidth: 2,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            tension: 0.1,
+            fill: false,
+            yAxisID: 'y1',
+            order: 10, // Top layer
+        });
+    }
   }
 
   // --- 4. Accumulated Pool (Shared Logic) ---
   // We check sourceData (which is now populated with median run in MC mode)
-  const poolData = sourceData.map(d => {
-      const val = Number(d.cumulative_pool_received || 0);
+  const rawPoolData = sourceData.map(d => Number(d.cumulative_pool_received || 0));
+  const poolData = rawPoolData.map(val => {
       return (isLog && val <= 100) ? 100 : val;
   });
   
@@ -329,6 +378,7 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
       datasets.push({
           label: 'Accumulated Pool',
           data: poolData,
+          rawValues: rawPoolData,
           borderColor: 'rgb(245, 158, 11)', // Amber-500
           borderDash: [5, 5], // Dotted
           borderWidth: 2,
@@ -374,7 +424,31 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
           text: `Value (${currencySymbol})${isLog ? ' - Log Scale' : ''}` 
         },
         min: isLog ? 100 : undefined,
-        max: yAxisMax, 
+        max: yAxisMax,
+        ticks: {
+          callback: (value: any) => {
+            return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+          }
+        }
+      },
+      y1: {
+        type: 'linear' as const,
+        display: mode === 'monte_carlo',
+        position: 'right' as const,
+        title: { 
+          display: true, 
+          text: "Probability of survival" 
+        },
+        min: 0,
+        max: 1,
+        grid: {
+          drawOnChartArea: false, // keep main grid only
+        },
+        ticks: {
+          callback: (value: any) => {
+            return (Number(value) * 100).toFixed(0) + '%';
+          }
+        }
       },
     },
     plugins: {
@@ -393,8 +467,19 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
             let label = context.dataset.label || '';
             if (label.includes('Top Edge')) return null;
             if (label) label += ': ';
-            if (context.parsed.y !== null) {
-              label += currencySymbol + Number(context.parsed.y).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+            
+            let value = context.parsed.y;
+            if (context.dataset.rawValues && context.dataset.rawValues[context.dataIndex] !== undefined) {
+                value = context.dataset.rawValues[context.dataIndex];
+            }
+
+            // Handle Survival Rate %
+            if (context.dataset.yAxisID === 'y1') {
+                return label + (Number(value) * 100).toFixed(1) + '%';
+            }
+
+            if (value !== null && value !== undefined) {
+              label += currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
             }
             return label;
           }
