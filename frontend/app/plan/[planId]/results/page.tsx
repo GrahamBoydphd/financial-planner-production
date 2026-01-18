@@ -356,7 +356,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     if (!newCapName || !newCapAmount) return;
     await api.createCapitalInjection({
       plan_id: planId,
-      name: newCapName,
+      injection_name: newCapName,
       amount: parseFloat(newCapAmount).toFixed(2),
       month: Number(newCapMonth || 0)
     });
@@ -600,7 +600,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 {capitalItems.map(c => (
                   <div key={c.id} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
                     <div>
-                      <span className="font-bold block">{c.name}</span>
+                      <span className="font-bold block">{c.injection_name}</span>
                       <span className="text-xs text-gray-500">Month {c.month}</span>
                     </div>
                     <div className="flex items-center gap-2">
