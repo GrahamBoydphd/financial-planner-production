@@ -12,6 +12,10 @@ import { api, Company, Fund } from '@/lib/api';
 export default function StructurePage() {
   const [funds, setFunds] = useState<Fund[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  
+  // Edit State
+  const [editingFund, setEditingFund] = useState<Fund | null>(null);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 
   const fetchData = async () => {
     try {
@@ -30,8 +34,7 @@ export default function StructurePage() {
   const handleDeleteFund = async (id: string) => {
     if (!confirm("Are you sure you want to delete this fund? This action cannot be undone.")) return;
     try {
-        // Assuming api.deleteFund exists or using generic delete
-        await (api as any).deleteFund(id); 
+        await api.deleteFund(id); 
         fetchData();
     } catch (e) {
         console.error("Failed to delete fund", e);
@@ -42,8 +45,7 @@ export default function StructurePage() {
   const handleDeleteCompany = async (id: string) => {
     if (!confirm("Are you sure you want to delete this company? This action cannot be undone.")) return;
     try {
-        // Assuming api.deleteCompany exists or using generic delete
-        await (api as any).deleteCompany(id);
+        await api.deleteCompany(id);
         fetchData();
     } catch (e) {
         console.error("Failed to delete company", e);
@@ -70,8 +72,14 @@ export default function StructurePage() {
           {/* Funds Section */}
           <div className="space-y-4">
             <Card>
-              <h2 className="text-xl font-bold mb-4">1. Create Fund</h2>
-              <FundForm onSuccess={fetchData} />
+              <h2 className="text-xl font-bold mb-4">
+                {editingFund ? 'Edit Fund' : '1. Create Fund'}
+              </h2>
+              <FundForm 
+                initialData={editingFund}
+                onSuccess={() => { fetchData(); setEditingFund(null); }} 
+                onCancel={() => setEditingFund(null)}
+              />
             </Card>
             
             <div className="bg-white rounded shadow p-4">
@@ -87,7 +95,11 @@ export default function StructurePage() {
                             </div>
                             <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <button 
-                                    onClick={(e) => { e.preventDefault(); /* Edit logic placeholder */ }} 
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      setEditingFund(f);
+                                      // Optional: Scroll to top if needed, but side-by-side layout usually visible
+                                    }} 
                                     className="p-1 text-gray-400 hover:text-blue-600"
                                     title="Edit Fund"
                                 >
@@ -112,8 +124,15 @@ export default function StructurePage() {
           {/* Companies Section */}
           <div className="space-y-4">
             <Card id="add-company" className="scroll-mt-24">
-              <h2 className="text-xl font-bold mb-4">2. Create Company</h2>
-              <CompanyForm onSuccess={fetchData} funds={funds} />
+              <h2 className="text-xl font-bold mb-4">
+                {editingCompany ? 'Edit Company' : '2. Create Company'}
+              </h2>
+              <CompanyForm 
+                initialData={editingCompany}
+                funds={funds} 
+                onSuccess={() => { fetchData(); setEditingCompany(null); }} 
+                onCancel={() => setEditingCompany(null)}
+              />
             </Card>
 
             <div className="bg-white rounded shadow p-4">
@@ -136,7 +155,12 @@ export default function StructurePage() {
                             </div>
                             <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <button 
-                                    onClick={(e) => { e.preventDefault(); /* Edit logic placeholder */ }} 
+                                    onClick={(e) => { 
+                                      e.preventDefault(); 
+                                      setEditingCompany(c);
+                                      // Scroll to form if on mobile or small screen
+                                      document.getElementById('add-company')?.scrollIntoView({ behavior: 'smooth' });
+                                    }} 
                                     className="p-1 text-gray-400 hover:text-blue-600"
                                     title="Edit Company"
                                 >

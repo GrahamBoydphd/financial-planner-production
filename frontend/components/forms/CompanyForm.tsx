@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { api, Fund } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { api, Fund, Company } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
 // --- IMT Options ---
@@ -22,7 +22,14 @@ const TECH_OPTIONS = [
   "AI / ML", "Web / Mobile", "Blockchain / ReFi", "Material Science", "Other"
 ];
 
-export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () => void, funds?: Fund[] }) {
+interface CompanyFormProps {
+  onSuccess?: () => void;
+  funds?: Fund[];
+  initialData?: Company | null;
+  onCancel?: () => void;
+}
+
+export default function CompanyForm({ onSuccess, funds = [], initialData, onCancel }: CompanyFormProps) {
   const [name, setName] = useState('');
   const [selectedFund, setSelectedFund] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -37,6 +44,42 @@ export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () 
   const [tech, setTech] = useState('');
   const [customTech, setCustomTech] = useState('');
 
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.company_name);
+      setSelectedFund(initialData.fund_id);
+      setCurrency(initialData.currency_code);
+
+      // Helper to set select/custom fields
+      const setField = (value: string | undefined, options: string[], setSelect: any, setCustom: any) => {
+        if (!value) {
+          setSelect('');
+          setCustom('');
+          return;
+        }
+        if (options.includes(value)) {
+          setSelect(value);
+          setCustom('');
+        } else {
+          setSelect('Other');
+          setCustom(value);
+        }
+      };
+
+      setField(initialData.industry, INDUSTRY_OPTIONS, setIndustry, setCustomIndustry);
+      setField(initialData.business_model, MODEL_OPTIONS, setModel, setCustomModel);
+      setField(initialData.technology, TECH_OPTIONS, setTech, setCustomTech);
+
+    } else {
+      setName('');
+      setSelectedFund('');
+      setCurrency('USD');
+      setIndustry(''); setCustomIndustry('');
+      setModel(''); setCustomModel('');
+      setTech(''); setCustomTech('');
+    }
+  }, [initialData]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFund) return alert('Select a fund');
@@ -47,25 +90,31 @@ export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () 
     const finalTech = tech === 'Other' ? customTech : tech;
 
     try {
-      // No user_id passed here, relying on Auth header
-      // FIXED: Argument order updated to match api.ts: (name, fund_id, currency, industry, model, tech)
-      await api.createCompany(name, selectedFund, currency, finalIndustry, finalModel, finalTech);
+      if (initialData) {
+        await api.updateCompany(initialData.id, name, selectedFund, currency, finalIndustry, finalModel, finalTech);
+      } else {
+        await api.createCompany(name, selectedFund, currency, finalIndustry, finalModel, finalTech);
+      }
       
-      setName('');
-      setCurrency('USD');
-      setIndustry(''); setCustomIndustry('');
-      setModel(''); setCustomModel('');
-      setTech(''); setCustomTech('');
+      if (!initialData) {
+        setName('');
+        setCurrency('USD');
+        setIndustry(''); setCustomIndustry('');
+        setModel(''); setCustomModel('');
+        setTech(''); setCustomTech('');
+      }
       if (onSuccess) onSuccess();
     } catch (err) {
       console.error(err);
-      alert('Failed to create company');
+      alert('Failed to save company');
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded shadow">
-      <h3 className="text-lg font-semibold text-gray-800">New Company</h3>
+      <h3 className="text-lg font-semibold text-gray-800">
+        {initialData ? 'Edit Company' : 'New Company'}
+      </h3>
       
       {/* Fund Selection */}
       <div>
@@ -178,7 +227,20 @@ export default function CompanyForm({ onSuccess, funds = [] }: { onSuccess?: () 
         </div>
       </div>
 
-      <Button type="submit" disabled={!selectedFund}>Create Company</Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={!selectedFund}>
+          {initialData ? 'Update Company' : 'Create Company'}
+        </Button>
+        {initialData && (
+          <button 
+            type="button" 
+            onClick={onCancel}
+            className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }

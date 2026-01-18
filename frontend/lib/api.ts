@@ -74,6 +74,7 @@ export interface Company {
   currency_code: string;
   industry?: string;
   business_model?: string;
+  technology?: string;
   created_at: string;
 }
 
@@ -272,6 +273,8 @@ export const api = {
   getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
   createFund: async (fund_name: string, currency_code: string) => 
     (await apiClient.post<Fund>('/api/funds', { fund_name, currency_code })).data,
+  updateFund: async (id: string, fund_name: string, currency_code: string) => 
+    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code })).data,
   deleteFund: async (id: string) => {
     await apiClient.delete(`/api/funds/${id}`);
   },
@@ -281,6 +284,8 @@ export const api = {
   getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
   createCompany: async (company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
     (await apiClient.post<Company>('/api/companies', { company_name, fund_id, currency_code, industry, business_model, technology })).data,
+  updateCompany: async (id: string, company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.put<Company>(`/api/companies/${id}`, { company_name, fund_id, currency_code, industry, business_model, technology })).data,
   deleteCompany: async (id: string) => {
     await apiClient.delete(`/api/companies/${id}`);
   },  
