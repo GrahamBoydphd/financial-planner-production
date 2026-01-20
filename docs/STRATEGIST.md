@@ -1,153 +1,83 @@
+
 # STRATEGIST: Tactical Mission Orders
 
-=== STRATEGIST: REVISED TACTICS (STAGE 4) ===
+Current Phase: Stage 4 - The Base Fund
 
-**The Core Shift:** We are moving from `Vector<CompanyPath>` (independent trajectories) to `Vector<FundPath>`.
-
-- **Old Engine:** Run Company A Scenario X (t=0→t=End). 
-    
-- **New Engine (The "Lockstep" Loop):** For each Month t:
-    
-    1. Advance Company A Scenario X, B Scenario Y, ... N Scenario Z by one step (calculate raw cashflow).
-        
-    2. **The Interceptor:** Calculate Total Fund Surplus/Deficit.
-        
-    3. **The Redistributor:** Move cash from Profitable Companies to Struggling Companies (Pooling Logic).
-        
-    4. Finalize Month t balances.
-        
-
-This requires a fundamental rewrite of the inner simulation loop.
+Objective: Build the Fund Container and the Lockstep Simulation Engine.
 
 ---
 
-### PROMPT 1: For the Backend Architect
+## 1. Immediate Goals (Stage 4)
 
-**ACT AS:** Backend Architect (Rust, Domain Modeling). **REPORT TO:** Lead Strategist. 
+### A. The "Fund" Level Structure (Backend)
 
-**PROJECT CONTEXT:** Stage 4: Investor Track. We are implementing **Multi-Company Monte Carlo with Vertical Pooling**.
+We have the Tenant -> User doing Company level simulation where the fund is merely the static owner of the company. Now we are adding the full facility for the User to do either Company level or Fund level simulations. 
 
-**YOUR MISSION:** You must implement the `FundSimulation` engine. This is a "Meta-Simulation" that coordinates multiple companies stepping through time together.
-
-**TECHNICAL SPECIFICATIONS:**
-
-**1. The Data Structure (`domain/fund.rs`)**
-
-- **Fund:** Contains a list of `CompanyConfig` objects.
+- **Schema:** The `funds` table is as before the parent. 
     
-- **PoolingConfig:** Parameters defining _how_ money is pooled (e.g., "Cover 100% of burn if Fund Balance > X").
+- **The Dashboard:** As present. 
     
 
-**2. The Simulation Logic (`engine/waterfall.rs`)**
+### B. The "Lockstep"  Engine (Backend)
 
-- **Constraint:** You cannot run companies in isolation. They must run in **Lockstep**.
-    
-- **The Loop:**
-    
-    Rust
-    
-    ```
-    // Psuedocode for one MC Path
-    for month in 0..months {
-        let mut fund_pool = 0.0;
-        let mut company_states = vec![];
-    
-        // Step 1: Calculate Raw Performance
-        for company in companies {
-            let cashflow = company.step(month); // Standard stochastic step
-            fund_pool += cashflow;
-            company_states.push(cashflow);
-        }
-    
-        // Step 2: The Pooling Logic (The "Correction")
-        // If FundPool is positive, distribute to companies with negative cashflow?
-        // If FundPool is negative, who breaks first?
-        distribute_pool(&mut fund_pool, &mut company_states);
-    }
-    ```
-    
-- **Output:** The simulation must return a `FundTrajectory` struct, aggregating the Net Asset Value (NAV) and individual company survivability over time.
-    
+We are moving from **Independent Parallelism** to **Interdependent Synchronization**.
 
-**3. API Layer**
-
-- `POST /simulate/fund`:
+- **Old Logic:** If a Standard Averages or single volatile run, Run Company to end. If a Monte Carlo, run 1000 clones of the company for one month, then pool profit and redistribute pool, then run another month. 
     
-    - Input: `fund_id` (fetches all attached companies).
+- **New Logic:**
+    The simulation is stored in memory and then shown on the results page. Only re-simulate if the user clicks that button on the single volatile run or Monte Carlo pages, unlike at present on the single company Monte Carlo that does it on each refresh. 
+    - `for month in 0..120`:
         
-    - Output: Aggregated Monte Carlo results (e.g., "Probability of Fund Return > 3x").
-        
+        - Step Company A (Month `t`)
+            
+        - Step Company B (Month `t`)
+            
+        - **Interceptor:** Calculate Total Fund Cash.
+            
+        - **Redistributor:**  Apply Pooling redistribution logic.
+            
 
-**DELIVERABLES:**
+### C. The "View Layer" Reset (Frontend)
 
-1. **The Lockstep Engine:** The Rust code implementing the loop described above.
+The Frontend is purely a still purely rendering engine.
+
+- **Constraint:** No business logic. No projections. No "Month 0" math on the client.
     
-2. **The Pooling Logic:** A simple "Pro-Rata Burn Coverage" algorithm (e.g., successful companies cover the burn of failing ones up to the limit of free cash flow).
+- **Contract:** Adhere strictly to the **Fortress Data Contract** (Strings for Money, Strings for Percentages).
     
-3. **Refactor Note:** Ensure the existing `Company` struct exposes a `step()` method that can be called incrementally (stateful), rather than just `run_all()`.
-    
-
-**Execute.**
-
----
-
-### PROMPT 2: For the Frontend Architect
-
-**ACT AS:** Frontend Architect (React, Recharts). **REPORT TO:** Lead Strategist. 
-
-**PROJECT CONTEXT:** Stage 4: Investor Track. We are visualizing the **Aggregated Fund Performance**.
-
-**YOUR MISSION:** The user needs to understand not just how _one_ company does, but how the _Portfolio_ performs when companies use a profit pooling mechanism each time step.
-
-**Overarching requirement:** this app will eventually be full production code with sensitive data for different users. Build accordingly. For example we choose strictness for the database.
-* Always check before an action that may relax security. 
-* Always examine existing files to check if a change might compromise existing functionality or security.
-
-=== **TECHNICAL SPECIFICATIONS:** ===
-
-**1. The "Fund Dashboard" (`/fund/:id`)**
-
-- **Concept:** This is the control room.
-    
-- **Top Metric:** "Fund Survival Rate" (The % of Monte Carlo runs where the Fund returns positive ROI).
-    
-- **The List:** A table of Companies in the Fund.
-    
-    - Columns: Name, Starting Capital, **Pooled Contribution** (Calculated field).
-        
-
-**2. The "Aggregate Graph" (Visualizing Pooling)**
-
-- We need a new Chart: **"Fund Consolidated Cashflow"**.
-    
-- **X-Axis:** Time (Months).
-    
-- **Lines:**
-    
-    - Line A (Grey): Sum of Cashflows _without_ pooling (Hypothetical).
-        
-    - Line B (Green): Sum of Cashflows _with_ pooling (Actual).
-        
-    - _Insight:_ The user should see how pooling smooths out the volatility (the "Ergodic" effect).
-        
-
-**3. The Interaction**
-
-- **Button:** "Run Fund Simulation".
-    
-- **State:** This triggers the heavy calculation on the backend. Show a progress bar or "Simulating Fund Scenario..." loader.
+- The Frontend currently shows the current three Company level projections if you click on the projection button in on a single company page. We will next add the new Fund projections results page to the existing Fund page, from there I go to a new Fund Inputs or Fund Results page following the same directory naming conventions and other logic as for the Companies. 
     
 
-**DELIVERABLES:**
+## 3. The Definition of Done (Stage 4 MVP)
 
-1. **UI Component:** `FundSimulationView.tsx`.
+1. **[ ] Hybrid Engine:** Simulation of funds implemented using `f64` conversion pattern.
     
-2. **Chart Design:** A Recharts composition showing the "Pooled vs. Unpooled" comparison.
+2. **[ ] Dashboard:** Frontend renders the full Fund page, fund input, and fund results pages.
     
-3. **Data Fetching:** handling the POST request to the new `simulate/fund` endpoint.
+3. **[ ] Simulation:** Can trigger a "Run Fund" command that executes $N$ companies in lockstep and returns an aggregated result. The simulation is stored in memory and then shown on the results page. Only re-simulate if the user clicks that button on the single volatile run or Monte Carlo pages, unlike at present on the single company Monte Carlo that does it on each refresh. 
     
 
-**Execute.**
+## 4. Current Constraints
+
+- **Auth:** Users must be linked to a Tenant/Fund.
+    
+- **Inputs:** All numbers: money, percentages, etc. strictly passed as Strings (e.g., `"3.0"`).
+    
+- **Stack:** Rust/Axum (Backend), Next.js/Tailwind (Frontend).
+    
+- **Architectural Reference from V3 Freeze:** See attached file. 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

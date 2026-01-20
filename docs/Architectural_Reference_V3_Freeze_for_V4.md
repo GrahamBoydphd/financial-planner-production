@@ -12,7 +12,7 @@ The stack is selected for institutional-grade precision, type safety, and high-p
     * **Language:** Rust (Edition 2021).
     * **Web Framework:** `axum` (with `tokio`).
     * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
-    * **Math:** `rust_decimal` for ALL currency/rates. `f64` is **BANNED** for money.
+    * **Math:** See Immutable Data Contract below.
     * **Serialization:** `serde` / `serde_json`.
 
 
@@ -87,21 +87,17 @@ final "Source of Truth" points to your Frontend Architect:
     
 - **Debugging Status**: The backend will continue to return a `401` on auth failure. The frontend must be the one to disable the automatic redirect for inspection.
 
-### 2. For the _NEW_ Frontend Architect (The Reboot)
+### The "Solvency Source of Truth"
 
-**ACT AS:** Frontend Architect (Strict View Layer Focus). **CONTEXT:** You are taking over a project with a strict "Fortress Standard" architecture. Your predecessor was removed for confusing business logic with view logic. **The Golden Rule:** You do not define the schema. You do not do math. You render what the Backend sends.
-
-**YOUR BIBLE (FRONTEND_ANCHOR.md):** [Paste the content of the Version 3.1 Anchor Document I generated above here]
-
-**IMMEDIATE MISSION:**
-
-1. **Audit:** Scan the current `frontend/` directory.
+- **Removed:** The `is_insolvent` boolean flag has been **permanently deleted** from the API to prevent "split-brain" states.
     
-2. **Purge:** Identify any client-side calculations (e.g., projecting future months locally). Mark them for removal.
+- **New Standard:** You must exclusively use `is_solvent: boolean`.
     
-3. **Align:** Ensure all Input Forms in `components/forms/` are strictly using the **String/Percentage** contract (e.g., `growth_rate_percent` as "3.0", not 0.03).
+- **Logic:**
     
-4. **Report:** Confirm you have ingested the Anchor and are ready to build the **Fund Dashboard**.
+    - If `is_solvent === true`: Company is trading.
+        
+    - If `is_solvent === false`: Company is dead. All financial fields (Revenue, Cash, Opex) are guaranteed to be `0.00`.
 
 ---
 
@@ -163,6 +159,8 @@ final "Source of Truth" points to your Frontend Architect:
 ---
 ## 7. Simulation & Business Logic
 
+#### 7.1 Company Level
+
 The Frontend Architect must ensure the UI accurately reflects the Engine's stochastic capabilities:
 
 - **P50 Trajectory (The Median) in any Monte Carlo simulation**: The "Median" line on charts is a fictitious path connecting the 500th value (of 1,000 simulations) for **each individual month**.
@@ -174,7 +172,23 @@ The Frontend Architect must ensure the UI accurately reflects the Engine's stoch
 - **Staffing Anniversaries**: Salary increases are applied on the role's hire-anniversary month, calculated as `(m - role.start_month) / 12`, not at the start of a calendar year.
     
 - **Negative Volatility**: The UI must support and transmit negative bounds for volatility (e.g., `vol_min: "-30.0"`).
-- 
+
+
+#### 7.2 Fund Level
+
+The Frontend Architect must ensure the UI accurately reflects the Engine's stochastic capabilities:
+
+- **P50 Trajectory (The Median) in any Monte Carlo simulation**: The "Median" line on charts is a fictitious path connecting the 500th value (of 1,000 simulations) for **each individual month**.
+    
+- **Visual Alignment**: UI labels must be derived from this specific monthly median trajectory to ensure the data matches the line graph.
+    
+- **Relative Time**: The system uses **Integers** for months (e.g., Month 1, Month 12) rather than calendar dates.
+    
+- **Any Anniversaries within a fund or within a company in the fund**: Annual changes are applied in the anniversary month, calculated as `(m - role.start_month) / 12`, not at the start of a calendar year.
+    
+- **Negative Volatility**: The UI must support and transmit negative bounds for volatility (e.g., `vol_min: "-30.0"`).
+
+
 ---
 
 
@@ -236,5 +250,12 @@ The Frontend must support the following newly integrated stochastic models:
     
 
 
+## 10. Recorded Micro-Decisions
 
+_These are specific implementation details agreed upon in this chat that refine the broader rules in the document._
 
+1. **P50 Runway = "Remaining Time"**: We refined the P50 Runway logic so that if the median trajectory is insolvent, the runway explicitly returns `0` (instead of the month-index of death). This aligns with the "time to live" semantic.
+    
+2. **Retention of `valuation_name`**: We explicitly decided **not** to rename `valuation_name` to `assumption_name` (as I initially proposed), preferring to keep the semantic specificity for now. This complies with the "Scoped Naming" rule (it is scoped) but avoids over-abstraction.
+    
+3. **Staffing "Role Name"**: We specifically applied the scoped naming rule to `StaffingRole` ($\rightarrow$ `role_name`) and `EventShock` ($\rightarrow$ `shock_name`), which were the final holdouts from the "Master Fortress Standard" audit.

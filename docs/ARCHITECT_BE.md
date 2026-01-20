@@ -12,26 +12,25 @@ This app will eventually be full production code with sensitive data for differe
 * Always ask for the source files before a change if your current version of the source might be different to the version on the development laptop. 
 
 === 1. TECHNOLOGY STACK (The Hardware) ===
-* **Language:** Rust (Edition 2021).
-* **Runtime:** `tokio` (Async/Await). NEVER use blocking IO or `std::thread`.
-* **Web Framework:** `axum` (with `tower` middleware).
-* **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
-* **Math:** `rust_decimal` for ALL currency/rates. `f64` is BANNED.
-* **Serialization:** `serde` / `serde_json`.
+As defined in the attached file Architectural_Reference_V3_Freeze_for_V4. Please alert me if you cannot read this file. 
 
 === 2. DIRECTORY MAP (Where things live) ===
 * `backend/src/handlers/` -> All API route logic (grouped by resource).
 * `backend/src/models.rs` -> Shared Structs and DB schemas.
-* `backend/migrations/` -> SQLx migration files (SQL).
 * `backend/src/projection.rs` -> Core Financial Simulation Logic.
+* `backend/src/middleware.rs` -> Middleware.
+* `backend/src/distributions.rs` -> Helper with the different stochastic distributions used.
+* `backend/src/errors.rs` -> Error helper.
+* `backend/migrations/` -> SQLx migration files (SQL).
+
 
 === 3. CONTEXT LOADING PROTOCOL (BROWNFIELD SAFETY) ===
 **CRITICAL:** We are modifying an EXISTING codebase. Do not assume you know the code state.
 
 **Rule:** Before generating a `do_task` command that modifies existing logic (especially `models.rs`, `handlers/`, or `migrations/`):
-1. **Check:** Do you have the *current, up-to-date* text of that file in this chat history?
+1. **Check:** Do you have the *current, up-to-date* text of that file in this chat history and an up to date tree.txt?
 2. **Halt & Ask:** If NO, you must **STOP** and ask the User:
-   > "Please paste the current content of `backend/src/models.rs` (or relevant file) so I can verify existing definitions."
+   > "Please paste the current content of `file` so I can verify existing definitions."
 3. **Proceed:** Only AFTER the user pastes the code, generate the `do_task` command using that specific context.
 
 === 4. MEMORY BANK: ARCHITECT_BE.md (The Current Patterns) ===
@@ -46,7 +45,6 @@ This app will eventually be full production code with sensitive data for differe
 
 ### Types & Data Structures
 - **IDs:** `Uuid` (crate: `uuid`) is used for all primary and foreign keys.
-- **Financials:** `Decimal` (crate: `rust_decimal`) is strictly used for all monetary values, percentages, and growth rates to ensure precision.
 - **Time:**
   - `NaiveDate` (crate: `chrono`) for specific dates (e.g., `start_month`).
   - `DateTime<Utc>` for audit timestamps (`created_at`).
@@ -76,7 +74,6 @@ This app will eventually be full production code with sensitive data for differe
 - **Database Errors:** `sqlx::Error` is automatically converted to `AppError::InternalServerError` (logging the detailed error to stderr).
 
 ### Authentication & Multi-Tenancy (V2)
-- **Identity Source:** Login MUST use `username` (Text), NOT email.
 - **Security:**
   - Password Hashing: `argon2` (crate: `argon2`).
   - Tokens: JWT (crate: `jsonwebtoken`).
@@ -101,18 +98,13 @@ This app will eventually be full production code with sensitive data for differe
   - `sampler`: `GrowthSampler` initialized with the specific volatility model (e.g., Student's T, NRIG).
 
 ### Structure
-- **Deterministic Run:** `run_iteration`
-  - A single, linear pass through the timeline.
-  - Used for the "base case" projection.
-- **Stochastic Runs:** `run_monte_carlo_breadth_first`
-  - **Strategy:** Breadth-First traversal. All trajectories (iterations) are advanced one month at a time.
-  - **Reasoning:** Enables interaction between trajectories, specifically for the **Non-Ergodicity Pooling** logic.
+To be redesigned. See Architectural_Reference_V3_Freeze_for_V4 for the current state.
 
 ### Logic Flow (Per Month)
 1. **Operating Cash Flow:** Calculate Revenue -> Gross Profit -> Opex -> Net Income.
 2. **Investment:** Apply treasury growth (Capital Growth Policy) to cash balance.
 3. **Pooling (Stochastic Only):**
-   - Calculate "Poolable Income" (Operating Profit + Investment Gain) for *all* trajectories.
+   - Calculate "Poolable Income" (Operating Profit + Investment Gain) for *all* trajectories, according to the trajectory being one universe with one company per universe (Company Level) and pooling between universes, or the Fund Level with each Universe the trajectory, and many companies per universe with pooling only between companies within one universe.
    - Collect a fraction (`pooling_fraction`) from each trajectory into a central pool.
    - Redistribute the pool equally back to all trajectories.
 4. **Dividends & Capital:** Apply dividend policies and inject external capital.
@@ -122,7 +114,7 @@ This app will eventually be full production code with sensitive data for differe
 - **`SimulationResult`:**
   - `deterministic_data`: Full monthly history for the deterministic run.
   - `single_run_data`: Full monthly history for one representative stochastic run (usually the median).
-  - `pXX_value`: Vectors of percentiles (P10, P50, P90) for the `total_value` metric over time.
+  - `pXX_value`: Vectors of percentiles (P10, P50, P90) for the `total_value` metric over time except if insolvent. Then all values set to the right value for an insolvent company, typically zero.
   - `deterministic_valuation` / `deterministic_runway`: Summary metrics.
 
 ## 4. Database Strategy

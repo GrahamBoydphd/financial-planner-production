@@ -1,4 +1,170 @@
 
+# === SEED FOR A NEW GEM ===
+
+Backend_Architect
+
+Custom Gem
+
+No, I have not yet generated a single consolidated document named `FRONTEND_ANCHOR.md`. I provided the updates in separate logical blocks (Interfaces, Action Plans, and Postman JSON).
+
+To make your handover to the Frontend Architect seamless, here is the **Version 3.1 Anchor Document**. This compiles every breaking change, interface update, and logic shift we implemented today into one "Source of Truth."
+
+You can save this file as **`FRONTEND_ANCHOR.md`**.
+
+---
+
+# 📜 FRONTEND_ANCHOR.md (Version 3.1)
+
+> **Status:** FINAL (Stage 3 Complete) **Backend Engine:** Hybrid v3.1 (Decimal API / f64 Core) **Context:** Portfolio-Ready Scoping & Hardened Solvency Logic
+
+## 1. 🚨 Critical Breaking Changes
+
+_These changes require immediate refactoring to prevent runtime errors._
+
+### A. The "Solvency Source of Truth"
+
+- **Removed:** The `is_insolvent` boolean flag has been **permanently deleted** from the API to prevent "split-brain" states.
+    
+- **New Standard:** You must exclusively use `is_solvent: boolean`.
+    
+- **Logic:**
+    
+    - If `is_solvent === true`: Company is trading.
+        
+    - If `is_solvent === false`: Company is dead. All financial fields (Revenue, Cash, Opex) are guaranteed to be `0.00`.
+        
+- **Action:** Find/Replace all instances of `data.is_insolvent` with `!data.is_solvent`.
+    
+
+### B. Scoped Naming (V3 Identity)
+
+To support Fund-Level views, generic names have been replaced with scoped identifiers.
+
+- `event_name` → **`shock_name`** (in Event/Shock objects)
+    
+- `name` → **`role_name`** (in Staffing/Payroll objects)
+    
+- `name` → **`fund_name`** (in Fund objects)
+    
+- _(Existing scoped names like `company_name` and `revenue_name` remain unchanged)._
+    
+
+---
+
+## 2. 📊 New Simulation Metrics
+
+### A. Portfolio Mortality ("The Cliff of Failure")
+
+The `SimulationResult` object now includes a specific metric for charting risk over time.
+
+- **Field:** `survival_rate: number[]` (Array of 0.0 to 1.0)
+    
+- **Visualization:** Plot this on a **secondary Y-axis** or separate sparkline. It starts at `1.0` (100%) and drops as simulations fail.
+    
+- **Context:** This is the precise "Probability of Survival" for the strategy at each month.
+    
+
+### B. P50 Runway = "Remaining Time"
+
+- **Old Behavior:** Insolvent companies sometimes showed "Infinite" or "Total Lifespan" runway.
+    
+- **New Behavior:**
+    
+    - If `is_solvent === false`: **Runway is 0**.
+        
+    - If `is_solvent === true`: Runway = Months remaining _after_ the simulation end date.
+        
+
+---
+
+## 3. 🛠️ Updated TypeScript Interfaces
+
+Copy these directly into your frontend `types/api.ts` or equivalent.
+
+TypeScript
+
+```
+// --- IDENTITY & SCOPE ---
+
+export interface Fund {
+  id: string;
+  fund_name: string; // SCOPED
+  currency_code: string;
+  tenant_id: string;
+}
+
+export interface StaffingRole {
+  id: string;
+  role_name: string; // SCOPED
+  annual_salary: string; // Decimal string
+  start_month: number;
+  // ...
+}
+
+export interface EventShock {
+  id: string;
+  shock_name: string; // SCOPED (Was event_name)
+  shock_month: number;
+  impact_type: 'revenue' | 'expense' | 'cogs';
+  impact_value: string; // Decimal string
+}
+
+// --- MONTE CARLO & SIMULATION ---
+
+export interface MonthlyData {
+  month_index: number;
+  date: string;
+  
+  // Financials (Strict Decimal Precision)
+  revenue: number;
+  gross_profit: number;
+  opex: number;
+  net_income: number;
+  cash_balance: number;
+  
+  // Solvency State
+  is_solvent: boolean; // SINGLE SOURCE OF TRUTH
+  // is_insolvent: boolean; // DELETED - DO NOT USE
+}
+
+export interface SimulationResult {
+  labels: string[];
+  
+  // Trajectories
+  deterministic_data: MonthlyData[];
+  p50_data: MonthlyData[]; // Anchored Median (Guaranteed Consistent Row)
+  
+  // Metrics
+  survival_rate: number[]; // NEW: [1.0, 1.0, 0.98, ... 0.45]
+  
+  // Valuations & Runway
+  p50_valuation: number | null;
+  p50_runway: number | null; // 0 if insolvent
+}
+```
+
+---
+
+## 4. 🎨 UX/UI Requirements
+
+1. **Total Erasure Styling**:
+    
+    - In the Data Table, if a row has `is_solvent: false`, the Revenue, Opex, and Cash columns will explicitly be `0`.
+        
+    - **Recommendation**: Apply a "dead-state" style (e.g., strikethrough or gray text) to these rows to clearly communicate the company has ceased trading.
+        
+2. **Validation Rules**:
+    
+    - **Role Name**: Max 255 chars.
+        
+    - **Shock Name**: Max 255 chars.
+        
+    - **Assumption Name**: Max 255 chars.
+        
+    - **Action**: Update form validation to catch these limits before submission to avoid backend `400 Bad Request` errors.
+
+
+
 # === CURRENT GEM ===
 # FRONTEND ANCHOR: The Fortress Standard
 

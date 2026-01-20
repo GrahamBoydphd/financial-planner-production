@@ -262,3 +262,91 @@ git branch | grep "ai-fix-" | xargs git branch -D
     ```
     backend/migrations/20260109130000_create_users_table.sql
     ```
+
+
+# New Version: Backup directory and clean it.
+### 1. Create the Backup Directory
+
+From your laptop terminal, stay in the parent directory of your project and use `cp -r` (recursive copy).
+
+Bash
+
+```
+cd ~/3_Evolutesix/Research/Jules-BP/
+# Create a timestamped backup folder
+cp -r current/ current_V3_Frozen_Backup_20260120/
+```
+
+---
+
+### 2. The "Weight Loss" Plan (Cleanup)
+
+We want to remove the three main "space-eaters" that are not part of your actual source code:
+
+1. **`node_modules`**: The external JavaScript libraries (~500MB+).
+    
+2. **`target/`**: The Rust compilation artifacts (~1GB+).
+    
+3. **`.next/`**: The Next.js build cache (~100MB+).
+    
+
+**Run these commands inside your new backup directory:**
+
+Bash
+
+```
+cd current_V3_Frozen_Backup_20260120/
+
+# Remove Frontend heavy files
+rm -rf frontend/node_modules
+rm -rf frontend/.next
+
+# Remove Backend heavy files
+rm -rf backend/target
+rm -f backend/backend.log
+
+# Remove any hidden OS junk or temp files
+find . -name ".DS_Store" -delete
+```
+
+---
+
+### 3. Verify the Backup Size
+
+To ensure the backup is lean and strictly contains your source code, check the size:
+
+Bash
+
+```
+du -sh .
+```
+
+_You should see the size drop from ~2GB down to roughly 10-50MB._
+
+---
+
+### 4. Optional: Create a Compressed Archive
+
+If you want to keep this backup truly "frozen" and out of the way, you can compress it into a single file:
+
+Bash
+
+```
+cd ..
+tar -czvf jules_v3_frozen.tar.gz current_V3_Frozen_Backup_20260120/
+# You can now delete the uncompressed backup folder if you wish
+# rm -rf current_V3_Frozen_Backup_20260120/
+```
+
+---
+
+### 📝 Final Checklist for the "New Stage"
+
+Now that your backup is safe, you are ready to start the next stage in your `current/` directory. Before you write the first line of code, remember:
+
+1. **Clear the Laptop State:** Run `rm -rf frontend/.next` and `cargo clean` in the backend of your active `current/` folder to ensure no old build logic interferes with new code.
+    
+2. **Verify Branch:** Ensure you are on a fresh branch for this new stage (e.g., `git checkout -b feature/stage-4-architecture`).
+    
+
+**Would you like me to help you draft the "Phase 4" roadmap based on where we left off with the multi-tenant hardening?**
