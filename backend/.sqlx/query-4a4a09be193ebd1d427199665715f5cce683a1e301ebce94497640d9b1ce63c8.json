@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at\n        FROM fund_plans\n        WHERE fund_id = $1 AND tenant_id = $2\n        ORDER BY created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "fund_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "plan_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "selected_plans",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "4a4a09be193ebd1d427199665715f5cce683a1e301ebce94497640d9b1ce63c8"
+}

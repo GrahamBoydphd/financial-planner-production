@@ -93,7 +93,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
           fund_plan_id: fundPlanId || undefined,
           months: months,
           pooling_fraction: poolingFraction.toString(),
-          stop_insolvency: stopInsolvency.toString(),
+          stop_insolvency: stopInsolvency,
           include_initial_capital: includeInitialCapital,
       };
 

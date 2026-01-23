@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id, plan_id, expense_name, category, start_month, end_month, \n            initial_amount, growth_rate_percent, frequency, \n            pct_of_revenue, volatility_type, \n            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, \n            vol_freedom, vol_alpha, vol_beta, created_at\n        FROM expense_items\n        WHERE plan_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "expense_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "end_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "initial_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "growth_rate_percent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "frequency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "pct_of_revenue",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "volatility_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "vol_min",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "vol_max",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "vol_intervals",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "vol_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "vol_scale",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 16,
+        "name": "vol_freedom",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 17,
+        "name": "vol_alpha",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 18,
+        "name": "vol_beta",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 19,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "6cad2f92e3f1d078d1a09dfde788e9a66ef89d6ea4b4e5e690f25115d5a81030"
+}

@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT \n                    id, company_id, plan_name, start_month, currency_code, \n                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id\n                FROM financial_plans\n                WHERE company_id = $1 AND tenant_id = $2\n                ORDER BY created_at DESC\n                LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "company_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "plan_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "start_month",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "initial_cash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "pooling_fraction",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5390e1039bd57fb4e13a26bb94aa519a2824fb264729a89b91fcf05c5b4b447e"
+}

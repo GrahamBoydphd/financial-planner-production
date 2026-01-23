@@ -297,404 +297,530 @@ _These are specific implementation details agreed upon in this chat that refine 
     * Do not add new crates/packages unless explicitly instructed by the Architect prompt.</architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Stage 4 UI Polish - Safe Tooltip Sorting. ACTION: Update 'frontend/components/FundChart.tsx'. LOGIC: In 'options.plugins.tooltip', add 'itemSort' callback. LOGIC: 1) Helper 'getScore(label)': If label starts with 'P' and followed by digits (regex /^P\d+$/), return parseInt(digits). Else (e.g., 'Likelihood'), return 1000. 2) Return 'bScore - aScore'. This guarantees non-P info stays at the top, and P-lines are ordered P100 -> P0.
+CONTEXT: Build Fix - Type Mismatch. ACTION: Update 'frontend/app/fund/[fundId]/results/page.tsx'. LOGIC: Inside the 'loadSim' function, locate the 'simParams' object. Change 'stop_insolvency: stopInsolvency.toString()' to simply 'stop_insolvency: stopInsolvency'. This aligns the passed parameter with the boolean type expected by the 'getFundSimulation' interface.
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/components/FundChart.tsx ---
+--- START FILE: frontend/app/fund/[fundId]/results/page.tsx ---
 'use client';
 
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  LogarithmicScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  TooltipItem,
-  LegendItem
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import { api, Fund, SimulationResult } from '@/lib/api';
+import FundChart, { FanData } from '@/components/FundChart';
+import FundKPICards from '@/components/display/FundKPICards';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  LogarithmicScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+const YEAR_OPTIONS = [1, 2, 3, 5, 10, 20, 50, 100];
 
-export interface FanData {
-  p0?: number[];
-  p5?: number[];
-  p10?: number[];
-  p25?: number[];
-  p50?: number[];
-  p75?: number[];
-  p90?: number[];
-  p95?: number[];
-  p100?: number[];
-  
-  // Solvency Data
-  p0_solvent_count?: number[];
-  p10_solvent_count?: number[];
-  p25_solvent_count?: number[];
-  p50_solvent_count?: number[];
-  p75_solvent_count?: number[];
-  p90_solvent_count?: number[];
-  p100_solvent_count?: number[];
+type ViewMode = 'standard' | 'single' | 'monte_carlo';
 
-  // Metadata for P50 tooltip
-  p50_data?: { solvent_companies: number; total_companies: number }[];
-}
+// Helper to extract FanData from SimulationResult
+const extractFanData = (sim: SimulationResult): FanData => {
+  const parse = (arr?: (number | string)[]) => arr?.map(v => Number(v));
 
-interface Props {
-  mode: 'standard' | 'single' | 'monte_carlo';
-  labels: string[];
-  values?: number[]; // For standard/single mode
-  fanData?: FanData; // For monte_carlo mode
-  targetProbability?: number[]; // Secondary axis (was survivalRate)
-  targetMultiple?: number; // For label
-  currencySymbol?: string;
-  isLog?: boolean;
-}
-
-export default function FundChart({
-  mode,
-  labels,
-  values,
-  fanData,
-  targetProbability,
-  targetMultiple,
-  currencySymbol = '$',
-  isLog = false,
-}: Props) {
-  const LOG_FLOOR = 100;
-
-  // --- Helpers ---
-  const clamp = (val: number | undefined | null): number | null => {
-    if (val === undefined || val === null) return null;
-    if (!isLog) return val;
-    return val < LOG_FLOOR ? LOG_FLOOR : val;
-  };
-
-  const processArray = (arr: number[] | undefined) => {
-    if (!arr) return [];
-    return arr.map(clamp);
-  };
-
-  // Helper to retrieve raw values for tooltips
-  const getRaw = (datasetLabel: string, index: number): number | null => {
-    if (mode === 'monte_carlo' && fanData) {
-      switch (datasetLabel) {
-        case 'P100': return fanData.p100?.[index] ?? null;
-        case 'P90': return fanData.p90?.[index] ?? null;
-        case 'P75': return fanData.p75?.[index] ?? null;
-        case 'P25': return fanData.p25?.[index] ?? null;
-        case 'P10': return fanData.p10?.[index] ?? null;
-        case 'P0': return fanData.p0?.[index] ?? null;
-        case 'P50': return fanData.p50?.[index] ?? null;
-        default: return null;
-      }
-    }
-    if ((mode === 'standard' || mode === 'single') && values) {
-      return values[index] ?? null;
-    }
-    return null;
-  };
-
-  // --- Calculate Nice Upper Bound ---
-  let dataMax = 0;
-  if (mode === 'monte_carlo' && fanData?.p100) {
-    dataMax = Math.max(...fanData.p100);
-  } else if (values) {
-    dataMax = Math.max(...values);
-  }
-
-  const getNiceUpperBound = (val: number) => {
-    if (val <= 0) return 100;
-    const log10 = Math.log10(val);
-    const power = Math.floor(log10);
-    const base = Math.pow(10, power);
+  return {
+    p0: parse(sim.p0_value),
+    p5: parse(sim.p5_value),
+    p10: parse(sim.p10_value),
+    p25: parse(sim.p25_value),
+    p50: parse(sim.p50_value),
+    p75: parse(sim.p75_value),
+    p90: parse(sim.p90_value),
+    p95: parse(sim.p95_value),
+    p100: parse(sim.p100_value),
     
-    // Steps: 1x, 5x, 10x
-    if (val <= base) return base;
-    if (val <= base * 5) return base * 5;
-    return base * 10;
-  };
+    // Solvency Wiring
+    p0_solvent_count: parse(sim.p0_solvent_count),
+    p10_solvent_count: parse(sim.p10_solvent_count),
+    p25_solvent_count: parse(sim.p25_solvent_count),
+    p50_solvent_count: parse(sim.p50_solvent_count),
+    p75_solvent_count: parse(sim.p75_solvent_count),
+    p90_solvent_count: parse(sim.p90_solvent_count),
+    p100_solvent_count: parse(sim.p100_solvent_count),
+    p50_data: sim.p50_data,
+  } as any;
+};
 
-  let yMax = getNiceUpperBound(dataMax);
-  // Ensure max is above floor if log
-  if (isLog && yMax <= LOG_FLOOR) {
-    yMax = LOG_FLOOR * 10;
-  }
+export default function FundResultsPage({ params }: { params: { fundId: string } }) {
+  const { fundId } = params;
+  const searchParams = useSearchParams();
+  const fundPlanId = searchParams.get('fund_plan_id');
+  
+  // Data State
+  const [fund, setFund] = useState<Fund | null>(null);
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [simLoading, setSimLoading] = useState(false);
 
-  const datasets: any[] = [];
+  // Control State
+  const [isLogScale, setIsLogScale] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('standard');
+  const [poolingFraction, setPoolingFraction] = useState<number>(0);
+  const [years, setYears] = useState<number>(5);
+  const [stopInsolvency, setStopInsolvency] = useState<boolean>(true);
+  
+  // Investor Track State
+  const [targetMultiple, setTargetMultiple] = useState<number>(3.0);
+  const [includeInitialCapital, setIncludeInitialCapital] = useState<boolean>(false);
+  
+  // Path Exploration State
+  const [pathIndex, setPathIndex] = useState<number>(0);
 
-  // --- 1. Standard / Single Mode ---
-  if ((mode === 'standard' || mode === 'single') && values) {
-    datasets.push({
-      label: 'Total Fund Value',
-      data: processArray(values),
-      borderColor: 'rgb(37, 99, 235)', // Blue-600
-      backgroundColor: 'rgba(37, 99, 235, 0.1)',
-      borderWidth: 3,
-      pointRadius: 0,
-      tension: 0.1,
-      fill: true,
-    });
-  }
+  // 1. Initial Load (Fund Metadata)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const f = await api.getFund(fundId);
+        setFund(f);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [fundId]);
 
-  // --- 2. Monte Carlo Mode (5-Zone Fan) ---
-  if (mode === 'monte_carlo' && fanData) {
-    // Colors
-    const colorP90_P0 = 'rgba(30, 58, 138, 0.6)';   // Blue-900ish
-    const colorP75_P10 = 'rgba(37, 99, 235, 0.4)';  // Blue-600ish
-    const colorP25 = 'rgba(147, 197, 253, 0.4)';    // Blue-300ish
+  // 2. Simulation Load
+  const loadSim = useCallback(async () => {
+    if (!fund) return;
+    
+    try {
+      setSimLoading(true);
+      
+      const months = years * 12;
+      const simParams = {
+          fund_plan_id: fundPlanId || undefined,
+          months: months,
+          pooling_fraction: poolingFraction.toString(),
+          stop_insolvency: stopInsolvency.toString(),
+          include_initial_capital: includeInitialCapital,
+      };
 
-    // 1. P100 (Top Edge) - Solid Line
-    datasets.push({
-      label: 'P100',
-      data: processArray(fanData.p100),
-      solvencyData: fanData.p100_solvent_count,
-      borderColor: 'rgba(30, 58, 138, 0.5)', // Visible solid line
-      borderWidth: 1,
-      pointRadius: 0,
-      fill: false,
-      order: 10,
-    });
+      // Single API call for all data
+      const res = await api.getFundSimulation(fundId, simParams);
+      setSimulation(res);
+      setPathIndex(0); // Reset path index on new simulation
 
-    // 2. P90 (Fills to P100) - Zone 5
-    datasets.push({
-      label: 'P90',
-      data: processArray(fanData.p90),
-      solvencyData: fanData.p90_solvent_count,
-      borderColor: 'transparent',
-      backgroundColor: colorP90_P0,
-      pointRadius: 0,
-      fill: '-1', // Fills to previous dataset (P100)
-      order: 11,
-    });
-
-    // 3. P75 (Fills to P90) - Zone 4
-    datasets.push({
-      label: 'P75',
-      data: processArray(fanData.p75),
-      solvencyData: fanData.p75_solvent_count,
-      borderColor: 'transparent',
-      backgroundColor: colorP75_P10,
-      pointRadius: 0,
-      fill: '-1',
-      order: 12,
-    });
-
-    // 4. P25 (Fills to P75) - Zone 3 (Center)
-    datasets.push({
-      label: 'P25',
-      data: processArray(fanData.p25),
-      solvencyData: fanData.p25_solvent_count,
-      borderColor: 'transparent',
-      backgroundColor: colorP25,
-      pointRadius: 0,
-      fill: '-1',
-      order: 13,
-    });
-
-    // 5. P10 (Fills to P25) - Zone 2
-    datasets.push({
-      label: 'P10',
-      data: processArray(fanData.p10),
-      solvencyData: fanData.p10_solvent_count,
-      borderColor: 'transparent',
-      backgroundColor: colorP75_P10,
-      pointRadius: 0,
-      fill: '-1',
-      order: 14,
-    });
-
-    // 6. P0 (Fills to P10) - Zone 1
-    datasets.push({
-      label: 'P0',
-      data: processArray(fanData.p0),
-      solvencyData: fanData.p0_solvent_count,
-      borderColor: 'transparent',
-      backgroundColor: colorP90_P0,
-      pointRadius: 0,
-      fill: '-1',
-      order: 15,
-    });
-
-    // 7. P50 (Median) - Solid Line
-    datasets.push({
-      label: 'P50',
-      data: processArray(fanData.p50),
-      solvencyData: fanData.p50_solvent_count || fanData.p50_data?.map(d => d.solvent_companies),
-      borderColor: 'rgb(30, 58, 138)', // Dark Blue
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.1,
-      fill: false,
-      order: 5,
-    });
-
-    // 8. Target Probability (Secondary Axis)
-    if (targetProbability && targetMultiple !== undefined) {
-      datasets.push({
-        label: `Likelihood of ${targetMultiple}X`,
-        data: targetProbability.map(p => p * 100), // Map to 0-100 scale
-        borderColor: 'rgb(75, 85, 99)', // Gray-600 (Dashed)
-        borderWidth: 2,
-        borderDash: [5, 5],
-        pointRadius: 0,
-        tension: 0.1,
-        fill: false,
-        yAxisID: 'y1',
-        order: 1,
-      });
+    } catch (e) {
+      console.error("Simulation failed", e);
+    } finally {
+      setSimLoading(false);
     }
+  }, [fund, fundId, fundPlanId, poolingFraction, years, stopInsolvency, includeInitialCapital]);
+
+  // Trigger simulation on dependency change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+        loadSim();
+    }, 600);
+    return () => clearTimeout(timeoutId);
+  }, [loadSim]);
+
+  // --- DATA PREPARATION ---
+
+  // 1. Deterministic Data (Standard Mode)
+  const detRows = simulation?.deterministic_data || [];
+  
+  // Check for empty data
+  if (simulation && detRows.length === 0) {
+      console.warn('No Deterministic Data Available');
   }
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    scales: {
-      x2: {
-        position: 'top' as const,
-        grid: {
-          drawTicks: false,
-          drawOnChartArea: false,
-        },
-        ticks: {
-          display: false,
-        },
-      },
-      y: {
-        type: isLog ? 'logarithmic' as const : 'linear' as const,
-        display: true,
-        position: 'left' as const,
-        title: {
-          display: true,
-          text: `Fund Value (${currencySymbol})`,
-        },
-        min: isLog ? LOG_FLOOR : undefined,
-        max: yMax, // Force nice upper bound
-        ticks: {
-          callback: (value: any) => {
-            return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
-          },
-        },
-        afterBuildTicks: (axis: any) => {
-          if (!isLog) return;
-          
-          const min = axis.min;
-          const max = axis.max;
-          if (min <= 0 || max <= 0) return;
+  const deterministicValues = detRows.map((d: any) => Number(d.total_value || 0));
 
-          const logMin = Math.log10(min);
-          const logMax = Math.log10(max);
-          const range = logMax - logMin;
+  // 2. Single Path Data (Volatile Mode)
+  const allPathsRaw = simulation?.all_paths;
+  const allPaths = useMemo(() => 
+    Array.isArray(allPathsRaw) 
+      ? allPathsRaw.map((p: any[]) => p.map((v: any) => {
+          // FIX: Handle object structure from backend (Fortress Standard)
+          if (typeof v === 'object' && v !== null) {
+              return Number(v.total_value);
+          }
+          return Number(v);
+      })) 
+      : [], 
+  [allPathsRaw]);
+    
+  const singlePathValues = allPaths.length > 0 && allPaths[pathIndex] ? allPaths[pathIndex] : [];
+  
+  // Prepare current path values for KPI Cards
+  const currentPathValues = viewMode === 'single' && singlePathValues.length > 0 ? {
+      netValue: singlePathValues[singlePathValues.length - 1],
+      // Fallback to deterministic cash as we don't have volatile cash path in this view yet
+      cashBalance: detRows.length > 0 ? Number(detRows[detRows.length - 1].cash_balance) : 0
+  } : undefined;
 
-          axis.ticks = axis.ticks.filter((t: any) => {
-            const val = t.value;
-            if (val <= 0) return false;
+  // 3. Investor Track Math (Likelihood & DPI)
+  const p50Data = simulation?.p50_data || [];
+  
+  const { likelihoodData, dpiData } = useMemo(() => {
+    if (!simulation || !p50Data.length) return { likelihoodData: [], dpiData: [] };
 
-            const log10 = Math.log10(val);
-            const power = Math.floor(log10);
-            const base = Math.pow(10, power);
-            const significand = Math.round(val / base);
+    // Calculate Likelihood Array (Probability > Target Multiple)
+    const likelihood = p50Data.map((monthData, idx) => {
+        // FIX: Force Month 0 to 0% to avoid "100% success" artifact when investment is 0
+        if (idx === 0) return 0;
 
-            if (range > 5) {
-              // Only powers of 10 (significand 1)
-              return significand === 1;
-            } else {
-              // Powers of 10 (1) or half-steps (5)
-              return significand === 1 || significand === 5;
-            }
-          });
+        if (!allPaths.length) return 0;
+        
+        const investment = Number(monthData.cumulative_external_capital);
+        const target = investment * targetMultiple;
+        
+        // If investment is 0, technically target is 0. 
+        // If value >= 0, it's a hit. But usually we care about when investment > 0.
+        // If investment is 0, let's assume probability is 0 or 1 depending on value?
+        // Let's stick to the formula: Count paths >= target.
+        
+        let count = 0;
+        for (const path of allPaths) {
+            const val = Number(path[idx]);
+            if (val >= target) count++;
         }
-      },
-      y1: {
-        type: 'linear' as const,
-        display: mode === 'monte_carlo' && !!targetProbability,
-        position: 'right' as const,
-        title: {
-          display: true,
-          text: 'Likelihood of hitting the target multiplier',
-        },
-        min: 0,
-        max: 100, // Force 0-100
-        grid: {
-          drawOnChartArea: false,
-        },
-        ticks: {
-          callback: (value: any) => {
-            return value + '%';
-          },
-        },
-      },
-    },
-    plugins: {
-      legend: {
-        display: true,
-        labels: {
-          filter: function (item: LegendItem) {
-            // Hide helper datasets for the fan bands, keep P100 and Median
-            const hidden = ['P90', 'P75', 'P25', 'P10', 'P0'];
-            return !hidden.includes(item.text);
-          },
-        },
-      },
-      tooltip: {
-        callbacks: {
-          label: function (context: TooltipItem<any>) {
-            let label = context.dataset.label || '';
-            
-            // Handle Target Probability
-            if (context.dataset.yAxisID === 'y1') {
-              // Data is already 0-100
-              return `${label}: ${Number(context.parsed.y).toFixed(1)}%`;
-            }
+        return count / allPaths.length;
+    });
 
-            // Handle Financial Values (use getRaw to show real value, not clamped)
-            const rawVal = getRaw(label, context.dataIndex);
-            const displayVal = rawVal !== null ? rawVal : context.parsed.y;
-            const formattedVal = `${currencySymbol}${Number(displayVal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-            
-            // Solvency Logic
-            const dataset = context.dataset as any;
-            if (dataset.solvencyData) {
-              const numerator = dataset.solvencyData[context.dataIndex] ?? 0;
-              const denominator = fanData?.p50_data?.[context.dataIndex]?.total_companies;
-              
-              if (denominator === undefined) {
-                return `${label}: ${formattedVal}`;
-              }
+    // Calculate DPI Array (Distributed to Paid-In)
+    const dpi = p50Data.map(d => {
+        const dist = Number(d.cumulative_dividends);
+        const inv = Number(d.cumulative_external_capital);
+        return inv > 0 ? dist / inv : 0;
+    });
 
-              return `${label}: ${formattedVal} | Solvent Companies: ${numerator}/${denominator}`;
-            }
+    return { likelihoodData: likelihood, dpiData: dpi };
 
-            return `${label}: ${formattedVal}`;
-          },
-        },
-      },
-    },
+  }, [simulation, p50Data, allPaths, targetMultiple]);
+
+  const handlePrevPath = () => {
+      setPathIndex(prev => Math.max(0, prev - 1));
   };
 
-  return <Line data={{ labels, datasets }} options={options} />;
+  const handleNextPath = () => {
+      const maxPaths = allPaths.length || 1000;
+      setPathIndex(prev => Math.min(maxPaths - 1, prev + 1));
+  };
+
+  if (loading) return <Layout>Loading...</Layout>;
+  if (!fund) return <Layout>Fund not found</Layout>;
+
+  const currency = fund.currency_code || '$';
+
+  // HARDENED: Unified Labels
+  const chartLabels = simulation?.labels || [];
+
+  // 4. Monte Carlo Data (Fan Mode)
+  const fanData = simulation ? extractFanData(simulation) : undefined;
+
+  // Determine visibility
+  const showStandard = viewMode === 'standard' && simulation;
+  const showMonteCarlo = viewMode === 'monte_carlo' && simulation;
+  const hasData = !!simulation;
+
+  // Active Data for KPIs
+  const activeData = simulation;
+  const isSingleMode = viewMode === 'single';
+
+  // Final Values for Cards
+  const lastLikelihood = likelihoodData.length > 0 ? likelihoodData[likelihoodData.length - 1] : 0;
+  const lastDpi = dpiData.length > 0 ? dpiData[dpiData.length - 1] : 0;
+
+  return (
+    <Layout>
+      <nav className='mb-6 flex justify-between items-center'>
+        <Link href={`/fund/${fundId}/inputs`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Back to Configuration
+        </Link>
+      </nav>
+
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-gray-900">{fund.fund_name} <span className="text-gray-400 font-normal">Projections</span></h1>
+            <p className="text-gray-500 text-sm">Aggregated Portfolio Performance</p>
+        </div>
+        
+        {/* CONTROLS BAR */}
+        <div className="flex flex-wrap items-center gap-4 bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+              
+              {/* Mode Selector */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-500 uppercase">Simulation Mode</label>
+                <select 
+                  className="border rounded p-1.5 text-sm font-bold text-blue-800 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                >
+                  <option value="standard">Standard (Deterministic)</option>
+                  <option value="single">Single Path (Volatile)</option>
+                  <option value="monte_carlo">Monte Carlo (Fan)</option>
+                </select>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Years Selector */}
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs font-semibold text-gray-500 uppercase">Duration</label>
+                 <select 
+                    value={years} 
+                    onChange={(e) => setYears(Number(e.target.value))}
+                    className="border rounded p-1.5 text-sm font-bold text-blue-800 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none min-w-[100px]"
+                 >
+                    {YEAR_OPTIONS.map(y => (
+                        <option key={y} value={y}>{y} Years</option>
+                    ))}
+                 </select>
+              </div>
+
+              {/* Pooling Slider (Visible for single and monte_carlo) */}
+              {viewMode !== 'standard' && (
+                <>
+                    <div className="w-px h-8 bg-gray-300 mx-1"></div>
+                    <div className="flex flex-col gap-1 w-40 animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className="flex justify-between">
+                            <label className="text-xs font-semibold text-gray-500 uppercase">Cash Pooling</label>
+                            <span className="text-xs font-bold text-indigo-600">{poolingFraction}%</span>
+                            </div>
+                            <input 
+                            type="range" min="0" max="100" step="5"
+                            value={poolingFraction} onChange={(e) => setPoolingFraction(parseInt(e.target.value))}
+                            className="h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            />
+                    </div>
+                </>
+              )}
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Target Multiple Input */}
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs font-semibold text-gray-500 uppercase">Target Multiple</label>
+                 <div className="flex items-center gap-1">
+                    <input 
+                        type="number" 
+                        min="1.0" 
+                        step="0.1"
+                        value={targetMultiple}
+                        onChange={(e) => setTargetMultiple(Number(e.target.value))}
+                        className="w-16 border rounded p-1.5 text-sm font-bold text-purple-800 bg-purple-50 focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                    <span className="text-sm font-bold text-gray-400">x</span>
+                 </div>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Toggles */}
+              <div className="flex flex-col gap-2 px-2">
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="logScale" 
+                    checked={isLogScale} onChange={(e) => setIsLogScale(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="logScale" className="text-xs font-medium cursor-pointer text-gray-700">Log Scale</label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="includeCapital" 
+                    checked={includeInitialCapital} onChange={(e) => setIncludeInitialCapital(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="includeCapital" className="text-xs font-medium cursor-pointer text-gray-700">Incl. Capital</label>
+                </div>
+              </div>
+
+        </div>
+      </div>
+
+      {simLoading ? (
+          <div className="h-96 flex flex-col items-center justify-center bg-gray-50 border rounded-lg animate-pulse text-gray-400 font-medium gap-2">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
+              <span>Running Simulation...</span>
+          </div>
+      ) : hasData ? (
+          <>
+            {isSingleMode ? (
+                // SINGLE MODE LAYOUT
+                <div className="flex flex-col gap-6 mb-12 animate-in fade-in duration-500">
+                    
+                    {/* Charts Row */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          <Card className="border-t-4 border-gray-400 h-full">
+                              <div className="flex justify-between items-center mb-4">
+                                  <div>
+                                      <h2 className="text-lg font-bold text-gray-800">Deterministic Baseline</h2>
+                                      <p className="text-xs text-gray-500 mt-1">Zero volatility projection.</p>
+                                  </div>
+                              </div>
+                              <div className="h-[500px]">
+                                  <FundChart 
+                                      mode="standard"
+                                      labels={chartLabels}
+                                      values={deterministicValues}
+                                      currencySymbol={currency}
+                                      isLog={isLogScale}
+                                  />
+                              </div>
+                          </Card>
+
+                          <Card className="border-t-4 border-indigo-500 h-full">
+                              <div className="flex justify-between items-center mb-4">
+                                  <div>
+                                      <div className="flex items-center gap-2">
+                                          <h2 className="text-lg font-bold text-gray-800">Volatile Reality</h2>
+                                          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Stochastic</span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">Single stochastic trajectory</p>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-1 bg-gray-100 rounded p-1 border border-gray-200">
+                                      <button 
+                                          onClick={handlePrevPath}
+                                          disabled={pathIndex <= 0}
+                                          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                      >
+                                          ←
+                                      </button>
+                                      <span className="text-xs font-mono font-bold text-gray-700 px-2 min-w-[80px] text-center">
+                                          Path {pathIndex + 1} / {allPaths.length || 1000}
+                                      </span>
+                                      <button 
+                                          onClick={handleNextPath}
+                                          disabled={!simulation || pathIndex >= (allPaths.length || 1000) - 1}
+                                          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                      >
+                                          →
+                                      </button>
+                                  </div>
+                              </div>
+                              <div className="h-[500px]">
+                                  <FundChart 
+                                      mode="single"
+                                      labels={chartLabels}
+                                      values={singlePathValues}
+                                      currencySymbol={currency}
+                                      isLog={isLogScale}
+                                      targetProbability={likelihoodData}
+                                      targetMultiple={targetMultiple}
+                                  />
+                              </div>
+                          </Card>
+                    </div>
+
+                    {/* KPI Row */}
+                    <div className="w-full">
+                        {activeData && (
+                            <FundKPICards 
+                                data={activeData} 
+                                currency={currency} 
+                                mode="single"
+                                currentPathValues={currentPathValues}
+                                isRow={true}
+                                targetMultiple={targetMultiple}
+                                dpiValue={lastDpi}
+                                likelihoodValue={lastLikelihood}
+                            />
+                        )}
+                    </div>
+                </div>
+            ) : (
+                // SIDEBAR LAYOUT (Standard & Monte Carlo)
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12 animate-in fade-in duration-500">
+                    
+                    {/* LEFT COLUMN: CHART (3/4 width) */}
+                    <div className="lg:col-span-3 space-y-6">
+                        {showStandard && (
+                            <Card className="border-t-4 border-gray-400 h-full">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-800">Deterministic Projection</h2>
+                                            <p className="text-xs text-gray-500 mt-1">Standard linear projection without volatility.</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-[500px]">
+                                        <FundChart 
+                                            mode="standard"
+                                            labels={chartLabels}
+                                            values={deterministicValues}
+                                            currencySymbol={currency}
+                                            isLog={isLogScale}
+                                        />
+                                    </div>
+                            </Card>
+                        )}
+
+                        {showMonteCarlo && (
+                            <Card className="border-t-4 border-indigo-500 h-full">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-800">
+                                                Probabilistic Envelope (P0-P100)
+                                            </h2>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Showing the full range of possible outcomes across 1,000 iterations.
+                                            </p>
+                                        </div>
+                                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">Target Probability Overlay Active</span>
+                                    </div>
+                                    <div className="h-[500px]">
+                                        <FundChart 
+                                            mode="monte_carlo"
+                                            labels={chartLabels}
+                                            fanData={fanData}
+                                            targetProbability={likelihoodData}
+                                            targetMultiple={targetMultiple}
+                                            currencySymbol={currency}
+                                            isLog={isLogScale}
+                                        />
+                                    </div>
+                            </Card>
+                        )}
+                        
+                        {/* Info Text */}
+                        <div className="flex justify-center">
+                            <span className="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                                Total Fund Value = Sum(Company Cash) + Sum(Dividends Paid)
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: KPIs (1/4 width) */}
+                    <div className="lg:col-span-1 flex flex-col gap-4">
+                        {activeData && (
+                            <div className="sticky top-6">
+                                <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">Key Metrics</h3>
+                                <FundKPICards 
+                                    data={activeData} 
+                                    currency={currency} 
+                                    mode={viewMode === 'standard' ? 'standard' : 'monte_carlo'}
+                                    currentPathValues={currentPathValues}
+                                    isRow={false}
+                                    targetMultiple={targetMultiple}
+                                    dpiValue={lastDpi}
+                                    likelihoodValue={lastLikelihood}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+            )}
+          </>
+      ) : (
+          <div className="h-64 bg-gray-50 border border-dashed rounded-lg flex items-center justify-center text-gray-400 mb-12">
+              No simulation data available. Check your configuration.
+          </div>
+      )}
+    </Layout>
+  );
 }
---- END FILE: frontend/components/FundChart.tsx ---
+--- END FILE: frontend/app/fund/[fundId]/results/page.tsx ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 

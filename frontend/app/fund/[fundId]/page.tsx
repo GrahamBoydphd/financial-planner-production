@@ -114,7 +114,7 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
                     {plan.plan_name}
                   </h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    Created: {new Date(plan.created_at).toLocaleDateString()}
+                    Created: {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : 'Date N/A'}
                   </p>
                 </div>
                 
