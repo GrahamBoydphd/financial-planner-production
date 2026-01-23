@@ -41,6 +41,7 @@ pub struct Fund {
 pub struct Company {
     pub id: Uuid,
     pub fund_id: Uuid,
+    // tenant_id removed from here to fix duplicate field error
     pub company_name: String, // Renamed from name
     pub currency_code: String,
     pub created_at: DateTime<Utc>,
@@ -211,6 +212,7 @@ pub struct UpdateFundRequest {
 #[derive(Deserialize, Debug)]
 pub struct CreateCompanyRequest {
     pub fund_id: Uuid,
+    pub tenant_id: Uuid,
     pub company_name: String,
     pub business_model: Option<String>,
     pub industry: Option<String>,
@@ -272,4 +274,23 @@ pub struct Claims {
     pub user_id: Uuid,
     pub tenant_id: Uuid,
     pub exp: usize,
+}
+
+// --- Fund Plans ---
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct FundPlan {
+    pub id: Uuid,
+    pub fund_id: Uuid,
+    pub tenant_id: Uuid,
+    pub plan_name: String,
+    pub selected_plans: serde_json::Value, // Maps to JSONB
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateFundPlanRequest {
+    pub plan_name: String,
+    pub selected_plans: serde_json::Value,
 }

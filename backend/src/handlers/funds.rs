@@ -1,11 +1,14 @@
 use axum::{
-    extract::{Path, State, Extension},
+    extract::{Path, State, Extension, Query},
     Json,
 };
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
-use crate::models::{Fund, CreateFundRequest, UpdateFundRequest, Claims};
+use crate::models::{Fund, CreateFundRequest, UpdateFundRequest, Claims, FundPlan};
 use crate::errors::AppError;
+use serde::Deserialize;
+use std::collections::HashMap;
+use serde_json::json;
 
 pub async fn create_fund(
     State(pool): State<Pool<Postgres>>,
@@ -121,4 +124,94 @@ pub async fn delete_fund(
     }
 
     Ok(Json(()))
+}
+
+#[derive(Deserialize)]
+pub struct SimParams {
+    pub fund_plan_id: Option<Uuid>,
+}
+
+pub async fn get_fund_simulation(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<SimParams>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // 1. Fetch all companies for the fund
+    let companies = sqlx::query!(
+        "SELECT id, company_name FROM companies WHERE fund_id = $1 AND tenant_id = $2",
+        id,
+        claims.tenant_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    // 2. Load selected_plans map if fund_plan_id is provided
+    let mut selected_plans: HashMap<String, Uuid> = HashMap::new();
+
+    if let Some(plan_id) = params.fund_plan_id {
+        let fund_plan_record = sqlx::query!(
+            r#"SELECT selected_plans as "selected_plans!" FROM fund_plans WHERE id = $1 AND tenant_id = $2"#,
+            plan_id,
+            claims.tenant_id
+        )
+        .fetch_optional(&pool)
+        .await?;
+
+        if let Some(record) = fund_plan_record {
+            if let Ok(map) = serde_json::from_value::<HashMap<String, Uuid>>(record.selected_plans) {
+                selected_plans = map;
+            }
+        }
+    }
+
+    let mut manifest = Vec::new();
+    let mut errors = Vec::new();
+
+    // 3. Loop through companies
+    for company in companies {
+        let company_id_str = company.id.to_string();
+        let mut final_plan_id: Option<Uuid> = None;
+        let mut source = "latest_auto";
+
+        // a) Check if a plan is selected in the map
+        if let Some(selected_id) = selected_plans.get(&company_id_str) {
+            final_plan_id = Some(*selected_id);
+            source = "fund_plan_override";
+        } else {
+            // b) If not, query the DB for the LATEST plan
+            let latest_plan = sqlx::query!(
+                "SELECT id FROM financial_plans WHERE company_id = $1 ORDER BY created_at DESC LIMIT 1",
+                company.id
+            )
+            .fetch_optional(&pool)
+            .await?;
+
+            if let Some(plan) = latest_plan {
+                final_plan_id = Some(plan.id);
+            }
+        }
+
+        // c) & d) Add to manifest or errors
+        match final_plan_id {
+            Some(pid) => {
+                manifest.push(json!({
+                    "company_name": company.company_name,
+                    "company_id": company.id,
+                    "plan_id": pid,
+                    "source": source
+                }));
+            }
+            None => {
+                errors.push(format!("Company {} has no financial plans.", company.company_name));
+            }
+        }
+    }
+
+    // Return JSON
+    Ok(Json(json!({
+        "fund_id": id,
+        "manifest": manifest,
+        "errors": errors
+    })))
 }

@@ -8,7 +8,8 @@ use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use crate::models::{FinancialPlan, Claims};
 use crate::errors::AppError;
-use crate::projection::{generate_simulation, SimulationResult};
+use crate::projection::SimulationResult;
+use crate::engine::generate_simulation;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use chrono::NaiveDate;
@@ -389,26 +390,27 @@ pub async fn get_plan_projection(
     .await.ok().flatten();
     
     // Run Simulation
-    let initial_cash = params.initial_cash.unwrap_or(dec!(0.0));
+    let initial_cash = params.initial_cash.unwrap_or(plan.initial_cash);
     let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
     let stop_insolvency = params.stop_insolvency.unwrap_or(false);
 
     let result = generate_simulation(
-        plan.start_month,
+        plan.plan_name.clone(),
+        plan.currency_code.clone(),
         months,
         initial_cash,
-        &revenue_items,
-        &expense_items,
-        &event_shocks,
-        &capital_injections,
-        &dividend_policy,
-        &credit_facility,
-        &capital_growth, 
-        &staffing_roles,
-        &valuation_assumptions,
+        revenue_items,
+        expense_items,
+        staffing_roles,
+        event_shocks,
+        capital_injections,
+        credit_facility,
+        dividend_policy,
+        valuation_assumptions,
+        capital_growth,
         use_monte_carlo,
         stop_insolvency,
-        plan.pooling_fraction // Pass pooling fraction
+        plan.pooling_fraction
     );
 
     Ok(Json(result))

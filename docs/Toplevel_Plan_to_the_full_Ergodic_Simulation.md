@@ -157,18 +157,81 @@ Improve the clean version with better guidance to the user.
 - [x] Set up BE gem
 - [x] Rebuild docs/ARCHITECTURAL_CONTEXT_CLI.md
 - [ ] On the FE change code temporarily to freeze currencies to Fund currency. 
-- [ ] Clean up the root, and make a final V3 archive. 
-- [ ] Put in the first prompt from Strategist. 
+- [x] Clean up the root, and make a final V3 archive. 
+- [x] Put in the first prompt from Strategist. 
       We may need to completely refactor the company level engine. What I believe we will need is 
 		1. A Universe. In each universe you may have only one company running (company level), or many companies (fund level). In a given universe the economy-wide shocks we later define will be applicable to all companies. And the company level shocks distinct to each company. If the run is the traditional deterministic engine, use rust decimal. If the run is volatile, both for single volatile and for the Monte Carlo, use f64. 
 		2. A Monte Carlo simulation across many universes, in two variants.
-			1. Company-level simulation: What we have now. Each universe contains one company, we iterate each universe by one time step and then do profit pooling (if switched on) at the given percentage between universes. Of course only one company per universe, so company and universe are equivalent. 
-			2. Fund-level simulation: What we are building. Each universe contains multiple companies, we iterate each universe by one time step and then do profit pooling (if switched on) at the given percentage between *the companies within that universe*. At the fund level there is NO profit pooling between universes now. Of course now we have multiple companies per universe, so company and universe are NOT equivalent. 
+			1. Company-level simulation: What we have now. **Ensemble Pooling** (Company Level: pooling across parallel timelines to fix ergodicity). Each universe contains one company, we iterate each universe by one time step and then do profit pooling (if switched on) at the given percentage between universes. Of course only one company per universe, so company and universe are equivalent. 
+			2. Fund-level simulation: What we are building. **Portfolio Pooling** (Fund Level: pooling across different entities to manage risk). Each universe contains multiple companies, we iterate each universe by one time step and then do profit pooling (if switched on) at the given percentage between *the companies within that universe*. At the fund level there is NO profit pooling between universes now. Of course now we have multiple companies per universe, so company and universe are NOT equivalent. 
 		3. So this suggests that we refactor into nested functionality (subroutines, functions, you decide what is best) 
 			1. Individual Company Iterator: Takes Company A, B, C, etc one step forwards in Universe 1, 2, 3 etc. Lowest level function.
 			2. Company-level simulation manager. Calls  Individual Company Iterator for company A in universe X. If a standard or single company volitlity, repeats to the end of the time T. If a Monte Carlo, repeats the call in breadth first for one time step across all universes, pools profit between the universes, then repeats for the next time step until the end of time T. Suggestion: only re-run the simulation if the user requests it via a button to re-run it, similar to the call for the single company volatility. Not if the user merely refreshes the page etc., nor if the the ergodicity correction, the capital stack, the credit facility, or the dividend policy changes 
 			3. Fund-level simulation manager. Calls  Individual Company Iterator for each company A, B, C etc. in universe X. If a standard or single fund volatility, repeats to the end of the time T only for Universe X. If a Monte Carlo, repeats the call in breadth first for one time step across all universes and each company in the universe, pools profit between the companies within a universe, then repeats for the next time step until the end of time T.  Suggestion: only re-run the simulation if the user requests it via a button to re-run it, similar to the call for the single company volatility. Not if the user merely refreshes the page etc., nor if the the ergodicity correction, the capital stack, the credit facility, or the dividend policy changes 
-- [ ] FE to add to the data table a column for treasury management gains / losses. 
+- [x] Add a line for the fund achieving a 3X return?  Or similar? 
+- [ ] And add a comment on the fund graph page about the fund being based  on cash, not on valuation, for simplicity of understanding. together with Total Fund Value = Sum(Company Cash) + Sum(Dividends Paid). And this as the top, and bigger. 
+- [ ] FE to add to the company data table a column for treasury management gains / losses. 
+- [ ] Add checks to all FE input items to insure in a valid range. Esp. flat check if the steps are between 1 and 20 (or some smallish number).  And add in Fortress checks in the code, and clear messages on screen if errors in operation. You are absolutely right. The previous "blind clamp" proposal was too permissive. In a financial simulation, silently converting `-2` (which is logically invalid) to `+2` is dangerous because it hides a configuration error from the user.
+	- [ ] **Big refactor** This code runs deep inside the simulation loop (`sample()` function) which returns a simple `f64`. It cannot easily return an `Result<Error>` to the user without rewriting the entire engine signature (a massive, risky change).
+	- [ ] **The Fortress Standard:** We must not allow invalid state to execute. If the user asks for `-2` intervals, the simulation _should_ likely fail or warn, not just guess.
+- [ ] Later change the P0 and P100 lines on each plot to P2 and P98, eliminating the two 1 in 500 extremes on each end. Or maybe not, since I cut off the big ones anyway? Or maybe yes, to simply not create gambler's hope. 
+- [x] Later add a feedback tab that connects to google forms. 
+- [ ] Duplicate a plan in a company on the company page; Duplicate a whole company in a fund on the dashboard page and the structure page; move a company from one fund to another on the dashboard and on the structure page;  duplicate a whole fund on both the Structure page and the Fund page .  When a company is Duplicated, all plans are Duplicated with it. When a fund is Duplicated, all companies are copied
+- [ ] Have a user called demo_admin that runs the "Demo Fund" (the tenant) and manages the demo fund and demo companies. Either 1) All users can see the demo fund, see the results, but cannot edit it. And they can copy the demo into their own trial and then edit that. Or alternately 2) if it's better for security, a copy is copied in on registration as their personal "demo fund and companies". 
+- [ ] I want to add new functionality to both the company charts and the fund charts. On the Monte Carlo simulation runs, I want to add a card that shows the performance improvement when the ergodic correction is switched on. This should give a number for the P50 end value that shows how much bigger the total value of the fund is, is the fund is, is at the...
+- [ ] enable companies to be created during the fund's lifetime.
+- [ ] Improve the information and description and FAQ. 
+	- [ ] "The Frankenstein Median" : The "Zombie Resurrection" (2 → 1 → 2) happens because the engine currently calculates the P50 **Cross-Sectionally** (month-by-month): 
+	      - **Month 10:** The engine sorts all 1,000 runs. The median (Run #500) happens to be a solvent company. **Count: 2/2**. 
+	      - **Month 11:** The engine resorts. The median (Run #500) happens to be a _different_ company that just went insolvent. **Count: 1/2**. 
+	      - **Month 12:** The engine resorts. The median (Run #500) is a third company that is solvent. **Count: 2/2**.
+	    Because the "Median" is a statistical abstraction, not a single continuous company, it can exhibit impossible behaviors like coming back to life.
+
+---
+What we have done: 
+The Short Answer:
+
+It returns the Total Fund Value, which is defined as:
+
+$$\text{Fund Value} = \sum (\text{Company Cash Balance}) + \sum (\text{Company Cumulative Dividends})$$
+
+It does **not** return _only_ the "Cash Balance" for the charts.
+
+The Reason:
+
+If we simulated only "Cash Balance," then every time a profitable company paid a dividend to you (the simulation owner), cash would leave the company bank account, and the chart would drop. This would look like a loss, even though that money was actually a profit secured in your pocket.
+
+By using **Total Value**, the chart correctly always goes **up** (or stays flat) when a dividend is paid, reflecting the total wealth generated by the portfolio.
+
+### 🔍 Breakdown of the Data
+
+1. **For the Charts (`p0_value` ... `p100_value`):**
+    
+    - These lines represent the **Total Value**.
+        
+    - _Formula:_ `Sum of all Companies' Cash + Sum of all Companies' Paid Dividends`.
+        
+2. **For the Table (`p50_data`):**
+    
+    - We send the detailed breakdown for the Median run.
+        
+    - This includes a specific field `cash_balance` which **is** exactly what you asked for: the sum of the cash sitting in the bank accounts of all solvent companies.
+        
+    - You can display this column in your data table if you want to show "Liquid Assets vs. Total Value."
+        
+
+### ✅ Confirmation of Aggregation
+
+Yes, the simulation performs a **simulation of every single company** (1,000 times) and then **sums them up** month-by-month. It does not average the inputs; it sums the outputs.
+
+- **Fund Revenue** = Sum of Company Revenues
+    
+- **Fund Opex** = Sum of Company Opex
+    
+- **Fund Cash** = Sum of Company Cash
+
+---
+
 
 
 ### Shocks

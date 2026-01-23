@@ -49,21 +49,32 @@ function createDiagonalPattern(color: string) {
 
 interface Props {
   data: SimulationResult;
+  singleRunData?: MonthlyData[];
   isLog?: boolean;
   mode: 'single' | 'monte_carlo' | 'standard';
   creditLimit?: number;
   currencySymbol?: string; 
 }
 
-export default function CashFlowChart({ data, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
+export default function CashFlowChart({ data, singleRunData, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
   const labels = data.labels;
   const datasets: any[] = [];
 
   // --- 0. DETERMINE SOURCE DATA ---
-  // We use single_run_data if available (even in MC mode, it now holds the median run)
+  // Priority: 
+  // 1. singleRunData (Explicitly passed path)
+  // 2. p50_data (If Monte Carlo mode)
+  // 3. single_run_data (If Single mode or fallback)
+  // 4. deterministic_data (Default)
+  
   let sourceData: MonthlyData[] = data.deterministic_data;
-  if ((mode === 'single' || mode === 'monte_carlo') && data.single_run_data) {
-    sourceData = data.single_run_data;
+  
+  if (singleRunData) {
+      sourceData = singleRunData;
+  } else if (mode === 'monte_carlo' && data.p50_data) {
+      sourceData = data.p50_data;
+  } else if (mode === 'single' && data.single_run_data) {
+      sourceData = data.single_run_data;
   }
 
   // --- 1. The "Red Line" (Cumulative Investment) ---
@@ -415,6 +426,16 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
       intersect: false,
     },
     scales: {
+      x2: {
+        position: 'top' as const,
+        grid: {
+          drawTicks: false,
+          drawOnChartArea: false,
+        },
+        ticks: {
+          display: false,
+        },
+      },
       y: {
         type: isLog ? 'logarithmic' as const : 'linear' as const,
         display: true,
@@ -429,6 +450,33 @@ export default function CashFlowChart({ data, isLog = false, mode, creditLimit =
           callback: (value: any) => {
             return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
           }
+        },
+        afterBuildTicks: (axis: any) => {
+          if (!isLog) return;
+          
+          const min = axis.min;
+          const max = axis.max;
+          if (min <= 0 || max <= 0) return;
+
+          const logMin = Math.log10(min);
+          const logMax = Math.log10(max);
+          const range = logMax - logMin;
+
+          axis.ticks = axis.ticks.filter((t: any) => {
+            const val = t.value;
+            if (val <= 0) return false;
+
+            const log10 = Math.log10(val);
+            const power = Math.floor(log10);
+            const base = Math.pow(10, power);
+            const significand = Math.round(val / base);
+
+            if (range > 5) {
+              return significand === 1;
+            } else {
+              return significand === 1 || significand === 5;
+            }
+          });
         }
       },
       y1: {

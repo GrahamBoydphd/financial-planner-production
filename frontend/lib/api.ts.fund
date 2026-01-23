@@ -1,3 +1,4 @@
+// 1. IMPORTS & SETUP
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -9,15 +10,7 @@ const apiClient = axios.create({
   },
 });
 
-// --- HELPER: GET TENANT ID ---
-const getTenantId = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('tenant_id');
-  }
-  return null;
-};
-
-// --- INTERCEPTOR (CRITICAL FOR AUTH) ---
+// 2. CRITICAL AUTH INTERCEPTOR (Restored)
 apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
@@ -36,13 +29,12 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
-      localStorage.removeItem('tenant_id'); // Clear tenant on 401
     }
     return Promise.reject(error);
   }
 );
 
-// --- INTERFACES ---
+// 3. INTERFACES (V3 + V4 Extensions)
 
 export interface AuthResponse {
   token: string;
@@ -58,11 +50,12 @@ export interface Fund {
   created_at: string;
 }
 
+// [V4 Extension]
 export interface FundPlan {
   id: string;
   fund_id: string;
   plan_name: string;
-  selected_plans: Record<string, string>; 
+  selected_plans: Record<string, string>; // { company_id: plan_id }
   created_at?: string;
 }
 
@@ -198,6 +191,12 @@ export interface StaffingRole {
   annual_increase_percent: string;
 }
 
+export interface EventShock {
+  id: string;
+  shock_name: string;
+  shock_month: number;
+}
+
 export interface MonthlyData {
   month_index: number;
   date: string;
@@ -215,8 +214,6 @@ export interface MonthlyData {
   current_debt: string;
   total_value: string;
   is_solvent: boolean;
-  solvent_companies?: number;
-  total_companies?: number;
 }
 
 export interface SimulationResult {
@@ -226,29 +223,19 @@ export interface SimulationResult {
   single_run_data?: MonthlyData[];
   single_run_value?: string[];
 
+  // [V4 Extension: 7-Band Fan Chart]
   p0_value?: string[];
-  p5_value?: string[];
   p10_value?: string[];
   p25_value?: string[];
   p50_value?: string[];
   p75_value?: string[];
   p90_value?: string[];
-  p95_value?: string[];
   p100_value?: string[];
-
-  // Solvency Counts (Optional)
-  p0_solvent_count?: number[];
-  p10_solvent_count?: number[];
-  p25_solvent_count?: number[];
-  p50_solvent_count?: number[];
-  p75_solvent_count?: number[];
-  p90_solvent_count?: number[];
-  p100_solvent_count?: number[];
-
-  all_paths?: MonthlyData[][];
 
   p50_pool_cumulative?: string[]; 
   p50_data: MonthlyData[];
+  
+  // [V4 Extension: Cliff Chart]
   survival_rate: number[];
 
   deterministic_runway?: number;
@@ -259,18 +246,13 @@ export interface SimulationResult {
   p50_valuation?: string;
 }
 
-// --- API METHODS ---
+// 4. API METHODS
 
 export const api = {
   // AUTH
   login: async (username: string, password: string) => {
     const payload = { username, password };
-    const response = await apiClient.post<AuthResponse>('/api/auth/login', payload);
-    // Save Tenant ID immediately upon login
-    if (typeof window !== 'undefined' && response.data.tenant_id) {
-      localStorage.setItem('tenant_id', response.data.tenant_id);
-    }
-    return response.data;
+    return (await apiClient.post<AuthResponse>('/api/auth/login', payload)).data;
   },
   
   register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
@@ -281,59 +263,34 @@ export const api = {
   // FUNDS
   getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
   getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
-  
   createFund: async (fund_name: string, currency_code: string) => 
-    (await apiClient.post<Fund>('/api/funds', { 
-      fund_name, 
-      currency_code,
-      tenant_id: getTenantId() 
-    })).data,
-    
+    (await apiClient.post<Fund>('/api/funds', { fund_name, currency_code })).data,
   updateFund: async (id: string, fund_name: string, currency_code: string) => 
     (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code })).data,
   deleteFund: async (id: string) => {
     await apiClient.delete(`/api/funds/${id}`);
   },
 
-  // FUND PLANS (V4)
+  // [V4 EXTENSION: FUND PLANS]
   getFundPlans: async (fundId: string) => (await apiClient.get<FundPlan[]>(`/api/funds/${fundId}/plans`)).data,
   
   createFundPlan: async (data: { fund_id: string, plan_name: string, selected_plans: Record<string, string> }) =>
-    (await apiClient.post<FundPlan>(`/api/funds/${data.fund_id}/plans`, {
-      ...data,
-      tenant_id: getTenantId()
-    })).data,
+    (await apiClient.post<FundPlan>(`/api/funds/${data.fund_id}/plans`, data)).data,
     
   updateFundPlan: async (id: string, data: { plan_name: string, selected_plans: Record<string, string> }) =>
     (await apiClient.put<FundPlan>(`/api/funds/plans/${id}`, data)).data,
     
   deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)),
 
-  // FUND SIMULATION
-  getFundSimulation: async (fundId: string, params?: { 
-    fund_plan_id?: string, 
-    pooling_fraction?: string, 
-    months?: number, 
-    stop_insolvency?: boolean,
-    include_initial_capital?: boolean 
-  }) => 
+  // [V4 EXTENSION: FUND SIMULATION]
+  getFundSimulation: async (fundId: string, params?: { fund_plan_id?: string, mode?: string, pooling_fraction?: string }) => 
     (await apiClient.get<SimulationResult>(`/api/funds/${fundId}/simulation`, { params })).data,
 
   // COMPANIES
   getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
   getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
-  
   createCompany: async (company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
-    (await apiClient.post<Company>('/api/companies', { 
-      company_name, 
-      fund_id, 
-      currency_code, 
-      industry, 
-      business_model, 
-      technology,
-      tenant_id: getTenantId()
-    })).data,
-    
+    (await apiClient.post<Company>('/api/companies', { company_name, fund_id, currency_code, industry, business_model, technology })).data,
   updateCompany: async (id: string, company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
     (await apiClient.put<Company>(`/api/companies/${id}`, { company_name, fund_id, currency_code, industry, business_model, technology })).data,
   deleteCompany: async (id: string) => {
@@ -343,17 +300,9 @@ export const api = {
   // PLANS
   getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
   getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
-  
   createPlan: async (company_id: string, plan_name: string, start_month: string, currency_code: string) => {
-    return (await apiClient.post<FinancialPlan>('/api/plans', { 
-      company_id, 
-      plan_name, 
-      start_month, 
-      currency_code,
-      tenant_id: getTenantId()
-    })).data;
+    return (await apiClient.post<FinancialPlan>('/api/plans', { company_id, plan_name, start_month, currency_code })).data;
   },
-  
   updatePlan: async (id: string, updates: UpdatePlanRequest) => 
     (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
   getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 

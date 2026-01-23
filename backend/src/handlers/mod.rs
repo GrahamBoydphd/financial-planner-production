@@ -1,14 +1,15 @@
-pub mod funds;       // Was 'fund'
-pub mod companies;   // Was 'company'
+pub mod funds;
+pub mod companies;
 pub mod plans;
 pub mod revenue;
-pub mod expenses;    // Was 'expense'
-pub mod capital;     // New
-pub mod dividends;   // New
-pub mod credit;      // New
+pub mod expenses;
+pub mod capital;
+pub mod dividends;
+pub mod credit;
 pub mod valuation;
-pub mod events;      // Kept from your list
-pub mod capital_growth; // Add this
-// pub mod financials; // Removed (Legacy? If you need code from here, move it to the specific files)
+pub mod events;
+pub mod capital_growth;
 pub mod staffing;
 pub mod auth;
+pub mod fund_simulation;
+pub mod fund_plans;

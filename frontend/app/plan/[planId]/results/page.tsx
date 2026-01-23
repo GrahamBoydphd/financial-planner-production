@@ -214,6 +214,9 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [stopInsolvency, setStopInsolvency] = useState(true); // Default to TRUE
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
+  // Path Navigation (New)
+  const [pathIndex, setPathIndex] = useState(0);
+  
   // Non-Ergodicity State
   const [poolingFraction, setPoolingFraction] = useState(0);
   
@@ -339,6 +342,9 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         
         (proj as any).cash_flow_data = tableData;
         setProjection(proj);
+        
+        // Reset path index when projection changes
+        setPathIndex(0);
 
       } catch (e) {
         console.error(e);
@@ -410,6 +416,10 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   // Helper
   const fmt = (n: any) => 
     `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+  // Path Navigation Helpers
+  const totalPaths = projection?.all_paths?.length || 0;
+  const currentPathData = projection?.all_paths?.[pathIndex];
 
   if (!plan) return <Layout>Loading...</Layout>;
 
@@ -538,12 +548,38 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               </Card>
               <Card>
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-blue-700">Volatile (Single Run)</h2>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Stochastic</span>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-blue-700">Volatile (Single Run)</h2>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Stochastic</span>
+                  </div>
+                  
+                  {/* STEPPER UI */}
+                  {totalPaths > 1 && (
+                    <div className="flex items-center gap-1 bg-gray-100 rounded p-1 border border-gray-200">
+                        <button 
+                            onClick={() => setPathIndex(i => Math.max(0, i - 1))}
+                            disabled={pathIndex === 0}
+                            className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        >
+                            ←
+                        </button>
+                        <span className="text-xs font-mono font-bold text-gray-700 px-2 min-w-[80px] text-center">
+                            Path {pathIndex + 1} / {totalPaths}
+                        </span>
+                        <button 
+                            onClick={() => setPathIndex(i => Math.min(totalPaths - 1, i + 1))}
+                            disabled={pathIndex >= totalPaths - 1}
+                            className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        >
+                            →
+                        </button>
+                    </div>
+                  )}
                 </div>
                 <div className="h-80">
                   <CashFlowChart 
                     data={projection} 
+                    singleRunData={currentPathData}
                     isLog={isLogScale} 
                     mode="single" 
                     creditLimit={Number(creditLimit)}

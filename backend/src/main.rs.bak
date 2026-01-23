@@ -15,7 +15,7 @@ mod errors;
 mod projection;
 mod distributions;
 mod middleware;
-mod engine;
+pub mod engine;
 
 use crate::handlers::{valuation, events};
 
@@ -56,9 +56,7 @@ async fn main() {
         // Funds
         .route("/api/funds", post(handlers::funds::create_fund).get(handlers::funds::get_funds))
         .route("/api/funds/:id", get(handlers::funds::get_fund).delete(handlers::funds::delete_fund).put(handlers::funds::update_fund))
-        .route("/api/funds/:id/simulation", get(handlers::fund_simulation::run_fund_simulation))
-        .route("/api/funds/:id/plans", post(handlers::fund_plans::create_fund_plan).get(handlers::fund_plans::get_fund_plans))
-        .route("/api/funds/plans/:id", get(handlers::fund_plans::get_fund_plan).put(handlers::fund_plans::update_fund_plan).delete(handlers::fund_plans::delete_fund_plan))
+        .route("/api/funds/:id/simulate", post(handlers::fund_simulation::run_fund_simulation))
         
         // Companies
         .route("/api/companies", post(handlers::companies::create_company).get(handlers::companies::get_companies))

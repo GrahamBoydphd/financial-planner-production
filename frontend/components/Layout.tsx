@@ -63,6 +63,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 >
                   Guide & Help
                 </Link>
+                <Link
+                  href="/improve"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/improve') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  How can we improve?
+                </Link>
               </div>
             </div>
 

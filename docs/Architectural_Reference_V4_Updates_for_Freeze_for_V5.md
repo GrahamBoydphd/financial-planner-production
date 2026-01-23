@@ -1,15 +1,4 @@
 
-
-# Status: UNIVERSAL CONSTITUTION (Read by every agent)
-# Role: Immutable Constraints & Patterns
-
-## === PROJECT GOAL ===
-**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
-**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
-**Identity:** Username-based.
-
-
-# === IMMUTABLE ===
 # 💎 Master Architectural Reference: The Fortress Standard (V3)
 
 **Status**: Hardened | **Date**: 2026-01-16 | **Target**: Frontend & Backend Architects
@@ -110,6 +99,130 @@ final "Source of Truth" points to your Frontend Architect:
         
     - If `is_solvent === false`: Company is dead. All financial fields (Revenue, Cash, Opex) are guaranteed to be `0.00`.
 
+
+--- 
+
+### 📡 API Contract: Fund Simulation
+
+**Endpoint:** `GET /api/funds/{fund_id}/simulation`
+
+| **Direction** | **Component**        | **Type**                | **Description**                                                                                                                                                  |
+| ------------- | -------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Request**   | `fund_id`            | **Path** (UUID)         | The ID of the Fund you are viewing.                                                                                                                              |
+|               | `fund_plan_id`       | **Query** (UUID)        | **Optional.** The ID of the saved configuration.<br><br>  <br><br>If omitted, defaults to "Latest Plan" for every company.                                       |
+|               | `stop_insolvency`    | **Query** (Bool)        | **Optional.** If `true`, stops simulation for a company if it goes insolvent (defaults to `false`).                                                              |
+| **Response**  | `labels`             | **Array** `[String]`    | X-Axis labels (e.g., "Month 1", "Month 2").                                                                                                                      |
+|               | **Fan Chart**        |                         | **The 7 Statistical Bands** (Total Fund Value)                                                                                                                   |
+|               | `p0_value`           | **Array** `[Decimal]`   | **Minimum** (Worst Case / Floor).                                                                                                                                |
+|               | `p10_value`          | **Array** `[Decimal]`   | 10th Percentile (Conservative).                                                                                                                                  |
+|               | `p25_value`          | **Array** `[Decimal]`   | 25th Percentile.                                                                                                                                                 |
+|               | `p50_value`          | **Array** `[Decimal]`   | **Median** (Baseline).                                                                                                                                           |
+|               | `p75_value`          | **Array** `[Decimal]`   | 75th Percentile.                                                                                                                                                 |
+|               | `p90_value`          | **Array** `[Decimal]`   | 90th Percentile (Optimistic).                                                                                                                                    |
+|               | `p100_value`         | **Array** `[Decimal]`   | **Maximum** (Best Case / Ceiling).                                                                                                                               |
+|               | **Cliff Chart**      |                         | **Survival Probability**                                                                                                                                         |
+|               | `survival_rate`      | **Array** `[Decimal]`   | % of universes with at least one solvent company (`0.0` - `1.0`).                                                                                                |
+|               | **Interaction**      |                         | **Instant "Next Path" Data**                                                                                                                                     |
+|               | `all_paths`          | **Array** `[[Decimal]]` | **The 1,000 Runs.** A list of arrays. Each inner array is one full simulation path of the Fund Value. Used for the "Simulate Again" button (no API call needed). |
+|               | **Reference**        |                         | **Benchmarks**                                                                                                                                                   |
+|               | `deterministic_data` | **Array** `[Object]`    | The "Perfect Average" run (Zero Volatility). Returns full monthly details.                                                                                       |
+|               | `p50_data`           | **Array** `[Object]`    | The **Detailed Median Run**. Use this for the Data Table (shows Revenue, Opex, Cash, etc. for the median scenario).                                              |
+
+### 📊 The `p50_data` Structure
+
+The `p50_data` key provides the "Median Fund Scenario." Unlike the simple arrays used for charts (like `p50_value`), this is an array of objects designed to power a detailed **Financial Statement Table**.
+
+Each object in the `p50_data` array contains:
+
+| Field                      | Type      | Description                                                                |
+| -------------------------- | --------- | -------------------------------------------------------------------------- |
+| `month_index`              | `i32`     | The sequence number of the month (1, 2, 3...).                             |
+| `date`                     | `String`  | The formatted date label (e.g., "Month 1").                                |
+| `revenue`                  | `Decimal` | Aggregated revenue across all companies in the median universe.            |
+| `opex`                     | `Decimal` | Aggregated operating expenses across all companies in the median universe. |
+| `net_income`               | `Decimal` | The total profit/loss (including pool distributions and gains).            |
+| `cash_balance`             | `Decimal` | The total liquidity available in all fund companies combined.              |
+| `cumulative_pool_received` | `Decimal` | The total amount of internal capital redistributed via the pooling logic.  |
+| `total_value`              | `Decimal` | The core metric: `Cash + Cumulative Dividends`.                            |
+| `is_solvent`               | `Boolean` | Flag indicating if at least one company in the fund is still alive.        |
+
+
+### 📊 Updated `MonthlyData` for the Fund
+
+I will now update the `MonthlyData` struct and the `orchestrator.rs` aggregation logic to include these new metrics.
+
+|Field|Type|Description|
+|---|---|---|
+|**`total_companies`**|`i32`|The total count of companies in the fund at the start.|
+|**`solvent_companies`**|`i32`|The number of companies remaining solvent in that specific month.|
+|**`cumulative_dividends`**|`Decimal`|The sum of all dividends distributed by all fund companies up to that month.|
+|**`total_investment`**|`Decimal`|The aggregated `cumulative_external_capital` for the fund.|
+
+---
+
+### 📦 JSON Response Example
+
+JSON
+
+```
+{
+  "labels": ["Month 0", "Month 1", "Month 2", ...],
+
+  // 📉 1. The Fan Chart (7 Bands)
+  "p0_value":   [100000, 95000, ...],
+  "p10_value":  [100000, 98000, ...],
+  "p25_value":  [100000, 100000, ...],
+  "p50_value":  [100000, 105000, ...],
+  "p75_value":  [100000, 110000, ...],
+  "p90_value":  [100000, 120000, ...],
+  "p100_value": [100000, 150000, ...],
+
+  // ☠️ 2. The Cliff Chart
+  "survival_rate": [1.0, 0.99, 0.95, ...], 
+
+  // ⚡ 3. The "Next Path" Data (1,000 Arrays)
+  "all_paths": [
+    [100000, 102340, 98000, ...],  // Universe 1
+    [100000, 99000, 105000, ...],  // Universe 2
+    [100000, 150000, 200000, ...]  // Universe 3 ... up to 1000
+  ],
+
+  // 📊 4. Table Data (Detailed Median)
+  "p50_data": [
+    {
+      "month_index": 1,
+      "date": "2024-01-01",
+      "revenue": 50000.0,
+      "opex": 40000.0,
+      "cash_balance": 105000.0,
+      "total_value": 105000.0,
+      "is_solvent": true
+    }
+    // ...
+  ]
+}
+```
+
+### 💡 Frontend Implementation Hints
+
+1. **"Next Path" Button:**
+    
+    - Do **not** call the API again.
+        
+    - Create a local state: `const [pathIndex, setPathIndex] = useState(0)`.
+        
+    - On Click: `setPathIndex((prev) => (prev + 1) % data.all_paths.length)`.
+        
+    - Plot: `data.all_paths[pathIndex]`.
+        
+2. **Total Value Definition:**
+    
+    - The charts plot **Fund Total Value**.
+        
+    - Formula: $\sum(\text{Company Cash}) + \sum(\text{Dividends Paid})$.
+        
+    - _Note:_ This means the chart line won't drop simply because a dividend was paid out; it captures the wealth creation.
+
 ---
 
 ## 3. CORE
@@ -134,13 +247,8 @@ final "Source of Truth" points to your Frontend Architect:
 ## 4. DIRECTORY MAP & TOOLING
 * **Backend Structure:**
     * `backend/src/handlers/` -> All API route logic (grouped by resource).
-	* `backend/src/models.rs` -> Shared Structs and DB schemas.
-	* `backend/src/projection.rs` -> Core Financial Simulation Logic.
-	* `backend/src/middleware.rs` -> Middleware.
-	* `backend/src/distributions.rs` -> Helper with the different stochastic distributions used.
-	* `backend/src/errors.rs` -> Error helper.
-	* `backend/src/engine/` -> V4 Simulation Kernel & Orchestrators.
-	* `backend/migrations/` -> SQLx migration files (SQL).
+    * `backend/src/models.rs` -> shared Structs and DB schemas.
+    * `backend/migrations/` -> SQLx migration files (SQL).
 * **Frontend Structure:**
     * `frontend/app/` -> Next.js Pages and Layouts.
     * `frontend/lib/api.ts` -> Central Axios client.
@@ -275,14 +383,3 @@ _These are specific implementation details agreed upon in this chat that refine 
 2. **Retention of `valuation_name`**: We explicitly decided **not** to rename `valuation_name` to `assumption_name` (as I initially proposed), preferring to keep the semantic specificity for now. This complies with the "Scoped Naming" rule (it is scoped) but avoids over-abstraction.
     
 3. **Staffing "Role Name"**: We specifically applied the scoped naming rule to `StaffingRole` ($\rightarrow$ `role_name`) and `EventShock` ($\rightarrow$ `shock_name`), which were the final holdouts from the "Master Fortress Standard" audit.
-
-
-
-# === UNIVERSAL BUILDER PROTOCOL ===
-* **File Operations:**
-    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
-    * Do not use placeholders like `// ... existing code ...`.
-* **Testing:**
-    * If `last_error.log` is provided, priority #1 is fixing that error.
-* **Dependencies:**
-    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.

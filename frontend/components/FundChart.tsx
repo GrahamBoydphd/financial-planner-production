@@ -1,5 +1,3 @@
-🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='frontend/components/FundChart.tsx'>
 'use client';
 
 import {
@@ -409,5 +407,3 @@ export default function FundChart({
 
   return <Line data={{ labels, datasets }} options={options} />;
 }
-</file>
-
