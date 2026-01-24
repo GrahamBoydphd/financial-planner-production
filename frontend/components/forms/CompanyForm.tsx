@@ -32,7 +32,7 @@ interface CompanyFormProps {
 export default function CompanyForm({ onSuccess, funds = [], initialData, onCancel }: CompanyFormProps) {
   const [name, setName] = useState('');
   const [selectedFund, setSelectedFund] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('EUR');
 
   // IMT State
   const [industry, setIndustry] = useState('');
@@ -73,7 +73,7 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
     } else {
       setName('');
       setSelectedFund('');
-      setCurrency('USD');
+      setCurrency('EUR');
       setIndustry(''); setCustomIndustry('');
       setModel(''); setCustomModel('');
       setTech(''); setCustomTech('');
@@ -98,7 +98,7 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
       
       if (!initialData) {
         setName('');
-        setCurrency('USD');
+        setCurrency('EUR');
         setIndustry(''); setCustomIndustry('');
         setModel(''); setCustomModel('');
         setTech(''); setCustomTech('');
@@ -151,7 +151,8 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
-          className="w-full p-2 border rounded"
+          disabled
+          className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
         >
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>

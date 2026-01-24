@@ -10,15 +10,15 @@ interface FundFormProps {
 
 export default function FundForm({ onSuccess, initialData, onCancel }: FundFormProps) {
   const [name, setName] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('EUR');
 
   useEffect(() => {
     if (initialData) {
       setName(initialData.fund_name);
-      setCurrency(initialData.currency_code || 'USD');
+      setCurrency(initialData.currency_code || 'EUR');
     } else {
       setName('');
-      setCurrency('USD');
+      setCurrency('EUR');
     }
   }, [initialData]);
 
@@ -36,7 +36,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
         // but usually onSuccess triggers a refresh which might unmount or reset.
         // We'll clear for consistency.
         setName('');
-        setCurrency('USD');
+        setCurrency('EUR');
       }
       onSuccess?.();
     } catch (err: any) {
@@ -64,7 +64,8 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
-          className="w-full p-2 border rounded"
+          disabled
+          className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
         >
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>
