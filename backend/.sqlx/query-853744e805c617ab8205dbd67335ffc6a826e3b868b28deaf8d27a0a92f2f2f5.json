@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT \n                    id, company_id, plan_name, start_month, currency_code, \n                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id\n                FROM financial_plans\n                WHERE company_id = $1 AND tenant_id = $2\n                ORDER BY created_at DESC\n                LIMIT 1\n                ",
+  "query": "\n                SELECT \n                    id, company_id, plan_name, start_month, currency_code, \n                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value\n                FROM financial_plans\n                WHERE id = $1 AND tenant_id = $2\n                ",
   "describe": {
     "columns": [
       {
@@ -52,6 +52,11 @@
         "ordinal": 9,
         "name": "tenant_id",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_p50_net_value",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -70,8 +75,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "5390e1039bd57fb4e13a26bb94aa519a2824fb264729a89b91fcf05c5b4b447e"
+  "hash": "853744e805c617ab8205dbd67335ffc6a826e3b868b28deaf8d27a0a92f2f2f5"
 }

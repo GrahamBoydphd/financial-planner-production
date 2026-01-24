@@ -1,0 +1,61 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dividend_policies (plan_id, is_enabled, safety_threshold, payout_ratio) \n           VALUES ($1, $2, $3, $4) \n           RETURNING id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as \"tracking_enabled!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "safety_threshold",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "payout_ratio",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "tracking_enabled!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "d02c30dd926f175e74f6620805c5ee4901a06e9643c868f194761903226f1a15"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at FROM dividend_policies WHERE plan_id = $1 AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)",
+  "query": "SELECT * FROM event_shocks WHERE plan_id = $1",
   "describe": {
     "columns": [
       {
@@ -15,28 +15,37 @@
       },
       {
         "ordinal": 2,
-        "name": "is_enabled",
-        "type_info": "Bool"
+        "name": "shock_name",
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "safety_threshold",
-        "type_info": "Numeric"
+        "name": "shock_month",
+        "type_info": "Int4"
       },
       {
         "ordinal": 4,
-        "name": "payout_ratio",
-        "type_info": "Numeric"
+        "name": "impact_type",
+        "type_info": "Text"
       },
       {
         "ordinal": 5,
+        "name": "impact_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "duration_months",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -46,8 +55,10 @@
       false,
       false,
       false,
+      false,
+      true,
       false
     ]
   },
-  "hash": "6e77614589b2b3402a6857f33b4094755bbc2aa4ba974c23886d297d64825e63"
+  "hash": "b358c44bc854ea78d293a61f300ca620702d91e966cf4e8ec6a5340f99fed5a0"
 }

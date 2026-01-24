@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at\n        FROM dividend_policies\n        WHERE plan_id = $1\n        ",
+  "query": "SELECT * FROM capital_injections WHERE plan_id = $1",
   "describe": {
     "columns": [
       {
@@ -15,18 +15,18 @@
       },
       {
         "ordinal": 2,
-        "name": "is_enabled",
-        "type_info": "Bool"
+        "name": "injection_name",
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "safety_threshold",
+        "name": "amount",
         "type_info": "Numeric"
       },
       {
         "ordinal": 4,
-        "name": "payout_ratio",
-        "type_info": "Numeric"
+        "name": "month",
+        "type_info": "Int4"
       },
       {
         "ordinal": 5,
@@ -48,5 +48,5 @@
       false
     ]
   },
-  "hash": "0379323f7c3da910c8fd193ae7d843a59097c0a5e6ca0ffaee86e54d3a3f1397"
+  "hash": "e0688a80fa29c32b98b3fe9e06aa01a37d3c07cb616d432f77f8ec1c21d65661"
 }

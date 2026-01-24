@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO capital_injections (\n                id, plan_id, injection_name, amount, month, created_at\n            ) VALUES ($1, $2, $3, $4, $5, $6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Numeric",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef0a3f8aa0cfdf6fc47f9a2dc26017c575ffa6acfa0fa6dd2aabb35ae939ffd8"
+}

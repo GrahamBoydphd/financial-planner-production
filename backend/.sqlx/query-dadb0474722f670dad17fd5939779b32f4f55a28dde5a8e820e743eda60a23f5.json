@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM staffing_roles WHERE plan_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "role_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "annual_salary",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "target_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "annual_increase_percent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "hiring_plan",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "hiring_rate",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "dadb0474722f670dad17fd5939779b32f4f55a28dde5a8e820e743eda60a23f5"
+}

@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO credit_facilities (\n                id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at\n            ) VALUES ($1, $2, $3, $4, $5, $6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Numeric",
+        "Numeric",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6fcedb5d6dc4705ebd39c119d6acb5c6e8c96caddbb324b01964a2489ce4dc83"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO valuation_assumptions (\n                id, plan_id, valuation_name, method, multiplier, date_applied, created_at\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Numeric",
+        "Date",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ba3f16aef1e01da1155d28689dd9ecacab35e40a900e0e57d6cf022be27361c0"
+}

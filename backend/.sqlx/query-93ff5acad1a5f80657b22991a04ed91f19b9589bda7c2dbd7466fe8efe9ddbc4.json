@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id) \n        VALUES ($1, $2, $3, $4, $5) \n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\"\n        ",
+  "query": "\n        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id) \n        VALUES ($1, $2, $3, $4, $5) \n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value\n        ",
   "describe": {
     "columns": [
       {
@@ -52,6 +52,11 @@
         "ordinal": 9,
         "name": "updated_at!",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_p50_net_value",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "a04af223719aaaf781120eede3e7d422182ff7f188db8746b5885bcac564ec45"
+  "hash": "93ff5acad1a5f80657b22991a04ed91f19b9589bda7c2dbd7466fe8efe9ddbc4"
 }

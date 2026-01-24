@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO funds (user_id, fund_name, currency_code, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id",
+  "query": "SELECT * FROM funds WHERE is_public_template = true",
   "describe": {
     "columns": [
       {
@@ -20,29 +20,30 @@
       },
       {
         "ordinal": 3,
-        "name": "currency_code",
-        "type_info": "Bpchar"
-      },
-      {
-        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "tenant_id",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_public_template",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Bpchar",
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -51,5 +52,5 @@
       false
     ]
   },
-  "hash": "5b05b4f8b4e188217fbe37004875e4ca5842b7207a05a097e5720f995400e1e2"
+  "hash": "1ffd88674ec7eff09163111ce383166c5ee2eefa1f7380154d8c8bbcad6a5c25"
 }

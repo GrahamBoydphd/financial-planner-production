@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO dividend_policies (plan_id, is_enabled, safety_threshold, payout_ratio) VALUES ($1, $2, $3, $4) RETURNING id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at",
+  "query": "\n        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as \"tracking_enabled!\"\n        FROM dividend_policies \n        WHERE plan_id = $1\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ",
   "describe": {
     "columns": [
       {
@@ -32,14 +32,17 @@
         "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "tracking_enabled!",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Bool",
-        "Numeric",
-        "Numeric"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -48,8 +51,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "b0e1e399fac61ff97e90730cae93eb6eb528838618038a565d585c94b40ba0f0"
+  "hash": "b729fb39247e3746d2e98476686c5e59f50cec5bda19d2633c7d985532b8fd86"
 }

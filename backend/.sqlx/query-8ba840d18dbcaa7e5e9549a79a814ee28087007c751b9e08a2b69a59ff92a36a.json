@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            updated_at = NOW() \n        WHERE id = $5 AND tenant_id = $6\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\"\n        ",
+  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value\n        FROM financial_plans \n        WHERE tenant_id = $1 \n        ORDER BY created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -52,15 +52,15 @@
         "ordinal": 9,
         "name": "updated_at!",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_p50_net_value",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Date",
-        "Numeric",
-        "Numeric",
-        "Uuid",
         "Uuid"
       ]
     },
@@ -74,8 +74,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "af987b954fa9a4bc9226d84b525bd28daa478eb77fb5172563f592625e9db19c"
+  "hash": "8ba840d18dbcaa7e5e9549a79a814ee28087007c751b9e08a2b69a59ff92a36a"
 }

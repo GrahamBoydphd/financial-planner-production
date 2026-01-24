@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\"\n        FROM financial_plans \n        WHERE id = $1 AND tenant_id = $2\n        ",
+  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            updated_at = NOW() \n        WHERE id = $5 AND tenant_id = $6\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value\n        ",
   "describe": {
     "columns": [
       {
@@ -52,10 +52,19 @@
         "ordinal": 9,
         "name": "updated_at!",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_p50_net_value",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Date",
+        "Numeric",
+        "Numeric",
         "Uuid",
         "Uuid"
       ]
@@ -70,8 +79,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "78e3dc792de35dfb8550165a1e9fdcc40eb904052bbafe3c7124bbaf3e823a10"
+  "hash": "495b941a4f8fd78859a102fbc104e85f049d69bee368f14fbe89c0a3efe31987"
 }

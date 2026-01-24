@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
+  "query": "\n        SELECT \n            id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template\n        FROM funds\n        WHERE id = $1 AND tenant_id = $2\n        ",
   "describe": {
     "columns": [
       {
@@ -32,10 +32,16 @@
         "ordinal": 5,
         "name": "tenant_id",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_public_template",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -45,8 +51,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "9c0ad6d9af1b4cb2eb1ff619d49ca710156599b649af7dd366f9d456f47d71ce"
+  "hash": "7f70623433ba69523e5a26ca72c34cc894b586d4ed651c2d9eff3bb691512471"
 }
