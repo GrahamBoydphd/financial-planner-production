@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Edit2, Trash2, Eye } from 'lucide-react';
+import { Edit2, Trash2, Eye, Copy, Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import FundForm from '@/components/forms/FundForm';
@@ -16,6 +16,9 @@ export default function StructurePage() {
   // Edit State
   const [editingFund, setEditingFund] = useState<Fund | null>(null);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+
+  // Loading State for Operations
+  const [loadingOp, setLoadingOp] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -31,25 +34,63 @@ export default function StructurePage() {
     fetchData();
   }, []);
 
+  const handleDuplicateFund = async (id: string) => {
+    if (loadingOp) return;
+    if (!confirm("Duplicate this fund?")) return;
+    setLoadingOp(id);
+    try {
+        await api.duplicateFund(id);
+        await fetchData();
+    } catch (e) {
+        console.error("Failed to duplicate fund", e);
+        alert("Failed to duplicate fund.");
+    } finally {
+        setLoadingOp(null);
+    }
+  };
+
+  const handleDuplicateCompany = async (id: string) => {
+    if (loadingOp) return;
+    if (!confirm("Duplicate this company?")) return;
+    setLoadingOp(id);
+    try {
+        await api.duplicateCompany(id);
+        await fetchData();
+    } catch (e) {
+        console.error("Failed to duplicate company", e);
+        alert("Failed to duplicate company.");
+    } finally {
+        setLoadingOp(null);
+    }
+  };
+
   const handleDeleteFund = async (id: string) => {
+    if (loadingOp) return;
     if (!confirm("Are you sure you want to delete this fund? This action cannot be undone.")) return;
+    setLoadingOp(id);
     try {
         await api.deleteFund(id); 
-        fetchData();
+        await fetchData();
     } catch (e) {
         console.error("Failed to delete fund", e);
         alert("Failed to delete fund.");
+    } finally {
+        setLoadingOp(null);
     }
   };
 
   const handleDeleteCompany = async (id: string) => {
+    if (loadingOp) return;
     if (!confirm("Are you sure you want to delete this company? This action cannot be undone.")) return;
+    setLoadingOp(id);
     try {
         await api.deleteCompany(id);
-        fetchData();
+        await fetchData();
     } catch (e) {
         console.error("Failed to delete company", e);
         alert("Failed to delete company.");
+    } finally {
+        setLoadingOp(null);
     }
   };
 
@@ -93,25 +134,43 @@ export default function StructurePage() {
                                 <span className="font-medium text-gray-900 group-hover:text-blue-600">{f.fund_name}</span>
                                 <span className="text-xs text-gray-400 font-mono ml-2">{f.id.slice(0,8)}...</span>
                             </div>
-                            <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                    onClick={(e) => { 
-                                      e.preventDefault(); 
-                                      setEditingFund(f);
-                                      // Optional: Scroll to top if needed, but side-by-side layout usually visible
-                                    }} 
-                                    className="p-1 text-gray-400 hover:text-blue-600"
-                                    title="Edit Fund"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.preventDefault(); handleDeleteFund(f.id); }} 
-                                    className="p-1 text-gray-400 hover:text-red-600"
-                                    title="Delete Fund"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                            <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity items-center">
+                                {loadingOp === f.id ? (
+                                    <Loader2 className="animate-spin text-indigo-600" size={16} />
+                                ) : (
+                                    <>
+                                        <button 
+                                            onClick={(e) => { 
+                                              e.preventDefault(); 
+                                              handleDuplicateFund(f.id);
+                                            }} 
+                                            className="p-1 text-gray-400 hover:text-indigo-600"
+                                            title="Duplicate Fund"
+                                            disabled={!!loadingOp}
+                                        >
+                                            <Copy size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { 
+                                              e.preventDefault(); 
+                                              setEditingFund(f);
+                                            }} 
+                                            className="p-1 text-gray-400 hover:text-blue-600"
+                                            title="Edit Fund"
+                                            disabled={!!loadingOp}
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.preventDefault(); handleDeleteFund(f.id); }} 
+                                            className="p-1 text-gray-400 hover:text-red-600"
+                                            title="Delete Fund"
+                                            disabled={!!loadingOp}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </Link>
@@ -153,26 +212,44 @@ export default function StructurePage() {
                                 <span className="text-gray-400 text-sm ml-2">[{c.currency_code}]</span>
                                 <span className="text-xs text-gray-400 font-mono ml-2">{c.id.slice(0,8)}...</span>
                             </div>
-                            <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                    onClick={(e) => { 
-                                      e.preventDefault(); 
-                                      setEditingCompany(c);
-                                      // Scroll to form if on mobile or small screen
-                                      document.getElementById('add-company')?.scrollIntoView({ behavior: 'smooth' });
-                                    }} 
-                                    className="p-1 text-gray-400 hover:text-blue-600"
-                                    title="Edit Company"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.preventDefault(); handleDeleteCompany(c.id); }} 
-                                    className="p-1 text-gray-400 hover:text-red-600"
-                                    title="Delete Company"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                            <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity items-center">
+                                {loadingOp === c.id ? (
+                                    <Loader2 className="animate-spin text-indigo-600" size={16} />
+                                ) : (
+                                    <>
+                                        <button 
+                                            onClick={(e) => { 
+                                              e.preventDefault(); 
+                                              handleDuplicateCompany(c.id);
+                                            }} 
+                                            className="p-1 text-gray-400 hover:text-indigo-600"
+                                            title="Duplicate Company"
+                                            disabled={!!loadingOp}
+                                        >
+                                            <Copy size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { 
+                                              e.preventDefault(); 
+                                              setEditingCompany(c);
+                                              document.getElementById('add-company')?.scrollIntoView({ behavior: 'smooth' });
+                                            }} 
+                                            className="p-1 text-gray-400 hover:text-blue-600"
+                                            title="Edit Company"
+                                            disabled={!!loadingOp}
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.preventDefault(); handleDeleteCompany(c.id); }} 
+                                            className="p-1 text-gray-400 hover:text-red-600"
+                                            title="Delete Company"
+                                            disabled={!!loadingOp}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </Link>

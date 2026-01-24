@@ -3,7 +3,6 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::models::{FundPlan, CreateFundPlanRequest};

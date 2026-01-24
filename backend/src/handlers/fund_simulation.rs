@@ -39,7 +39,7 @@ pub async fn run_fund_simulation(
         models::Fund,
         r#"
         SELECT 
-            id, user_id, fund_name, currency_code, created_at, tenant_id
+            id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template
         FROM funds
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -107,7 +107,7 @@ pub async fn run_fund_simulation(
                 r#"
                 SELECT 
                     id, company_id, plan_name, start_month, currency_code, 
-                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id
+                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value
                 FROM financial_plans
                 WHERE id = $1 AND tenant_id = $2
                 "#,
@@ -123,7 +123,7 @@ pub async fn run_fund_simulation(
                 r#"
                 SELECT 
                     id, company_id, plan_name, start_month, currency_code, 
-                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id
+                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value
                 FROM financial_plans
                 WHERE company_id = $1 AND tenant_id = $2
                 ORDER BY created_at DESC
@@ -227,7 +227,7 @@ async fn fetch_and_map_company_state(
     let dividend_policy = sqlx::query_as!(
         models::DividendPolicy,
         r#"
-        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at
+        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!"
         FROM dividend_policies
         WHERE plan_id = $1
         "#,
@@ -297,7 +297,7 @@ async fn fetch_and_map_company_state(
         SELECT 
             id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, 
             vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            created_at as "created_at!", growth_rate_percent
+            created_at, growth_rate_percent
         FROM capital_growth_policies
         WHERE plan_id = $1
         "#,

@@ -176,8 +176,8 @@ Improve the clean version with better guidance to the user.
 	- [ ] **The Fortress Standard:** We must not allow invalid state to execute. If the user asks for `-2` intervals, the simulation _should_ likely fail or warn, not just guess.
 - [ ] Later change the P0 and P100 lines on each plot to P2 and P98, eliminating the two 1 in 500 extremes on each end. Or maybe not, since I cut off the big ones anyway? Or maybe yes, to simply not create gambler's hope. 
 - [x] Later add a feedback tab that connects to google forms. 
-- [ ] Duplicate a plan in a company on the company page; Duplicate a whole company in a fund on the dashboard page and the structure page; move a company from one fund to another on the dashboard and on the structure page;  duplicate a whole fund on both the Structure page and the Fund page .  When a company is Duplicated, all plans are Duplicated with it. When a fund is Duplicated, all companies are copied
-- [ ] Have a user called demo_admin that runs the "Demo Fund" (the tenant) and manages the demo fund and demo companies. Either 1) All users can see the demo fund, see the results, but cannot edit it. And they can copy the demo into their own trial and then edit that. Or alternately 2) if it's better for security, a copy is copied in on registration as their personal "demo fund and companies". 
+- [ ] **Duplicate a plan in a company on the company page; Duplicate a whole company in a fund on the dashboard page and the structure page; move a company from one fund to another on the dashboard and on the structure page;  duplicate a whole fund on both the Structure page and the Fund page .  When a company is Duplicated, all plans are Duplicated with it. When a fund is Duplicated, all companies and their plans are duplicated.**
+- [ ] **Have a user called demo_admin that runs the "Demo Fund" of the "Demo Tenant" and manages the demo fund and demo companies. Either 1) All users can see the demo fund, see the results, but cannot edit it. And they can copy the demo into their own trial and then edit that. Or alternately 2) if it's better for security, a copy is copied in on registration as their personal "demo fund and companies". 1. is preferred because then they can always restore the demo fund, and if we improve it they can copy the improved version. Please advise though on the security implications.** 
 - [ ] I want to add new functionality to both the company charts and the fund charts. On the Monte Carlo simulation runs, I want to add a card that shows the performance improvement when the ergodic correction is switched on. This should give a number for the P50 end value that shows how much bigger the total value of the fund is, is the fund is, is at the...
 - [ ] enable companies to be created during the fund's lifetime.
 - [ ] Improve the information and description and FAQ. 
@@ -186,7 +186,8 @@ Improve the clean version with better guidance to the user.
 	      - **Month 11:** The engine resorts. The median (Run #500) happens to be a _different_ company that just went insolvent. **Count: 1/2**. 
 	      - **Month 12:** The engine resorts. The median (Run #500) is a third company that is solvent. **Count: 2/2**.
 	    Because the "Median" is a statistical abstraction, not a single continuous company, it can exhibit impossible behaviors like coming back to life.
-
+- [ ] Add to the Authorisation the different registration levels, but blanked out.
+- [ ] Add a route to Open Collective to support completion of the project, including early payment for full tokens.
 ---
 What we have done: 
 The Short Answer:

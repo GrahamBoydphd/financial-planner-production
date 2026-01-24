@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod funds;
 pub mod companies;
 pub mod plans;
@@ -10,6 +11,6 @@ pub mod valuation;
 pub mod events;
 pub mod capital_growth;
 pub mod staffing;
-pub mod auth;
-pub mod fund_simulation;
 pub mod fund_plans;
+pub mod fund_simulation;
+pub mod lifecycle;

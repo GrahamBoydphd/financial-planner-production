@@ -5,7 +5,8 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import { api, Fund, Company, FundPlan } from '@/lib/api';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, Edit2, ArrowRight, Plus } from 'lucide-react';
+import { ArrowLeft, BarChart3, Edit2, ArrowRight, Plus, Copy } from 'lucide-react';
+import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
 
 export default function FundPage({ params }: { params: { fundId: string } }) {
   const { fundId } = params;
@@ -13,6 +14,10 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [plans, setPlans] = useState<FundPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
+
+  // Debugging: Confirm render
+  console.log("FUND PAGE RENDERED");
 
   const loadData = async () => {
     try {
@@ -38,6 +43,18 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
   useEffect(() => {
     loadData();
   }, [fundId]);
+
+  const handleDuplicateCompany = async (id: string) => {
+    if(!confirm('Duplicate this company and all its plans?')) return;
+    try {
+        // Optimistic UI or just reload
+        await api.duplicateCompany(id);
+        await loadData();
+    } catch(e) {
+        console.error(e);
+        alert('Failed to duplicate company');
+    }
+  };
 
   if (loading) return <Layout>Loading...</Layout>;
   if (!fund) return <Layout>Fund not found</Layout>;
@@ -168,28 +185,55 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {companies.map(co => (
-              <Link key={co.id} href={`/company/${co.id}`} className="group">
-                <Card className="h-full hover:border-blue-400 transition-colors group-hover:shadow-md">
+              <Card key={co.id} className="h-full hover:border-blue-400 transition-colors group relative flex flex-col justify-between">
+                <div>
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    <Link href={`/company/${co.id}`} className="block flex-1 hover:text-blue-600 transition-colors">
+                      <h3 className="text-lg font-bold text-gray-900">
                         {co.company_name}
                       </h3>
                       <p className="text-sm text-gray-500 mt-1">{co.industry || 'General'}</p>
+                    </Link>
+                    {/* Cleaned up container: Removed debug borders/bg */}
+                    <div className="flex items-center gap-2 ml-2">
+                      <button 
+                          onClick={(e) => { e.preventDefault(); handleDuplicateCompany(co.id); }}
+                          title="Duplicate Company"
+                          className="p-2 text-white bg-blue-500 hover:bg-blue-600 rounded shadow-sm transition-colors"
+                      >
+                          <Copy className="h-4 w-4" />
+                      </button>
+                      <button 
+                          onClick={(e) => { e.preventDefault(); setMovingCompanyId(co.id); }}
+                          title="Move Company"
+                          className="p-2 text-white bg-gray-600 hover:bg-gray-700 rounded shadow-sm transition-colors"
+                      >
+                          <ArrowRight className="h-4 w-4" />
+                      </button>
                     </div>
-                    <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-blue-500 transition-colors" />
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">
                       {co.currency_code}
                     </span>
                   </div>
-                </Card>
-              </Link>
+                </div>
+              </Card>
             ))}
           </div>
         )}
       </section>
+
+      {/* Move Company Modal */}
+      {movingCompanyId && (
+        <MoveCompanyModal 
+          isOpen={!!movingCompanyId}
+          onClose={() => setMovingCompanyId(null)}
+          onSuccess={loadData}
+          companyId={movingCompanyId}
+          currentFundId={fundId}
+        />
+      )}
     </Layout>
   );
 }

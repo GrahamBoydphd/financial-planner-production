@@ -263,6 +263,8 @@ git branch | grep "ai-fix-" | xargs git branch -D
     backend/migrations/20260109130000_create_users_table.sql
     ```
 
+work@graham-ThinkPad-T480s:~/3_Evolutesix/Research/Jules-BP/current/backend$ docker-compose exec db psql -U postgres -d finance_db_local -c "DELETE FROM _sqlx_migrations WHERE version = 20240522000000;"
+DELETE 1
 
 # New Version: Backup directory and clean it.
 ### 1. Create the Backup Directory

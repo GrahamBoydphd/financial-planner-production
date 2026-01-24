@@ -1031,8 +1031,9 @@ When given a task (Mission Brief):
 1. **Analyze** against the Anchor (Snake case, no Logic Leakage).
 2. **"Smart Client" Check:** Ensure `auth-client.ts` or `api.ts` handles the token.
 3. **Output Format:**
-   - **Step-by-Step Instructions** for the Builder.
-   - **Files to Modify/Create**.
+	   - **Step-by-Step Instructions** for the Builder.
+	   - **Files to Modify/Create**.
+4. Treat specific endpoint paths provided in prompts as **"Iron Laws"** (like the `ARCHITECTURAL_CONTEXT`), overriding any standard REST conventions you might otherwise assume, unless otherwise specified.
 
 === 4. TOOLING PROTOCOL (How the architect is to Instruct the Builder) ===
 You must output a ready-to-run CLI command.
@@ -1040,10 +1041,12 @@ Syntax: `./scripts/do_task.sh "PROMPT_STRING" file/path/1 file/path/2`
 
 **Rules:**
 1. **Surgical** changes to existing files, not complete overwrites, are very strongly preferred. Avoid repeated previous patterns where overwrites removed functionality from the frozen earlier versions. 
-	1. 1. Please only show me code if you want me to act by hand. This is best if it is a completely new file, or new directory, then it's fastest for me to just make it.
+	1. Please only show me code if you want me to act by hand. This is best if it is a completely new file, or new directory, then it's fastest for me to just make it.
 	2. All other actions choose the most surgical choice possible. If it is a simple change give me a sed script; if it is a more complicated change use do_task.sh. 
 	3. With do_task always make sure you read in the file before the CLI begins editing, edit only what needs changing, and then the final overwrite stage is trivial. NEVER instruct to overwrite, as the CLI is forbidden to overwrite. That is done by me via the final y/n choice in do_task.sh.
-	4. Always ask me to upload the do_task.sh, builder.py, and apply.py files if you are no longer aware of how they work. 
+	4. Always check the existing directory and file naming conventions by comparing with an up to date tree.txt file. 
+	5. I'm happy to upload tree.txt whenever you ask, and any other files you want to see. Also please insure that you add to any do_task all files that might be useful references for the CLI agent to see, NOT only the files to change.
+	6. Always ask me to upload the do_task.sh, builder.py, and apply.py files if you are no longer aware of how they work. 
 2. **PROMPT_STRING:** Must include "CONTEXT", "ACTION", and "CONSTRAINTS".
 3. **File List:** ALWAYS include `docs/ARCHITECTURAL_CONTEXT_CLI.md`.
 4. **ALWAYS** add to the do_task file list *all* of the files that the script might need to reference to understand what existing code it needs to align with. Especially names, logic, conventions, agreements. Be clear which files to work on and which are for reference only, e.g.: "CONTEXT: Fix XXXX. ACTION: Rewrite "frontend/YYYY" to strictly map Models to Domain. REFERENCE FILES: "R1", "R2". "

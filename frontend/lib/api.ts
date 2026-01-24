@@ -259,6 +259,14 @@ export interface SimulationResult {
   p50_valuation?: string;
 }
 
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  industry: string;
+  complexity: string;
+}
+
 // --- API METHODS ---
 
 export const api = {
@@ -356,6 +364,11 @@ export const api = {
   
   updatePlan: async (id: string, updates: UpdatePlanRequest) => 
     (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
+  
+  deletePlan: async (id: string) => {
+    await apiClient.delete(`/api/plans/${id}`);
+  },
+
   getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 
     (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
 
@@ -438,4 +451,15 @@ export const api = {
     (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
   createValuation: async (item: { plan_id: string, valuation_name: string, method: string, multiplier: string, date_applied: string }) => 
     (await apiClient.post('/api/valuation', item)).data,
+
+  // LIFECYCLE
+  duplicateFund: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/funds/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  duplicateCompany: async (id: string) => (await apiClient.post<Company>(`/api/lifecycle/companies/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  duplicatePlan: async (id: string) => (await apiClient.post<FinancialPlan>(`/api/lifecycle/plans/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  moveCompany: async (id: string, target_fund_id: string) => 
+    (await apiClient.put<Company>(`/api/lifecycle/companies/${id}/move`, { target_fund_id }, { timeout: 60000 })).data,
+
+  // TEMPLATES
+  getTemplates: async () => (await apiClient.get<Template[]>('/api/lifecycle/templates', { timeout: 60000 })).data,
+  importTemplate: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/templates/${id}/clone`, {}, { timeout: 60000 })).data,
 };

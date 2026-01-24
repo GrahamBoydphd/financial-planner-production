@@ -35,6 +35,7 @@ pub struct Fund {
     pub currency_code: String,
     pub created_at: DateTime<Utc>,
     pub tenant_id: Uuid,
+    pub is_public_template: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -77,6 +78,7 @@ pub struct FinancialPlan {
     pub initial_cash: Decimal,
     pub pooling_fraction: Decimal, 
     pub tenant_id: Uuid,
+    pub last_p50_net_value: Option<Decimal>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -145,6 +147,7 @@ pub struct DividendPolicy {
     pub safety_threshold: Decimal,
     pub payout_ratio: Decimal,
     pub created_at: DateTime<Utc>,
+    pub tracking_enabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -193,7 +196,7 @@ pub struct CapitalGrowthPolicy {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Option<DateTime<Utc>>,
     pub growth_rate_percent: Decimal,
 }
 

@@ -1,4 +1,18 @@
 
+
+
+
+
+# Status: UNIVERSAL CONSTITUTION (Read by every agent)
+# Role: Immutable Constraints & Patterns
+
+## === PROJECT GOAL ===
+**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
+**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Identity:** Username-based.
+
+
+# === IMMUTABLE ===
 # 💎 Master Architectural Reference: The Fortress Standard (V3)
 
 **Status**: Hardened | **Date**: 2026-01-16 | **Target**: Frontend & Backend Architects
@@ -99,141 +113,6 @@ final "Source of Truth" points to your Frontend Architect:
         
     - If `is_solvent === false`: Company is dead. All financial fields (Revenue, Cash, Opex) are guaranteed to be `0.00`.
 
-
---- 
-
-# 📡 API Contract: Fund Simulation (V3.1)
-
-**Status:** Live | **Endpoint:** `GET /api/funds/{fund_id}/simulation` | **Strictness:** Hardened
-
-|**Direction**|**Component**|**Type**|**Description**|
-|---|---|---|---|
-|**Request**|`fund_id`|**Path** (UUID)|The ID of the Fund you are viewing.|
-||`fund_plan_id`|**Query** (UUID)|**Optional.** The ID of the saved configuration.<br><br>  <br><br>If omitted, defaults to "Latest Plan" for every company.|
-||`stop_insolvency`|**Query** (Bool)|**Optional.** If `true`, stops simulation for a company/universe if it goes insolvent (defaults to `false`).|
-|**Response**|`labels`|**Array** `[String]`|X-Axis labels (e.g., "Month 1", "Month 2").|
-||**Fan Chart**||**The 7 Statistical Bands** (Total Fund Value)|
-||`p0_value`|**Array** `[Decimal]`|**Minimum** (Worst Case / Floor).|
-||`p10_value`|**Array** `[Decimal]`|10th Percentile (Conservative).|
-||`p25_value`|**Array** `[Decimal]`|25th Percentile.|
-||`p50_value`|**Array** `[Decimal]`|**Median** (Baseline).|
-||`p75_value`|**Array** `[Decimal]`|75th Percentile.|
-||`p90_value`|**Array** `[Decimal]`|90th Percentile (Optimistic).|
-||`p100_value`|**Array** `[Decimal]`|**Maximum** (Best Case / Ceiling).|
-||**Solvency Detail**||**Structural Health** (Active Companies per Percentile)|
-||`p0_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P0 scenario.|
-||`p10_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P10 scenario.|
-||`p25_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P25 scenario.|
-||`p50_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P50 scenario.|
-||`p75_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P75 scenario.|
-||`p90_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P90 scenario.|
-||`p100_solvent_count`|**Array** `[Integer]`|The count of solvent companies in the P100 scenario.|
-||**Cliff Chart**||**Survival Probability**|
-||`survival_rate`|**Array** `[Decimal]`|% of universes with at least one solvent company (`0.0` - `1.0`).|
-||**Interaction**||**Instant "Next Path" Data**|
-||`all_paths`|**Array** `[[Decimal]]`|**The 1,000 Runs.** A list of arrays. Each inner array is one full simulation path of the Fund Value.|
-||**Reference**||**Benchmarks**|
-||`deterministic_data`|**Array** `[Object]`|The "Perfect Average" run (Zero Volatility). Returns full monthly details.|
-||`p50_data`|**Array** `[Object]`|The **Detailed Median Run**. Use this for the Data Table (shows Revenue, Opex, Cash, etc.).|
-
----
-
-### 📊 The `p50_data` Structure (Financial Table Source)
-
-The `p50_data` key provides the "Median Fund Scenario." Unlike the simple arrays used for charts (like `p50_value`), this is an array of objects designed to power a detailed **Financial Statement Table**.
-
-|**Field**|**Type**|**Description**|
-|---|---|---|
-|`month_index`|`i32`|The sequence number of the month (1, 2, 3...).|
-|`date`|`String`|The formatted date label (e.g., "Month 1").|
-|`revenue`|`Decimal`|Aggregated revenue across all companies in the median universe.|
-|`opex`|`Decimal`|Aggregated operating expenses across all companies in the median universe.|
-|`net_income`|`Decimal`|The total profit/loss (including pool distributions and gains).|
-|`cash_balance`|`Decimal`|The total liquidity available in all fund companies combined.|
-|`cumulative_pool_received`|`Decimal`|The total amount of internal capital redistributed via the pooling logic.|
-|`total_value`|`Decimal`|The core metric: `Cash + Cumulative Dividends`.|
-|`is_solvent`|`Boolean`|Flag indicating if at least one company in the fund is still alive.|
-|`total_companies`|`i32`|The total count of companies in the fund at the start.|
-|`solvent_companies`|`i32`|The number of companies remaining solvent in that specific month.|
-|`cumulative_dividends`|`Decimal`|The sum of all dividends distributed by all fund companies up to that month.|
-|`total_investment`|`Decimal`|The aggregated `cumulative_external_capital` for the fund.|
-
----
-
-### 📦 JSON Response Example
-
-JSON
-
-```
-{
-  "labels": ["Month 0", "Month 1", "Month 2"],
-
-  // 📉 1. The Fan Chart (7 Bands - Financial)
-  "p0_value":   [100000, 95000, 90000],
-  "p10_value":  [100000, 98000, 96000],
-  "p25_value":  [100000, 100000, 102000],
-  "p50_value":  [100000, 105000, 108000],
-  "p75_value":  [100000, 110000, 115000],
-  "p90_value":  [100000, 120000, 130000],
-  "p100_value": [100000, 150000, 180000],
-
-  // 🏛️ 2. The Structure Chart (7 Bands - Solvency Counts)
-  // MANDATORY: Will always be present, even if empty arrays (though labels implies data).
-  "p0_solvent_count":   [5, 4, 2],
-  "p10_solvent_count":  [5, 5, 4],
-  "p25_solvent_count":  [5, 5, 5],
-  "p50_solvent_count":  [5, 5, 5],
-  "p75_solvent_count":  [5, 5, 5],
-  "p90_solvent_count":  [5, 5, 5],
-  "p100_solvent_count": [5, 5, 5],
-
-  // ☠️ 3. The Cliff Chart
-  "survival_rate": [1.0, 0.99, 0.95], 
-
-  // ⚡ 4. The "Next Path" Data (1,000 Arrays)
-  "all_paths": [
-    [100000, 102340, 98000],  // Universe 1
-    [100000, 99000, 105000],  // Universe 2
-    [100000, 150000, 200000]  // Universe 3 ... up to 1000
-  ],
-
-  // 📊 5. Table Data (Detailed Median)
-  "p50_data": [
-    {
-      "month_index": 1,
-      "date": "Month 1",
-      "revenue": "50000.0",
-      "opex": "40000.0",
-      "cash_balance": "105000.0",
-      "total_value": "105000.0",
-      "solvent_companies": 5,
-      "total_companies": 5,
-      "is_solvent": true
-    }
-  ]
-}
-```
- 
-### 💡 Frontend Implementation Hints
-
-1. **"Next Path" Button:**
-    
-    - Do **not** call the API again.
-        
-    - Create a local state: `const [pathIndex, setPathIndex] = useState(0)`.
-        
-    - On Click: `setPathIndex((prev) => (prev + 1) % data.all_paths.length)`.
-        
-    - Plot: `data.all_paths[pathIndex]`.
-        
-2. **Total Value Definition:**
-    
-    - The charts plot **Fund Total Value**.
-        
-    - Formula: $\sum(\text{Company Cash}) + \sum(\text{Dividends Paid})$.
-        
-    - _Note:_ This means the chart line won't drop simply because a dividend was paid out; it captures the wealth creation.
-
 ---
 
 ## 3. CORE
@@ -258,8 +137,13 @@ JSON
 ## 4. DIRECTORY MAP & TOOLING
 * **Backend Structure:**
     * `backend/src/handlers/` -> All API route logic (grouped by resource).
-    * `backend/src/models.rs` -> shared Structs and DB schemas.
-    * `backend/migrations/` -> SQLx migration files (SQL).
+	* `backend/src/models.rs` -> Shared Structs and DB schemas.
+	* `backend/src/projection.rs` -> Core Financial Simulation Logic.
+	* `backend/src/middleware.rs` -> Middleware.
+	* `backend/src/distributions.rs` -> Helper with the different stochastic distributions used.
+	* `backend/src/errors.rs` -> Error helper.
+	* `backend/src/engine/` -> V4 Simulation Kernel & Orchestrators.
+	* `backend/migrations/` -> SQLx migration files (SQL).
 * **Frontend Structure:**
     * `frontend/app/` -> Next.js Pages and Layouts.
     * `frontend/lib/api.ts` -> Central Axios client.
@@ -384,126 +268,8 @@ The Frontend must support the following newly integrated stochastic models:
 - **Hiring Ramps**: Support for sophisticated staffing plans including `fixed_count` and `monthly_rate` (e.g., adding 1 employee every 3 months).
     
 
----
 
-# Lifecycle Management & Templates
-
-## 1. API Contract (Lifecycle)
-
-### A. Duplicate a Plan
-
-- **Endpoint:** `POST /api/lifecycle/plans/{id}/duplicate`
-    
-- **Action:** Deep copies the plan and all its children (Revenue, Staffing, etc.) to the **same** company.
-    
-- **Body:** `null` (Empty)
-    
-- **Response:** `200 OK` -> Returns the _newly created_ Plan object.
-    
-
-### B. Duplicate a Company
-
-- **Endpoint:** `POST /api/lifecycle/companies/{id}/duplicate`
-    
-- **Action:** Deep copies the company and **all** its plans/scenarios to the **same** fund.
-    
-- **Body:** `null` (Empty)
-    
-- **Response:** `200 OK` -> Returns the _newly created_ Company object.
-    
-
-### C. Duplicate a Fund
-
-- **Endpoint:** `POST /api/lifecycle/funds/{id}/duplicate`
-    
-- **Action:** Deep copies the fund, all companies, and all plans.
-    
-- **Body:** `null` (Empty)
-    
-- **Response:** `200 OK` -> Returns the _newly created_ Fund object.
-    
-- **⚠️ Note:** This is the heaviest operation. **Expect 5-10 second latency.**
-    
-
-### D. Move a Company
-
-- **Endpoint:** `PUT /api/lifecycle/companies/{id}/move`
-    
-- **Action:** Moves a company from its current fund to a target fund.
-    
-- **Body:**
-    
-    JSON
-    
-    ```
-    {
-      "target_fund_id": "uuid-of-new-parent-fund"
-    }
-    ```
-    
-- **Constraint:** Target fund must belong to the same Tenant.
-    
-
----
-
-## 2. API Contract (Demo Library)
-
-### E. Get Public Templates
-
-- **Endpoint:** `GET /api/lifecycle/templates`
-    
-- **Action:** Returns a list of "ReadOnly" funds created by the Demo Admin.
-    
-- **Response:** `200 OK` -> `[ { "id": "...", "name": "SaaS Demo Fund", "is_public_template": true, ... } ]`
-    
-
-### F. Clone Template (Import)
-
-- **Endpoint:** `POST /api/lifecycle/templates/{id}/clone`
-    
-- **Action:** Copies the public template into the **current user's** tenant as a private, editable fund.
-    
-- **Body:** `null`
-    
-- **Response:** `200 OK` -> Returns the new private Fund object.
-    
-
----
-
-## 3. UI/UX Requirements
-
-### 1. Structure Page (Tree View)
-
-- **Context Menus:** Add a `...` menu to every node in the tree.
-    
-    - **Fund Node:** `[ Duplicate Fund ]`
-        
-    - **Company Node:** `[ Duplicate Company ]`, `[ Move to... ]`
-        
-    - **Plan Node:** `[ Duplicate Plan ]`
-        
-- **"Move" Modal:**
-    
-    - When "Move to..." is clicked, fetch the list of _all_ funds (`GET /api/funds`).
-        
-    - Filter out the _current_ parent fund.
-        
-    - Let user select target -> Confirm -> Call API.
-        
-
-### 2. Dashboard Page
-
-- **Templates Tab:** Add a new tab called "Templates" or "Demo Library" next to "My Funds".
-    
-- **Card Actions:**
-    
-    - **My Funds:** Add "Duplicate" button to the fund cards.
-        
-    - **Templates:** Add "Import to My Funds" button (calls `/clone`).
-        
-
-
-## 11. Recorded Micro-Decisions
+## 10. Recorded Micro-Decisions
 
 _These are specific implementation details agreed upon in this chat that refine the broader rules in the document._
 
@@ -512,3 +278,14 @@ _These are specific implementation details agreed upon in this chat that refine 
 2. **Retention of `valuation_name`**: We explicitly decided **not** to rename `valuation_name` to `assumption_name` (as I initially proposed), preferring to keep the semantic specificity for now. This complies with the "Scoped Naming" rule (it is scoped) but avoids over-abstraction.
     
 3. **Staffing "Role Name"**: We specifically applied the scoped naming rule to `StaffingRole` ($\rightarrow$ `role_name`) and `EventShock` ($\rightarrow$ `shock_name`), which were the final holdouts from the "Master Fortress Standard" audit.
+
+
+
+# === UNIVERSAL BUILDER PROTOCOL ===
+* **File Operations:**
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
+    * Do not use placeholders like `// ... existing code ...`.
+* **Testing:**
+    * If `last_error.log` is provided, priority #1 is fixing that error.
+* **Dependencies:**
+    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.

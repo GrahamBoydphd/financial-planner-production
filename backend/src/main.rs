@@ -17,8 +17,6 @@ mod distributions;
 mod middleware;
 mod engine;
 
-use crate::handlers::{valuation, events};
-
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -114,6 +112,14 @@ async fn main() {
         .route("/api/plans/:id/staffing", get(handlers::staffing::get_staffing_roles))
         .route("/api/staffing/:id", delete(handlers::staffing::delete_staffing_role).put(handlers::staffing::update_staffing_role))
         
+        // Lifecycle
+        .route("/api/lifecycle/plans/:id/duplicate", post(handlers::lifecycle::duplicate_plan_handler))
+        .route("/api/lifecycle/companies/:id/duplicate", post(handlers::lifecycle::duplicate_company_handler))
+        .route("/api/lifecycle/funds/:id/duplicate", post(handlers::lifecycle::duplicate_fund_handler))
+        .route("/api/lifecycle/companies/:id/move", put(handlers::lifecycle::move_company_handler))
+        .route("/api/lifecycle/templates", get(handlers::lifecycle::get_public_templates))
+        .route("/api/lifecycle/templates/:id/clone", post(handlers::lifecycle::clone_template_handler))
+
         .route_layer(axum::middleware::from_fn(middleware::auth));
 
     let app = Router::new()

@@ -11,7 +11,6 @@ use crate::errors::AppError;
 use crate::projection::SimulationResult;
 use crate::engine::generate_simulation;
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use chrono::NaiveDate;
 use std::str::FromStr;
 
@@ -57,7 +56,8 @@ pub async fn create_plan(
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!"
+            created_at as "created_at!", updated_at as "updated_at!",
+            last_p50_net_value
         "#,
         payload.company_id,
         payload.plan_name,
@@ -108,7 +108,8 @@ pub async fn update_plan(
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!"
+            created_at as "created_at!", updated_at as "updated_at!",
+            last_p50_net_value
         "#,
         payload.plan_name,
         start_date,
@@ -136,7 +137,8 @@ pub async fn get_all_plans(
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!"
+            created_at as "created_at!", updated_at as "updated_at!",
+            last_p50_net_value
         FROM financial_plans 
         WHERE tenant_id = $1 
         ORDER BY created_at DESC
@@ -161,7 +163,8 @@ pub async fn get_plan(
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!"
+            created_at as "created_at!", updated_at as "updated_at!",
+            last_p50_net_value
         FROM financial_plans 
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -223,7 +226,8 @@ pub async fn get_plan_projection(
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!"
+            created_at as "created_at!", updated_at as "updated_at!",
+            last_p50_net_value
         FROM financial_plans 
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -313,7 +317,7 @@ pub async fn get_plan_projection(
     let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
         crate::models::DividendPolicy,
         r#"
-        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at 
+        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!"
         FROM dividend_policies 
         WHERE plan_id = $1
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)

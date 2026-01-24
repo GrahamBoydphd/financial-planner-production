@@ -5,7 +5,7 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import { api, Company, FinancialPlan, Fund } from '@/lib/api';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, Trash2 } from 'lucide-react';
 
 export default function CompanyPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
@@ -18,6 +18,9 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
   const [isCreating, setIsCreating] = useState(false);
   const [newPlanName, setNewPlanName] = useState('');
   const [startMonth, setStartMonth] = useState(new Date().toISOString().slice(0, 7) + '-01'); // YYYY-MM-01
+
+  // Duplication State
+  const [duplicatingPlanId, setDuplicatingPlanId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -54,6 +57,31 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
         loadData();
     } catch (e) {
         alert("Error creating plan. Ensure date is YYYY-MM-DD");
+    }
+  };
+
+  const handleDuplicatePlan = async (id: string) => {
+    if(!confirm('Duplicate this scenario?')) return;
+    try {
+        setDuplicatingPlanId(id);
+        await api.duplicatePlan(id);
+        setDuplicatingPlanId(null);
+        await loadData();
+    } catch(e) {
+        console.error(e);
+        alert('Failed to duplicate plan');
+        setDuplicatingPlanId(null);
+    }
+  };
+
+  const handleDeletePlan = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this scenario? This cannot be undone.')) return;
+    try {
+      await api.deletePlan(id);
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete plan');
     }
   };
 
@@ -126,7 +154,30 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
             {plans.map(plan => (
                 <Card key={plan.id} className="hover:shadow-lg transition-shadow border-l-4 border-teal-500 h-full flex flex-col justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800">{plan.plan_name}</h2>
+                        <div className="flex justify-between items-start">
+                            <h2 className="text-xl font-bold text-gray-800">{plan.plan_name}</h2>
+                            <div className="flex items-center gap-1">
+                                <button 
+                                    onClick={() => handleDuplicatePlan(plan.id)}
+                                    title="Duplicate Scenario"
+                                    disabled={duplicatingPlanId === plan.id}
+                                    className="text-gray-400 hover:text-teal-600 transition-colors p-1 disabled:cursor-not-allowed"
+                                >
+                                    {duplicatingPlanId === plan.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
+                                    ) : (
+                                        <Copy className="h-4 w-4" />
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => handleDeletePlan(plan.id)}
+                                    title="Delete Scenario"
+                                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
                         <p className="text-xs text-gray-400 mt-1">Starts: {plan.start_month}</p>
                     </div>
                     

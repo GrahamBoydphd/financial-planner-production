@@ -6,16 +6,43 @@ import Link from 'next/link';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import DeleteButton from '@/components/ui/DeleteButton';
-import { api, Fund, Company } from '@/lib/api';
+import { api, Fund, Company, Template } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { Copy, Trash2, MoveRight } from 'lucide-react';
+import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
+
+// --- ICONS ---
+const CopyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5" />
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+  </svg>
+);
+
+const Spinner = () => (
+  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+);
 
 export default function Dashboard() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  // State
+  const [activeTab, setActiveTab] = useState<'funds' | 'templates'>('funds');
   const [funds, setFunds] = useState<Fund[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [loadingOp, setLoadingOp] = useState<string | null>(null);
+  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -25,12 +52,14 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [fundsData, companiesData] = await Promise.all([
+      const [fundsData, companiesData, templatesData] = await Promise.all([
         api.getFunds(),
-        api.getCompanies()
+        api.getCompanies(),
+        api.getTemplates()
       ]);
       setFunds(fundsData);
       setCompanies(companiesData);
+      setTemplates(templatesData);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -44,14 +73,80 @@ export default function Dashboard() {
     }
   }, [isAuthenticated]);
 
-  // Helper: Delete Fund
+  // --- HANDLERS ---
+
   const handleDeleteFund = async (fundId: string) => {
+    if (loadingOp) return;
     if (!confirm('Are you sure you want to delete this fund?')) return;
+    setLoadingOp(fundId);
     try {
       await api.deleteFund(fundId);
-      fetchData(); // Refresh list
+      await fetchData(); // Refresh list
     } catch (error) {
       alert('Could not delete fund. It might contain companies.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleDuplicateFund = async (fundId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Duplicate this fund and all its contents?')) return;
+    setLoadingOp(fundId);
+    try {
+      await api.duplicateFund(fundId);
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to duplicate fund.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleImportTemplate = async (templateId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Import this template as a new fund?')) return;
+    setLoadingOp(templateId);
+    try {
+      await api.importTemplate(templateId);
+      setActiveTab('funds');
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to import template.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleDuplicateCompany = async (companyId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Duplicate this company?')) return;
+    setLoadingOp(companyId);
+    try {
+      await api.duplicateCompany(companyId);
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to duplicate company.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleDeleteCompany = async (companyId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Are you sure you want to delete this company?')) return;
+    setLoadingOp(companyId);
+    try {
+      await api.deleteCompany(companyId);
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to delete company.');
+    } finally {
+      setLoadingOp(null);
     }
   };
 
@@ -77,88 +172,242 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <p className="text-s text-gray-400 font-mono">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p> <p></p>
+      <p className="text-s text-gray-400 font-mono mb-6">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {funds.map((fund) => {
-          // Find companies belonging to this fund
-          const fundCompanies = companies.filter(c => c.fund_id === fund.id);
+      {/* TABS */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
+            activeTab === 'funds'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('funds')}
+        >
+          My Funds
+        </button>
+        <button
+          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
+            activeTab === 'templates'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('templates')}
+        >
+          Templates Library
+        </button>
+      </div>
 
-          return (
-            <div key={fund.id} className="flex flex-col h-full">
-              <Card className="flex-1 flex flex-col border-t-4 border-t-indigo-500 hover:shadow-lg transition-shadow">
-                
-                {/* FUND HEADER */}
+      {/* CONTENT */}
+      {activeTab === 'funds' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {funds.map((fund) => {
+            // Find companies belonging to this fund
+            const fundCompanies = companies.filter(c => c.fund_id === fund.id);
+            const isProcessing = loadingOp === fund.id;
+
+            return (
+              <div key={fund.id} className="flex flex-col h-full">
+                <Card className="flex-1 flex flex-col border-t-4 border-t-indigo-500 hover:shadow-lg transition-shadow">
+                  
+                  {/* FUND HEADER */}
+                  <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
+                          {fund.fund_name}
+                        </Link>
+                        <span className="text-gray-400 text-sm">[{fund.currency_code || 'USD'}]</span>
+                      </h2>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isProcessing ? (
+                        <div className="p-1 text-indigo-600"><Spinner /></div>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => handleDuplicateFund(fund.id)}
+                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                            title="Duplicate Fund"
+                            disabled={!!loadingOp}
+                          >
+                            <CopyIcon />
+                          </button>
+                          <DeleteButton onDelete={() => handleDeleteFund(fund.id)} disabled={!!loadingOp} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* COMPANIES LIST */}
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
+                    
+                    {fundCompanies.length > 0 ? (
+                      <ul className="space-y-2">
+                        {fundCompanies.map((company) => (
+                          <li key={company.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
+                            <Link 
+                              href={`/company/${company.id}`}
+                              className="font-medium text-gray-700 group-hover:text-indigo-700 flex-1"
+                            >
+                              {company.company_name}
+                            </Link>
+                            
+                            <div className="flex items-center gap-1">
+                              <button 
+                                  onClick={() => handleDuplicateCompany(company.id)}
+                                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="Duplicate"
+                                  disabled={!!loadingOp}
+                              >
+                                  <Copy className="w-4 h-4" />
+                              </button>
+                              <button 
+                                  onClick={() => setMovingCompanyId(company.id)}
+                                  className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                  title="Move"
+                                  disabled={!!loadingOp}
+                              >
+                                  <MoveRight className="w-4 h-4" />
+                              </button>
+                              <button 
+                                  onClick={() => handleDeleteCompany(company.id)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete"
+                                  disabled={!!loadingOp}
+                              >
+                                  <Trash2 className="w-4 h-4" />
+                              </button>
+                              <Link href={`/company/${company.id}`} className="text-gray-400 group-hover:text-indigo-400 text-sm ml-2">
+                                  View
+                              </Link>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
+                        No companies yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ADD COMPANY LINK */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                    <Link 
+                      href="/structure" 
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
+                    >
+                      <span className="mr-1">+</span> Add Company
+                    </Link>
+                  </div>
+                </Card>
+              </div>
+            );
+          })}
+          
+          {funds.length === 0 && (
+            <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
+              <p className="text-gray-400 mt-2">Get started by creating your first fund or importing a template.</p>
+              <div className="mt-6 flex justify-center gap-4">
+                 <Link 
+                    href="/structure" 
+                    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
+                  >
+                    Create Fund
+                  </Link>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded hover:bg-indigo-50 transition-colors"
+                  >
+                    Browse Templates
+                  </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        // TEMPLATES VIEW
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {templates.map((template) => {
+            const isProcessing = loadingOp === template.id;
+            return (
+            <div key={template.id} className="flex flex-col h-full">
+              <Card className="flex-1 flex flex-col border-t-4 border-t-emerald-500 hover:shadow-lg transition-shadow">
                 <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                      <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
-                        {fund.fund_name}
-                      </Link>
-                      <span className="text-gray-400 text-sm">[{fund.currency_code || 'USD'}]</span>
+                    <h2 className="text-xl font-bold text-gray-800">
+                      {template.name}
                     </h2>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Template</p>
                   </div>
-                  <DeleteButton onDelete={() => handleDeleteFund(fund.id)} />
-                </div>
-
-                {/* COMPANIES LIST */}
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
-                  
-                  {fundCompanies.length > 0 ? (
-                    <ul className="space-y-2">
-                      {fundCompanies.map((company) => (
-                        <li key={company.id}>
-                          <Link 
-                            href={`/company/${company.id}`}
-                            className="block p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-700 group-hover:text-indigo-700">
-                                {company.company_name}
-                              </span>
-                              <span className="text-gray-400 group-hover:text-indigo-400 text-sm">View &rarr;</span>
-                            </div>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
+                  {isProcessing ? (
+                     <div className="p-2 text-emerald-600"><Spinner /></div>
                   ) : (
-                    <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
-                      No companies yet.
-                    </div>
+                    <button
+                        onClick={() => handleImportTemplate(template.id)}
+                        className="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 p-2 rounded-full transition-colors"
+                        title="Import Template"
+                        disabled={!!loadingOp}
+                    >
+                        <DownloadIcon />
+                    </button>
                   )}
                 </div>
+                
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-400">Description</h3>
+                    <p className="text-gray-600 text-sm mt-1">{template.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-400">Industry</h3>
+                      <p className="text-gray-800 text-sm font-medium">{template.industry}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-400">Complexity</h3>
+                      <p className="text-gray-800 text-sm font-medium">{template.complexity}</p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* ADD COMPANY LINK */}
-                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                  <Link 
-                    href="/structure" 
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
+                <div className="mt-6 pt-3 border-t border-gray-100">
+                   <button
+                    onClick={() => handleImportTemplate(template.id)}
+                    className="w-full bg-emerald-600 text-white py-2 rounded hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                    disabled={!!loadingOp}
                   >
-                    <span className="mr-1">+</span> Add Company
-                  </Link>
+                    {isProcessing ? <Spinner /> : <DownloadIcon />}
+                    {isProcessing ? 'Importing...' : 'Import Template'}
+                  </button>
                 </div>
               </Card>
             </div>
-          );
-        })}
-      </div>
-      
-      {funds.length === 0 && (
-        <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-          <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
-          <p className="text-gray-400 mt-2">Get started by creating your first fund.</p>
-          <div className="mt-6">
-             <Link 
-                href="/structure" 
-                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
-              >
-                Create Fund
-              </Link>
-          </div>
+          )})}
+
+          {templates.length === 0 && (
+             <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <h3 className="text-xl font-medium text-gray-500">No templates available</h3>
+              <p className="text-gray-400 mt-2">Check back later for public templates.</p>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Move Company Modal */}
+      {movingCompanyId && (
+        <MoveCompanyModal 
+          isOpen={!!movingCompanyId}
+          onClose={() => setMovingCompanyId(null)}
+          onSuccess={fetchData}
+          companyId={movingCompanyId}
+          currentFundId={companies.find(c => c.id === movingCompanyId)?.fund_id || ''}
+        />
       )}
     </Layout>
   );
