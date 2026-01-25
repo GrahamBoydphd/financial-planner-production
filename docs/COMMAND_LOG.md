@@ -351,4 +351,64 @@ Now that your backup is safe, you are ready to start the next stage in your `cur
 2. **Verify Branch:** Ensure you are on a fresh branch for this new stage (e.g., `git checkout -b feature/stage-4-architecture`).
     
 
-**Would you like me to help you draft the "Phase 4" roadmap based on where we left off with the multi-tenant hardening?**
+# Demo Admin superuser
+Since we haven't built a "Super Admin Dashboard" UI yet, and the database trigger is currently locking out everyone (it's set to the `0000...` UUID), you have to perform a "Coronation" manually in the database.
+
+Here is the 3-step sequence to promote yourself to **Demo Admin** and publish your first template.
+
+### Step 1: Find your Tenant ID
+
+You need to know who you are in the database. Run this in your SQL tool or terminal:
+
+SQL
+
+```
+-- Find your tenant_id
+SELECT username, tenant_id FROM users; 
+-- Copy the UUID for your user (e.g., 'a1b2c3d4-...')
+```
+
+### Step 2: "Coronate" Yourself (Update the Guard)
+
+The trigger is currently rejecting everyone. You need to update the function to recognize **your** UUID as the authorized publisher.
+
+Run this SQL (replace the `0000...` with your actual UUID from Step 1):
+
+SQL
+
+```
+CREATE OR REPLACE FUNCTION guard_public_templates()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- REPLACE WITH YOUR REAL TENANT ID BELOW:
+    IF NEW.is_public_template = TRUE AND NEW.tenant_id != 'YOUR-ACTUAL-TENANT-UUID-HERE'::uuid THEN
+        RAISE EXCEPTION 'Security Violation: Only the designated Demo Admin can publish templates.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Step 3: Publish the Template
+
+Now that the guard recognizes you, simply pick the Fund you want to be the template and flip the switch using SQL:
+
+SQL
+
+```
+-- 1. Find the Fund ID
+SELECT id, fund_name FROM funds WHERE tenant_id = 'YOUR-ACTUAL-TENANT-UUID-HERE';
+
+-- 2. Publish it
+UPDATE funds 
+SET is_public_template = true 
+WHERE id = 'THE-FUND-UUID-HERE';
+```
+
+**Result:**
+
+- Because your `tenant_id` matches the Function, the trigger allows the update.
+    
+- If anyone else (or you, if you sign up as a different user) tries to do this, the DB will reject it.
+    
+- This fund will now appear in the results of `GET /api/lifecycle/templates`.

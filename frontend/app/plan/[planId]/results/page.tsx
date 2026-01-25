@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -27,7 +27,8 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
-    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1] || lastData;
+    // FIX: No fallback to lastData if single_run_data is missing
+    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1];
 
     let totalVal = lastData.total_value;
     let valuation = projection.deterministic_valuation;
@@ -56,12 +57,16 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
     };
 
     if (simMode === 'single') {
-        totalVal = singleLastData.total_value;
-        valuation = projection.single_run_valuation;
-        subtitle = 'Single Run Result';
-        if (projection.single_run_data) {
+        if (singleLastData) {
+            totalVal = singleLastData.total_value;
+            valuation = projection.single_run_valuation;
+            subtitle = 'Single Run Result';
             insolvencyMonth = checkInsolvency(projection.single_run_data);
             runwayVal = calculateRunway(Number(singleLastData.cash_balance), Number(singleLastData.net_income));
+        } else {
+            totalVal = 0;
+            subtitle = 'Data Unavailable';
+            runwayVal = 0;
         }
     } else if (simMode === 'monte_carlo') {
         totalVal = projection.p50_value?.[projection.p50_value.length - 1] || 0;
@@ -212,6 +217,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
   const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
   const [stopInsolvency, setStopInsolvency] = useState(true); // Default to TRUE
+  const [insolvencyThreshold, setInsolvencyThreshold] = useState("0");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // Path Navigation (New)
@@ -222,6 +228,9 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   
   // UI Settings
   const [currency, setCurrency] = useState('USD'); // Default USD
+
+  // Refs
+  const initializedRef = useRef(false);
 
   // --- DATA LOADING ---
   useEffect(() => {
@@ -244,6 +253,12 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         setInitialCash(p.initial_cash || "0");
         // Sync slider with DB state on reload
         setPoolingFraction(Number(p.pooling_fraction || 0) * 100);
+        
+        // Initialize insolvency threshold only once
+        if (!initializedRef.current) {
+            setInsolvencyThreshold(p.insolvency_threshold || "0");
+            initializedRef.current = true;
+        }
         
         // Set currency from plan
         setCurrency(p.currency_code || 'USD');
@@ -307,7 +322,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
            mode: backendMode,
            stop_insolvency: stopInsolvency,
            initial_cash: Number(p.initial_cash || 0),
-           months: years * 12 // FIX: Pass months based on years selector
+           months: years * 12, // FIX: Pass months based on years selector
+           // insolvency_threshold removed: Backend uses stored plan value
         });
 
         if (proj.valuation_method) {
@@ -315,7 +331,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
         }
         
         // --- DATA MAPPING FOR TABLE ---
-        let sourceData = proj.deterministic_data;
+        // FIX: Strict source selection
+        let sourceData = (simMode === 'standard') ? proj.deterministic_data : [];
         
         if (simMode === 'monte_carlo' && proj.p50_data) {
             sourceData = proj.p50_data;
@@ -323,7 +340,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
             sourceData = proj.single_run_data;
         }
 
-        const tableData = sourceData.map((m: any) => {
+        const tableData = sourceData ? sourceData.map((m: any) => {
            return {
                month_index: m.month_index,
                date: m.date,
@@ -338,7 +355,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                dividend_paid: m.dividend_paid,
                is_solvent: m.is_solvent
            };
-        });
+        }) : [];
         
         (proj as any).cash_flow_data = tableData;
         setProjection(proj);
@@ -355,7 +372,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
       }
     };
     load();
-  }, [planId, years, simMode, stopInsolvency, refreshTrigger]); 
+  }, [planId, years, simMode, stopInsolvency, refreshTrigger]); // Removed insolvencyThreshold from deps
 
   // --- 3. HANDLERS ---
   const handleAddCapital = async () => {
@@ -409,6 +426,18 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
     } catch (e) {
         console.error("Failed to update pooling fraction", e);
         setUpdatingPooling(false);
+        setLoading(false);
+    }
+  };
+
+  const handleThresholdSave = async () => {
+    if (!plan) return;
+    try {
+        setLoading(true);
+        await api.updatePlan(planId, { insolvency_threshold: insolvencyThreshold });
+        setRefreshTrigger(n => n + 1);
+    } catch (e) {
+        console.error("Failed to save insolvency threshold", e);
         setLoading(false);
     }
   };
@@ -485,6 +514,20 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                   className="rounded text-red-600"
                 />
                 <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop on Insolvency</label>
+              </div>
+
+              {/* Insolvency Threshold */}
+              <div className="flex items-center gap-2 border-l pl-4">
+                  <span className="text-xs text-gray-500 font-bold">Threshold</span>
+                  <input 
+                    type="number" 
+                    className="w-20 border rounded p-1 text-sm bg-red-50 text-red-800 font-bold"
+                    value={insolvencyThreshold}
+                    onChange={(e) => setInsolvencyThreshold(e.target.value)}
+                    onBlur={handleThresholdSave}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleThresholdSave(); }}
+                    placeholder="0"
+                  />
               </div>
 
               {/* Non-Ergodicity Slider */}
@@ -721,24 +764,32 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 </tr>
               </thead>
               <tbody>
-                {(projection as any).cash_flow_data.map((row: any) => {
-                  const isRowInsolvent = !row.is_solvent;
-                  return (
-                  <tr key={row.month_index} className={`border-b ${isRowInsolvent ? 'bg-gray-50 text-gray-400' : 'hover:bg-gray-50 bg-white'}`}>
-                    <td className="px-4 py-2 font-medium">{row.month_index}</td>
-                    <td className="px-4 py-2">{fmt(row.revenue)}</td>
-                    <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
-                    <td className="px-4 py-2">{fmt(row.opex)}</td>
-                    <td className={`px-4 py-2 ${isRowInsolvent ? '' : (row.net_income < 0 ? 'text-red-500' : 'text-green-600')}`}>{fmt(row.net_income)}</td>
-                    <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-orange-600'}`}>{fmt(row.cumulative_pool_received)}</td>
-                    <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900')}`}>{fmt(row.cash_balance)}</td>
-                    <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-green-600'}`}>{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
-                    <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.total_value < 0 ? 'text-red-600' : 'text-blue-700')}`}>
-                      {fmt(row.total_value)}
-                    </td>
-                  </tr>
-                  );
-                })}
+                {(projection as any).cash_flow_data.length > 0 ? (
+                    (projection as any).cash_flow_data.map((row: any) => {
+                      const isRowInsolvent = !row.is_solvent;
+                      return (
+                      <tr key={row.month_index} className={`border-b ${isRowInsolvent ? 'bg-gray-50 text-gray-400' : 'hover:bg-gray-50 bg-white'}`}>
+                        <td className="px-4 py-2 font-medium">{row.month_index}</td>
+                        <td className="px-4 py-2">{fmt(row.revenue)}</td>
+                        <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
+                        <td className="px-4 py-2">{fmt(row.opex)}</td>
+                        <td className={`px-4 py-2 ${isRowInsolvent ? '' : (row.net_income < 0 ? 'text-red-500' : 'text-green-600')}`}>{fmt(row.net_income)}</td>
+                        <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-orange-600'}`}>{fmt(row.cumulative_pool_received)}</td>
+                        <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900')}`}>{fmt(row.cash_balance)}</td>
+                        <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-green-600'}`}>{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
+                        <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.total_value < 0 ? 'text-red-600' : 'text-blue-700')}`}>
+                          {fmt(row.total_value)}
+                        </td>
+                      </tr>
+                      );
+                    })
+                ) : (
+                    <tr>
+                        <td colSpan={9} className="px-4 py-8 text-center text-gray-400 italic">
+                            Data Unavailable for this mode.
+                        </td>
+                    </tr>
+                )}
               </tbody>
             </table>
           </Card>

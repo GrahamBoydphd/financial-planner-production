@@ -56,6 +56,8 @@
 │   │   └── ValuationForm.tsx
 │   ├── FundChart.tsx
 │   ├── Layout.tsx
+│   ├── modals
+│   │   └── MoveCompanyModal.tsx
 │   ├── Navbar.tsx
 │   └── ui
 │       ├── Button.tsx
@@ -77,8 +79,6 @@
 │   └── presets.ts
 ├── .next
 │   ├── app-build-manifest.json
-│   ├── app-path-routes-manifest.json
-│   ├── BUILD_ID
 │   ├── build-manifest.json
 │   ├── cache
 │   │   ├── swc
@@ -99,6 +99,9 @@
 │   │       │   ├── 18.pack.gz
 │   │       │   ├── 19.pack.gz
 │   │       │   ├── 1.pack.gz
+│   │       │   ├── 20.pack.gz
+│   │       │   ├── 21.pack.gz
+│   │       │   ├── 22.pack.gz
 │   │       │   ├── 2.pack.gz
 │   │       │   ├── 3.pack.gz
 │   │       │   ├── 4.pack.gz
@@ -111,10 +114,16 @@
 │   │       │   └── index.pack.gz.old
 │   │       ├── client-production
 │   │       │   ├── 0.pack
+│   │       │   ├── 10.pack
 │   │       │   ├── 1.pack
 │   │       │   ├── 2.pack
 │   │       │   ├── 3.pack
 │   │       │   ├── 4.pack
+│   │       │   ├── 5.pack
+│   │       │   ├── 6.pack
+│   │       │   ├── 7.pack
+│   │       │   ├── 8.pack
+│   │       │   ├── 9.pack
 │   │       │   ├── index.pack
 │   │       │   └── index.pack.old
 │   │       ├── edge-server-production
@@ -131,7 +140,9 @@
 │   │       │   ├── 16.pack.gz
 │   │       │   ├── 17.pack.gz
 │   │       │   ├── 18.pack.gz
+│   │       │   ├── 19.pack.gz
 │   │       │   ├── 1.pack.gz
+│   │       │   ├── 20.pack.gz
 │   │       │   ├── 2.pack.gz
 │   │       │   ├── 3.pack.gz
 │   │       │   ├── 4.pack.gz
@@ -146,336 +157,103 @@
 │   │           ├── 0.pack
 │   │           ├── 1.pack
 │   │           ├── 2.pack
+│   │           ├── 3.pack
+│   │           ├── 4.pack
+│   │           ├── 5.pack
 │   │           ├── index.pack
 │   │           └── index.pack.old
-│   ├── export-marker.json
-│   ├── images-manifest.json
-│   ├── next-minimal-server.js.nft.json
-│   ├── next-server.js.nft.json
 │   ├── package.json
-│   ├── prerender-manifest.json
 │   ├── react-loadable-manifest.json
-│   ├── required-server-files.json
-│   ├── routes-manifest.json
 │   ├── server
 │   │   ├── app
-│   │   │   ├── company
-│   │   │   │   └── [companyId]
-│   │   │   │       ├── page_client-reference-manifest.js
-│   │   │   │       ├── page.js
-│   │   │   │       └── page.js.nft.json
-│   │   │   ├── fund
-│   │   │   │   └── [fundId]
-│   │   │   │       ├── inputs
-│   │   │   │       │   ├── page_client-reference-manifest.js
-│   │   │   │       │   ├── page.js
-│   │   │   │       │   └── page.js.nft.json
-│   │   │   │       ├── page_client-reference-manifest.js
-│   │   │   │       ├── page.js
-│   │   │   │       ├── page.js.nft.json
-│   │   │   │       └── results
-│   │   │   │           ├── page_client-reference-manifest.js
-│   │   │   │           ├── page.js
-│   │   │   │           └── page.js.nft.json
-│   │   │   ├── help
-│   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   ├── page.js
-│   │   │   │   └── page.js.nft.json
-│   │   │   ├── improve
-│   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   ├── page.js
-│   │   │   │   └── page.js.nft.json
-│   │   │   ├── improve.html
-│   │   │   ├── improve.meta
-│   │   │   ├── improve.rsc
-│   │   │   ├── index.html
-│   │   │   ├── index.meta
-│   │   │   ├── index.rsc
-│   │   │   ├── login
-│   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   ├── page.js
-│   │   │   │   └── page.js.nft.json
-│   │   │   ├── login.html
-│   │   │   ├── login.meta
-│   │   │   ├── login.rsc
-│   │   │   ├── _not-found
-│   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   ├── page.js
-│   │   │   │   └── page.js.nft.json
-│   │   │   ├── _not-found.html
-│   │   │   ├── _not-found.meta
-│   │   │   ├── _not-found.rsc
-│   │   │   ├── page_client-reference-manifest.js
-│   │   │   ├── page.js
-│   │   │   ├── page.js.nft.json
-│   │   │   ├── plan
-│   │   │   │   └── [planId]
-│   │   │   │       ├── inputs
-│   │   │   │       │   ├── page_client-reference-manifest.js
-│   │   │   │       │   ├── page.js
-│   │   │   │       │   └── page.js.nft.json
-│   │   │   │       ├── page_client-reference-manifest.js
-│   │   │   │       ├── page.js
-│   │   │   │       ├── page.js.nft.json
-│   │   │   │       └── results
-│   │   │   │           ├── page_client-reference-manifest.js
-│   │   │   │           ├── page.js
-│   │   │   │           └── page.js.nft.json
-│   │   │   ├── register
-│   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   ├── page.js
-│   │   │   │   └── page.js.nft.json
-│   │   │   ├── register.html
-│   │   │   ├── register.meta
-│   │   │   ├── register.rsc
-│   │   │   ├── structure
-│   │   │   │   ├── page_client-reference-manifest.js
-│   │   │   │   ├── page.js
-│   │   │   │   └── page.js.nft.json
-│   │   │   ├── structure.html
-│   │   │   ├── structure.meta
-│   │   │   └── structure.rsc
+│   │   │   └── structure
+│   │   │       ├── page_client-reference-manifest.js
+│   │   │       └── page.js
 │   │   ├── app-paths-manifest.json
-│   │   ├── chunks
-│   │   │   ├── 147.js
-│   │   │   ├── 185.js
-│   │   │   ├── 32.js
-│   │   │   ├── 434.js
-│   │   │   ├── 60.js
-│   │   │   ├── 682.js
-│   │   │   └── font-manifest.json
-│   │   ├── font-manifest.json
-│   │   ├── functions-config-manifest.json
 │   │   ├── interception-route-rewrite-manifest.js
 │   │   ├── middleware-build-manifest.js
 │   │   ├── middleware-manifest.json
 │   │   ├── middleware-react-loadable-manifest.js
 │   │   ├── next-font-manifest.js
 │   │   ├── next-font-manifest.json
-│   │   ├── pages
-│   │   │   ├── 404.html
-│   │   │   ├── 500.html
-│   │   │   ├── _app.js
-│   │   │   ├── _app.js.nft.json
-│   │   │   ├── _document.js
-│   │   │   ├── _document.js.nft.json
-│   │   │   ├── _error.js
-│   │   │   └── _error.js.nft.json
 │   │   ├── pages-manifest.json
 │   │   ├── server-reference-manifest.js
 │   │   ├── server-reference-manifest.json
+│   │   ├── vendor-chunks
+│   │   │   ├── asynckit.js
+│   │   │   ├── axios.js
+│   │   │   ├── call-bind-apply-helpers.js
+│   │   │   ├── combined-stream.js
+│   │   │   ├── debug.js
+│   │   │   ├── delayed-stream.js
+│   │   │   ├── dunder-proto.js
+│   │   │   ├── es-define-property.js
+│   │   │   ├── es-errors.js
+│   │   │   ├── es-object-atoms.js
+│   │   │   ├── es-set-tostringtag.js
+│   │   │   ├── follow-redirects.js
+│   │   │   ├── form-data.js
+│   │   │   ├── function-bind.js
+│   │   │   ├── get-intrinsic.js
+│   │   │   ├── get-proto.js
+│   │   │   ├── gopd.js
+│   │   │   ├── has-flag.js
+│   │   │   ├── hasown.js
+│   │   │   ├── has-symbols.js
+│   │   │   ├── has-tostringtag.js
+│   │   │   ├── lucide-react.js
+│   │   │   ├── math-intrinsics.js
+│   │   │   ├── mime-db.js
+│   │   │   ├── mime-types.js
+│   │   │   ├── ms.js
+│   │   │   ├── next.js
+│   │   │   ├── proxy-from-env.js
+│   │   │   ├── supports-color.js
+│   │   │   └── @swc.js
 │   │   └── webpack-runtime.js
-│   ├── standalone
-│   │   ├── .next
-│   │   │   ├── app-build-manifest.json
-│   │   │   ├── app-path-routes-manifest.json
-│   │   │   ├── BUILD_ID
-│   │   │   ├── build-manifest.json
-│   │   │   ├── package.json
-│   │   │   ├── prerender-manifest.json
-│   │   │   ├── react-loadable-manifest.json
-│   │   │   ├── required-server-files.json
-│   │   │   ├── routes-manifest.json
-│   │   │   └── server
-│   │   │       ├── app
-│   │   │       │   ├── company
-│   │   │       │   │   └── [companyId]
-│   │   │       │   │       ├── page_client-reference-manifest.js
-│   │   │       │   │       ├── page.js
-│   │   │       │   │       └── page.js.nft.json
-│   │   │       │   ├── fund
-│   │   │       │   │   └── [fundId]
-│   │   │       │   │       ├── inputs
-│   │   │       │   │       │   ├── page_client-reference-manifest.js
-│   │   │       │   │       │   ├── page.js
-│   │   │       │   │       │   └── page.js.nft.json
-│   │   │       │   │       ├── page_client-reference-manifest.js
-│   │   │       │   │       ├── page.js
-│   │   │       │   │       ├── page.js.nft.json
-│   │   │       │   │       └── results
-│   │   │       │   │           ├── page_client-reference-manifest.js
-│   │   │       │   │           ├── page.js
-│   │   │       │   │           └── page.js.nft.json
-│   │   │       │   ├── help
-│   │   │       │   │   ├── page_client-reference-manifest.js
-│   │   │       │   │   ├── page.js
-│   │   │       │   │   └── page.js.nft.json
-│   │   │       │   ├── improve
-│   │   │       │   │   ├── page_client-reference-manifest.js
-│   │   │       │   │   ├── page.js
-│   │   │       │   │   └── page.js.nft.json
-│   │   │       │   ├── improve.html
-│   │   │       │   ├── improve.meta
-│   │   │       │   ├── improve.rsc
-│   │   │       │   ├── index.html
-│   │   │       │   ├── index.meta
-│   │   │       │   ├── index.rsc
-│   │   │       │   ├── login
-│   │   │       │   │   ├── page_client-reference-manifest.js
-│   │   │       │   │   ├── page.js
-│   │   │       │   │   └── page.js.nft.json
-│   │   │       │   ├── login.html
-│   │   │       │   ├── login.meta
-│   │   │       │   ├── login.rsc
-│   │   │       │   ├── _not-found
-│   │   │       │   │   ├── page_client-reference-manifest.js
-│   │   │       │   │   ├── page.js
-│   │   │       │   │   └── page.js.nft.json
-│   │   │       │   ├── _not-found.html
-│   │   │       │   ├── _not-found.meta
-│   │   │       │   ├── _not-found.rsc
-│   │   │       │   ├── page_client-reference-manifest.js
-│   │   │       │   ├── page.js
-│   │   │       │   ├── page.js.nft.json
-│   │   │       │   ├── plan
-│   │   │       │   │   └── [planId]
-│   │   │       │   │       ├── inputs
-│   │   │       │   │       │   ├── page_client-reference-manifest.js
-│   │   │       │   │       │   ├── page.js
-│   │   │       │   │       │   └── page.js.nft.json
-│   │   │       │   │       ├── page_client-reference-manifest.js
-│   │   │       │   │       ├── page.js
-│   │   │       │   │       ├── page.js.nft.json
-│   │   │       │   │       └── results
-│   │   │       │   │           ├── page_client-reference-manifest.js
-│   │   │       │   │           ├── page.js
-│   │   │       │   │           └── page.js.nft.json
-│   │   │       │   ├── register
-│   │   │       │   │   ├── page_client-reference-manifest.js
-│   │   │       │   │   ├── page.js
-│   │   │       │   │   └── page.js.nft.json
-│   │   │       │   ├── register.html
-│   │   │       │   ├── register.meta
-│   │   │       │   ├── register.rsc
-│   │   │       │   ├── structure
-│   │   │       │   │   ├── page_client-reference-manifest.js
-│   │   │       │   │   ├── page.js
-│   │   │       │   │   └── page.js.nft.json
-│   │   │       │   ├── structure.html
-│   │   │       │   ├── structure.meta
-│   │   │       │   └── structure.rsc
-│   │   │       ├── app-paths-manifest.json
-│   │   │       ├── chunks
-│   │   │       │   ├── 147.js
-│   │   │       │   ├── 185.js
-│   │   │       │   ├── 32.js
-│   │   │       │   ├── 434.js
-│   │   │       │   ├── 60.js
-│   │   │       │   └── 682.js
-│   │   │       ├── font-manifest.json
-│   │   │       ├── middleware-build-manifest.js
-│   │   │       ├── middleware-manifest.json
-│   │   │       ├── middleware-react-loadable-manifest.js
-│   │   │       ├── next-font-manifest.js
-│   │   │       ├── next-font-manifest.json
-│   │   │       ├── pages
-│   │   │       │   ├── 404.html
-│   │   │       │   ├── 500.html
-│   │   │       │   ├── _app.js
-│   │   │       │   ├── _app.js.nft.json
-│   │   │       │   ├── _document.js
-│   │   │       │   ├── _document.js.nft.json
-│   │   │       │   ├── _error.js
-│   │   │       │   └── _error.js.nft.json
-│   │   │       ├── pages-manifest.json
-│   │   │       ├── server-reference-manifest.js
-│   │   │       ├── server-reference-manifest.json
-│   │   │       └── webpack-runtime.js
-│   │   ├── package.json
-│   │   └── server.js
 │   ├── static
 │   │   ├── chunks
-│   │   │   ├── 117-63f512de3129adce.js
-│   │   │   ├── 301-567e493d395e4aa8.js
-│   │   │   ├── 39-c4b8dc27bfb1e0eb.js
-│   │   │   ├── 539-c4fa78e6315d6ada.js
-│   │   │   ├── 648-af84be4c06bc301f.js
-│   │   │   ├── 873-f8364bdcccb5925f.js
 │   │   │   ├── app
-│   │   │   │   ├── company
-│   │   │   │   │   └── [companyId]
-│   │   │   │   │       └── page-d1ca1ebc0b694b89.js
-│   │   │   │   ├── fund
-│   │   │   │   │   └── [fundId]
-│   │   │   │   │       ├── inputs
-│   │   │   │   │       │   └── page-f7b5f02547c7f868.js
-│   │   │   │   │       ├── page-6a7c1192fe060798.js
-│   │   │   │   │       └── results
-│   │   │   │   │           └── page-18ce35adc9e94a00.js
-│   │   │   │   ├── help
-│   │   │   │   │   └── page-b351e164e0604cd5.js
-│   │   │   │   ├── improve
-│   │   │   │   │   └── page-80ecc6c7350ed36d.js
-│   │   │   │   ├── layout-116a6e2c274cfc4b.js
-│   │   │   │   ├── login
-│   │   │   │   │   └── page-1d506d0fa4e34dc6.js
-│   │   │   │   ├── _not-found
-│   │   │   │   │   └── page-ddd35de5a7d052bd.js
-│   │   │   │   ├── page-214504934452886b.js
-│   │   │   │   ├── plan
-│   │   │   │   │   └── [planId]
-│   │   │   │   │       ├── inputs
-│   │   │   │   │       │   └── page-52ef1dde579f548a.js
-│   │   │   │   │       ├── page-84751e5abb5d7510.js
-│   │   │   │   │       └── results
-│   │   │   │   │           └── page-934c82a7627d6a5d.js
-│   │   │   │   ├── register
-│   │   │   │   │   └── page-eac6d2028ec3e831.js
+│   │   │   │   ├── layout.js
 │   │   │   │   └── structure
-│   │   │   │       └── page-13c9f43c1d42c170.js
-│   │   │   ├── ca377847-775a6b9e4744076c.js
-│   │   │   ├── fd9d1056-f645e3cd7ccf8003.js
-│   │   │   ├── framework-f66176bb897dc684.js
-│   │   │   ├── main-9781a03042fb88b9.js
-│   │   │   ├── main-app-f5a2fd9f6e95bf1e.js
-│   │   │   ├── pages
-│   │   │   │   ├── _app-72b849fbd24ac258.js
-│   │   │   │   └── _error-7ba65e1336b92748.js
-│   │   │   ├── polyfills-42372ed130431b0a.js
-│   │   │   └── webpack-8db40c0f0ce1f953.js
+│   │   │   │       └── page.js
+│   │   │   ├── app-pages-internals.js
+│   │   │   ├── main-app.js
+│   │   │   ├── polyfills.js
+│   │   │   └── webpack.js
 │   │   ├── css
-│   │   │   └── 9b550a4c058b6a89.css
-│   │   ├── EaP3C2Ym67IZvyVo3D1Uv
+│   │   │   └── app
+│   │   │       └── layout.css
+│   │   ├── development
 │   │   │   ├── _buildManifest.js
 │   │   │   └── _ssgManifest.js
-│   │   └── media
-│   │       ├── 19cfc7226ec3afaa-s.woff2
-│   │       ├── 21350d82a1f187e9-s.woff2
-│   │       ├── 8e9860b6e62d6359-s.woff2
-│   │       ├── ba9851c3c22cd980-s.woff2
-│   │       ├── c5fe6dc8356a8c31-s.woff2
-│   │       ├── df0a9ae256c0569c-s.woff2
-│   │       └── e4af272ccee01ff0-s.p.woff2
+│   │   ├── media
+│   │   │   ├── 19cfc7226ec3afaa-s.woff2
+│   │   │   ├── 21350d82a1f187e9-s.woff2
+│   │   │   ├── 8e9860b6e62d6359-s.woff2
+│   │   │   ├── ba9851c3c22cd980-s.woff2
+│   │   │   ├── c5fe6dc8356a8c31-s.woff2
+│   │   │   ├── df0a9ae256c0569c-s.woff2
+│   │   │   └── e4af272ccee01ff0-s.p.woff2
+│   │   └── webpack
+│   │       ├── 633457081244afec._.hot-update.json
+│   │       ├── 77139fff750b9c8b.webpack.hot-update.json
+│   │       ├── a4f19a752e5820de.webpack.hot-update.json
+│   │       ├── app
+│   │       │   ├── layout.77139fff750b9c8b.hot-update.js
+│   │       │   ├── layout.a4f19a752e5820de.hot-update.js
+│   │       │   ├── layout.d4ebb2be82e7cc28.hot-update.js
+│   │       │   └── structure
+│   │       │       ├── page.77139fff750b9c8b.hot-update.js
+│   │       │       └── page.a4f19a752e5820de.hot-update.js
+│   │       ├── d4ebb2be82e7cc28.webpack.hot-update.json
+│   │       ├── webpack.77139fff750b9c8b.hot-update.js
+│   │       ├── webpack.a4f19a752e5820de.hot-update.js
+│   │       └── webpack.d4ebb2be82e7cc28.hot-update.js
 │   ├── trace
 │   └── types
 │       ├── app
-│       │   ├── company
-│       │   │   └── [companyId]
-│       │   │       └── page.ts
-│       │   ├── fund
-│       │   │   └── [fundId]
-│       │   │       ├── inputs
-│       │   │       │   └── page.ts
-│       │   │       ├── page.ts
-│       │   │       └── results
-│       │   │           └── page.ts
-│       │   ├── help
-│       │   │   └── page.ts
-│       │   ├── improve
-│       │   │   └── page.ts
 │       │   ├── layout.ts
-│       │   ├── login
-│       │   │   └── page.ts
-│       │   ├── page.ts
-│       │   ├── plan
-│       │   │   └── [planId]
-│       │   │       ├── inputs
-│       │   │       │   └── page.ts
-│       │   │       ├── page.ts
-│       │   │       └── results
-│       │   │           └── page.ts
-│       │   ├── register
-│       │   │   └── page.ts
 │       │   └── structure
 │       │       └── page.ts
 │       └── package.json
@@ -491,4 +269,4 @@
 ├── tsconfig.json
 └── tsconfig.tsbuildinfo
 
-118 directories, 374 files
+55 directories, 215 files

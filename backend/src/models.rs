@@ -79,6 +79,7 @@ pub struct FinancialPlan {
     pub pooling_fraction: Decimal, 
     pub tenant_id: Uuid,
     pub last_p50_net_value: Option<Decimal>,
+    pub insolvency_threshold: Decimal,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -296,4 +297,24 @@ pub struct FundPlan {
 pub struct CreateFundPlanRequest {
     pub plan_name: String,
     pub selected_plans: serde_json::Value,
+}
+
+// --- Plan Requests ---
+
+#[derive(Deserialize)]
+pub struct CreatePlanRequest {
+    pub company_id: Uuid,
+    pub plan_name: String,
+    pub start_month: String, // YYYY-MM-01
+    pub currency_code: Option<String>,
+    pub insolvency_threshold: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdatePlanRequest {
+    pub plan_name: Option<String>,
+    pub start_month: Option<String>,
+    pub pooling_fraction: Option<Decimal>,
+    pub initial_cash: Option<String>,
+    pub insolvency_threshold: Option<String>,
 }

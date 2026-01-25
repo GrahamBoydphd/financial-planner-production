@@ -9,7 +9,6 @@ interface Props {
   mode: 'single' | 'monte_carlo' | 'standard';
   currentPathValues?: {
     netValue: number;
-    cashBalance: number;
   };
   isRow?: boolean;
   targetMultiple?: number;
@@ -38,8 +37,7 @@ export default function FundKPICards({
   };
 
   // 1. METRICS EXTRACTION
-  let netValue = 0;
-  let cashBalance = 0;
+  let netValue: number | undefined = undefined;
   let labelSuffix = '';
   
   // Show Investor Metrics in Monte Carlo and Single mode
@@ -47,25 +45,20 @@ export default function FundKPICards({
 
   if (mode === 'monte_carlo') {
     // P50 Data
-    netValue = getLast(data.p50_data, 'total_value');
-    cashBalance = getLast(data.p50_data, 'cash_balance'); 
-    labelSuffix = '(P50)';
+    if (data.p50_data && data.p50_data.length > 0) {
+        netValue = getLast(data.p50_data, 'total_value');
+        labelSuffix = '(P50)';
+    }
   } else if (mode === 'single') {
     // Single Run Data (Volatile)
     if (currentPathValues) {
         netValue = currentPathValues.netValue;
-        cashBalance = currentPathValues.cashBalance;
         labelSuffix = '(Current Path)';
-    } else {
-        // Fallback to deterministic if path data missing
-        netValue = getLast(data.deterministic_data, 'total_value');
-        cashBalance = getLast(data.deterministic_data, 'cash_balance');
-        labelSuffix = '(Baseline)';
     }
+    // No fallback to deterministic
   } else {
     // Standard / Deterministic
     netValue = getLast(data.deterministic_data, 'total_value');
-    cashBalance = getLast(data.deterministic_data, 'cash_balance');
     labelSuffix = '(Deterministic)';
   }
 
@@ -99,19 +92,12 @@ export default function FundKPICards({
       <Card className="text-center border-t-4 border-blue-500 p-4">
         <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value {labelSuffix}</h3>
         <p className="text-3xl font-bold mt-2 text-gray-800">
-          {fmt(netValue)}
+          {netValue !== undefined ? fmt(netValue) : 'N/A'}
         </p>
         <p className="text-xs text-gray-400 mt-1">Aggregated Cash + Dividends</p>
       </Card>
 
-      {/* CARD 3: CASH BALANCE */}
-      <Card className="text-center border-t-4 border-emerald-500 p-4">
-        <h3 className="text-gray-500 text-xs uppercase font-bold">Cash Balance {labelSuffix === '(Current Path)' ? '(Baseline)' : labelSuffix}</h3>
-        <p className="text-3xl font-bold mt-2 text-emerald-700">
-          {fmt(cashBalance)}
-        </p>
-        <p className="text-xs text-gray-400 mt-1">Liquid Capital Available</p>
-      </Card>
+      {/* CARD 3: CASH BALANCE - REMOVED */}
 
       {/* CARD 4: DPI (New) */}
       {showInvestorMetrics && (

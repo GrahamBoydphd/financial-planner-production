@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            updated_at = NOW() \n        WHERE id = $5 AND tenant_id = $6\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value\n        ",
+  "query": "\n        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id, insolvency_threshold) \n        VALUES ($1, $2, $3, $4, $5, $6) \n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -57,16 +57,21 @@
         "ordinal": 10,
         "name": "last_p50_net_value",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "insolvency_threshold!",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Text",
         "Date",
-        "Numeric",
-        "Numeric",
+        "Bpchar",
         "Uuid",
-        "Uuid"
+        "Numeric"
       ]
     },
     "nullable": [
@@ -80,8 +85,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "495b941a4f8fd78859a102fbc104e85f049d69bee368f14fbe89c0a3efe31987"
+  "hash": "f84d56c3359d259f1da8bb0f7f73608559ac61a69fa6c4e3679e80c9bca29f20"
 }

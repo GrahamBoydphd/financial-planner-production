@@ -85,6 +85,7 @@ export interface FinancialPlan {
   start_month: string;
   initial_cash: string;
   pooling_fraction: string;
+  insolvency_threshold?: string;
 }
 
 export interface UpdatePlanRequest {
@@ -92,6 +93,7 @@ export interface UpdatePlanRequest {
   start_month?: string;
   initial_cash?: string;
   pooling_fraction?: string;
+  insolvency_threshold?: string;
 }
 
 export interface RevenueItem {
@@ -369,7 +371,7 @@ export const api = {
     await apiClient.delete(`/api/plans/${id}`);
   },
 
-  getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number }) => 
+  getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number, insolvency_threshold?: string }) => 
     (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
 
   // REVENUE

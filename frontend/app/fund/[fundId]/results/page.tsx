@@ -148,8 +148,6 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
   // Prepare current path values for KPI Cards
   const currentPathValues = viewMode === 'single' && singlePathValues.length > 0 ? {
       netValue: singlePathValues[singlePathValues.length - 1],
-      // Fallback to deterministic cash as we don't have volatile cash path in this view yet
-      cashBalance: detRows.length > 0 ? Number(detRows[detRows.length - 1].cash_balance) : 0
   } : undefined;
 
   // 3. Investor Track Math (Likelihood & DPI)
@@ -328,6 +326,15 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                     className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
                     />
                     <label htmlFor="includeCapital" className="text-xs font-medium cursor-pointer text-gray-700">Incl. Capital</label>
+                </div>
+                {/* NEW CHECKBOX */}
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="stopInsolvency" 
+                    checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
+                    className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
+                    />
+                    <label htmlFor="stopInsolvency" className="text-xs font-medium cursor-pointer text-red-700">Stop Insolvency</label>
                 </div>
               </div>
 

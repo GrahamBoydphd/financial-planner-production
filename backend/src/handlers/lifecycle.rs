@@ -38,9 +38,9 @@ async fn copy_plan_internal(
         r#"
         INSERT INTO financial_plans (
             id, company_id, plan_name, start_month, currency_code, 
-            created_at, updated_at, initial_cash, pooling_fraction, tenant_id
+            created_at, updated_at, initial_cash, pooling_fraction, tenant_id, insolvency_threshold
         )
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7, $8, $9)
         "#,
         new_plan_id,
         target_company_id,
@@ -49,7 +49,8 @@ async fn copy_plan_internal(
         source_plan.currency_code,
         source_plan.initial_cash,
         source_plan.pooling_fraction,
-        tenant_id
+        tenant_id,
+        source_plan.insolvency_threshold
     )
     .execute(&mut **txn)
     .await?;

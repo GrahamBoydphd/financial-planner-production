@@ -1,0 +1,112 @@
+frontend/app/plan/[planId]/results/page.tsx-27-        `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+frontend/app/plan/[planId]/results/page.tsx-28-
+frontend/app/plan/[planId]/results/page.tsx:29:    const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
+frontend/app/plan/[planId]/results/page.tsx-30-    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1] || lastData;
+frontend/app/plan/[planId]/results/page.tsx-31-
+--
+frontend/app/plan/[planId]/results/page.tsx-91-    } else {
+frontend/app/plan/[planId]/results/page.tsx-92-        // Standard
+frontend/app/plan/[planId]/results/page.tsx:93:        insolvencyMonth = checkInsolvency(projection.deterministic_data);
+frontend/app/plan/[planId]/results/page.tsx-94-        runwayVal = calculateRunway(Number(lastData.cash_balance), Number(lastData.net_income));
+frontend/app/plan/[planId]/results/page.tsx-95-    }
+--
+frontend/app/plan/[planId]/results/page.tsx-102-    
+frontend/app/plan/[planId]/results/page.tsx-103-    const p50Cash = projection.p50_data?.[projection.p50_data.length - 1]?.cash_balance ?? 0;
+frontend/app/plan/[planId]/results/page.tsx:104:    const detCash = projection.deterministic_data?.[projection.deterministic_data.length - 1]?.cash_balance ?? 0;
+frontend/app/plan/[planId]/results/page.tsx-105-    const cashDelta = Number(p50Cash) - Number(detCash);
+frontend/app/plan/[planId]/results/page.tsx-106-
+--
+frontend/app/plan/[planId]/results/page.tsx-316-        
+frontend/app/plan/[planId]/results/page.tsx-317-        // --- DATA MAPPING FOR TABLE ---
+frontend/app/plan/[planId]/results/page.tsx:318:        let sourceData = proj.deterministic_data;
+frontend/app/plan/[planId]/results/page.tsx-319-        
+frontend/app/plan/[planId]/results/page.tsx-320-        if (simMode === 'monte_carlo' && proj.p50_data) {
+--
+frontend/app/plan/[planId]/results/page.tsx-528-      {loading ? (
+frontend/app/plan/[planId]/results/page.tsx-529-        <div className="text-center py-20 animate-pulse text-blue-600 font-medium">Running Simulation...</div>
+frontend/app/plan/[planId]/results/page.tsx:530:      ) : projection && (projection.deterministic_data?.length > 0 || projection.single_run_data?.length > 0) ? (
+frontend/app/plan/[planId]/results/page.tsx-531-        <div className="space-y-8">
+frontend/app/plan/[planId]/results/page.tsx-532-          
+--
+frontend/app/fund/[fundId]/results/page.tsx-121-
+frontend/app/fund/[fundId]/results/page.tsx-122-  // 1. Deterministic Data (Standard Mode)
+frontend/app/fund/[fundId]/results/page.tsx:123:  const detRows = simulation?.deterministic_data || [];
+frontend/app/fund/[fundId]/results/page.tsx-124-  
+frontend/app/fund/[fundId]/results/page.tsx-125-  // Check for empty data
+frontend/app/fund/[fundId]/results/page.tsx:126:  if (simulation && detRows.length === 0) {
+frontend/app/fund/[fundId]/results/page.tsx-127-      console.warn('No Deterministic Data Available');
+frontend/app/fund/[fundId]/results/page.tsx-128-  }
+frontend/app/fund/[fundId]/results/page.tsx-129-
+frontend/app/fund/[fundId]/results/page.tsx:130:  const deterministicValues = detRows.map((d: any) => Number(d.total_value || 0));
+frontend/app/fund/[fundId]/results/page.tsx-131-
+frontend/app/fund/[fundId]/results/page.tsx-132-  // 2. Single Path Data (Volatile Mode)
+--
+frontend/app/fund/[fundId]/results/page.tsx-150-      netValue: singlePathValues[singlePathValues.length - 1],
+frontend/app/fund/[fundId]/results/page.tsx-151-      // Fallback to deterministic cash as we don't have volatile cash path in this view yet
+frontend/app/fund/[fundId]/results/page.tsx:152:      cashBalance: detRows.length > 0 ? Number(detRows[detRows.length - 1].cash_balance) : 0
+frontend/app/fund/[fundId]/results/page.tsx-153-  } : undefined;
+frontend/app/fund/[fundId]/results/page.tsx-154-
+--
+frontend/components/FundChart.tsx-102-      }
+frontend/components/FundChart.tsx-103-    }
+frontend/components/FundChart.tsx:104:    if ((mode === 'standard' || mode === 'single') && values) {
+frontend/components/FundChart.tsx:105:      return values[index] ?? null;
+frontend/components/FundChart.tsx-106-    }
+frontend/components/FundChart.tsx-107-    return null;
+--
+frontend/components/FundChart.tsx-137-
+frontend/components/FundChart.tsx-138-  // --- 1. Standard / Single Mode ---
+frontend/components/FundChart.tsx:139:  if ((mode === 'standard' || mode === 'single') && values) {
+frontend/components/FundChart.tsx-140-    datasets.push({
+frontend/components/FundChart.tsx-141-      label: 'Total Fund Value',
+--
+frontend/components/display/FundKPICards.tsx-59-    } else {
+frontend/components/display/FundKPICards.tsx-60-        // Fallback to deterministic if path data missing
+frontend/components/display/FundKPICards.tsx:61:        netValue = getLast(data.deterministic_data, 'total_value');
+frontend/components/display/FundKPICards.tsx:62:        cashBalance = getLast(data.deterministic_data, 'cash_balance');
+frontend/components/display/FundKPICards.tsx-63-        labelSuffix = '(Baseline)';
+frontend/components/display/FundKPICards.tsx-64-    }
+frontend/components/display/FundKPICards.tsx-65-  } else {
+frontend/components/display/FundKPICards.tsx-66-    // Standard / Deterministic
+frontend/components/display/FundKPICards.tsx:67:    netValue = getLast(data.deterministic_data, 'total_value');
+frontend/components/display/FundKPICards.tsx:68:    cashBalance = getLast(data.deterministic_data, 'cash_balance');
+frontend/components/display/FundKPICards.tsx-69-    labelSuffix = '(Deterministic)';
+frontend/components/display/FundKPICards.tsx-70-  }
+--
+frontend/components/CashFlowChart.tsx-66-  // 2. p50_data (If Monte Carlo mode)
+frontend/components/CashFlowChart.tsx-67-  // 3. single_run_data (If Single mode or fallback)
+frontend/components/CashFlowChart.tsx:68:  // 4. deterministic_data (Default)
+frontend/components/CashFlowChart.tsx-69-  
+frontend/components/CashFlowChart.tsx:70:  let sourceData: MonthlyData[] = data.deterministic_data;
+frontend/components/CashFlowChart.tsx-71-  
+frontend/components/CashFlowChart.tsx-72-  if (singleRunData) {
+--
+frontend/components/CashFlowChart.tsx-80-  // --- 1. The "Red Line" (Cumulative Investment) ---
+frontend/components/CashFlowChart.tsx-81-  // Clamp negative values in Log mode to avoid breaks
+frontend/components/CashFlowChart.tsx:82:  const rawInvestmentData = data.deterministic_data.map(d => Number(d.cumulative_external_capital));
+frontend/components/CashFlowChart.tsx-83-  const investmentData = rawInvestmentData.map(val => {
+frontend/components/CashFlowChart.tsx-84-      return (isLog && val <= 100) ? 100 : val;
+--
+frontend/components/CashFlowChart.tsx-99-
+frontend/components/CashFlowChart.tsx-100-  // --- 2. Deterministic / Single Run Mode ---
+frontend/components/CashFlowChart.tsx:101:  if (mode === 'standard' || mode === 'single') {
+frontend/components/CashFlowChart.tsx-102-    
+frontend/components/CashFlowChart.tsx-103-    // A. Net Value (Blue Solid)
+--
+frontend/lib/api.ts-223-  labels: string[];
+frontend/lib/api.ts-224-  valuation_method: string;
+frontend/lib/api.ts:225:  deterministic_data: MonthlyData[];
+frontend/lib/api.ts-226-  single_run_data?: MonthlyData[];
+frontend/lib/api.ts-227-  single_run_value?: string[];
+--
+frontend/lib/api.ts.bak-238-  labels: string[];
+frontend/lib/api.ts.bak-239-  valuation_method: string;
+frontend/lib/api.ts.bak:240:  deterministic_data: MonthlyData[];
+frontend/lib/api.ts.bak-241-  single_run_data?: MonthlyData[];
+frontend/lib/api.ts.bak-242-  single_run_value?: string[];
+--
+frontend/lib/api.ts.fund-220-  labels: string[];
+frontend/lib/api.ts.fund-221-  valuation_method: string;
+frontend/lib/api.ts.fund:222:  deterministic_data: MonthlyData[];
+frontend/lib/api.ts.fund-223-  single_run_data?: MonthlyData[];
+frontend/lib/api.ts.fund-224-  single_run_value?: string[];

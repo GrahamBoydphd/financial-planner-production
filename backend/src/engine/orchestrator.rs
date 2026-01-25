@@ -82,25 +82,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
         // TICK: Step all companies and collect pool contributions
         for company in universe.companies.iter_mut() {
-            company.step(month_idx);
+            let (_, actual_contribution) = company.step(month_idx);
 
             if company.is_solvent {
                 solvent_count += 1;
-
-                // Calculate contribution (Robin Hood Logic)
-                // Contribution = Net Income * Pooling Fraction (if Net Income > 0)
-                if let Some(last_entry) = company.history.last_mut() {
-                    let net_income_f64 = last_entry.net_income.to_f64().unwrap_or(0.0);
-                    
-                    // Only contribute if profitable
-                    if net_income_f64 > 0.0 {
-                        let contribution = net_income_f64 * company.pooling_fraction;
-                        pool_pot += contribution;
-
-                        // NOTE: We do NOT deduct from company.current_cash here.
-                        // The instruction states it is already done in company.step().
-                    }
-                }
+                pool_pot += actual_contribution;
             }
         }
 
@@ -138,7 +124,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
     fn run_reaper(universe: &mut Universe) {
         for company in universe.companies.iter_mut() {
-            if company.stop_on_insolvency && company.current_cash < 0.0 {
+            if company.stop_on_insolvency && company.current_cash < company.insolvency_threshold {
                 company.is_solvent = false;
                 if let Some(last) = company.history.last_mut() {
                     last.is_solvent = false;

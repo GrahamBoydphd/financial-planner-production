@@ -54,6 +54,7 @@ pub fn generate_simulation(
     _use_monte_carlo: bool,
     stop_insolvency: bool,
     pooling_fraction: Decimal,
+    insolvency_threshold: Decimal,
 ) -> SimulationResult {
     
     // 1. Map Revenue Items
@@ -212,6 +213,7 @@ pub fn generate_simulation(
         currency: currency_code,
         pooling_fraction: pooling_fraction.to_f64().unwrap_or(0.0),
         current_cash: initial_cash.to_f64().unwrap_or(0.0),
+        insolvency_threshold: insolvency_threshold.to_f64().unwrap_or(100.0),
         is_solvent: true,
         stop_on_insolvency: stop_insolvency,
         cum_external_cap: 0.0,

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO financial_plans (\n            id, company_id, plan_name, start_month, currency_code, \n            created_at, updated_at, initial_cash, pooling_fraction, tenant_id, insolvency_threshold\n        )\n        VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7, $8, $9)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Date",
+        "Bpchar",
+        "Numeric",
+        "Numeric",
+        "Uuid",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "96bf1577fcea1f5d13841b9a9ce03a7737e116111ced48650ef585d790c435d9"
+}

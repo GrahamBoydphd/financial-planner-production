@@ -6,7 +6,7 @@ use axum::{
 use serde::{Deserialize};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
-use crate::models::{FinancialPlan, Claims};
+use crate::models::{FinancialPlan, Claims, CreatePlanRequest, UpdatePlanRequest};
 use crate::errors::AppError;
 use crate::projection::SimulationResult;
 use crate::engine::generate_simulation;
@@ -15,19 +15,11 @@ use chrono::NaiveDate;
 use std::str::FromStr;
 
 #[derive(Deserialize)]
-pub struct CreatePlanRequest {
-    pub company_id: Uuid,
-    pub plan_name: String,
-    pub start_month: String, // YYYY-MM-01
-    pub currency_code: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct UpdatePlanRequest {
-    pub plan_name: Option<String>,
-    pub start_month: Option<String>,
-    pub pooling_fraction: Option<Decimal>,
-    pub initial_cash: Option<String>,
+pub struct GetProjectionQuery {
+    pub months: Option<i32>,
+    pub initial_cash: Option<Decimal>,
+    pub mode: Option<String>,
+    pub stop_insolvency: Option<bool>,
 }
 
 pub async fn create_plan(
@@ -46,24 +38,31 @@ pub async fn create_plan(
     }
 
     let currency = payload.currency_code.unwrap_or_else(|| "USD".to_string());
+    
+    let insolvency_threshold = if let Some(s) = payload.insolvency_threshold {
+        Decimal::from_str(&s).map_err(|_| AppError::ValidationError("Invalid insolvency threshold".to_string()))?
+    } else {
+        Decimal::from(100)
+    };
 
     let plan = sqlx::query_as!(
         FinancialPlan,
         r#"
-        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id) 
-        VALUES ($1, $2, $3, $4, $5) 
+        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id, insolvency_threshold) 
+        VALUES ($1, $2, $3, $4, $5, $6) 
         RETURNING 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
         "#,
         payload.company_id,
         payload.plan_name,
         chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
         currency,
-        claims.tenant_id
+        claims.tenant_id,
+        insolvency_threshold
     )
     .fetch_one(&pool)
     .await?;
@@ -94,6 +93,11 @@ pub async fn update_plan(
         .map(|s| Decimal::from_str(s).ok())
         .flatten();
 
+    let insolvency_threshold = payload.insolvency_threshold
+        .as_deref()
+        .map(|s| Decimal::from_str(s).ok())
+        .flatten();
+
     let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
         r#"
@@ -102,19 +106,21 @@ pub async fn update_plan(
             start_month = COALESCE($2, start_month), 
             pooling_fraction = COALESCE($3, pooling_fraction),
             initial_cash = COALESCE($4, initial_cash),
+            insolvency_threshold = COALESCE($5, insolvency_threshold),
             updated_at = NOW() 
-        WHERE id = $5 AND tenant_id = $6
+        WHERE id = $6 AND tenant_id = $7
         RETURNING 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
         "#,
         payload.plan_name,
         start_date,
         payload.pooling_fraction,
         initial_cash,
+        insolvency_threshold,
         id,
         claims.tenant_id
     )
@@ -138,7 +144,7 @@ pub async fn get_all_plans(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
         FROM financial_plans 
         WHERE tenant_id = $1 
         ORDER BY created_at DESC
@@ -164,7 +170,7 @@ pub async fn get_plan(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
         FROM financial_plans 
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -197,14 +203,6 @@ pub async fn delete_plan(
 
 // --- PROJECTION LOGIC ---
 
-#[derive(Deserialize)]
-pub struct GetProjectionQuery {
-    pub months: Option<i32>,
-    pub initial_cash: Option<Decimal>,
-    pub mode: Option<String>,
-    pub stop_insolvency: Option<bool>,
-}
-
 pub async fn get_plan_projection(
     State(pool): State<Pool<Postgres>>,
     Extension(claims): Extension<Claims>,
@@ -227,7 +225,7 @@ pub async fn get_plan_projection(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
         FROM financial_plans 
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -414,7 +412,8 @@ pub async fn get_plan_projection(
         capital_growth,
         use_monte_carlo,
         stop_insolvency,
-        plan.pooling_fraction
+        plan.pooling_fraction,
+        plan.insolvency_threshold
     );
 
     Ok(Json(result))

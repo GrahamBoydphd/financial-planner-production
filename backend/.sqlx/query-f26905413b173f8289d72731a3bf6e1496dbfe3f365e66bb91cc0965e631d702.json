@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id) \n        VALUES ($1, $2, $3, $4, $5) \n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value\n        ",
+  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            insolvency_threshold = COALESCE($5, insolvency_threshold),\n            updated_at = NOW() \n        WHERE id = $6 AND tenant_id = $7\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -57,14 +57,21 @@
         "ordinal": 10,
         "name": "last_p50_net_value",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "insolvency_threshold!",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Text",
         "Date",
-        "Bpchar",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Uuid",
         "Uuid"
       ]
     },
@@ -79,8 +86,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "93ff5acad1a5f80657b22991a04ed91f19b9589bda7c2dbd7466fe8efe9ddbc4"
+  "hash": "f26905413b173f8289d72731a3bf6e1496dbfe3f365e66bb91cc0965e631d702"
 }

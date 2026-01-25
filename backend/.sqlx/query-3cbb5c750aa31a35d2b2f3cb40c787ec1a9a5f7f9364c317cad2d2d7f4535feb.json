@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value\n        FROM financial_plans \n        WHERE id = $1 AND tenant_id = $2\n        ",
+  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\"\n        FROM financial_plans \n        WHERE tenant_id = $1 \n        ORDER BY created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -57,11 +57,15 @@
         "ordinal": 10,
         "name": "last_p50_net_value",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "insolvency_threshold!",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -76,8 +80,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "5e93f47755d8ec23831d5e5b8be2cafd15c0a24a572a0507d1214f5b99b8ab09"
+  "hash": "3cbb5c750aa31a35d2b2f3cb40c787ec1a9a5f7f9364c317cad2d2d7f4535feb"
 }

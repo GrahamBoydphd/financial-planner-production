@@ -121,6 +121,7 @@ pub struct SimState {
     pub currency: String,
     pub pooling_fraction: f64,
     pub current_cash: f64,
+    pub insolvency_threshold: f64,
     pub is_solvent: bool,
     #[serde(default = "default_true")]
     pub stop_on_insolvency: bool,
@@ -304,18 +305,17 @@ impl SimState {
         }
         self.current_cash += investment_gain;
 
-        // 8. Pooling (Calculation Only - Orchestrator handles transfer)
+        // 8. Pooling Contribution
+        let total_profit = operating_profit + investment_gain;
         let mut contribution = 0.0;
-        if self.pooling_fraction > 0.0 {
-            let op_gain = if operating_profit > 0.0 { operating_profit } else { 0.0 };
-            let inv_gain = if investment_gain > 0.0 { investment_gain } else { 0.0 };
-            let poolable_income = op_gain + inv_gain;
-            contribution = poolable_income * self.pooling_fraction;
+        
+        if self.pooling_fraction > 0.0 && total_profit > 0.0 {
+            contribution = total_profit * self.pooling_fraction;
+            // Deduct pool contribution immediately
+            self.current_cash -= contribution;
         }
-        // Deduct contribution immediately
-        self.current_cash -= contribution;
 
-        let net_income = operating_profit + investment_gain;
+        let net_income = total_profit;
 
 
         // Record History

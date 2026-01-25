@@ -107,7 +107,8 @@ pub async fn run_fund_simulation(
                 r#"
                 SELECT 
                     id, company_id, plan_name, start_month, currency_code, 
-                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value
+                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
+                    insolvency_threshold
                 FROM financial_plans
                 WHERE id = $1 AND tenant_id = $2
                 "#,
@@ -123,7 +124,8 @@ pub async fn run_fund_simulation(
                 r#"
                 SELECT 
                     id, company_id, plan_name, start_month, currency_code, 
-                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value
+                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
+                    insolvency_threshold
                 FROM financial_plans
                 WHERE company_id = $1 AND tenant_id = $2
                 ORDER BY created_at DESC
@@ -485,6 +487,7 @@ fn map_to_sim_state(
         currency: plan.currency_code,
         pooling_fraction: plan.pooling_fraction.to_f64().unwrap_or(0.0),
         current_cash: plan.initial_cash.to_f64().unwrap_or(0.0),
+        insolvency_threshold: plan.insolvency_threshold.to_f64().unwrap_or(100.0),
         is_solvent: true,
         stop_on_insolvency: stop_insolvency,
         cum_external_cap: starting_investment,

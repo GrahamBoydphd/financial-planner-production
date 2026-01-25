@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT \n                    id, company_id, plan_name, start_month, currency_code, \n                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value\n                FROM financial_plans\n                WHERE company_id = $1 AND tenant_id = $2\n                ORDER BY created_at DESC\n                LIMIT 1\n                ",
+  "query": "\n                SELECT \n                    id, company_id, plan_name, start_month, currency_code, \n                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,\n                    insolvency_threshold\n                FROM financial_plans\n                WHERE company_id = $1 AND tenant_id = $2\n                ORDER BY created_at DESC\n                LIMIT 1\n                ",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,11 @@
         "ordinal": 10,
         "name": "last_p50_net_value",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "insolvency_threshold",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -76,8 +81,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "4b1156fa27fbf10e3d6ab94c3b9863cc9ef1f8e55717cb74ef57f64fe2d51032"
+  "hash": "501958f9c1e5a4217caae79c8894ecc0d77e8b26f06e8f864433e85e9e51d325"
 }

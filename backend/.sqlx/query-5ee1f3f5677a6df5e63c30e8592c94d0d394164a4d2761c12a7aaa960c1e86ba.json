@@ -57,6 +57,11 @@
         "ordinal": 10,
         "name": "currency_code",
         "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "insolvency_threshold",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -75,6 +80,7 @@
       false,
       false,
       true,
+      false,
       false
     ]
   },

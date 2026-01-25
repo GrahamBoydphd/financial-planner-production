@@ -61,15 +61,12 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   const datasets: any[] = [];
 
   // --- 0. DETERMINE SOURCE DATA ---
-  // Priority: 
-  // 1. singleRunData (Explicitly passed path)
-  // 2. p50_data (If Monte Carlo mode)
-  // 3. single_run_data (If Single mode or fallback)
-  // 4. deterministic_data (Default)
+  // FIX: Strict source selection, default to empty
+  let sourceData: MonthlyData[] = [];
   
-  let sourceData: MonthlyData[] = data.deterministic_data;
-  
-  if (singleRunData) {
+  if (mode === 'standard') {
+      sourceData = data.deterministic_data || [];
+  } else if (singleRunData) {
       sourceData = singleRunData;
   } else if (mode === 'monte_carlo' && data.p50_data) {
       sourceData = data.p50_data;
@@ -78,27 +75,30 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   }
 
   // --- 1. The "Red Line" (Cumulative Investment) ---
-  // Clamp negative values in Log mode to avoid breaks
-  const rawInvestmentData = data.deterministic_data.map(d => Number(d.cumulative_external_capital));
-  const investmentData = rawInvestmentData.map(val => {
-      return (isLog && val <= 100) ? 100 : val;
-  });
+  // Always from deterministic_data if available
+  if (data.deterministic_data && data.deterministic_data.length > 0) {
+      const rawInvestmentData = data.deterministic_data.map(d => Number(d.cumulative_external_capital));
+      const investmentData = rawInvestmentData.map(val => {
+          return (isLog && val <= 100) ? 100 : val;
+      });
 
-  datasets.push({
-    label: 'Cumulative Investment',
-    data: investmentData,
-    rawValues: rawInvestmentData,
-    borderColor: 'rgb(220, 38, 38)', // Red-600
-    borderWidth: 2,
-    pointRadius: 0,
-    tension: 0,
-    pointStyle: 'line', 
-    fill: false,
-    order: 1, 
-  });
+      datasets.push({
+        label: 'Cumulative Investment',
+        data: investmentData,
+        rawValues: rawInvestmentData,
+        borderColor: 'rgb(220, 38, 38)', // Red-600
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0,
+        pointStyle: 'line', 
+        fill: false,
+        order: 1, 
+      });
+  }
 
   // --- 2. Deterministic / Single Run Mode ---
-  if (mode === 'standard' || mode === 'single') {
+  // Only render if sourceData is present
+  if (sourceData.length > 0 && (mode === 'standard' || mode === 'single')) {
     
     // A. Net Value (Blue Solid)
     const rawValueData = sourceData.map(d => Number(d.total_value));
@@ -377,28 +377,30 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
 
   // --- 4. Accumulated Pool (Shared Logic) ---
   // We check sourceData (which is now populated with median run in MC mode)
-  const rawPoolData = sourceData.map(d => Number(d.cumulative_pool_received || 0));
-  const poolData = rawPoolData.map(val => {
-      return (isLog && val <= 100) ? 100 : val;
-  });
-  
-  // Only render if there is non-zero data (or if we are in MC mode and expect it, but checking data is safer)
-  const hasPool = poolData.some(v => v > (isLog ? 101 : 1));
-
-  if (hasPool) {
-      datasets.push({
-          label: 'Accumulated Pool',
-          data: poolData,
-          rawValues: rawPoolData,
-          borderColor: 'rgb(245, 158, 11)', // Amber-500
-          borderDash: [5, 5], // Dotted
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.1,
-          pointStyle: 'line',
-          fill: false,
-          order: 7, // Layer above revenue/costs but below main lines
+  if (sourceData.length > 0) {
+      const rawPoolData = sourceData.map(d => Number(d.cumulative_pool_received || 0));
+      const poolData = rawPoolData.map(val => {
+          return (isLog && val <= 100) ? 100 : val;
       });
+      
+      // Only render if there is non-zero data
+      const hasPool = poolData.some(v => v > (isLog ? 101 : 1));
+
+      if (hasPool) {
+          datasets.push({
+              label: 'Accumulated Pool',
+              data: poolData,
+              rawValues: rawPoolData,
+              borderColor: 'rgb(245, 158, 11)', // Amber-500
+              borderDash: [5, 5], // Dotted
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.1,
+              pointStyle: 'line',
+              fill: false,
+              order: 7, // Layer above revenue/costs but below main lines
+          });
+      }
   }
 
   // --- SCALING LOGIC: "Snap-to-Grid" Cap ---
