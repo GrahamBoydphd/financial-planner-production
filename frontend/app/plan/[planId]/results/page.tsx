@@ -121,10 +121,11 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
                     </p>
                 </div>
                 <div className="border-t pt-2">
-                    <p className="text-xs text-gray-500">Cash Delta vs. Conventional</p>
+                    <p className="text-xs text-gray-500">Comparing cash: realistic projection is: </p>
                     <p className={`text-lg font-bold ${cashDelta < 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {cashDelta > 0 ? '+' : ''}{fmt(cashDelta)}
                     </p>
+                    <p className="text-xs text-gray-500"> vs. conventional (unrealistic) projection</p>
                 </div>
             </Card>
         )}

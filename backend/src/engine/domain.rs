@@ -147,6 +147,37 @@ pub struct SimState {
 }
 
 impl SimState {
+    pub fn initialize(&mut self) {
+        // 1. Process Month 0 Injections
+        for injection in &self.injections {
+            if injection.month == 0 {
+                self.current_cash += injection.amount;
+                self.cum_external_cap += injection.amount;
+            }
+        }
+
+        // 2. Record Month 0 History
+        self.history.push(MonthlyData {
+            month_index: 0,
+            date: "Month 0".to_string(),
+            revenue: Decimal::ZERO,
+            cogs: Decimal::ZERO,
+            opex: Decimal::ZERO,
+            gross_profit: Decimal::ZERO,
+            net_income: Decimal::ZERO,
+            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+            is_solvent: true,
+            interest_expense: Decimal::ZERO,
+            dividend_paid: Decimal::ZERO,
+            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+            total_companies: 1,
+            solvent_companies: 1,
+        });
+    }
+
     pub fn force_insolvency_state(&mut self) {
         self.is_solvent = false;
         self.current_cash = 0.0;

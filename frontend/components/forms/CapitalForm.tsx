@@ -30,7 +30,13 @@ export default function CapitalForm({ planId, onSuccess, currencySymbol = '$' }:
     const newErrors: FormErrors = {};
     if (!name.trim()) newErrors.name = 'Source Name is required';
     if (!amount) newErrors.amount = 'Amount is required';
-    if (!month) newErrors.month = 'Month is required';
+    
+    // Validation: Allow month 0, but require presence and non-negative
+    if (!month) {
+      newErrors.month = 'Month is required';
+    } else if (parseInt(month, 10) < 0) {
+      newErrors.month = 'Month cannot be negative';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -129,14 +135,14 @@ export default function CapitalForm({ planId, onSuccess, currencySymbol = '$' }:
           </label>
           <input 
             type="number" 
-            min="1"
+            min="0"
             max="120"
             className={`w-full border p-2 rounded text-sm focus:ring-2 outline-none transition ${
               errors.month 
                 ? 'border-red-500 focus:ring-red-200' 
                 : 'border-gray-300 focus:ring-green-500 focus:border-green-500'
             }`}
-            placeholder="1" 
+            placeholder="0" 
             value={month} 
             onChange={e => {
               setMonth(e.target.value);

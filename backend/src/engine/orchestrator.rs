@@ -29,10 +29,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             universes.push(Universe::new(initial_states.clone()));
         }
 
-        // Apply stop_insolvency to MC universes
+        // Apply stop_insolvency to MC universes AND Initialize Month 0
         for u in universes.iter_mut() {
             for c in u.companies.iter_mut() {
                 c.stop_on_insolvency = stop_insolvency;
+                c.initialize();
             }
         }
 
@@ -58,9 +59,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         
         let mut deterministic_universe = Universe::new(det_states);
         
-        // Apply stop_insolvency to Deterministic universe
+        // Apply stop_insolvency to Deterministic universe AND Initialize Month 0
         for c in deterministic_universe.companies.iter_mut() {
             c.stop_on_insolvency = stop_insolvency;
+            c.initialize();
         }
 
         Self { 
@@ -134,10 +136,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
     }
 
     fn aggregate_universe_history(universe: &Universe, months: i32) -> Vec<MonthlyData> {
-        let mut universe_history = Vec::with_capacity(months as usize);
+        let mut universe_history = Vec::with_capacity((months + 1) as usize);
         let total_fund_companies = universe.companies.len() as i32;
         
-        for m in 1..=months {
+        for m in 0..=months {
             let month_idx = m as usize;
             
             // Accumulators
@@ -152,7 +154,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
             for company in &universe.companies {
                 // Safety: Ensure we don't panic if history is missing
-                if let Some(data) = company.history.get(month_idx - 1) {
+                if let Some(data) = company.history.get(month_idx) {
                     total_revenue += data.revenue.to_f64().unwrap_or(0.0);
                     total_opex += data.opex.to_f64().unwrap_or(0.0);
                     total_net_income += data.net_income.to_f64().unwrap_or(0.0);
@@ -196,32 +198,33 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         
         // Generate Labels
         let mut labels = Vec::new();
-        for m in 1..=self.months {
+        for m in 0..=self.months {
             labels.push(format!("Month {}", m));
         }
 
         // Statistical Aggregation
-        let mut p0_vec = Vec::with_capacity(self.months as usize);
-        let mut p10_vec = Vec::with_capacity(self.months as usize);
-        let mut p25_vec = Vec::with_capacity(self.months as usize);
-        let mut p50_vec = Vec::with_capacity(self.months as usize);
-        let mut p75_vec = Vec::with_capacity(self.months as usize);
-        let mut p90_vec = Vec::with_capacity(self.months as usize);
-        let mut p100_vec = Vec::with_capacity(self.months as usize);
+        let cap = (self.months + 1) as usize;
+        let mut p0_vec = Vec::with_capacity(cap);
+        let mut p10_vec = Vec::with_capacity(cap);
+        let mut p25_vec = Vec::with_capacity(cap);
+        let mut p50_vec = Vec::with_capacity(cap);
+        let mut p75_vec = Vec::with_capacity(cap);
+        let mut p90_vec = Vec::with_capacity(cap);
+        let mut p100_vec = Vec::with_capacity(cap);
 
-        let mut p0_count = Vec::with_capacity(self.months as usize);
-        let mut p10_count = Vec::with_capacity(self.months as usize);
-        let mut p25_count = Vec::with_capacity(self.months as usize);
-        let mut p50_count = Vec::with_capacity(self.months as usize);
-        let mut p75_count = Vec::with_capacity(self.months as usize);
-        let mut p90_count = Vec::with_capacity(self.months as usize);
-        let mut p100_count = Vec::with_capacity(self.months as usize);
+        let mut p0_count = Vec::with_capacity(cap);
+        let mut p10_count = Vec::with_capacity(cap);
+        let mut p25_count = Vec::with_capacity(cap);
+        let mut p50_count = Vec::with_capacity(cap);
+        let mut p75_count = Vec::with_capacity(cap);
+        let mut p90_count = Vec::with_capacity(cap);
+        let mut p100_count = Vec::with_capacity(cap);
 
-        let mut survival_vec = Vec::with_capacity(self.months as usize);
-        let mut p50_data = Vec::with_capacity(self.months as usize);
+        let mut survival_vec = Vec::with_capacity(cap);
+        let mut p50_data = Vec::with_capacity(cap);
 
         if !fund_trajectories.is_empty() {
-            for m_idx in 0..(self.months as usize) {
+            for m_idx in 0..cap {
                 let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
                 let mut solvent_universes = 0;
 

@@ -4,22 +4,75 @@ import Button from '@/components/ui/Button';
 
 // --- IMT Options ---
 const INDUSTRY_OPTIONS = [
-  "Clean Energy / Decarbonization", "Regenerative Ag / Food Systems", "Circular Economy / Waste",
-  "WASH (Water/Sanitation)", "Disaster Relief / Resilience", "Affordable Housing", 
-  "Education / EdTech", "Health / Bio / Pharma", "Fintech / Financial Inclusion",
-  "Logistics / Supply Chain", "Manufacturing / Industrial", "Other"
+  "Agriculture & Forestry", 
+  "Food & Beverage", 
+  "Textiles & Fashion", 
+  "Wood & Paper", 
+  "Chemicals & Plastics", 
+  "Metals & Mining", 
+  "Electronics", 
+  "Machinery & Equipment", 
+  "Automotive", 
+  "Furniture", 
+  "Construction", 
+  "Real Estate", 
+  "Waste & Water", 
+  "Energy & Utilities", 
+  "Logistics", 
+  "ICT & Software", 
+  "Professional Services", 
+  "Retail & Trade", 
+  "Healthcare", 
+  "Tourism", "Other"
 ];
 
+
+
 const MODEL_OPTIONS = [
-  "SaaS / Subscription", "Marketplace / Platform", "Carbon Markets / Ecosystem Services",
-  "Circular / Product-as-a-Service", "Cooperative / Community Ownership", 
-  "Cross-Subsidization", "Social Impact Bond", "Hardware Sales", "Service / Agency", "Other"
+  "SaaS / Subscription", 
+  "Marketplace / Platform", 
+  "Regenerative, Circular Design", 
+  "Regenerative, Circular Inputs", 
+  "Regenerative Sourcing",
+  "Primary Material Sourcing",  
+  "Product Life Extension", 
+  "Primary Manufacturing", 
+  "Remanufacturing / Refurbishment", 
+  "Second-life / Repurposing", 
+  "Material / Resource Recovery", 
+  "Nutrient Recovery", 
+  "Urban Mining", 
+  "conventional Mining", 
+  "Product-as-a-Service (PaaS)", 
+  "Sharing Platforms", 
+  "Digital Tools", 
+  "Ecosystem Restoration", 
+  "Carbon Sequestration",  
+  "Other"
 ];
 
 const TECH_OPTIONS = [
-  "CleanTech", "CCUS (Carbon Capture)", "AgriTech / Bio-Systems", 
-  "Off-Grid / Decentralized Infra", "Appropriate Tech / Frugal Innovation", 
-  "AI / ML", "Web / Mobile", "Blockchain / ReFi", "Material Science", "Other"
+  "CleanTech", "AgriTech / Bio-Systems", 
+  "Off-Grid / Decentralized",  
+  "Web / Mobile", "Blockchain / ReFi", "Material Science", 
+  "Blockchain / DLT", 
+  "Internet of Things (IoT)", 
+  "AI / Machine Learning", 
+  "Digital Product Passports", 
+  "Satellite Imagery & Remote Sensing", 
+  "Digital Twins / Simulation Modeling", 
+  "Chemical", 
+  "Automated Sorting & Robotics", 
+  "3D Printing (Additive Mfg)", 
+  "Energy Storage & Battery Tech", 
+  "Modular Construction", 
+  "Precision Agriculture", 
+  "Hydroponics/Aeroponics", 
+  "Synthetic Biology (Bio-materials)", 
+  "Biodegradable / Compostable Polymers", 
+  "Conventional Polymers", 
+  "Water Purification & Desalination", 
+  "Other"
 ];
 
 interface CompanyFormProps {
