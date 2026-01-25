@@ -322,7 +322,7 @@ export const api = {
   // FUND SIMULATION
   getFundSimulation: async (fundId: string, params?: { 
     fund_plan_id?: string, 
-    pooling_fraction?: string, 
+    fund_pooling_fraction?: string, 
     months?: number, 
     stop_insolvency?: boolean,
     include_initial_capital?: boolean 

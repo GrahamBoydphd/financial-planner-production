@@ -6,6 +6,8 @@ use axum::{
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::Decimal;
+use std::str::FromStr;
 use serde::Deserialize;
 use std::collections::HashMap;
 use crate::{
@@ -25,6 +27,7 @@ pub struct SimParams {
     pub months: Option<i32>,
     pub stop_insolvency: Option<bool>,
     pub include_initial_capital: Option<bool>,
+    pub fund_pooling_fraction: Option<String>,
 }
 
 #[debug_handler]
@@ -93,6 +96,16 @@ pub async fn run_fund_simulation(
     let stop_insolvency = params.stop_insolvency.unwrap_or(true);
     let include_init = params.include_initial_capital.unwrap_or(false);
 
+    // Parse fund_pooling_fraction (Global Real Pooling Rate)
+    // Standard: Input is percentage (e.g. "100.0"), Factor is input/100 (e.g. "1.0")
+    let (input_percent, real_pooling_rate) = if let Some(ref s) = params.fund_pooling_fraction {
+        let val = Decimal::from_str(s).unwrap_or(Decimal::ZERO);
+        (val, val / Decimal::from(100))
+    } else {
+        (Decimal::ZERO, Decimal::ZERO)
+    };
+    println!("DEBUG: Fund Simulation - Global Real Pooling Rate set to: {}% (Factor: {})", input_percent, real_pooling_rate);
+
     let mut sim_states: Vec<SimState> = Vec::new();
 
     // 3. Build SimState for each Company
@@ -139,13 +152,16 @@ pub async fn run_fund_simulation(
         };
 
         if let Some(plan) = plan {
+            println!("DEBUG: Loaded Plan '{}' (ID: {}) with Pooling Fraction: {}", plan.plan_name, plan.id, plan.pooling_fraction);
+            
             let state = fetch_and_map_company_state(
                 &pool, 
                 plan, 
                 company.company_name, 
                 company.id, 
                 stop_insolvency,
-                include_init
+                include_init,
+                real_pooling_rate
             ).await?;
             sim_states.push(state);
         }
@@ -174,6 +190,7 @@ async fn fetch_and_map_company_state(
     company_id: Uuid,
     stop_insolvency: bool,
     include_init: bool,
+    fund_pooling_rate: Decimal,
 ) -> Result<SimState, AppError> {
     
     // Fetch Revenue
@@ -323,7 +340,8 @@ async fn fetch_and_map_company_state(
         staffing_roles,
         capital_growth_policy,
         stop_insolvency,
-        include_init
+        include_init,
+        fund_pooling_rate
     ))
 }
 
@@ -343,6 +361,7 @@ fn map_to_sim_state(
     capital_growth_policy: Option<models::CapitalGrowthPolicy>,
     stop_insolvency: bool,
     include_init: bool,
+    pooling_rate_override: Decimal,
 ) -> SimState {
     
     let mut revenue_states = Vec::with_capacity(revenue_items.len());
@@ -468,7 +487,7 @@ fn map_to_sim_state(
             g.vol_min,
             g.vol_max,
             g.vol_intervals,
-            g.vol_freedom,
+            g.vol_mean, // Note: Using mean as freedom placeholder if needed, but create_sampler handles it
             g.vol_alpha,
             g.vol_beta
         ));
@@ -485,7 +504,7 @@ fn map_to_sim_state(
         id: company_id,
         company_name,
         currency: plan.currency_code,
-        pooling_fraction: plan.pooling_fraction.to_f64().unwrap_or(0.0),
+        pooling_fraction: pooling_rate_override.to_f64().unwrap_or(0.0),
         current_cash: plan.initial_cash.to_f64().unwrap_or(0.0),
         insolvency_threshold: plan.insolvency_threshold.to_f64().unwrap_or(100.0),
         is_solvent: true,

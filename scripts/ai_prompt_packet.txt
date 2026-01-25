@@ -161,386 +161,18 @@ These rules are non-negotiable.
     * Do not add new crates/packages unless explicitly instructed by the Architect prompt.</architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Implement Month 0 Initialization and Data.
+CONTEXT: Add debug logging to the Redistribution/Subsidy phase in Orchestrator.
 ACTION:
-1. In 'backend/src/engine/domain.rs':
-   - Add a method 'initialize(&mut self)' to 'SimState'.
-   - Logic for 'initialize':
-     a. Iterate through 'self.injections'.
-     b. If 'injection.month == 0':
-        - Add 'amount' to 'self.current_cash'.
-        - Add 'amount' to 'self.cum_external_cap'.
-     c. Create a 'MonthlyData' snapshot for Month 0:
-        - month_index: 0, date: 'Month 0' (or 'Start').
-        - revenue/opex/net_income: 0.0.
-        - cash_balance: self.current_cash.
-        - cumulative_external_capital: self.cum_external_cap.
-        - total_value: self.current_cash + self.cum_dividends.
-        - is_solvent: true.
-     d. Push this snapshot to 'self.history'.
-2. In 'backend/src/engine/orchestrator.rs':
-   - In 'FundOrchestrator::new':
-     - Iterate through 'universes' (and 'deterministic_universe').
-     - Call 'company.initialize()' for every company *before* returning the orchestrator.
-   - In 'aggregate_universe_history':
-     - Change loop to 'for m in 0..=months'.
-     - Update access: Use 'company.history.get(m as usize)' (direct mapping).
-   - In 'finalize_results':
-     - Update the label generation loop to start from 0.
-     - Update the statistical aggregation loop to range '0..=self.months'.
-3. In 'backend/src/engine/runner.rs':
-   - Ensure 'cum_external_cap' in SimState constructor initializes to 0.0 (preserving 'initial_cash' as just cash).
-CONSTRAINTS: Ensure vector indexing aligns perfectly (Index 0 = Month 0). strictly use Decimal types for MonthlyData.
+1. In 'backend/src/engine/orchestrator.rs':
+   - Inside 'step_universe', locate the 'if enable_horizontal_pooling' block.
+   - Add logging:
+     println!("DEBUG: Orchestrator Month {}: Distributing Pot {} among {} solvent companies (Share: {})", month_idx, pool_pot, solvent_count, pool_pot / solvent_count as f64);
+   - Inside the loop where 'company.current_cash += share', add a conditional log for the first company only (to avoid spam):
+     if company.company_name.ends_with("A") { println!("DEBUG: Company A received subsidy: {}. New Cash: {}", share, company.current_cash); }
+CONSTRAINTS: Ensure we catch the exact moment cash is added.
 </task_instruction>
 
 <source_code>
---- START FILE: backend/src/engine/domain.rs ---
-use uuid::Uuid;
-use serde::{Serialize, Deserialize};
-pub use crate::distributions::GrowthSampler;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use crate::projection::MonthlyData;
-
-// --- STRUCTS (Preserved) ---
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ItemState {
-    pub current_value: f64,
-    pub is_active: bool,
-    pub sampler: GrowthSampler,
-}
-
-impl Default for ItemState {
-    fn default() -> Self {
-        Self { 
-            current_value: 0.0, 
-            is_active: false,
-            sampler: GrowthSampler::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Revenue {
-    pub name: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: f64,
-    pub growth_rate: f64,
-    pub frequency: String,
-    pub cost_of_revenue: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Expense {
-    pub name: String,
-    pub category: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: f64,
-    pub growth_rate: f64,
-    pub frequency: String,
-    pub pct_of_revenue: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Staffing {
-    pub name: String,
-    pub annual_salary: f64,
-    pub start_month: i32,
-    pub target_count: i32,
-    pub hiring_plan: String,
-    pub hiring_rate: Option<i32>,
-    pub annual_increase: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Shock {
-    pub name: String,
-    pub month: i32,
-    pub impact_type: String,
-    pub impact_value: f64,
-    pub duration_months: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapitalInjection {
-    pub name: String,
-    pub amount: f64,
-    pub month: i32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DividendPolicy {
-    pub is_enabled: bool,
-    pub safety_threshold: f64,
-    pub payout_ratio: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreditFacility {
-    pub facility_limit: f64,
-    pub interest_rate: f64,
-    pub is_annual_rate: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValuationAssumption {
-    pub name: String,
-    pub method: String,
-    pub multiplier: f64,
-    pub date_applied: Option<chrono::NaiveDate>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapitalGrowthPolicy {
-    pub growth_rate: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Universe {
-    pub companies: Vec<SimState>,
-}
-
-impl Universe {
-    pub fn new(companies: Vec<SimState>) -> Self {
-        Self { companies }
-    }
-}
-
-fn default_true() -> bool { true }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SimState {
-    pub id: Uuid,
-    pub company_name: String,
-    pub currency: String,
-    pub pooling_fraction: f64,
-    pub current_cash: f64,
-    pub insolvency_threshold: f64,
-    pub is_solvent: bool,
-    #[serde(default = "default_true")]
-    pub stop_on_insolvency: bool,
-    pub cum_external_cap: f64,
-    pub cum_dividends: f64,
-    pub cum_pool_received: f64,
-    pub cap_growth_sampler: Option<GrowthSampler>,
-    
-    pub revenues: Vec<Revenue>,
-    pub expenses: Vec<Expense>,
-    pub staffing: Vec<Staffing>,
-    pub shocks: Vec<Shock>,
-    pub injections: Vec<CapitalInjection>,
-    pub dividend_policy: Option<DividendPolicy>,
-    pub credit_facility: Option<CreditFacility>,
-    pub valuation: Option<ValuationAssumption>,
-    pub capital_growth: Option<CapitalGrowthPolicy>,
-    
-    pub revenue_states: Vec<ItemState>,
-    pub expense_states: Vec<ItemState>,
-    
-    pub history: Vec<MonthlyData>,
-}
-
-impl SimState {
-    pub fn force_insolvency_state(&mut self) {
-        self.is_solvent = false;
-        self.current_cash = 0.0;
-    }
-
-    pub fn step(&mut self, month: i32) -> (f64, f64) {
-        if !self.is_solvent {
-            // Push "Erasure" (Zero) state
-            self.history.push(MonthlyData {
-                month_index: month,
-                date: format!("Month {}", month),
-                revenue: Decimal::ZERO,
-                cogs: Decimal::ZERO,
-                opex: Decimal::ZERO,
-                gross_profit: Decimal::ZERO,
-                net_income: Decimal::ZERO,
-                cash_balance: Decimal::ZERO,
-                is_solvent: false,
-                interest_expense: Decimal::ZERO,
-                dividend_paid: Decimal::ZERO,
-                cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-                cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-                cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-                total_value: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-                total_companies: 1,
-                solvent_companies: 0,
-            });
-            return (0.0, 0.0);
-        }
-
-        let mut monthly_rev = 0.0;
-        let mut monthly_cogs = 0.0;
-        let mut monthly_opex = 0.0;
-        let monthly_interest = 0.0;
-
-        // 1. Revenue
-        for (i, item) in self.revenues.iter().enumerate() {
-            let s = &mut self.revenue_states[i];
-            
-            if month == item.start_month {
-                s.is_active = true;
-                s.current_value = item.initial_amount;
-            } else if let Some(end) = item.end_month {
-                if month > end { s.is_active = false; }
-            }
-
-            if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
-                
-                // Logic: Base Growth + Volatility (Preserved)
-                if month > item.start_month {
-                    let rate = s.sampler.sample(); // Now returns f64 directly
-                    // Formula: Value * (1 + (Base% + Volatility%)/100)
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                }
-                
-                let item_rev = s.current_value;
-                monthly_rev += item_rev;
-                monthly_cogs += item_rev * item.cost_of_revenue;
-            }
-        }
-
-        // 2. Expenses
-        for (i, item) in self.expenses.iter().enumerate() {
-            let s = &mut self.expense_states[i];
-            
-            if month == item.start_month {
-                s.is_active = true;
-                s.current_value = item.initial_amount;
-            } else if let Some(end) = item.end_month {
-                if month > end { s.is_active = false; }
-            }
-
-            if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
-                
-                if month > item.start_month {
-                    let rate = s.sampler.sample();
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                }
-                
-                let mut amt = s.current_value;
-                if let Some(pct) = item.pct_of_revenue {
-                    amt += monthly_rev * pct;
-                }
-                monthly_opex += amt;
-            }
-        }
-
-        // 3. Staffing (Preserved Logic)
-        for role in &self.staffing {
-            if month >= role.start_month {
-                let current_headcount = match role.hiring_plan.as_str() {
-                    "monthly_rate" => {
-                        let months_active = month - role.start_month;
-                        let rate = role.hiring_rate.unwrap_or(1).max(1);
-                        let hired = 1 + (months_active / rate);
-                        hired.min(role.target_count)
-                    }
-                    _ => role.target_count,
-                };
-
-                if current_headcount > 0 {
-                    let years_passed = (month - role.start_month) / 12;
-                    let mut current_annual_salary = role.annual_salary;
-                    if years_passed > 0 {
-                        let multiplier = 1.0 + role.annual_increase;
-                        for _ in 0..years_passed {
-                            current_annual_salary *= multiplier;
-                        }
-                    }
-                    let monthly_cost = (current_annual_salary * current_headcount as f64) / 12.0;
-                    monthly_opex += monthly_cost;
-                }
-            }
-        }
-
-        // 4. Shocks
-        for shock in &self.shocks {
-            if month == shock.month {
-                let mult = 1.0 + (shock.impact_value / 100.0);
-                match shock.impact_type.as_str() {
-                    "revenue" => { monthly_rev *= mult; monthly_cogs *= mult; },
-                    "expense" | "opex" => monthly_opex *= mult,
-                    "cogs" => monthly_cogs *= mult,
-                    _ => {}
-                }
-            }
-        }
-
-        // 5. Injections
-        for injection in &self.injections {
-            if month == injection.month {
-                self.current_cash += injection.amount;
-                self.cum_external_cap += injection.amount;
-            }
-        }
-
-        let gross_profit = monthly_rev - monthly_cogs;
-        let total_expenses = monthly_opex + monthly_interest;
-        let operating_profit = gross_profit - total_expenses;
-
-        // 6. Update Cash
-        self.current_cash += operating_profit;
-
-        // 7. Investment Gain (Treasury)
-        let mut investment_gain = 0.0;
-        if self.current_cash > 0.0 {
-            if let Some(policy) = &self.capital_growth {
-                if let Some(sampler) = &mut self.cap_growth_sampler {
-                    let rate = sampler.sample();
-                    let effective_rate = (policy.growth_rate * 100.0 + rate) / 100.0;
-                    investment_gain = self.current_cash * effective_rate;
-                }
-            }
-        }
-        self.current_cash += investment_gain;
-
-        // 8. Pooling Contribution
-        let total_profit = operating_profit + investment_gain;
-        let mut contribution = 0.0;
-        
-        if self.pooling_fraction > 0.0 && total_profit > 0.0 {
-            contribution = total_profit * self.pooling_fraction;
-            // Deduct pool contribution immediately
-            self.current_cash -= contribution;
-        }
-
-        let net_income = total_profit;
-
-
-        // Record History
-        self.history.push(MonthlyData {
-            month_index: month,
-            date: format!("Month {}", month),
-            revenue: Decimal::from_f64_retain(monthly_rev).unwrap_or_default(),
-            cogs: Decimal::from_f64_retain(monthly_cogs).unwrap_or_default(),
-            opex: Decimal::from_f64_retain(monthly_opex).unwrap_or_default(),
-            gross_profit: Decimal::from_f64_retain(gross_profit).unwrap_or_default(),
-            net_income: Decimal::from_f64_retain(net_income).unwrap_or_default(),
-            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-            is_solvent: self.is_solvent,
-            interest_expense: Decimal::from_f64_retain(monthly_interest).unwrap_or_default(),
-            dividend_paid: Decimal::ZERO,
-            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-            total_companies: 1,
-            solvent_companies: if self.is_solvent { 1 } else { 0 },
-        });
-
-        (net_income, contribution)
-    }
-}
---- END FILE: backend/src/engine/domain.rs ---
-
 --- START FILE: backend/src/engine/orchestrator.rs ---
 use crate::engine::domain::{Universe, SimState};
 use crate::projection::{SimulationResult, MonthlyData};
@@ -565,7 +197,7 @@ pub struct FundOrchestrator<Mode: SimulationMode> {
 
 impl<Mode: SimulationMode> FundOrchestrator<Mode> {
     pub fn new(iterations: usize, initial_states: Vec<SimState>, months: i32, stop_insolvency: bool) -> Self {
-        println!("🚀 Orchestrator Initializing: {} iterations, {} months, stop_insolvency={}", iterations, months, stop_insolvency);
+        // println!("🚀 Orchestrator Initializing: {} iterations, {} months, stop_insolvency={}", iterations, months, stop_insolvency);
         
         // 1. Create Monte Carlo Universes
         let mut universes = Vec::with_capacity(iterations);
@@ -573,10 +205,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             universes.push(Universe::new(initial_states.clone()));
         }
 
-        // Apply stop_insolvency to MC universes
+        // Apply stop_insolvency to MC universes AND Initialize Month 0
         for u in universes.iter_mut() {
             for c in u.companies.iter_mut() {
                 c.stop_on_insolvency = stop_insolvency;
+                c.initialize();
             }
         }
 
@@ -602,9 +235,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         
         let mut deterministic_universe = Universe::new(det_states);
         
-        // Apply stop_insolvency to Deterministic universe
+        // Apply stop_insolvency to Deterministic universe AND Initialize Month 0
         for c in deterministic_universe.companies.iter_mut() {
             c.stop_on_insolvency = stop_insolvency;
+            c.initialize();
         }
 
         Self { 
@@ -634,10 +268,14 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             }
         }
 
+        // if pool_pot > 0.0 { println!("DEBUG: Orchestrator Month {}: Pot Collected = {}", month_idx, pool_pot); }
+
         // TOCK: Distribute pool to solvent companies (Horizontal Pooling)
         if enable_horizontal_pooling {
             if solvent_count > 0 && pool_pot > 0.0 {
                 let share = pool_pot / solvent_count as f64;
+
+                // println!("DEBUG: Orchestrator Month {}: Distributing Pot {} among {} solvent companies (Share: {})", month_idx, pool_pot, solvent_count, share);
 
                 for company in universe.companies.iter_mut() {
                     if company.is_solvent {
@@ -645,10 +283,13 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                         company.current_cash += share;
                         company.cum_pool_received += share;
 
+                        // if company.company_name.ends_with("A") { println!("DEBUG: Company A received subsidy: {}. New Cash: {}", share, company.current_cash); }
+
                         // Update History
                         if let Some(last_entry) = company.history.last_mut() {
                             last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
                             last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
+                            last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
                         }
                     }
                 }
@@ -678,10 +319,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
     }
 
     fn aggregate_universe_history(universe: &Universe, months: i32) -> Vec<MonthlyData> {
-        let mut universe_history = Vec::with_capacity(months as usize);
+        let mut universe_history = Vec::with_capacity((months + 1) as usize);
         let total_fund_companies = universe.companies.len() as i32;
         
-        for m in 1..=months {
+        for m in 0..=months {
             let month_idx = m as usize;
             
             // Accumulators
@@ -696,7 +337,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
             for company in &universe.companies {
                 // Safety: Ensure we don't panic if history is missing
-                if let Some(data) = company.history.get(month_idx - 1) {
+                if let Some(data) = company.history.get(month_idx) {
                     total_revenue += data.revenue.to_f64().unwrap_or(0.0);
                     total_opex += data.opex.to_f64().unwrap_or(0.0);
                     total_net_income += data.net_income.to_f64().unwrap_or(0.0);
@@ -740,32 +381,33 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         
         // Generate Labels
         let mut labels = Vec::new();
-        for m in 1..=self.months {
+        for m in 0..=self.months {
             labels.push(format!("Month {}", m));
         }
 
         // Statistical Aggregation
-        let mut p0_vec = Vec::with_capacity(self.months as usize);
-        let mut p10_vec = Vec::with_capacity(self.months as usize);
-        let mut p25_vec = Vec::with_capacity(self.months as usize);
-        let mut p50_vec = Vec::with_capacity(self.months as usize);
-        let mut p75_vec = Vec::with_capacity(self.months as usize);
-        let mut p90_vec = Vec::with_capacity(self.months as usize);
-        let mut p100_vec = Vec::with_capacity(self.months as usize);
+        let cap = (self.months + 1) as usize;
+        let mut p0_vec = Vec::with_capacity(cap);
+        let mut p10_vec = Vec::with_capacity(cap);
+        let mut p25_vec = Vec::with_capacity(cap);
+        let mut p50_vec = Vec::with_capacity(cap);
+        let mut p75_vec = Vec::with_capacity(cap);
+        let mut p90_vec = Vec::with_capacity(cap);
+        let mut p100_vec = Vec::with_capacity(cap);
 
-        let mut p0_count = Vec::with_capacity(self.months as usize);
-        let mut p10_count = Vec::with_capacity(self.months as usize);
-        let mut p25_count = Vec::with_capacity(self.months as usize);
-        let mut p50_count = Vec::with_capacity(self.months as usize);
-        let mut p75_count = Vec::with_capacity(self.months as usize);
-        let mut p90_count = Vec::with_capacity(self.months as usize);
-        let mut p100_count = Vec::with_capacity(self.months as usize);
+        let mut p0_count = Vec::with_capacity(cap);
+        let mut p10_count = Vec::with_capacity(cap);
+        let mut p25_count = Vec::with_capacity(cap);
+        let mut p50_count = Vec::with_capacity(cap);
+        let mut p75_count = Vec::with_capacity(cap);
+        let mut p90_count = Vec::with_capacity(cap);
+        let mut p100_count = Vec::with_capacity(cap);
 
-        let mut survival_vec = Vec::with_capacity(self.months as usize);
-        let mut p50_data = Vec::with_capacity(self.months as usize);
+        let mut survival_vec = Vec::with_capacity(cap);
+        let mut p50_data = Vec::with_capacity(cap);
 
         if !fund_trajectories.is_empty() {
-            for m_idx in 0..(self.months as usize) {
+            for m_idx in 0..cap {
                 let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
                 let mut solvent_universes = 0;
 
@@ -886,11 +528,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
 impl FundOrchestrator<PortfolioMode> {
     pub fn run(mut self) -> SimulationResult {
-        println!("🏃 Orchestrator Running (Portfolio Mode) for {} months...", self.months);
+        // println!("🏃 Orchestrator Running (Portfolio Mode) for {} months...", self.months);
         let iterations = self.universes.len();
         
         for month_idx in 1..=self.months {
-            if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
+            // if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
 
             // A. Step Monte Carlo Universes (Horizontal Pooling ON, Reaper ON)
             for universe in self.universes.iter_mut() {
@@ -901,7 +543,7 @@ impl FundOrchestrator<PortfolioMode> {
             Self::step_universe(&mut self.deterministic_universe, month_idx, true, true);
         }
 
-        println!("✅ Simulation Loop Complete. Aggregating...");
+        // println!("✅ Simulation Loop Complete. Aggregating...");
 
         let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
         let mut fund_trajectories = Vec::with_capacity(iterations);
@@ -915,11 +557,11 @@ impl FundOrchestrator<PortfolioMode> {
 
 impl FundOrchestrator<EnsembleMode> {
     pub fn run(mut self) -> SimulationResult {
-        println!("🏃 Orchestrator Running (Ensemble Mode) for {} months...", self.months);
+        // println!("🏃 Orchestrator Running (Ensemble Mode) for {} months...", self.months);
         let iterations = self.universes.len();
         
         for month_idx in 1..=self.months {
-            if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
+            // if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
 
             let mut total_pot = 0.0;
             let mut solvent_universes_indices = Vec::new();
@@ -958,6 +600,7 @@ impl FundOrchestrator<EnsembleMode> {
                                 if let Some(last_entry) = company.history.last_mut() {
                                     last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
                                     last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
+                                    last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
                                 }
                             }
                         }
@@ -974,7 +617,7 @@ impl FundOrchestrator<EnsembleMode> {
             Self::step_universe(&mut self.deterministic_universe, month_idx, true, true);
         }
 
-        println!("✅ Simulation Loop Complete. Aggregating...");
+        // println!("✅ Simulation Loop Complete. Aggregating...");
 
         let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
         let mut fund_trajectories = Vec::with_capacity(iterations);
@@ -986,256 +629,6 @@ impl FundOrchestrator<EnsembleMode> {
     }
 }
 --- END FILE: backend/src/engine/orchestrator.rs ---
-
---- START FILE: backend/src/engine/runner.rs ---
-use crate::models::{
-    RevenueItem, ExpenseItem, StaffingRole, EventShock, CapitalInjection, 
-    CreditFacility, DividendPolicy, ValuationAssumption, CapitalGrowthPolicy
-};
-use crate::projection::SimulationResult;
-use crate::engine::domain::{self, SimState, ItemState, GrowthSampler};
-use crate::engine::orchestrator::{FundOrchestrator, EnsembleMode};
-use crate::distributions;
-use uuid::Uuid;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::ToPrimitive;
-
-/// Helper to convert database distribution parameters into the Engine's GrowthSampler.
-fn create_sampler_from_db(
-    vol_type: Option<&str>,
-    mean: Option<Decimal>,
-    scale: Option<Decimal>,
-    min: Option<Decimal>,
-    max: Option<Decimal>,
-    intervals: Option<i32>,
-    freedom: Option<Decimal>,
-    alpha: Option<Decimal>,
-    beta: Option<Decimal>,
-) -> GrowthSampler {
-    distributions::create_sampler(
-        vol_type,
-        mean.and_then(|d| d.to_f64()),
-        scale.and_then(|d| d.to_f64()),
-        min.and_then(|d| d.to_f64()),
-        max.and_then(|d| d.to_f64()),
-        intervals,
-        freedom.and_then(|d| d.to_f64()),
-        alpha.and_then(|d| d.to_f64()),
-        beta.and_then(|d| d.to_f64()),
-    )
-}
-
-/// Generates a full Monte Carlo simulation for a single company entity.
-/// Maps database models to the V4 Engine domain models and executes the orchestrator.
-pub fn generate_simulation(
-    plan_name: String,
-    currency_code: String,
-    months: i32,
-    initial_cash: Decimal,
-    revenue_items: Vec<RevenueItem>,
-    expense_items: Vec<ExpenseItem>,
-    staffing_roles: Vec<StaffingRole>,
-    event_shocks: Vec<EventShock>,
-    capital_injections: Vec<CapitalInjection>,
-    credit_facility: Option<CreditFacility>,
-    dividend_policy: Option<DividendPolicy>,
-    valuation_assumptions: Vec<ValuationAssumption>,
-    capital_growth: Option<CapitalGrowthPolicy>,
-    _use_monte_carlo: bool,
-    stop_insolvency: bool,
-    pooling_fraction: Decimal,
-    insolvency_threshold: Decimal,
-) -> SimulationResult {
-    
-    // 1. Map Revenue Items
-    let engine_revenues: Vec<domain::Revenue> = revenue_items.iter().map(|r| {
-        domain::Revenue {
-            name: r.revenue_name.clone(),
-            start_month: r.start_month,
-            end_month: r.end_month,
-            initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: r.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
-            frequency: r.frequency.clone(),
-            cost_of_revenue: r.cost_of_revenue_percent.and_then(|d| d.to_f64()).unwrap_or(0.0) / 100.0,
-        }
-    }).collect();
-
-    let revenue_states: Vec<ItemState> = revenue_items.iter().map(|r| {
-        let sampler = create_sampler_from_db(
-            r.volatility_type.as_deref(),
-            r.vol_mean,
-            r.vol_scale,
-            r.vol_min,
-            r.vol_max,
-            r.vol_intervals,
-            r.vol_freedom,
-            r.vol_alpha,
-            r.vol_beta,
-        );
-        
-        ItemState {
-            current_value: r.initial_amount.to_f64().unwrap_or(0.0),
-            is_active: false,
-            sampler,
-        }
-    }).collect();
-
-    // 2. Map Expense Items
-    let engine_expenses: Vec<domain::Expense> = expense_items.iter().map(|e| {
-        domain::Expense {
-            name: e.expense_name.clone(),
-            category: e.category.clone(),
-            start_month: e.start_month,
-            end_month: e.end_month,
-            initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: e.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
-            frequency: e.frequency.clone(),
-            pct_of_revenue: e.pct_of_revenue.and_then(|d| d.to_f64()).map(|v| v / 100.0),
-        }
-    }).collect();
-
-    let expense_states: Vec<ItemState> = expense_items.iter().map(|e| {
-        let sampler = create_sampler_from_db(
-            e.volatility_type.as_deref(),
-            e.vol_mean,
-            e.vol_scale,
-            e.vol_min,
-            e.vol_max,
-            e.vol_intervals,
-            e.vol_freedom,
-            e.vol_alpha,
-            e.vol_beta,
-        );
-
-        ItemState {
-            current_value: e.initial_amount.to_f64().unwrap_or(0.0),
-            is_active: false,
-            sampler,
-        }
-    }).collect();
-
-    // 3. Map Staffing Roles
-    let engine_staffing: Vec<domain::Staffing> = staffing_roles.iter().map(|s| {
-        domain::Staffing {
-            name: s.role_name.clone(),
-            annual_salary: s.annual_salary.to_f64().unwrap_or(0.0),
-            start_month: s.start_month,
-            target_count: s.target_count,
-            hiring_plan: s.hiring_plan.clone(),
-            hiring_rate: s.hiring_rate,
-            annual_increase: s.annual_increase_percent.to_f64().unwrap_or(0.0) / 100.0,
-        }
-    }).collect();
-
-    // 4. Map Credit Facility
-    let engine_credit = credit_facility.map(|c| {
-        domain::CreditFacility {
-            facility_limit: c.facility_limit.to_f64().unwrap_or(0.0),
-            interest_rate: c.interest_rate.to_f64().unwrap_or(0.0) / 100.0,
-            is_annual_rate: c.is_annual_rate,
-        }
-    });
-
-    // 5. Map Capital Injections
-    let engine_injections: Vec<domain::CapitalInjection> = capital_injections.iter().map(|c| {
-        domain::CapitalInjection {
-            name: c.injection_name.clone(),
-            amount: c.amount.to_f64().unwrap_or(0.0),
-            month: c.month,
-        }
-    }).collect();
-
-    // 6. Map Event Shocks
-    let engine_events: Vec<domain::Shock> = event_shocks.iter().map(|s| {
-        domain::Shock {
-            name: s.shock_name.clone(),
-            month: s.shock_month,
-            impact_type: s.impact_type.clone(),
-            impact_value: s.impact_value.to_f64().unwrap_or(0.0),
-            duration_months: s.duration_months,
-        }
-    }).collect();
-
-    // 7. Map Dividend Policy
-    let engine_dividend = dividend_policy.map(|p| {
-        domain::DividendPolicy {
-            is_enabled: p.is_enabled,
-            safety_threshold: p.safety_threshold.to_f64().unwrap_or(0.0),
-            payout_ratio: p.payout_ratio.to_f64().unwrap_or(0.0),
-        }
-    });
-
-    // 8. Map Valuation Assumption (Take first)
-    let engine_valuation = valuation_assumptions.first().map(|v| {
-        domain::ValuationAssumption {
-            name: v.valuation_name.clone(),
-            method: v.method.clone(),
-            multiplier: v.multiplier.to_f64().unwrap_or(0.0),
-            date_applied: v.date_applied,
-        }
-    });
-
-    // 9. Map Capital Growth Policy & Sampler
-    let engine_cap_growth = capital_growth.as_ref().map(|p| {
-        domain::CapitalGrowthPolicy {
-            growth_rate: p.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
-        }
-    });
-
-    let cap_growth_sampler = capital_growth.as_ref().map(|p| {
-        create_sampler_from_db(
-            p.volatility_type.as_deref(),
-            p.vol_mean,
-            p.vol_scale,
-            p.vol_min,
-            p.vol_max,
-            p.vol_intervals,
-            p.vol_freedom,
-            p.vol_alpha,
-            p.vol_beta,
-        )
-    });
-
-    // 10. Construct Simulation State
-    let sim_state = SimState {
-        id: Uuid::new_v4(),
-        company_name: plan_name,
-        currency: currency_code,
-        pooling_fraction: pooling_fraction.to_f64().unwrap_or(0.0),
-        current_cash: initial_cash.to_f64().unwrap_or(0.0),
-        insolvency_threshold: insolvency_threshold.to_f64().unwrap_or(100.0),
-        is_solvent: true,
-        stop_on_insolvency: stop_insolvency,
-        cum_external_cap: 0.0,
-        cum_dividends: 0.0,
-        cum_pool_received: 0.0,
-        cap_growth_sampler,
-        revenues: engine_revenues,
-        expenses: engine_expenses,
-        staffing: engine_staffing,
-        shocks: engine_events,
-        injections: engine_injections,
-        dividend_policy: engine_dividend,
-        credit_facility: engine_credit,
-        valuation: engine_valuation,
-        capital_growth: engine_cap_growth,
-        revenue_states,
-        expense_states,
-        history: Vec::new(),
-    };
-
-    // 11. Initialize Orchestrator (Ensemble Mode for Single Company Simulation)
-    let mut orchestrator = FundOrchestrator::<EnsembleMode>::new(
-        1000, 
-        vec![sim_state], 
-        months, 
-        stop_insolvency
-    );
-
-    // 12. Execute Simulation
-    orchestrator.run()
-}
---- END FILE: backend/src/engine/runner.rs ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 

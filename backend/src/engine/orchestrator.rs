@@ -21,7 +21,7 @@ pub struct FundOrchestrator<Mode: SimulationMode> {
 
 impl<Mode: SimulationMode> FundOrchestrator<Mode> {
     pub fn new(iterations: usize, initial_states: Vec<SimState>, months: i32, stop_insolvency: bool) -> Self {
-        println!("🚀 Orchestrator Initializing: {} iterations, {} months, stop_insolvency={}", iterations, months, stop_insolvency);
+        // println!("🚀 Orchestrator Initializing: {} iterations, {} months, stop_insolvency={}", iterations, months, stop_insolvency);
         
         // 1. Create Monte Carlo Universes
         let mut universes = Vec::with_capacity(iterations);
@@ -92,10 +92,14 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             }
         }
 
+        // if pool_pot > 0.0 { println!("DEBUG: Orchestrator Month {}: Pot Collected = {}", month_idx, pool_pot); }
+
         // TOCK: Distribute pool to solvent companies (Horizontal Pooling)
         if enable_horizontal_pooling {
             if solvent_count > 0 && pool_pot > 0.0 {
                 let share = pool_pot / solvent_count as f64;
+
+                println!("DEBUG: Orchestrator Month {}: Distributing Pot {} among {} solvent companies (Share: {})", month_idx, pool_pot, solvent_count, share);
 
                 for company in universe.companies.iter_mut() {
                     if company.is_solvent {
@@ -103,10 +107,13 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                         company.current_cash += share;
                         company.cum_pool_received += share;
 
+                        if company.company_name.ends_with("A") { println!("DEBUG: Company A received subsidy: {}. New Cash: {}", share, company.current_cash); }
+
                         // Update History
                         if let Some(last_entry) = company.history.last_mut() {
                             last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
                             last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
+                            last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
                         }
                     }
                 }
@@ -345,11 +352,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
 impl FundOrchestrator<PortfolioMode> {
     pub fn run(mut self) -> SimulationResult {
-        println!("🏃 Orchestrator Running (Portfolio Mode) for {} months...", self.months);
+        // println!("🏃 Orchestrator Running (Portfolio Mode) for {} months...", self.months);
         let iterations = self.universes.len();
         
         for month_idx in 1..=self.months {
-            if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
+            // if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
 
             // A. Step Monte Carlo Universes (Horizontal Pooling ON, Reaper ON)
             for universe in self.universes.iter_mut() {
@@ -360,7 +367,7 @@ impl FundOrchestrator<PortfolioMode> {
             Self::step_universe(&mut self.deterministic_universe, month_idx, true, true);
         }
 
-        println!("✅ Simulation Loop Complete. Aggregating...");
+        // println!("✅ Simulation Loop Complete. Aggregating...");
 
         let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
         let mut fund_trajectories = Vec::with_capacity(iterations);
@@ -374,11 +381,11 @@ impl FundOrchestrator<PortfolioMode> {
 
 impl FundOrchestrator<EnsembleMode> {
     pub fn run(mut self) -> SimulationResult {
-        println!("🏃 Orchestrator Running (Ensemble Mode) for {} months...", self.months);
+        // println!("🏃 Orchestrator Running (Ensemble Mode) for {} months...", self.months);
         let iterations = self.universes.len();
         
         for month_idx in 1..=self.months {
-            if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
+            // if month_idx % 12 == 0 { println!("... processing month {}", month_idx); }
 
             let mut total_pot = 0.0;
             let mut solvent_universes_indices = Vec::new();
@@ -417,6 +424,7 @@ impl FundOrchestrator<EnsembleMode> {
                                 if let Some(last_entry) = company.history.last_mut() {
                                     last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
                                     last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
+                                    last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
                                 }
                             }
                         }
@@ -433,7 +441,7 @@ impl FundOrchestrator<EnsembleMode> {
             Self::step_universe(&mut self.deterministic_universe, month_idx, true, true);
         }
 
-        println!("✅ Simulation Loop Complete. Aggregating...");
+        // println!("✅ Simulation Loop Complete. Aggregating...");
 
         let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
         let mut fund_trajectories = Vec::with_capacity(iterations);

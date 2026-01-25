@@ -92,7 +92,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
       const simParams = {
           fund_plan_id: fundPlanId || undefined,
           months: months,
-          pooling_fraction: poolingFraction.toString(),
+          fund_pooling_fraction: poolingFraction.toFixed(1),
           stop_insolvency: stopInsolvency,
           include_initial_capital: includeInitialCapital,
       };
