@@ -277,7 +277,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                     <div className="w-px h-8 bg-gray-300 mx-1"></div>
                     <div className="flex flex-col gap-1 w-40 animate-in fade-in slide-in-from-left-2 duration-300">
                             <div className="flex justify-between">
-                            <label className="text-xs font-semibold text-gray-500 uppercase">Cash Pooling</label>
+                            <label className="text-xs font-semibold text-gray-500 uppercase">ERGODICITY CORRECTION</label>
                             <span className="text-xs font-bold text-indigo-600">{poolingFraction}%</span>
                             </div>
                             <input 

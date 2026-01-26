@@ -92,22 +92,16 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             }
         }
 
-        // if pool_pot > 0.0 { println!("DEBUG: Orchestrator Month {}: Pot Collected = {}", month_idx, pool_pot); }
-
         // TOCK: Distribute pool to solvent companies (Horizontal Pooling)
         if enable_horizontal_pooling {
             if solvent_count > 0 && pool_pot > 0.0 {
                 let share = pool_pot / solvent_count as f64;
-
-                println!("DEBUG: Orchestrator Month {}: Distributing Pot {} among {} solvent companies (Share: {})", month_idx, pool_pot, solvent_count, share);
 
                 for company in universe.companies.iter_mut() {
                     if company.is_solvent {
                         // Update Company State
                         company.current_cash += share;
                         company.cum_pool_received += share;
-
-                        if company.company_name.ends_with("A") { println!("DEBUG: Company A received subsidy: {}. New Cash: {}", share, company.current_cash); }
 
                         // Update History
                         if let Some(last_entry) = company.history.last_mut() {

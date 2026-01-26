@@ -98,13 +98,12 @@ pub async fn run_fund_simulation(
 
     // Parse fund_pooling_fraction (Global Real Pooling Rate)
     // Standard: Input is percentage (e.g. "100.0"), Factor is input/100 (e.g. "1.0")
-    let (input_percent, real_pooling_rate) = if let Some(ref s) = params.fund_pooling_fraction {
+    let (_input_percent, real_pooling_rate) = if let Some(ref s) = params.fund_pooling_fraction {
         let val = Decimal::from_str(s).unwrap_or(Decimal::ZERO);
         (val, val / Decimal::from(100))
     } else {
         (Decimal::ZERO, Decimal::ZERO)
     };
-    println!("DEBUG: Fund Simulation - Global Real Pooling Rate set to: {}% (Factor: {})", input_percent, real_pooling_rate);
 
     let mut sim_states: Vec<SimState> = Vec::new();
 
@@ -152,8 +151,6 @@ pub async fn run_fund_simulation(
         };
 
         if let Some(plan) = plan {
-            println!("DEBUG: Loaded Plan '{}' (ID: {}) with Pooling Fraction: {}", plan.plan_name, plan.id, plan.pooling_fraction);
-            
             let state = fetch_and_map_company_state(
                 &pool, 
                 plan, 

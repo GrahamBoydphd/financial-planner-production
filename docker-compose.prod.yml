@@ -1,5 +1,5 @@
 services:
-  # 1. Database (UNCHANGED)
+  # 1. Database
   db:
     image: postgres:15-alpine
     restart: always
@@ -12,7 +12,7 @@ services:
     volumes:
       - db_data_prod:/var/lib/postgresql/data
 
-  # 2. Backend API
+  # 2. Backend API (MERGED & HARDENED)
   backend:
     build: ./backend
     restart: always
@@ -22,20 +22,23 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       RUST_LOG: info
       PORT: 8000
-      JWT_SECRET: ${JWT_SECRET}  # <--- Add this line here
-    # REMOVED "ports" section. Only Caddy talks to it now.
+      JWT_SECRET: ${JWT_SECRET}
+    # LOGGING ADDED HERE
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # 3. Frontend
   frontend:
     build:
       context: ./frontend
       args:
-        # UPDATED: Now points to the domain, not the IP
         NEXT_PUBLIC_API_URL: https://planner.evolutesix.com
     restart: always
-    # REMOVED "ports" section. Only Caddy talks to it now.
 
-  # 4. Caddy (NEW SERVICE)
+  # 4. Caddy
   caddy:
     image: caddy:2-alpine
     restart: always
@@ -52,5 +55,5 @@ services:
 
 volumes:
   db_data_prod:
-  caddy_data:    # Stores SSL certs
+  caddy_data:
   caddy_config:

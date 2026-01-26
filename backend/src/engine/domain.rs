@@ -340,13 +340,10 @@ impl SimState {
         let total_profit = operating_profit + investment_gain;
         let mut contribution = 0.0;
         
-        println!("DEBUG: Company '{}' Month {}: Cash={}, Profit={}, PoolingFrac={}", self.company_name, month, self.current_cash, total_profit, self.pooling_fraction);
-
         if self.pooling_fraction > 0.0 && total_profit > 0.0 {
             contribution = total_profit * self.pooling_fraction;
             // Deduct pool contribution immediately
             self.current_cash -= contribution;
-            println!("DEBUG: HIT! Contribution Calculated: {}", contribution);
         }
 
         let net_income = total_profit;
