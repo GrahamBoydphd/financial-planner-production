@@ -7,6 +7,7 @@ import { api, Fund, Company, FundPlan } from '@/lib/api';
 import Link from 'next/link';
 import { ArrowLeft, BarChart3, Edit2, ArrowRight, Plus, Copy } from 'lucide-react';
 import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
+import EventList from "@/components/EventList";
 
 export default function FundPage({ params }: { params: { fundId: string } }) {
   const { fundId } = params;
@@ -157,7 +158,17 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
         )}
       </section>
 
-      {/* Section 2: Portfolio Companies */}
+      {/* Section 2: Events */}
+      <section className="mb-12">
+        <EventList 
+          fundId={fund?.id || null} 
+          fundName={fund?.fund_name} 
+          companies={companies} 
+          funds={[]} 
+        />
+      </section>
+
+      {/* Section 3: Portfolio Companies */}
       <section>
         <div className="flex justify-between items-center mb-6">
           <div>

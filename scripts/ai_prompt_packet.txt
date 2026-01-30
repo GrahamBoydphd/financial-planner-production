@@ -160,764 +160,779 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: UX - Relocate Cancel Button & Style Actions. ACTION: 
-1) UPDATE 'frontend/components/forms/RevenueForm.tsx' and 'frontend/components/forms/ExpenseForm.tsx':
-   - LOCATE the top-right 'Cancel Edit' button (usually an 'X' or small text). REMOVE it.
-   
-   - LOCATE the bottom Action Bar (where the Submit button is).
-   - RESTRUCTURE the layout to be a flex container (e.g., 'flex gap-4').
-   
-   - INSERT the 'Cancel' button here (conditionally rendered if 'initialData' exists / isEditing).
-     - Style: 'bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded w-full'.
-     - Label: 'Cancel Edit'.
-     - Action: onClick={onCancel}.
-
-   - UPDATE the 'Submit' button (Add / Update):
-     - Style: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded w-full'.
-     - Ensure both buttons share 'flex-1' or 'w-full' to be the same size.
+CONTEXT: CLEANUP - Replace ShockList with EventList. ACTION: 
+1) DELETE 'frontend/components/ShockList.tsx' and 'frontend/components/forms/ShockForm.tsx'.
+2) READ 'frontend/app/fund/[fundId]/page.tsx' to locate ShockList usage.
+3) UPDATE 'frontend/app/fund/[fundId]/page.tsx':
+   - Remove 'import ShockList ...'.
+   - Add 'import EventList from "@/components/EventList";'.
+   - Replace <ShockList ... /> with:
+     <EventList 
+       fundId={fund?.id || null} 
+       fundName={fund?.fund_name} 
+       companies={companies} 
+       funds={[]} 
+     />
+   - (Note: passing empty funds array temporarily to ensure build passes).
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/components/forms/RevenueForm.tsx ---
-'use client';
+--- START FILE: frontend/components/ShockList.tsx ---
+import React, { useEffect, useState } from 'react';
+import { api, Shock, Company } from '@/lib/api';
+import { Plus, Edit2, Trash2, Zap, AlertTriangle } from 'lucide-react';
+import ShockForm from './forms/ShockForm';
 
-import { useState, useEffect } from 'react';
-import { api, RevenueItem } from '@/lib/api';
-import Tooltip from '@/components/ui/Tooltip';
-
-interface Props {
-  planId: string;
-  onSuccess: () => void;
-  itemToEdit?: RevenueItem | null;
-  onCancel?: () => void;
-  currencySymbol?: string;
+interface ShockListProps {
+  fundId: string | null;
+  companies: Company[];
+  fundName?: string;
 }
 
-export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
-  const [name, setName] = useState('');
-  const [source, setSource] = useState('sales');
-  const [amount, setAmount] = useState('');
-  const [growth, setGrowth] = useState('0');
-  const [startMonth, setStartMonth] = useState('1');
-  const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('monthly');
-  const [cogsPercent, setCogsPercent] = useState('');
+export default function ShockList({ fundId, companies, fundName }: ShockListProps) {
+  const [shocks, setShocks] = useState<Shock[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingShock, setEditingShock] = useState<Shock | null>(null);
 
-  // Volatility State
-  const [volType, setVolType] = useState('');
-  const [volMin, setVolMin] = useState('');
-  const [volMax, setVolMax] = useState('');
-  const [numSteps, setNumSteps] = useState(''); // Changed from stepSize
-  const [volScale, setVolScale] = useState('');
-  const [volFreedom, setVolFreedom] = useState('');
-  const [volAlpha, setVolAlpha] = useState('');
-  const [volBeta, setVolBeta] = useState('');
-
-  const [errors, setErrors] = useState<string[]>([]);
-
-  // --- EFFECT: POPULATE FORM ON EDIT ---
-  useEffect(() => {
-    if (itemToEdit) {
-      setName(itemToEdit.revenue_name);
-      setSource(itemToEdit.source);
-      setAmount(itemToEdit.initial_amount.toString());
-      setGrowth(itemToEdit.growth_rate_percent.toString());
-      setStartMonth(itemToEdit.start_month.toString());
-      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
-      setFreq(itemToEdit.frequency);
-      setCogsPercent(itemToEdit.cost_of_revenue_percent ? itemToEdit.cost_of_revenue_percent.toString() : '');
-      
-      // Map legacy 'none' or null to '' to force selection, or use existing
-      const vType = itemToEdit.volatility_type === 'none' ? '' : (itemToEdit.volatility_type || '');
-      setVolType(vType);
-
-      setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
-      setVolMax(itemToEdit.vol_max ? itemToEdit.vol_max.toString() : '');
-      
-      // Direct map for numSteps
-      if (vType === 'flat' && itemToEdit.vol_intervals) {
-          setNumSteps(itemToEdit.vol_intervals.toString());
-      } else {
-          setNumSteps('');
-      }
-
-      setVolScale(itemToEdit.vol_scale ? itemToEdit.vol_scale.toString() : '');
-      setVolFreedom(itemToEdit.vol_freedom ? itemToEdit.vol_freedom.toString() : '');
-      setVolAlpha(itemToEdit.vol_alpha ? itemToEdit.vol_alpha.toString() : '');
-      setVolBeta(itemToEdit.vol_beta ? itemToEdit.vol_beta.toString() : '');
-
-    } else {
-      clearForm();
+  const fetchShocks = async () => {
+    if (!fundId) return;
+    setLoading(true);
+    try {
+      const data = await api.getShocks(fundId);
+      setShocks(data);
+    } catch (error) {
+      console.error("Failed to fetch shocks", error);
+    } finally {
+      setLoading(false);
     }
-  }, [itemToEdit]);
+  };
 
-  const clearForm = () => {
-    setName('');
-    setSource('sales');
-    setAmount('');
-    setGrowth('0');
-    setStartMonth('1');
-    setEndMonth('');
-    setFreq('monthly');
-    setCogsPercent('');
-    setVolType('');
-    setVolMin(''); setVolMax(''); setNumSteps('');
-    setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
-    setErrors([]);
+  useEffect(() => {
+    if (fundId) {
+      fetchShocks();
+    } else {
+      setShocks([]);
+    }
+  }, [fundId]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this shock?")) return;
+    try {
+      await api.deleteShock(id);
+      fetchShocks();
+    } catch (error) {
+      console.error("Failed to delete shock", error);
+    }
+  };
+
+  const getDirectionBadgeColor = (direction: string) => {
+    switch (direction?.toLowerCase()) {
+      case 'detrimental_only': return 'bg-red-100 text-red-800';
+      case 'beneficial_only': return 'bg-green-100 text-green-800';
+      case 'both_neutral': return 'bg-purple-100 text-purple-800';
+      case 'both_detrimental': return 'bg-orange-100 text-orange-800';
+      case 'both_beneficial': return 'bg-teal-100 text-teal-800';
+      // Fallback for legacy data
+      case 'detrimental': return 'bg-red-100 text-red-800';
+      case 'beneficial': return 'bg-green-100 text-green-800';
+      case 'both': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getDurationLabel = (duration: string) => {
+    switch (duration?.toLowerCase()) {
+      case 'short': return 'Short (1-4m)';
+      case 'medium': return 'Medium (4-8m)';
+      case 'long': return 'Long (8-24m)';
+      default: return duration || 'Short';
+    }
+  };
+
+  if (!fundId) {
+    return (
+      <div className="bg-white rounded shadow p-4 border-l-4 border-gray-300">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-400 flex items-center gap-2">
+            <Zap className="text-gray-300" size={20} />
+            Economic Shocks
+          </h3>
+        </div>
+        <div className="text-center py-6 bg-gray-50 rounded border border-gray-100 text-gray-500 text-sm">
+          Select a fund from the list above (<Zap size={14} className="inline" /> icon) to define economic shocks.
+        </div>
+      </div>
+    );
+  }
+
+  if (isCreating || editingShock) {
+    return (
+      <div className="bg-white rounded shadow p-4 border-l-4 border-amber-500">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Zap className="text-amber-500" size={20} />
+            {editingShock ? 'Edit Shock' : 'Create New Shock'}
+          </h3>
+        </div>
+        <ShockForm
+          fundId={fundId}
+          companies={companies}
+          initialData={editingShock}
+          onSuccess={() => {
+            setIsCreating(false);
+            setEditingShock(null);
+            fetchShocks();
+          }}
+          onCancel={() => {
+            setIsCreating(false);
+            setEditingShock(null);
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded shadow p-4 border-l-4 border-amber-500">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <Zap className="text-amber-500" size={20} />
+          {fundName ? `Active Shocks for ${fundName}` : 'Active Shocks'}
+        </h3>
+        <button
+          onClick={() => setIsCreating(true)}
+          className="flex items-center gap-1 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded transition-colors"
+        >
+          <Plus size={14} /> Add Shock
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-4 text-gray-500">Loading shocks...</div>
+      ) : shocks.length === 0 ? (
+        <div className="text-center py-6 bg-amber-50 rounded border border-amber-100 text-amber-800 text-sm">
+          <AlertTriangle className="mx-auto mb-2 opacity-50" size={24} />
+          No shocks defined for this fund.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {shocks.map(shock => (
+            <div key={shock.id} className="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors border border-gray-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">{shock.name}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${shock.scope === 'global' ? 'bg-indigo-100 text-indigo-800' : 'bg-green-100 text-green-800'}`}>
+                    {shock.scope === 'global' ? 'Global' : 'Local'}
+                  </span>
+                  <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full flex items-center gap-1 text-xs font-medium border border-yellow-200">
+                    ⚡ {shock.occurrence_probability}% / yr
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1 flex gap-2 items-center flex-wrap">
+                  <span>{shock.shock_type}</span>
+                  <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full capitalize">{shock.magnitude}</span>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">{getDurationLabel(shock.duration)}</span>
+                  <span className={`${getDirectionBadgeColor(shock.direction)} px-2 py-0.5 rounded-full capitalize`}>
+                    {shock.direction?.replace('_', ' ')}
+                  </span>
+                  <span>{shock.volatility_type !== 'none' ? `Probabilistic (${shock.volatility_type})` : 'Deterministic'}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingShock(shock)}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                  title="Edit"
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button
+                  onClick={() => handleDelete(shock.id)}
+                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                  title="Delete"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+--- END FILE: frontend/components/ShockList.tsx ---
+
+--- START FILE: frontend/components/forms/ShockForm.tsx ---
+import React, { useState, useEffect } from 'react';
+import { api, Shock, Company } from '@/lib/api';
+import { Loader2, Save, X } from 'lucide-react';
+
+interface ShockFormProps {
+  fundId: string;
+  companies: Company[];
+  onSuccess: () => void;
+  onCancel: () => void;
+  initialData?: Shock | null;
+}
+
+export default function ShockForm({ fundId, companies, onSuccess, onCancel, initialData }: ShockFormProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<Partial<Shock>>({
+    fund_id: fundId,
+    scope: 'global',
+    shock_type: 'revenue_hit',
+    name: '',
+    occurrence_probability: '10',
+    magnitude: 'medium',
+    duration: 'short',
+    direction: 'detrimental_only',
+    volatility_type: 'none',
+    vol_min: '0',
+    vol_max: '0',
+    vol_mean: '0',
+    vol_scale: '0',
+    vol_freedom: '0',
+    vol_alpha: '0',
+    vol_beta: '0',
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else {
+      setFormData(prev => ({ ...prev, fund_id: fundId }));
+    }
+  }, [initialData, fundId]);
+
+  const handleChange = (field: keyof Shock, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors([]);
-
-    const newErrors = [];
-    if (!name.trim()) newErrors.push("Name is required");
-    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
-    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
-    if (!volType) newErrors.push("Volatility Model is required");
-    
-    // Logic for Flat Mode
-    let finalGrowth = growth;
-    let finalIntervals: number | undefined = undefined;
-
-    if (volType === 'flat') {
-        const min = parseFloat(volMin);
-        const max = parseFloat(volMax);
-        const steps = parseInt(numSteps);
-        
-        if (isNaN(min) || isNaN(max) || isNaN(steps) || steps < 1) {
-            newErrors.push("Min, Max, and Number of Steps are required for Flat volatility");
-        } else {
-            if (min >= max) newErrors.push("Min growth must be less than Max growth");
-            
-            const rawAvg = (min + max) / 2;
-            // Clean Average Logic
-            const cleanAvg = Math.abs(rawAvg) >= 1 ? rawAvg.toFixed(2) : parseFloat(rawAvg.toPrecision(3)).toString();
-            
-            finalGrowth = cleanAvg;
-            finalIntervals = steps;
-        }
-    } else if (volType === 'nrig' || volType === 'student_t') {
-        // Use explicitly entered growth rate
-        if (!growth || isNaN(Number(growth))) {
-            newErrors.push("Average Growth Rate is required");
-        }
-        finalGrowth = growth;
-    }
-
-    if (newErrors.length > 0) {
-        setErrors(newErrors);
-        return;
-    }
+    setLoading(true);
+    setError(null);
 
     try {
-        const payload = {
-            plan_id: planId,
-            revenue_name: name,
-            source: source.toLowerCase(),
-            initial_amount: String(amount),
-            growth_rate_percent: String(finalGrowth),
-            start_month: Number(startMonth),
-            end_month: endMonth ? Number(endMonth) : undefined,
-            frequency: freq.toLowerCase(),
-            cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
-            
-            volatility_type: volType as any,
-            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
-            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
-            vol_intervals: finalIntervals,
-            
-            // For advanced modes, growth is the mean
-            vol_mean: (volType === 'nrig' || volType === 'student_t') ? String(finalGrowth) : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
-            vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
-            vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
-            vol_beta: volType === 'nrig' && volBeta ? String(volBeta) : undefined,
-        };
-
-        if (itemToEdit) {
-            await api.updateRevenueItem(itemToEdit.id, payload as any);
-        } else {
-            await api.createRevenueItem(payload as any);
-        }
-
-        clearForm();
-        onSuccess(); 
-    } catch (err) {
-        console.error(err);
-        setErrors(["Failed to save revenue item. Please check your inputs."]);
+      if (initialData?.id) {
+        await api.updateShock(initialData.id, formData);
+      } else {
+        await api.createShock(formData as Omit<Shock, 'id'>);
+      }
+      onSuccess();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Failed to save shock');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getCalculatedAverage = () => {
-      const min = parseFloat(volMin);
-      const max = parseFloat(volMax);
-      if (!isNaN(min) && !isNaN(max)) {
-          const avg = (min + max) / 2;
-          if (Math.abs(avg) >= 1) return avg.toFixed(2);
-          return parseFloat(avg.toPrecision(3)).toString();
+  const STANDARD_TYPES = ['revenue_hit', 'expense_spike', 'valuation_drop'];
+  const currentShockType = formData.shock_type || 'revenue_hit';
+  const selectValue = STANDARD_TYPES.includes(currentShockType) ? currentShockType : 'custom';
+
+  const handleTypeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === 'custom') {
+      if (STANDARD_TYPES.includes(currentShockType)) {
+        handleChange('shock_type', '');
       }
-      return '---';
+    } else {
+      handleChange('shock_type', val);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
-      <div className="flex justify-between items-center mb-1">
-         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
-         {itemToEdit && (
-            <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
-         )}
-      </div>
-      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <div className="text-red-600 text-sm bg-red-50 p-2 rounded">{error}</div>}
 
-      {errors.length > 0 && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{errors.join(", ")}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Shock Name</label>
+          <input
+            type="text"
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+            value={formData.name || ''}
+            onChange={(e) => handleChange('name', e.target.value)}
+            placeholder="e.g. Market Crash 2025"
+          />
         </div>
-      )}
 
-      <div className="grid grid-cols-2 gap-4">
+        {/* Scope */}
         <div>
-          <label className="text-xs text-gray-500">Name *</label>
-          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Source Type</label>
-          <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
-            <option value="sales">Sales</option>
-            <option value="subscription">Subscription</option>
-            <option value="service">Service</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs text-gray-500 flex items-center gap-1">
-            Initial Amount ({currencySymbol}) *
-            <Tooltip content="Initial amount of revenue in Starting Month" />
-          </label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
-        </div>
-        <div>
-            <label className="text-xs text-gray-500 flex items-center gap-1">
-              Cost of Rev (%)
-              <Tooltip content="Cost of revenue percentage." />
+          <label className="block text-sm font-medium text-gray-700">Scope</label>
+          <div className="mt-2 flex gap-4">
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                className="form-radio text-indigo-600"
+                name="scope"
+                value="global"
+                checked={formData.scope === 'global'}
+                onChange={() => handleChange('scope', 'global')}
+              />
+              <span className="ml-2">Global (Fund)</span>
             </label>
-            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} />
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                className="form-radio text-indigo-600"
+                name="scope"
+                value="local"
+                checked={formData.scope === 'local'}
+                onChange={() => handleChange('scope', 'local')}
+              />
+              <span className="ml-2">Local (Company)</span>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="text-xs text-gray-500">Frequency</label>
-          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-            <option value="monthly">Monthly</option>
-            <option value="one_time">One-time</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="annually">Annually</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Start Month *</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">End Month</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
-        </div>
-      </div>
-
-      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-sm font-bold text-gray-700 mb-3">Growth & Volatility</h4>
-        
-        <div className="mb-4">
-            <label className="text-xs text-gray-500">Volatility Model *</label>
-            <select 
-                className="w-full border p-2 rounded text-sm" 
-                value={volType} 
-                onChange={e => setVolType(e.target.value)}
+        {/* Target (Only if Local) */}
+        {formData.scope === 'local' && (
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700">Target Company</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+              value={formData.target_id || ''}
+              onChange={(e) => handleChange('target_id', e.target.value)}
+              required={formData.scope === 'local'}
             >
-                <option value="" disabled>Select Volatility Model...</option>
-                <option value="flat">Simple (Min/Max)</option>
-                <option value="nrig">Comprehensive</option>
-                <option value="student_t">Student's T</option>
+              <option value="">Select a company...</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.company_name}</option>
+              ))}
             </select>
+          </div>
+        )}
+
+        {/* Type */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Shock Type</label>
+          <select
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+            value={selectValue}
+            onChange={handleTypeSelect}
+          >
+            <option value="revenue_hit">Revenue Hit</option>
+            <option value="expense_spike">Expense Spike</option>
+            <option value="valuation_drop">Valuation Drop</option>
+            <option value="custom">Custom</option>
+          </select>
+          {selectValue === 'custom' && (
+            <input
+              type="text"
+              className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+              placeholder="Enter custom shock type..."
+              value={formData.shock_type || ''}
+              onChange={(e) => handleChange('shock_type', e.target.value)}
+              required
+            />
+          )}
         </div>
 
-        {/* BLOCK A: Simple (flat) */}
-        {volType === 'flat' && (
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-gray-500">Minimum Growth (%)</label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        placeholder="negative = loss"
-                        className="w-full border p-2 rounded text-sm" 
-                        value={volMin} 
-                        onChange={e => setVolMin(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Maximum Growth (%)</label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={volMax} 
-                        onChange={e => setVolMax(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Number of Steps</label>
-                    <input 
-                        type="number" 
-                        min="1" 
-                        placeholder="e.g. 10"
-                        step="1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={numSteps} 
-                        onChange={e => setNumSteps(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Average (Calculated)</label>
-                    <input 
-                        type="text" 
-                        readOnly 
-                        className="w-full border p-2 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed" 
-                        value={getCalculatedAverage()} 
-                    />
-                </div>
-            </div>
-        )}
+        {/* Probability */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Annual Probability (%)</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+            value={formData.occurrence_probability || ''}
+            onChange={(e) => handleChange('occurrence_probability', e.target.value)}
+          />
+          <p className="text-xs text-gray-500 mt-1">Likelihood of occurring in any given year (e.g. 10% = 1 in 10 years)</p>
+        </div>
 
-        {/* BLOCK B: Advanced (nrig OR student_t) */}
-        {(volType === 'nrig' || volType === 'student_t') && (
-            <div className="space-y-4">
-                <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                        Average Growth Rate (Mean)
-                        <Tooltip content="The central tendency of the growth distribution." />
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={growth} 
-                        onChange={e => setGrowth(e.target.value)} 
-                    />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-xs text-gray-500">Scale (Volatility)</label>
-                        <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volScale} onChange={e => setVolScale(e.target.value)} />
-                    </div>
-                    {volType === 'student_t' && (
-                        <div>
-                            <label className="text-xs text-gray-500">Degrees of Freedom</label>
-                            <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
-                        </div>
-                    )}
-                    {volType === 'nrig' && (
-                        <>
-                            <div>
-                                <label className="text-xs text-gray-500">Alpha (Shape)</label>
-                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500">Beta (Skew)</label>
-                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-        )}
+        {/* Magnitude, Duration & Direction */}
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-lg bg-gray-50">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Magnitude</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+              value={formData.magnitude || 'medium'}
+              onChange={(e) => handleChange('magnitude', e.target.value)}
+            >
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Duration</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+              value={formData.duration || 'short'}
+              onChange={(e) => handleChange('duration', e.target.value)}
+            >
+              <option value="short">Short (1-4 months)</option>
+              <option value="medium">Medium (4-8 months)</option>
+              <option value="long">Long (8-24 months)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Direction</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+              value={formData.direction || 'detrimental_only'}
+              onChange={(e) => handleChange('direction', e.target.value)}
+            >
+              <option value="detrimental_only">Detrimental Only</option>
+              <option value="beneficial_only">Beneficial Only</option>
+              <option value="both_neutral">Both (Neutral)</option>
+              <option value="both_detrimental">Both (Biased Detrimental)</option>
+              <option value="both_beneficial">Both (Biased Beneficial)</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <button className={`w-full text-white p-2 rounded font-bold ${itemToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-        {itemToEdit ? 'Update Stream' : 'Add Stream'}
-      </button>
+      {/* Probability / Volatility Section */}
+      <div className="border-t pt-4 mt-4 opacity-50 pointer-events-none relative">
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <span className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">Available in Advanced Edition</span>
+        </div>
+        <h3 className="text-sm font-bold text-gray-900 mb-3">Probability Distribution</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Distribution Type</label>
+            <select
+              disabled
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 bg-gray-100"
+              value={formData.volatility_type || 'none'}
+              onChange={(e) => handleChange('volatility_type', e.target.value)}
+            >
+              <option value="none">None (Deterministic)</option>
+              <option value="flat">Flat / Uniform</option>
+              <option value="student_t">Student's T</option>
+              <option value="nrig">NRIG (Normal-Reciprocal Inverse Gaussian)</option>
+            </select>
+          </div>
+
+          {/* Dynamic Fields based on Volatility Type */}
+          {formData.volatility_type === 'flat' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Min</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_min || ''} onChange={e => handleChange('vol_min', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Max</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_max || ''} onChange={e => handleChange('vol_max', e.target.value)} />
+              </div>
+            </>
+          )}
+
+          {formData.volatility_type === 'student_t' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Mean (Location)</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_mean || ''} onChange={e => handleChange('vol_mean', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Scale</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_scale || ''} onChange={e => handleChange('vol_scale', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Degrees of Freedom</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_freedom || ''} onChange={e => handleChange('vol_freedom', e.target.value)} />
+              </div>
+            </>
+          )}
+
+          {formData.volatility_type === 'nrig' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Alpha</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_alpha || ''} onChange={e => handleChange('vol_alpha', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Beta</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_beta || ''} onChange={e => handleChange('vol_beta', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Mean</label>
+                <input disabled type="number" step="0.01" className="mt-1 block w-full border p-2 rounded bg-gray-100" value={formData.vol_mean || ''} onChange={e => handleChange('vol_mean', e.target.value)} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50"
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
+          Save Shock
+        </button>
+      </div>
     </form>
   );
 }
---- END FILE: frontend/components/forms/RevenueForm.tsx ---
+--- END FILE: frontend/components/forms/ShockForm.tsx ---
 
---- START FILE: frontend/components/forms/ExpenseForm.tsx ---
+--- START FILE: frontend/app/fund/[fundId]/page.tsx ---
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api, ExpenseItem } from '@/lib/api';
-import Tooltip from '@/components/ui/Tooltip';
+import { useEffect, useState } from 'react';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import { api, Fund, Company, FundPlan } from '@/lib/api';
+import Link from 'next/link';
+import { ArrowLeft, BarChart3, Edit2, ArrowRight, Plus, Copy } from 'lucide-react';
+import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
 
-interface Props {
-  planId: string;
-  onSuccess: () => void;
-  itemToEdit?: ExpenseItem | null;
-  onCancel?: () => void;
-  currencySymbol?: string;
-}
+export default function FundPage({ params }: { params: { fundId: string } }) {
+  const { fundId } = params;
+  const [fund, setFund] = useState<Fund | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [plans, setPlans] = useState<FundPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
 
-export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('opex');
-  const [amount, setAmount] = useState('');
-  const [growth, setGrowth] = useState('0');
-  const [startMonth, setStartMonth] = useState('1');
-  const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('monthly');
-  const [pctRevenue, setPctRevenue] = useState('');
+  // Debugging: Confirm render
+  console.log("FUND PAGE RENDERED");
 
-  // Volatility State
-  const [volType, setVolType] = useState('');
-  const [volMin, setVolMin] = useState('');
-  const [volMax, setVolMax] = useState('');
-  const [numSteps, setNumSteps] = useState(''); // Changed from stepSize
-  const [volScale, setVolScale] = useState('');
-  const [volFreedom, setVolFreedom] = useState('');
-  const [volAlpha, setVolAlpha] = useState('');
-  const [volBeta, setVolBeta] = useState('');
-
-  const [errors, setErrors] = useState<string[]>([]);
-
-  // --- POPULATE ON EDIT ---
-  useEffect(() => {
-    if (itemToEdit) {
-      setName(itemToEdit.expense_name);
-      setCategory(itemToEdit.category);
-      setAmount(itemToEdit.initial_amount.toString());
-      setGrowth(itemToEdit.growth_rate_percent.toString());
-      setStartMonth(itemToEdit.start_month.toString());
-      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
-      setFreq(itemToEdit.frequency);
-      setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
-
-      // Map legacy 'none' or null to '' to force selection, or use existing
-      const vType = itemToEdit.volatility_type === 'none' ? '' : (itemToEdit.volatility_type || '');
-      setVolType(vType);
-
-      setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
-      setVolMax(itemToEdit.vol_max ? itemToEdit.vol_max.toString() : '');
-      
-      // Direct map for numSteps
-      if (vType === 'flat' && itemToEdit.vol_intervals) {
-          setNumSteps(itemToEdit.vol_intervals.toString());
-      } else {
-          setNumSteps('');
-      }
-
-      setVolScale(itemToEdit.vol_scale ? itemToEdit.vol_scale.toString() : '');
-      setVolFreedom(itemToEdit.vol_freedom ? itemToEdit.vol_freedom.toString() : '');
-      setVolAlpha(itemToEdit.vol_alpha ? itemToEdit.vol_alpha.toString() : '');
-      setVolBeta(itemToEdit.vol_beta ? itemToEdit.vol_beta.toString() : '');
-    } else {
-      clearForm();
-    }
-  }, [itemToEdit]);
-
-  const clearForm = () => {
-    setName('');
-    setCategory('opex');
-    setAmount('');
-    setGrowth('0');
-    setStartMonth('1');
-    setEndMonth('');
-    setFreq('monthly');
-    setPctRevenue('');
-    setVolType('');
-    setVolMin(''); setVolMax(''); setNumSteps('');
-    setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
-    setErrors([]);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors([]);
-
-    const newErrors = [];
-    if (!name.trim()) newErrors.push("Name is required");
-    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
-    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
-    if (!volType) newErrors.push("Volatility Model is required");
-
-    // Logic for Flat Mode
-    let finalGrowth = growth;
-    let finalIntervals: number | undefined = undefined;
-
-    if (volType === 'flat') {
-        const min = parseFloat(volMin);
-        const max = parseFloat(volMax);
-        const steps = parseInt(numSteps);
-        
-        if (isNaN(min) || isNaN(max) || isNaN(steps) || steps < 1) {
-            newErrors.push("Min, Max, and Number of Steps are required for Flat volatility");
-        } else {
-            if (min >= max) newErrors.push("Min growth must be less than Max growth");
-            
-            const rawAvg = (min + max) / 2;
-            // Clean Average Logic
-            const cleanAvg = Math.abs(rawAvg) >= 1 ? rawAvg.toFixed(2) : parseFloat(rawAvg.toPrecision(3)).toString();
-            
-            finalGrowth = cleanAvg;
-            finalIntervals = steps;
-        }
-    } else if (volType === 'nrig' || volType === 'student_t') {
-        // Use explicitly entered growth rate
-        if (!growth || isNaN(Number(growth))) {
-            newErrors.push("Average Growth Rate is required");
-        }
-        finalGrowth = growth;
-    }
-
-    if (newErrors.length > 0) {
-        setErrors(newErrors);
-        return;
-    }
-
+  const loadData = async () => {
     try {
-        const payload = {
-            plan_id: planId,
-            expense_name: name,
-            category,
-            initial_amount: String(amount),
-            growth_rate_percent: String(finalGrowth),
-            start_month: Number(startMonth),
-            end_month: endMonth ? Number(endMonth) : undefined,
-            frequency: freq,
-            pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
-
-            volatility_type: volType as any,
-            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
-            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
-            vol_intervals: finalIntervals,
-            
-            // For advanced modes, growth is the mean
-            vol_mean: (volType === 'nrig' || volType === 'student_t') ? String(finalGrowth) : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
-            vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
-            vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
-            vol_beta: volType === 'nrig' && volBeta ? String(volBeta) : undefined,
-        };
-
-        if (itemToEdit) {
-            await api.updateExpenseItem(itemToEdit.id, payload as any);
-        } else {
-            await api.createExpenseItem(payload as any);
-        }
-
-        clearForm();
-        onSuccess();
-    } catch (err) {
-        console.error(err);
-        setErrors(["Failed to save expense item. Please check your inputs."]);
+      setLoading(true);
+      // Fetch fund details, all companies (to filter), and fund plans
+      const [fundData, allCompanies, fundPlans] = await Promise.all([
+        api.getFund(fundId),
+        api.getCompanies(),
+        api.getFundPlans(fundId)
+      ]);
+      
+      setFund(fundData);
+      // Filter companies belonging to this fund
+      setCompanies(allCompanies.filter(c => c.fund_id === fundId));
+      setPlans(fundPlans);
+    } catch (e) {
+      console.error('Failed to load fund data:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getCalculatedAverage = () => {
-      const min = parseFloat(volMin);
-      const max = parseFloat(volMax);
-      if (!isNaN(min) && !isNaN(max)) {
-          const avg = (min + max) / 2;
-          if (Math.abs(avg) >= 1) return avg.toFixed(2);
-          return parseFloat(avg.toPrecision(3)).toString();
-      }
-      return '---';
+  useEffect(() => {
+    loadData();
+  }, [fundId]);
+
+  const handleDuplicateCompany = async (id: string) => {
+    if(!confirm('Duplicate this company and all its plans?')) return;
+    try {
+        // Optimistic UI or just reload
+        await api.duplicateCompany(id);
+        await loadData();
+    } catch(e) {
+        console.error(e);
+        alert('Failed to duplicate company');
+    }
   };
+
+  if (loading) return <Layout>Loading...</Layout>;
+  if (!fund) return <Layout>Fund not found</Layout>;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
-      <div className="flex justify-between items-center mb-1">
-         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Expense' : 'Add Expense'}</h3>
-         {itemToEdit && (
-            <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
-         )}
-      </div>
-      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
+    <Layout>
+      {/* Breadcrumb Navigation */}
+      <nav className='mb-6'>
+        <Link 
+          href='/' 
+          className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'
+        >
+          <ArrowLeft className='h-4 w-4' />
+          Back to Dashboard
+        </Link>
+      </nav>
 
-      {errors.length > 0 && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{errors.join(", ")}</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs text-gray-500">Name *</label>
-          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. Salaries" value={name} onChange={e => setName(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Category</label>
-          <select className="w-full border p-2 rounded text-sm" value={category} onChange={e => setCategory(e.target.value)}>
-            <option value="opex">OpEx</option>
-            <option value="capex">CapEx</option>
-            <option value="payroll">Payroll</option>
-            <option value="marketing">Marketing</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs text-gray-500 flex items-center gap-1">
-            Initial Amount ({currencySymbol}) *
-            <Tooltip content="Initial amount of expense in Starting Month" />
-          </label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
-        </div>
-        <div>
-            <label className="text-xs text-gray-500 flex items-center gap-1">
-              % of Revenue
-              <Tooltip content="Percentage of revenue tied to expense." />
-            </label>
-            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={pctRevenue} onChange={e => setPctRevenue(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="text-xs text-gray-500">Frequency</label>
-          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-            <option value="monthly">Monthly</option>
-            <option value="one_time">One-time</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="annually">Annually</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Start Month *</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">End Month</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
-        </div>
-      </div>
-
-      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-sm font-bold text-gray-700 mb-3">Growth & Volatility</h4>
-        
-        <div className="mb-4">
-            <label className="text-xs text-gray-500">Volatility Model *</label>
-            <select 
-                className="w-full border p-2 rounded text-sm" 
-                value={volType} 
-                onChange={e => setVolType(e.target.value)}
-            >
-                <option value="" disabled>Select Volatility Model...</option>
-                <option value="flat">Simple (Min/Max)</option>
-                <option value="nrig">Comprehensive</option>
-                <option value="student_t">Student's T</option>
-            </select>
-        </div>
-
-        {/* BLOCK A: Simple (flat) */}
-        {volType === 'flat' && (
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-gray-500">Minimum Growth (%)</label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        placeholder="negative = loss"
-                        className="w-full border p-2 rounded text-sm" 
-                        value={volMin} 
-                        onChange={e => setVolMin(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Maximum Growth (%)</label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={volMax} 
-                        onChange={e => setVolMax(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Number of Steps</label>
-                    <input 
-                        type="number" 
-                        min="1" 
-                        placeholder="e.g. 10"
-                        step="1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={numSteps} 
-                        onChange={e => setNumSteps(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Average (Calculated)</label>
-                    <input 
-                        type="text" 
-                        readOnly 
-                        className="w-full border p-2 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed" 
-                        value={getCalculatedAverage()} 
-                    />
-                </div>
+      {/* Fund Header */}
+      <div className="mb-10 border-b border-gray-200 pb-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{fund.fund_name}</h1>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">
+                {fund.currency_code}
+              </span>
+              <span className="text-sm text-gray-500">ID: {fund.id}</span>
             </div>
-        )}
+          </div>
+        </div>
+      </div>
 
-        {/* BLOCK B: Advanced (nrig OR student_t) */}
-        {(volType === 'nrig' || volType === 'student_t') && (
-            <div className="space-y-4">
-                <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                        Average Growth Rate (Mean)
-                        <Tooltip content="The central tendency of the growth distribution." />
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={growth} 
-                        onChange={e => setGrowth(e.target.value)} 
-                    />
+      {/* Section 1: Fund Scenarios */}
+      <section className="mb-12">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-gray-500" />
+              Fund Scenarios
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage simulation configurations and view Monte Carlo results.
+            </p>
+          </div>
+          <Link 
+            href={`/fund/${fundId}/inputs`}
+            className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Create Scenario
+          </Link>
+        </div>
+
+        {plans.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <BarChart3 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-sm font-medium text-gray-900">No Scenarios Defined</h3>
+            <p className="text-sm text-gray-500 mt-1 mb-4">
+              Create a simulation scenario to project fund performance.
+            </p>
+            <Link 
+              href={`/fund/${fundId}/inputs`}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
+            >
+              Create First Scenario &rarr;
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {plans.map(plan => (
+              <Card key={plan.id} className="flex flex-col justify-between h-full hover:shadow-md transition-shadow border-t-4 border-t-blue-500">
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={plan.plan_name}>
+                    {plan.plan_name}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Created: {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : 'Date N/A'}
+                  </p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-xs text-gray-500">Scale (Volatility)</label>
-                        <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volScale} onChange={e => setVolScale(e.target.value)} />
-                    </div>
-                    {volType === 'student_t' && (
-                        <div>
-                            <label className="text-xs text-gray-500">Degrees of Freedom</label>
-                            <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
-                        </div>
-                    )}
-                    {volType === 'nrig' && (
-                        <>
-                            <div>
-                                <label className="text-xs text-gray-500">Alpha (Shape)</label>
-                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500">Beta (Skew)</label>
-                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
-                            </div>
-                        </>
-                    )}
+                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                  <Link 
+                    href={`/fund/${fundId}/inputs?plan_id=${plan.id}`}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 py-2 rounded transition-colors border border-gray-200"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    Edit Scenario
+                  </Link>
+                  <Link 
+                    href={`/fund/${fundId}/results?fund_plan_id=${plan.id}`}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 py-2 rounded transition-colors shadow-sm"
+                  >
+                    <BarChart3 className="h-3 w-3" />
+                    View Results
+                  </Link>
                 </div>
-            </div>
+              </Card>
+            ))}
+          </div>
         )}
-      </div>
+      </section>
 
-      <button className={`w-full text-white p-2 rounded font-bold ${itemToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-red-600 hover:bg-red-700'}`}>
-        {itemToEdit ? 'Update Expense' : 'Add Expense'}
-      </button>
-    </form>
+      {/* Section 2: Portfolio Companies */}
+      <section>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Portfolio Companies</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Entities managed under this fund.
+            </p>
+          </div>
+          <Link 
+            href="/structure#add-company"
+            className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-md transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add Company
+          </Link>
+        </div>
+
+        {companies.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <h3 className="text-sm font-medium text-gray-900">No Companies Yet</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Add your first portfolio company to start modeling.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {companies.map(co => (
+              <Card key={co.id} className="h-full hover:border-blue-400 transition-colors group relative flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <Link href={`/company/${co.id}`} className="block flex-1 hover:text-blue-600 transition-colors">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {co.company_name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">{co.industry || 'General'}</p>
+                    </Link>
+                    {/* Cleaned up container: Removed debug borders/bg */}
+                    <div className="flex items-center gap-2 ml-2">
+                      <button 
+                          onClick={(e) => { e.preventDefault(); handleDuplicateCompany(co.id); }}
+                          title="Duplicate Company"
+                          className="p-2 text-white bg-blue-500 hover:bg-blue-600 rounded shadow-sm transition-colors"
+                      >
+                          <Copy className="h-4 w-4" />
+                      </button>
+                      <button 
+                          onClick={(e) => { e.preventDefault(); setMovingCompanyId(co.id); }}
+                          title="Move Company"
+                          className="p-2 text-white bg-gray-600 hover:bg-gray-700 rounded shadow-sm transition-colors"
+                      >
+                          <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">
+                      {co.currency_code}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Move Company Modal */}
+      {movingCompanyId && (
+        <MoveCompanyModal 
+          isOpen={!!movingCompanyId}
+          onClose={() => setMovingCompanyId(null)}
+          onSuccess={loadData}
+          companyId={movingCompanyId}
+          currentFundId={fundId}
+        />
+      )}
+    </Layout>
   );
 }
---- END FILE: frontend/components/forms/ExpenseForm.tsx ---
+--- END FILE: frontend/app/fund/[fundId]/page.tsx ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 # Status: UNIVERSAL CONSTITUTION (Read by every agent)
