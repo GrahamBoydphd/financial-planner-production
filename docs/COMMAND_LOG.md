@@ -3,11 +3,11 @@
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 
-| Step | Location | Command                                                                                                                         | Purpose                                                  |
-| :--- | :------- | :------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------- |
-| 1    | Laptop   | `git add . && git commit -m "msg"`<br>git status<br>git checkout branch_name e.g. feature/user-layer-v2<br>git merge ai-fix-XXX | Save changes.                                            |
-| 2    | Laptop   | `git push origin cloud-v1-release`                                                                                              | Upload to GitHub.                                        |
-| 3    | Laptop   | `./scripts/trigger-update.sh branch_name`                                                                                       | **Magic Button.** Triggers the server to pull & rebuild. |
+| Step | Location | Command                                                                                                                                                              | Purpose                                                  |
+| :--- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------- |
+| 1    | Laptop   | `cargo sqlx prepare` - in backend<br>`git add . && git commit -m "msg"`<br>git status<br>git checkout branch_name e.g. feature/user-layer-v2<br>git merge ai-fix-XXX | Save changes.                                            |
+| 2    | Laptop   | `git push origin cloud-v1-release`                                                                                                                                   | Upload to GitHub.                                        |
+| 3    | Laptop   | `./scripts/trigger-update.sh branch_name`                                                                                                                            | **Magic Button.** Triggers the server to pull & rebuild. |
 
 ## 2. Debugging (If Deployment Fails)
 **Goal:** Check why the site is down.

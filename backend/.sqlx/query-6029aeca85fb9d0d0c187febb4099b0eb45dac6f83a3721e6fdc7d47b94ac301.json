@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO events (\n                id, plan_id, fund_ids, company_ids, event_name, start_month, \n                event_category, impact_type, impact_value, duration_months, \n                likelihood_annual_pct, magnitude, direction, duration_category, \n                is_counter_cyclic, created_at\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "Text",
+        "Int4",
+        "Varchar",
+        "Text",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6029aeca85fb9d0d0c187febb4099b0eb45dac6f83a3721e6fdc7d47b94ac301"
+}

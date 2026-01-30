@@ -1,0 +1,125 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO events (\n            plan_id, fund_ids, company_ids, \n            event_name, start_month, \n            event_category, impact_type, impact_value, \n            duration_months, likelihood_annual_pct,\n            magnitude, direction, duration_category,\n            is_counter_cyclic\n        ) \n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) \n        RETURNING \n            id as \"id!\", plan_id, fund_ids, company_ids,\n            event_name as \"event_name!\", start_month, \n            event_category, impact_type, \n            impact_value, duration_months, \n            likelihood_annual_pct, magnitude, direction, duration_category,\n            is_counter_cyclic,\n            created_at as \"created_at!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "fund_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 3,
+        "name": "company_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "event_category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "impact_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "impact_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "duration_months",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "likelihood_annual_pct",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "magnitude",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "direction",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "duration_category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "is_counter_cyclic",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 15,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "Text",
+        "Int4",
+        "Varchar",
+        "Text",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "4e26e1daa55bd73bb609e2e7b3539885342f85100aae25977e43d2dabe980504"
+}

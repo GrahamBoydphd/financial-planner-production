@@ -1,0 +1,127 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE events SET\n            plan_id = $1,\n            fund_ids = $2,\n            company_ids = $3,\n            event_name = $4,\n            start_month = $5,\n            event_category = $6,\n            impact_type = $7,\n            impact_value = $8,\n            duration_months = $9,\n            likelihood_annual_pct = $10,\n            magnitude = $11,\n            direction = $12,\n            duration_category = $13,\n            is_counter_cyclic = COALESCE($14, is_counter_cyclic)\n        WHERE id = $15\n        AND (\n            plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $16) OR\n            EXISTS (SELECT 1 FROM unnest(fund_ids) fid JOIN funds f ON f.id = fid WHERE f.tenant_id = $16) OR\n            EXISTS (SELECT 1 FROM unnest(company_ids) cid JOIN companies c ON c.id = cid WHERE c.tenant_id = $16)\n        )\n        RETURNING \n            id as \"id!\", plan_id, fund_ids, company_ids,\n            event_name as \"event_name!\", start_month, \n            event_category, impact_type, \n            impact_value, duration_months, \n            likelihood_annual_pct, magnitude, direction, duration_category,\n            is_counter_cyclic,\n            created_at as \"created_at!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "fund_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 3,
+        "name": "company_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "event_category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "impact_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "impact_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "duration_months",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "likelihood_annual_pct",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "magnitude",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "direction",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "duration_category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "is_counter_cyclic",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 15,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "Text",
+        "Int4",
+        "Varchar",
+        "Text",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Bool",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "bb40c73782ccfdd188f00e33c13776df6672364065473cc8ed33e1a4e453b2e3"
+}

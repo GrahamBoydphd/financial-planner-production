@@ -344,7 +344,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                     checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
                     className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
                     />
-                    <label htmlFor="stopInsolvency" className="text-xs font-medium cursor-pointer text-red-700">Stop Insolvency</label>
+                    <label htmlFor="stopInsolvency" className="text-xs font-medium cursor-pointer text-red-700">Stop if Insolvent</label>
                 </div>
               </div>
 

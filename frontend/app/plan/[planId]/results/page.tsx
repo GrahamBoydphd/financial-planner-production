@@ -542,7 +542,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                   checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
                   className="rounded text-red-600"
                 />
-                <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop on Insolvency</label>
+                <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop if Insolvent</label>
               </div>
 
               {/* Events Toggle */}
