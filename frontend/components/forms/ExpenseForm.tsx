@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api, ExpenseItem } from '@/lib/api';
 import Tooltip from '@/components/ui/Tooltip';
+import VolatilityInputs from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -31,6 +32,8 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [volFreedom, setVolFreedom] = useState('');
   const [volAlpha, setVolAlpha] = useState('');
   const [volBeta, setVolBeta] = useState('');
+
+  const [isAdvanced, setIsAdvanced] = useState(false);
 
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -81,6 +84,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     setVolType('');
     setVolMin(''); setVolMax(''); setNumSteps('');
     setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
+    setIsAdvanced(false);
     setErrors([]);
   };
 
@@ -167,17 +171,6 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     }
   };
 
-  const getCalculatedAverage = () => {
-      const min = parseFloat(volMin);
-      const max = parseFloat(volMax);
-      if (!isNaN(min) && !isNaN(max)) {
-          const avg = (min + max) / 2;
-          if (Math.abs(avg) >= 1) return avg.toFixed(2);
-          return parseFloat(avg.toPrecision(3)).toString();
-      }
-      return '---';
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
       <div className="flex justify-between items-center mb-1">
@@ -246,115 +239,30 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       </div>
 
       {/* UNIFIED GROWTH & VOLATILITY SECTION */}
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-sm font-bold text-gray-700 mb-3">Growth & Volatility</h4>
-        
-        <div className="mb-4">
-            <label className="text-xs text-gray-500">Volatility Model *</label>
-            <select 
-                className="w-full border p-2 rounded text-sm" 
-                value={volType} 
-                onChange={e => setVolType(e.target.value)}
-            >
-                <option value="" disabled>Select Volatility Model...</option>
-                <option value="flat">Simple (Min/Max)</option>
-                <option value="nrig">Comprehensive</option>
-                <option value="student_t">Student's T</option>
-            </select>
-        </div>
-
-        {/* BLOCK A: Simple (flat) */}
-        {volType === 'flat' && (
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-gray-500">Minimum Growth (%)</label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        placeholder="negative = loss"
-                        className="w-full border p-2 rounded text-sm" 
-                        value={volMin} 
-                        onChange={e => setVolMin(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Maximum Growth (%)</label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={volMax} 
-                        onChange={e => setVolMax(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Number of Steps</label>
-                    <input 
-                        type="number" 
-                        min="1" 
-                        placeholder="e.g. 10"
-                        step="1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={numSteps} 
-                        onChange={e => setNumSteps(e.target.value)} 
-                    />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-500">Average (Calculated)</label>
-                    <input 
-                        type="text" 
-                        readOnly 
-                        className="w-full border p-2 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed" 
-                        value={getCalculatedAverage()} 
-                    />
-                </div>
-            </div>
-        )}
-
-        {/* BLOCK B: Advanced (nrig OR student_t) */}
-        {(volType === 'nrig' || volType === 'student_t') && (
-            <div className="space-y-4">
-                <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                        Average Growth Rate (Mean)
-                        <Tooltip content="The central tendency of the growth distribution." />
-                    </label>
-                    <input 
-                        type="number" 
-                        step="0.1" 
-                        className="w-full border p-2 rounded text-sm" 
-                        value={growth} 
-                        onChange={e => setGrowth(e.target.value)} 
-                    />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-xs text-gray-500">Scale (Volatility)</label>
-                        <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volScale} onChange={e => setVolScale(e.target.value)} />
-                    </div>
-                    {volType === 'student_t' && (
-                        <div>
-                            <label className="text-xs text-gray-500">Degrees of Freedom</label>
-                            <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
-                        </div>
-                    )}
-                    {volType === 'nrig' && (
-                        <>
-                            <div>
-                                <label className="text-xs text-gray-500">Alpha (Shape)</label>
-                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500">Beta (Skew)</label>
-                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-        )}
-      </div>
+      <VolatilityInputs
+        volType={volType}
+        setVolType={setVolType}
+        volMean={growth}
+        setVolMean={setGrowth}
+        volMin={volMin}
+        setVolMin={setVolMin}
+        volMax={volMax}
+        setVolMax={setVolMax}
+        volIntervals={numSteps}
+        setVolIntervals={setNumSteps}
+        volScale={volScale}
+        setVolScale={setVolScale}
+        volFreedom={volFreedom}
+        setVolFreedom={setVolFreedom}
+        volAlpha={volAlpha}
+        setVolAlpha={setVolAlpha}
+        volBeta={volBeta}
+        setVolBeta={setVolBeta}
+        isAdvanced={isAdvanced}
+        setIsAdvanced={setIsAdvanced}
+        meanLabel="Average Growth Rate (Mean)"
+        alwaysShowMean={volType !== "flat"}
+      />
 
       <div className="flex gap-4">
         {itemToEdit && (

@@ -58,7 +58,7 @@ export default function VolatilityInputs({
     <div className="border-t pt-2 mt-2">
       <div className="flex justify-between items-center mb-1">
            <label className="text-xs font-bold text-gray-700">Uncertainty / Risk Model</label>
-           {volType !== 'none' && (
+           {volType === 'nrig' && (
                <button type="button" onClick={() => setIsAdvanced(!isAdvanced)} className="text-xs text-blue-600 underline">
                    {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
                </button>
@@ -162,6 +162,14 @@ export default function VolatilityInputs({
                           <div>
                               <label className="text-xs text-gray-400">Steps</label>
                               <input className="w-full border p-1 text-xs" value={volIntervals} onChange={e => setVolIntervals(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Average (Calculated)</label>
+                              <input 
+                                  className="w-full border p-1 text-xs bg-gray-100 text-gray-500 cursor-not-allowed" 
+                                  readOnly
+                                  value={((parseFloat(volMin||'0') + parseFloat(volMax||'0')) / 2).toFixed(2) + " %"} 
+                              />
                           </div>
                       </>
                    )}

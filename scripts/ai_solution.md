@@ -1,253 +1,216 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='frontend/app/fund/[fundId]/page.tsx'>
-'use client';
+<file path='frontend/components/forms/shared/VolatilityInputs.tsx'>'use client';
 
-import { useEffect, useState } from 'react';
-import Layout from '@/components/Layout';
-import Card from '@/components/ui/Card';
-import { api, Fund, Company, FundPlan } from '@/lib/api';
-import Link from 'next/link';
-import { ArrowLeft, BarChart3, Edit2, ArrowRight, Plus, Copy } from 'lucide-react';
-import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
-import EventList from "@/components/EventList";
+import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
+import Tooltip from '@/components/ui/Tooltip';
 
-export default function FundPage({ params }: { params: { fundId: string } }) {
-  const { fundId } = params;
-  const [fund, setFund] = useState<Fund | null>(null);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [plans, setPlans] = useState<FundPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
+interface VolatilityInputsProps {
+  volType: string;
+  setVolType: (val: string) => void;
+  
+  // Parameters
+  volMean: string;
+  setVolMean: (val: string) => void;
+  volMin: string;
+  setVolMin: (val: string) => void;
+  volMax: string;
+  setVolMax: (val: string) => void;
+  volIntervals: string;
+  setVolIntervals: (val: string) => void;
+  volScale: string;
+  setVolScale: (val: string) => void;
+  volFreedom: string;
+  setVolFreedom: (val: string) => void;
+  volAlpha: string;
+  setVolAlpha: (val: string) => void;
+  volBeta: string;
+  setVolBeta: (val: string) => void;
 
-  // Debugging: Confirm render
-  console.log("FUND PAGE RENDERED");
+  // UI Mode
+  isAdvanced: boolean;
+  setIsAdvanced: (val: boolean) => void;
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      // Fetch fund details, all companies (to filter), and fund plans
-      const [fundData, allCompanies, fundPlans] = await Promise.all([
-        api.getFund(fundId),
-        api.getCompanies(),
-        api.getFundPlans(fundId)
-      ]);
-      
-      setFund(fundData);
-      // Filter companies belonging to this fund
-      setCompanies(allCompanies.filter(c => c.fund_id === fundId));
-      setPlans(fundPlans);
-    } catch (e) {
-      console.error('Failed to load fund data:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Optional Overrides
+  meanLabel?: string;
+  alwaysShowMean?: boolean;
+}
 
-  useEffect(() => {
-    loadData();
-  }, [fundId]);
+export default function VolatilityInputs({
+  volType, setVolType,
+  volMean, setVolMean,
+  volMin, setVolMin,
+  volMax, setVolMax,
+  volIntervals, setVolIntervals,
+  volScale, setVolScale,
+  volFreedom, setVolFreedom,
+  volAlpha, setVolAlpha,
+  volBeta, setVolBeta,
+  isAdvanced, setIsAdvanced,
+  meanLabel,
+  alwaysShowMean
+}: VolatilityInputsProps) {
 
-  const handleDuplicateCompany = async (id: string) => {
-    if(!confirm('Duplicate this company and all its plans?')) return;
-    try {
-        // Optimistic UI or just reload
-        await api.duplicateCompany(id);
-        await loadData();
-    } catch(e) {
-        console.error(e);
-        alert('Failed to duplicate company');
-    }
-  };
-
-  if (loading) return <Layout>Loading...</Layout>;
-  if (!fund) return <Layout>Fund not found</Layout>;
+  // Helper to find description
+  const getAlphaDesc = () => ALPHA_OPTIONS.find(o => o.value.toString() === volAlpha)?.description;
+  const getBetaDesc = () => BETA_OPTIONS.find(o => o.value.toString() === volBeta)?.description;
+  const getScaleDesc = () => SCALE_OPTIONS.find(o => o.value.toString() === volScale)?.description;
 
   return (
-    <Layout>
-      {/* Breadcrumb Navigation */}
-      <nav className='mb-6'>
-        <Link 
-          href='/' 
-          className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'
-        >
-          <ArrowLeft className='h-4 w-4' />
-          Back to Dashboard
-        </Link>
-      </nav>
-
-      {/* Fund Header */}
-      <div className="mb-10 border-b border-gray-200 pb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{fund.fund_name}</h1>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">
-                {fund.currency_code}
-              </span>
-              <span className="text-sm text-gray-500">ID: {fund.id}</span>
-            </div>
-          </div>
-        </div>
+    <div className="border-t pt-2 mt-2">
+      <div className="flex justify-between items-center mb-1">
+           <label className="text-xs font-bold text-gray-700">Uncertainty / Risk Model</label>
+           {volType === 'nrig' && (
+               <button type="button" onClick={() => setIsAdvanced(!isAdvanced)} className="text-xs text-blue-600 underline">
+                   {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
+               </button>
+           )}
       </div>
-
-      {/* Section 1: Fund Scenarios */}
-      <section className="mb-12">
-        <div className="flex justify-between items-center mb-6">
+      <div className="space-y-2">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-gray-500" />
-              Fund Scenarios
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage simulation configurations and view Monte Carlo results.
-            </p>
+              <label className="text-xs text-gray-500">Model Type</label>
+              <select className="w-full border p-1 rounded text-xs" value={volType} onChange={e => setVolType(e.target.value)}>
+                  <option value="none" disabled hidden>-- Select Risk Model --</option>
+                  <option value="flat">Simple volatility (min/max)</option>
+                  <option value="nrig">Comprehensive volatility</option>
+                  <option value="student_t">Student's t distribution</option>
+              </select>
           </div>
-          <Link 
-            href={`/fund/${fundId}/inputs`}
-            className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            Create Scenario
-          </Link>
-        </div>
+          
+          {volType !== 'none' && (
+            <div className="bg-gray-100 p-2 rounded">
+               
+               {/* SIMPLE MODE DROPDOWNS (NRIG Only) */}
+               {!isAdvanced && volType === 'nrig' && (
+                   <div className="space-y-3">
+                       <div className="text-xs text-gray-600 italic mb-2">
+                          Tier 1: Configure the shape of uncertainty.
+                       </div>
+                       <div>
+                           <label className="text-xs text-gray-500 flex items-center gap-1">
+                              Likelyhood of outliers (tail weight)
+                              <Tooltip content="Controls how often extreme events (white and black swans) occur." />
+                           </label>
+                           <select className="w-full border p-1 rounded text-xs" value={volAlpha} onChange={e => setVolAlpha(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {ALPHA_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label} </option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getAlphaDesc()}</p>
+                       </div>
 
-        {plans.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <BarChart3 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-sm font-medium text-gray-900">No Scenarios Defined</h3>
-            <p className="text-sm text-gray-500 mt-1 mb-4">
-              Create a simulation scenario to project fund performance.
-            </p>
-            <Link 
-              href={`/fund/${fundId}/inputs`}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
-            >
-              Create First Scenario &rarr;
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map(plan => (
-              <Card key={plan.id} className="flex flex-col justify-between h-full hover:shadow-md transition-shadow border-t-4 border-t-blue-500">
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={plan.plan_name}>
-                    {plan.plan_name}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Created: {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : 'Date N/A'}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
-                  <Link 
-                    href={`/fund/${fundId}/inputs?plan_id=${plan.id}`}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 py-2 rounded transition-colors border border-gray-200"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                    Edit Scenario
-                  </Link>
-                  <Link 
-                    href={`/fund/${fundId}/results?fund_plan_id=${plan.id}`}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 py-2 rounded transition-colors shadow-sm"
-                  >
-                    <BarChart3 className="h-3 w-3" />
-                    View Results
-                  </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+                       <div>
+                           <label className="text-xs text-gray-500 flex items-center gap-1">
+                              Volatility imbalance (downside / upside)
+                              <Tooltip content="Skewness: Are surprises more likely to be positive or negative?" />
+                           </label>
+                           <select className="w-full border p-1 rounded text-xs" value={volBeta} onChange={e => setVolBeta(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {BETA_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label}</option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getBetaDesc()}</p>
+                       </div>
 
-      {/* Section 2: Events */}
-      <section className="mb-12">
-        <EventList 
-          fundId={fund?.id || null} 
-          fundName={fund?.fund_name} 
-          companies={companies} 
-          funds={[]} 
-        />
-      </section>
+                       <div>
+                           <label className="text-xs text-gray-500 block">Delta/Scale (Volatility)</label>
+                           <select className="w-full border p-1 rounded text-xs" value={volScale} onChange={e => setVolScale(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {SCALE_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label}</option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getScaleDesc()}</p>
+                       </div>
+                   </div>
+               )}
 
-      {/* Section 3: Portfolio Companies */}
-      <section>
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Portfolio Companies</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Entities managed under this fund.
-            </p>
-          </div>
-          <Link 
-            href="/structure#add-company"
-            className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-md transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Add Company
-          </Link>
-        </div>
+               {/* ADVANCED INPUTS OR OTHER MODELS */}
+               {/* Hidden if in Simple NRIG mode, unless we need to show the Mean (Capital Growth) */}
+               <div className={`grid grid-cols-3 gap-2 items-end ${(!isAdvanced && volType === 'nrig' && !alwaysShowMean) ? 'hidden' : ''}`}>
+                   
+                   {/* Common Mean */}
+                   {(isAdvanced || alwaysShowMean) && (
+                     <div className="col-span-3">
+                         <label className="text-xs text-gray-400">{meanLabel || "Mean / Drift (Optional Override)"}</label>
+                         <input 
+                            type="number" 
+                            step="any"
+                            placeholder="Default = Growth Rate" 
+                            className="w-full border p-1 text-xs" 
+                            value={volMean} 
+                            onChange={e => setVolMean(e.target.value)} 
+                         />
+                     </div>
+                   )}
 
-        {companies.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <h3 className="text-sm font-medium text-gray-900">No Companies Yet</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Add your first portfolio company to start modeling.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {companies.map(co => (
-              <Card key={co.id} className="h-full hover:border-blue-400 transition-colors group relative flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start">
-                    <Link href={`/company/${co.id}`} className="block flex-1 hover:text-blue-600 transition-colors">
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {co.company_name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">{co.industry || 'General'}</p>
-                    </Link>
-                    {/* Cleaned up container: Removed debug borders/bg */}
-                    <div className="flex items-center gap-2 ml-2">
-                      <button 
-                          onClick={(e) => { e.preventDefault(); handleDuplicateCompany(co.id); }}
-                          title="Duplicate Company"
-                          className="p-2 text-white bg-blue-500 hover:bg-blue-600 rounded shadow-sm transition-colors"
-                      >
-                          <Copy className="h-4 w-4" />
-                      </button>
-                      <button 
-                          onClick={(e) => { e.preventDefault(); setMovingCompanyId(co.id); }}
-                          title="Move Company"
-                          className="p-2 text-white bg-gray-600 hover:bg-gray-700 rounded shadow-sm transition-colors"
-                      >
-                          <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">
-                      {co.currency_code}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+                   {/* Flat Params */}
+                   {volType === 'flat' && (
+                      <>
+                          <div className="col-span-3 flex items-center gap-2 mb-1 mt-2">
+                              <span className="text-xs font-bold text-gray-500">Range Settings</span>
+                              <Tooltip content="Define a hard minimum and maximum percentage deviation." />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Min %</label>
+                              <input className="w-full border p-1 text-xs" value={volMin} onChange={e => setVolMin(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Max %</label>
+                              <input className="w-full border p-1 text-xs" value={volMax} onChange={e => setVolMax(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Steps</label>
+                              <input className="w-full border p-1 text-xs" value={volIntervals} onChange={e => setVolIntervals(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Average (Calculated)</label>
+                              <input 
+                                  className="w-full border p-1 text-xs bg-gray-100 text-gray-500 cursor-not-allowed" 
+                                  readOnly
+                                  value={((parseFloat(volMin||'0') + parseFloat(volMax||'0')) / 2).toFixed(2) + " %"} 
+                              />
+                          </div>
+                      </>
+                   )}
 
-      {/* Move Company Modal */}
-      {movingCompanyId && (
-        <MoveCompanyModal 
-          isOpen={!!movingCompanyId}
-          onClose={() => setMovingCompanyId(null)}
-          onSuccess={loadData}
-          companyId={movingCompanyId}
-          currentFundId={fundId}
-        />
-      )}
-    </Layout>
+                   {/* Student-T Params */}
+                   {volType === 'student_t' && (
+                      <>
+                          <div>
+                              <label className="text-xs text-gray-400">Scale (Vol)</label>
+                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Freedom (Deg)</label>
+                              <input className="w-full border p-1 text-xs" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
+                          </div>
+                      </>
+                   )}
+
+                   {/* NRIG Params (Advanced) */}
+                   {volType === 'nrig' && isAdvanced && (
+                      <>
+                          <div>
+                              <label className="text-xs text-gray-400">Likelyhood (Alpha)</label>
+                              <input className="w-full border p-1 text-xs" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Skew (Imbalance, Beta)</label>
+                              <input className="w-full border p-1 text-xs" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Scale (Delta)</label>
+                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                          </div>
+                      </>
+                   )}
+               </div>
+            </div>
+          )}
+      </div>
+    </div>
   );
 }
 </file>

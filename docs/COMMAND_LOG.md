@@ -415,6 +415,7 @@ If your database is running inside a Docker container (common in dev setups), yo
     docker exec -it <CONTAINER_ID_OR_NAME> psql -U postgres -d <YOUR_DB_NAME>
     ```
 Localhost:  `docker exec -it 5466f9dd5bae psql -U postgres -d finance_db_local`
+Server: `docker exec -it app-db-1 psql -U postgres -d finance_db`
 
 ### 1. Identify the Correct Database
 
@@ -438,7 +439,8 @@ SQL
 \c your_database_name_here
 ```
 
-Result:  \c finance_db_local
+LocalHost:  \c finance_db_local
+Server:  `\c finance_db`
 
 ### 3. Verify the Tables
 
@@ -470,6 +472,7 @@ SQL
 SELECT username, tenant_id FROM users; 
 -- Copy the UUID for your user (e.g., 'a1b2c3d4-...')
 ```
+Server:  `SELECT 'Demo_Admin', 'bc64bdc1-f29b-489a-986f-0c94ea687632' FROM users;`
 
 ### Step 2: "Coronate" Yourself (Update the Guard)
 
@@ -500,13 +503,16 @@ Now that the guard recognizes you, simply pick the Fund you want to be the templ
 SQL
 
 ```
--- 1. Find the Fund ID
+-- 1. Find the Fund ID (list all funds)
 SELECT id, fund_name FROM funds WHERE tenant_id = 'YOUR-ACTUAL-TENANT-UUID-HERE';
 
 -- 2. Publish it
 UPDATE funds 
 SET is_public_template = true 
 WHERE id = 'THE-FUND-UUID-HERE';
+
+-- OR
+UPDATE funds SET is_public_template = true WHERE id IN ( 'FIRST-UUID-HERE', 'SECOND-UUID-HERE' );
 ```
 Enter 2. lines line by line. 
 
