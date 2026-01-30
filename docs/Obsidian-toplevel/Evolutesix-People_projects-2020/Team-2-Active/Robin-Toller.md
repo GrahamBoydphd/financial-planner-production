@@ -1,6 +1,0 @@
-- Ready to work
-- Needs it to be as an employee / freelancer, not as a co-founding vision supporter.
-- Very protective of the deep meaning for him of his work with Dhyan Vimal
-- financial stability very NB - must use the money to change, be financially responsible, to be independent. Values and needs behind E6 he resonates with - RT needs to show up in a different way. e.g. do career coach as _not like me (RT)_ Excited about E6, but may be too long a timeline, maybe I RT can't tolerate the risk of a long breath. I will need to do other things to be grounded to participate in E6. Possibility, newness is where I exist. E6 boldness appeals but highly risky. 
-- Happy to reconnect, and do something meaningful
-- Likes that this gives him hope that we can respond to the challenges, and concern that it may be him escaping from himself. 

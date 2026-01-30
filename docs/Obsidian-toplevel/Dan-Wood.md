@@ -1,1 +1,0 @@
-(https://www.linkedin.com/in/dan-regenerating-woods/) an invesmemtn advider on regenrating forests working with FO #investor-channel #1-FamilyOffice #investor-angel 

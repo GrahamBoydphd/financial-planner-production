@@ -1,1 +1,0 @@
-[[Niky-Guleria]]

@@ -1,2 +1,0 @@
-
-[[7-billion-presidents]]
