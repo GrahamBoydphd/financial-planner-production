@@ -98,18 +98,19 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
         
         {/* Left Column: Marketing & Disclaimer (Visible on md+) */}
         <div className="hidden w-full flex-col bg-indigo-700 p-10 text-white md:flex md:w-1/2">
-          <h2 className="mb-6 text-3xl font-bold">Master Your Financial Future</h2>
+          <h2 className="mb-6 text-2xl font-bold text-center">Startup and Fund Planner<br/>for volatile times</h2>
           <div className="space-y-4 text-indigo-100">
             <p>
-              A sophisticated simulation tool designed to model the survival and growth of startups, SMEs, 
-              and the funds that invest in them. Replaces your conventional business / portfolio planning, 
-              because standard business / portfolio planning tools are blind to the
-              losses caused by volatility drag and all other forms of non-ergodic dynamics. This software
-              does capture the non-ergodic dynamics, and uses Monte Carlo simulations to give you a far 
-              superior way of assessing if your venture / fund is likely to succeed. Or not. Because you now 
-              account for real-world volatility, and so can identify and remedy risks standard tools hide.
+              A better way of predicting the survival and growth of startups, SMEs, and the funds that invest in them.
+              This sophisticated simulation tool is designed retain the real-world practical impact of volatility. 
+              The good, the bad, and the ugly! Replace your conventional business / portfolio planner, 
+              because standard business / portfolio planning tools are blind to the real world
+              losses caused by volatility drag and all other forms of non-ergodic dynamics. This sophisticated simulation tool
+              captures the non-ergodic dynamics that MPT and conventional business planning cannot, using the Monte Carlo 
+              approach to give you a far superior way of assessing if and why your venture / fund is likely to succeed; and then 
+              what to do to tilt the odds.  
             </p>
-            <p className="text-sm opacity-80">
+            <p className="text-indigo-100">
               This app is based on the book <i>The Ergodic Investor and Entrepreneur</i> by Graham Boyd and 
               Jack Reardon. 
             </p>

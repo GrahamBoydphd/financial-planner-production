@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Layout from '@/components/Layout';
+import ExpandableVideo from '@/components/ui/ExpandableVideo';
 
 // --- DATA DEFINITIONS (From USER_MANUAL_TECHNICAL_REF.md) ---
 
@@ -17,7 +18,7 @@ const staffingData = [
 const revenueData = [
   { label: "Name", purpose: "Name of the revenue stream (e.g., SaaS Subs).", rules: "Required, must not be empty." },
   { label: "Source Type", purpose: "Category of revenue (e.g., Sales, Subscription).", rules: "Select: Sales, Subscription, Service, Other." },
-  { label: "Initial Amount ($)", purpose: "Starting revenue amount.", rules: "Required number." },
+  { label: "Initial Amount", purpose: "Starting revenue amount.", rules: "Required number." },
   { label: "Growth Rate (%/mo)", purpose: "Monthly growth rate percentage.", rules: "Optional number." },
   { label: "Cost of Rev (%)", purpose: "Cost of revenue percentage.", rules: "Optional number." },
   { label: "Frequency", purpose: "How often revenue is recognized.", rules: "Select: Monthly, One-time, Quarterly, Annually." },
@@ -38,7 +39,7 @@ const revenueData = [
 const expenseData = [
   { label: "Name", purpose: "Name of the expense item (e.g., Salaries).", rules: "Required, must not be empty." },
   { label: "Category", purpose: "Category of expense (e.g., OpEx, CapEx).", rules: "Select: OpEx, CapEx, Payroll, Marketing." },
-  { label: "Initial Amount ($)", purpose: "Starting expense amount.", rules: "Required number." },
+  { label: "Initial Amount", purpose: "Starting expense amount.", rules: "Required number." },
   { label: "Growth Rate (%/mo)", purpose: "Monthly growth rate percentage.", rules: "Optional number." },
   { label: "% of Revenue", purpose: "Percentage of revenue tied to expense.", rules: "Optional number." },
   { label: "Frequency", purpose: "How often expense is incurred.", rules: "Select: Monthly, One-time, Quarterly, Annually." },
@@ -49,7 +50,7 @@ const expenseData = [
 
 const capitalData = [
   { label: "Source Name", purpose: "Name of the capital source (e.g., Seed Round).", rules: "Required, must not be empty." },
-  { label: "Amount ($)", purpose: "Amount of capital injection.", rules: "Required number." },
+  { label: "Amount", purpose: "Amount of capital injection.", rules: "Required number." },
   { label: "Month", purpose: "Month in which capital is injected.", rules: "Required integer 1-120." },
 ];
 
@@ -61,12 +62,12 @@ const capitalGrowthData = [
 
 const dividendData = [
   { label: "Enable Dividends", purpose: "Toggle dividends payout.", rules: "Boolean." },
-  { label: "Safety Threshold ($)", purpose: "Minimum cash balance required before dividends are paid.", rules: "Required number." },
+  { label: "Safety Threshold", purpose: "Minimum cash balance required before dividends are paid.", rules: "Required number." },
   { label: "Payout Percentage", purpose: "Percentage of surplus cash distributed as dividends.", rules: "Required number 0-100." },
 ];
 
 const creditData = [
-  { label: "Max Limit ($)", purpose: "Maximum credit facility limit.", rules: "Required number." },
+  { label: "Max Limit", purpose: "Maximum credit facility limit.", rules: "Required number." },
   { label: "Interest Rate (%)", purpose: "Interest rate on the credit facility.", rules: "Required number." },
   { label: "Rate Type", purpose: "Annual (APR) or Monthly.", rules: "Boolean." },
 ];
@@ -145,39 +146,55 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
             {/* Welcome Hero Section (Visible only to new arrivals) */}
             {isNewUser && (
               <div className="bg-indigo-600 rounded-lg shadow-md p-8 text-white">
-                <h2 className="text-3xl font-bold mb-4">Welcome to Evolutesix</h2>
+                <h2 className="text-3xl font-bold mb-4">Welcome to Evolutesix's planner with real-world volatility<br/>For founders and investors</h2>
                 <div className="space-y-4 text-indigo-100 text-lg">
                   <p>
-                    Congratulations on starting your journey. This Financial Planner helps founders and investors understand how a business is likely to behave under real-world uncertainty.
+                    Congratulations on starting your journey. This alpha release Financial Planner helps founders and investors understand how a business or fund is likely to behave under real-world uncertainty.
                   </p>
                   <p>
-                    Instead of projecting a single “expected” outcome, the tool stress-tests your plan across thousands of possible paths, revealing: how sensitive your business is to cash shocks, where volatility creates hidden risk, and which strategic choices meaningfully reduce the chance of failure.
+                    Instead of projecting a single “expected” outcome, the tool stress-tests your plan across thousands of possible paths, revealing how sensitive your business is to the volatility you already can estimate, as well as white and black swan events, where volatility creates hidden risk or opportunity, and where strategic choices meaningfully reduce the chance of failure.
                   </p>
                   <p>
-                    The result is not a prediction, but clearer insight into survival, resilience, and downside risk — so you can compare strategies, adjust assumptions, and make better-informed decisions before capital and time are committed.
+                    The result is a clearer insight into survival and resilience, as well as upside opportunities and downside risk — so you can optimise strategies, adjust assumptions, and make better-informed decisions before capital and time are committed.
                   </p>
                   
+                  <p>
+                    Use this guide to understand our risk-based modeling before building your first plan. 
+                  </p>
+                  <ExpandableVideo videoId='XleORl54teI' />
+                  <p>
+                    <strong>Or watch the quick-start
+                    <Link href="https://youtu.be/XleORl54teI" className="text-yellow-300 hover:underline"> video</Link>!</strong>
+                  </p>
                   <ol className="list-decimal pl-5 space-y-2">
                     <li>
-                      <strong>Structure:</strong> Go to the <Link href="/structure" className="text-yellow-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
+                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-yellow-300 hover:underline">Dashboard</Link> to see all of your funds and companies.
+                      <ul className="list-disc pl-5 mt-1">
+                      <li> Get started by copying one of our templates. Play with it, edit it, have fun experimenting!</li> 
+                      <li> Click on a company to edit the inputs and see the company level projections. </li>
+                      <li> Click on a fund to create fund scenarios and see the projections.</li>
+                    </ul>
+                    </li>
+                    <li>                      
+                    <strong>Structure:</strong> Go to the <Link href="/structure" className="text-yellow-300 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
                     </li>
                     <li>
-                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-yellow-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
-                    </li>
-                    <li>
-                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete. Use the tabs to enter:
+                      <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete to go straight to the Projections tab. Use the tabs to enter:
                       <ul className="list-disc pl-5 mt-1">
                         <li>Revenue items, Expense items, and Staffing items.</li>
                         <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
-                        <li>Valuation model, Growth rates, and other parameters.</li>
+                        <li>Treasury management, and Valuation model.</li>
                       </ul>
+                    </li>
+                    <li>
+                      <strong>Fund Inputs:</strong> Click on one of your funds to enter its workspace. If you want a new fund scenario, click on New Scenario. Otherwise go to the fund scenario you want, click on Edit Scenario to alter the plans each company runs, or View Results if your input data is complete to go straight to the Projections tab. 
                     </li>
                     <li>
                       <strong>Projections:</strong> Finally, go to the Projections page. Use the <strong>dropdown menu</strong> to switch between views:
                       <ul className="list-disc pl-5 mt-1">
-                        <li><strong>Conventional:</strong> Standard deterministic planning.</li>
-                        <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
-                        <li><strong>Likely real-world outcomes:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
+                        <li><strong>Conventional:</strong> Standard deterministic planning, as used in MPT for funds, or typical business planning.</li>
+                        <li><strong>Real World:</strong> Single-company real world volatility planning. Step through 1000 equally likely typical real-world outcomes.</li>
+                        <li><strong>Likely real-world outcomes:</strong> Fan plot of the spread of all 1000 real world most likely outcomes.</li>
                       </ul>
                     </li>
                   </ol>
@@ -206,8 +223,8 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-bold text-yellow-800">Alpha Release Warning</h3>
-                  <div className="mt-2 text-sm text-yellow-700">
+                  <h3 className="font-bold text-yellow-800">Alpha Release Warning</h3>
+                  <div className="mt-2 text-yellow-700">
                     <p>
                       This software is in Alpha. Financial models are probabilistic estimations, not guarantees. 
                       Results should be used for strategic planning and scenario analysis only, not as tax or investment advice.
@@ -224,29 +241,42 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Start Guide</h2>
                 <div className="prose prose-indigo text-gray-600 max-w-none space-y-4">
                   <p>
-                    Use this guide to understand our risk-based modeling before building your first plan.
+                    Use this guide to understand our risk-based modeling before building your first plan. 
+                  </p>
+                  <ExpandableVideo videoId='XleORl54teI' />
+                  <p>
+                    <strong>Or watch the quick-start 
+                    <Link href="https://youtu.be/XleORl54teI" className="text-indigo-600 hover:underline"> video</Link>!</strong>
                   </p>
                   <ol className="list-decimal pl-5 space-y-2">
                     <li>
-                      <strong>Structure:</strong> Go to the <Link href="/structure" className="text-indigo-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
+                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-indigo-600 hover:underline">Dashboard</Link> to see all of your funds and companies.
+                      <ul className="list-disc pl-5 mt-1">
+                      <li> Get started by copying one of our templates. Play with it, edit it, have fun experimenting!</li> 
+                      <li> Click on a company to edit the inputs and see the company level projections. </li>
+                      <li> Click on a fund to create fund scenarios and see the projections.</li>
+                    </ul>
                     </li>
-                    <li>
-                      <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-indigo-600 hover:underline">Dashboard</Link> to see all the funds and companies you've created.
+                    <li>                      
+                    <strong>Structure:</strong> Go to the <Link href="/structure" className="text-indigo-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
                     </li>
                     <li>
                       <strong>Company Inputs:</strong> Click on one of your companies to enter its workspace. If you want a new business plan scenario, click on New Scenario. Otherwise go to the business plan you want, click on Edit Inputs to begin / change the data, or View Results if your input data is complete to go straight to the Projections tab. Use the tabs to enter:
                       <ul className="list-disc pl-5 mt-1">
                         <li>Revenue items, Expense items, and Staffing items.</li>
                         <li>Initial cash on hand, Investment rounds, Credit facilities.</li>
-                        <li>Valuation model, Growth rates, and other parameters.</li>
+                        <li>Treasury management, and Valuation model.</li>
                       </ul>
+                    </li>
+                    <li>
+                      <strong>Fund Inputs:</strong> Click on one of your funds to enter its workspace. If you want a new fund scenario, click on New Scenario. Otherwise go to the fund scenario you want, click on Edit Scenario to alter the plans each company runs, or View Results if your input data is complete to go straight to the Projections tab. 
                     </li>
                     <li>
                       <strong>Projections:</strong> Finally, go to the Projections page. Use the <strong>dropdown menu</strong> to switch between views:
                       <ul className="list-disc pl-5 mt-1">
-                        <li><strong>Conventional:</strong> Standard deterministic planning.</li>
-                        <li><strong>Real World:</strong> Single-company real world volatility planning.</li>
-                        <li><strong>Likely real-world outcomes:</strong> The real world spread of most likely outcomes in the 1000 clones simulation.</li>
+                        <li><strong>Conventional:</strong> Standard deterministic planning, as used in MPT for funds, or typical business planning.</li>
+                        <li><strong>Real World:</strong> Single-company real world volatility planning. Step through 1000 equally likely typical real-world outcomes.</li>
+                        <li><strong>Likely real-world outcomes:</strong> Fan plot of the spread of all 1000 real world most likely outcomes.</li>
                       </ul>
                     </li>
                   </ol>
@@ -260,12 +290,14 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
               <div className="prose prose-indigo text-gray-600 max-w-none">
                 <p className="text-xl leading-relaxed">
                   Traditional spreadsheets assume averages. Reality is volatile. Our engine prioritizes 
-                  <span className="font-bold text-gray-900"> "Correctness over Convenience"</span> by modeling 
-                  non-ergodic path dependence—meaning the order of events matters.
+                  <span className="font-bold text-gray-900"> "reality over premature simplicity"</span> by modeling 
+                  non-ergodic path dependence—meaning the order of events matters. And then averages are fundamentally misleading.
+                  Especially if your intent is regenerative, systemic, circular, doughnut, etc. 
                 </p>
                 <p className="mt-4">
                   A 50% drop followed by a 50% gain leaves you with 75% of your starting capital, not 100%. 
-                  We simulate thousands of trajectories to show you the probability of ruin, not just the average outcome.
+                  We simulate thousands of equally likely real-world trajectories to show you your likelihood of ruin or success, 
+                  not just the average outcome.
                   This approach helps you build an "Antifragile" strategy that can withstand and potentially benefit from volatility.
                 </p>
               </div>
@@ -274,23 +306,23 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
             {/* Hierarchy */}
             <section id="hierarchy" className="scroll-mt-24">
               <div className="border-b border-gray-200 pb-4 mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">The Hierarchy</h2>
+                <h2 className="text-3xl font-bold text-gray-900">How the modelling is structured</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="text-4xl mb-4">🏛️</div>
                   <h3 className="text-lg font-bold text-gray-900">Fund</h3>
-                  <p className="mt-2 text-sm text-gray-500">The top-level container. Represents your investment firm or holding entity. Invests in the Company.</p>
+                  <p className="mt-2 text-gray-500">The top-level container. Represents your investment firm or holding entity. Invests in the Company.</p>
                 </div>
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="text-4xl mb-4">🏢</div>
                   <h3 className="text-lg font-bold text-gray-900">Company</h3>
-                  <p className="mt-2 text-sm text-gray-500">A specific business entity. Contains historical data and settings; and prediction parameters for future scenarios. Needs multiple plans in order to navigate into the future.</p>
+                  <p className="mt-2 text-gray-500">A specific business entity. Contains historical data and settings; and prediction parameters for future scenarios. Needs multiple plans in order to navigate into the future.</p>
                 </div>
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="text-4xl mb-4">📄</div>
                   <h3 className="text-lg font-bold text-gray-900">Plans</h3>
-                  <p className="mt-2 text-sm text-gray-500">A specific business plan scenario (e.g., "Series A Base") for the company.</p>
+                  <p className="mt-2 text-gray-500">A specific business plan scenario (e.g., "Series A Base") for the company.</p>
                 </div>
               </div>
             </section>
@@ -298,7 +330,7 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
             {/* Best Practices */}
             <section id="best-practices" className="scroll-mt-24">
               <div className="border-b border-gray-200 pb-4 mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">Best Practices</h2>
+                <h2 className="text-3xl font-bold text-gray-900">Best practices reading the results, choosing parameters</h2>
               </div>
               
               <div className="space-y-12">
@@ -309,8 +341,8 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   </p>
                   <ul className="list-disc pl-5 space-y-2 text-gray-600">
                     <li><strong>Base Case (P50):</strong> Your honest expectation. Standard growth, standard churn.</li>
-                    <li><strong>Optimistic (P90):</strong> Everything goes right. Higher viral coefficient, lower costs.</li>
-                    <li><strong>Stress Test (P5):</strong> The "Black Swan" scenario. Use NRIG volatility with fat tails to model market crashes or funding dry-ups.</li>
+                    <li><strong>Optimistic (P90):</strong> The "White Swan" scenario. Everything goes right. </li>
+                    <li><strong>Stress Test (P10):</strong> The "Black Swan" scenario. Everything goes wrong.</li>
                   </ul>
                 </div>
 
@@ -321,10 +353,11 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   </p>
                   <ol className="list-decimal pl-5 space-y-2 text-gray-600">
                     <li>Run the simulation (1000+ iterations).</li>
-                    <li>Check the <strong>Cash Balance</strong> chart. Look for the <strong>P5 (5th Percentile)</strong> line.</li>
-                    <li>Identify the "Liquidity Gap"—the month where the P5 line dips below zero.</li>
+                    <li>Check the <strong>Cash Balance</strong> chart. Look for the <strong>P10 (10th Percentile)</strong> line.</li>
+                    <li>Identify the "Liquidity Gap"—the month where the P10 line dips below zero.</li>
                     <li>Return to the <strong>Capital</strong> form and inject a bridge round or credit facility one month prior to the gap.</li>
-                    <li>Re-run to verify survival.</li>
+                    <li>Re-run to verify survival. Increase the duration to see if you just get another downturn.</li>
+                    <li>Try out different levels of ergodicity correction. How does that help?</li>
                   </ol>
                   <p className="text-gray-700 mt-4 bg-indigo-50 p-4 rounded-md border-l-4 border-indigo-500">
                     <strong>Cash vs. Accrual:</strong> This model uses Cash Basis accounting. Revenue is recognized when cash is received, and expenses are recognized when cash is paid out. This is critical for startup survival modeling, as "profit" on paper does not pay the bills. Ensure your inputs reflect cash movements (e.g., if you invoice in Jan but get paid in Mar, enter the revenue start month as Mar).
@@ -332,40 +365,39 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold text-indigo-600 mb-3">3. The Starter Strategy</h3>
+                  <h3 className="text-xl font-bold text-indigo-600 mb-3">3. The Starter Strategy for growth parameters</h3>
                   <p className="text-gray-700 mb-4">
                     If you are unsure where to begin, we recommend starting with <strong>Flat Volatility</strong>. This establishes a baseline range without the complexity of heavy-tailed distributions.
                   </p>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm max-w-md">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm max-w-lg">
                     <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-2">Starter Configuration</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
-                      <li><strong>Model Type:</strong> Simple / Flat</li>
-                      <li><strong>Mean / Drift:</strong> 1.34% <span className="text-gray-400">(Average Monthly Growth)</span></li>
-                      <li><strong>Min %:</strong> -30.00% <span className="text-gray-400">(Worst Month)</span></li>
+                      <li><strong>Model Type:</strong> Simple Model</li>
+                      <li><strong>Mean:</strong> 1.34% <span className="text-gray-400">(Average Monthly Growth, calculated from min and max)</span></li>
+                      <li><strong>Min %:</strong> -30.00% <span className="text-gray-400">(Worst Month; negative means loss)</span></li>
                       <li><strong>Max %:</strong> 32.68% <span className="text-gray-400">(Best Month)</span></li>
-                      <li><strong>Steps:</strong> 2</li>
+                      <li><strong>Steps:</strong> 1 or 2 (smaller means higher volatility; best to stay below 5)</li>
                     </ul>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold text-indigo-600 mb-3">4. Advanced Modeling Examples</h3>
+                  <h3 className="text-xl font-bold text-indigo-600 mb-3">4. Advanced Strategy for growth parameters</h3>
                   <p className="text-gray-700 mb-4">
                     For specific risk profiles, use these tested configurations to model asymmetric or fat-tailed risks:
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                      <h4 className="font-bold text-indigo-900">NRIG (Asymmetric Risk)</h4>
-                      <p className="text-xs text-indigo-700 mb-3">High downside tail risk. Ideal for early-stage startups.</p>
+                      <h4 className="font-bold text-indigo-900">Comprehensive (Asymmetric & broad & fat-tailed risk)</h4>
+                      <p className="text-xs text-indigo-700 mb-3">Recommended when you want to go beyond the simple min-max-average.</p>
                       <ul className="text-sm text-indigo-800 space-y-1">
-                        <li><strong>Likelyhood (Alpha):</strong> 0.8</li>
-                        <li><strong>Skew (Beta):</strong> -0.5</li>
-                        <li><strong>Scale (Delta):</strong> 1.5</li>
+                        <li><strong>Simple Mode:</strong> Choose from the pull-down options.</li>
+                        <li><strong>Advanced Mode:</strong> Take out your stats texts and calculate!</li>
                       </ul>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h4 className="font-bold text-gray-900">Student-T (Fat Tails)</h4>
-                      <p className="text-xs text-gray-600 mb-3">High frequency of outliers. Ideal for volatile markets.</p>
+                      <h4 className="font-bold text-gray-900">Student's-T (Fat Tails)</h4>
+                      <p className="text-xs text-gray-600 mb-3">For those who want it. Lacks certain useful aspects of the Comprehensive. </p>
                       <ul className="text-sm text-gray-800 space-y-1">
                         <li><strong>Scale (Vol):</strong> 2.0</li>
                         <li><strong>Freedom (DoF):</strong> 3.0</li>
