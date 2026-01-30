@@ -5,7 +5,7 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import { api, Company, FinancialPlan, Fund } from '@/lib/api';
 import Link from 'next/link';
-import { ArrowLeft, Copy, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, Trash2, Edit2, Check, X } from 'lucide-react';
 
 export default function CompanyPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
@@ -21,6 +21,10 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
 
   // Duplication State
   const [duplicatingPlanId, setDuplicatingPlanId] = useState<string | null>(null);
+
+  // Editing State
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [tempPlanName, setTempPlanName] = useState("");
 
   const loadData = async () => {
     try {
@@ -82,6 +86,20 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
     } catch (e) {
       console.error(e);
       alert('Failed to delete plan');
+    }
+  };
+
+  const handleUpdatePlanName = async () => {
+    if (!editingPlanId || !tempPlanName.trim()) return;
+    try {
+        // @ts-ignore
+        await api.updatePlan(editingPlanId, { plan_name: tempPlanName });
+        setEditingPlanId(null);
+        setTempPlanName("");
+        await loadData();
+    } catch (e) {
+        console.error(e);
+        alert('Failed to update plan name');
     }
   };
 
@@ -155,8 +173,44 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
                 <Card key={plan.id} className="hover:shadow-lg transition-shadow border-l-4 border-teal-500 h-full flex flex-col justify-between">
                     <div>
                         <div className="flex justify-between items-start">
-                            <h2 className="text-xl font-bold text-gray-800">{plan.plan_name}</h2>
-                            <div className="flex items-center gap-1">
+                            {editingPlanId === plan.id ? (
+                                <div className="flex items-center gap-1 flex-grow mr-2">
+                                    <input 
+                                        className="border border-gray-300 p-1 rounded text-sm font-bold text-gray-800 w-full"
+                                        value={tempPlanName}
+                                        onChange={(e) => setTempPlanName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleUpdatePlanName();
+                                            if (e.key === 'Escape') setEditingPlanId(null);
+                                        }}
+                                        autoFocus
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button onClick={handleUpdatePlanName} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                                        <Check className="h-4 w-4" />
+                                    </button>
+                                    <button onClick={() => setEditingPlanId(null)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded">
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <h2 className="text-xl font-bold text-gray-800 truncate" title={plan.plan_name}>{plan.plan_name}</h2>
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingPlanId(plan.id);
+                                            setTempPlanName(plan.plan_name);
+                                        }}
+                                        className="text-gray-300 hover:text-blue-600 transition-colors p-1 flex-shrink-0"
+                                        title="Rename Scenario"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-1 flex-shrink-0">
                                 <button 
                                     onClick={() => handleDuplicatePlan(plan.id)}
                                     title="Duplicate Scenario"
