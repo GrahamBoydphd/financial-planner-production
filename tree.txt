@@ -1,11 +1,12 @@
 .
 ├── backend
-│   ├── 20260116163008_multi_currency_support.sql
+│   ├── all_sql.log
 │   ├── Cargo.lock
 │   ├── Cargo.toml
 │   ├── Dockerfile
 │   ├── .env -> ../.env
 │   ├── .env.example
+│   ├── fund_debug.txt
 │   ├── .gitignore
 │   ├── migrations
 │   │   ├── 20251207202039_initial_schema.sql
@@ -27,78 +28,139 @@
 │   │   ├── 20260113095020_standardize_staffing_naming.sql
 │   │   ├── 20260116081601_standardize_valuation_naming.sql
 │   │   ├── 20260116092316_sync_fortress_names.sql
-│   │   ├── 20260116092801_fix_fortress_schema_sync.bak
-│   │   ├── 20260116093208_align_models_and_audit.bak
 │   │   ├── 20260116093903_final_fortress_sync.sql
 │   │   ├── 20260116094310_ensure_audit_columns.sql
 │   │   ├── 20260116095602_fortress_repair_and_sync.sql
 │   │   ├── 20260116113044_hardened_net_value_audit.sql
 │   │   ├── 20260116163008_multi_currency_support.sql
 │   │   ├── 20260117180606_rename_to_scoped_names.sql
-│   │   └── 20260118073929_rename_event_shocks.sql
+│   │   ├── 20260118073929_rename_event_shocks.sql
+│   │   ├── 20260121065332_create_fund_plans.sql
+│   │   ├── 20260121075842_add_tenant_to_fund_plans.sql
+│   │   ├── 20260124083638_lifecycle_and_demo_guard.sql
+│   │   ├── 20260125084951_add_insolvency_threshold.sql
+│   │   ├── 20260126171152_semantic_shocks.sql
+│   │   ├── 20260127050735_refine_events_schema.sql
+│   │   └── 20260127064506_multi_target_events.sql
 │   ├── .sqlx
 │   │   ├── query-052a4dd2b1dd8ca8b4393fb0268e36208200db764098f736736c9e2731f1cd28.json
-│   │   ├── query-10621833db19e7da2a9f4a48cb241f4eef9581eec319d30a93d4b5d03ff78ed6.json
+│   │   ├── query-07113e05fc0fc59929fa6e20e1442ef8f669c08d7183f17960957727a9891d3b.json
 │   │   ├── query-11564b17dd54f87e483bf304cdec5d3ec1dd6b09b4c97ed5c24a20474615d318.json
+│   │   ├── query-118ccc95ed068ec351643ce51d30a15a06d35378d7818295f54023296212e538.json
+│   │   ├── query-19cbab9955b6c8554499dc9ac872fe737c2137281604fc932dfa654da4294978.json
+│   │   ├── query-1c1a190ed92549f77d165a949ffead10fe35eed7b4d4734ead7913a01c8cba79.json
 │   │   ├── query-1cd2e3a9d19596da8d3b035920a25c1ae93bcd6b123681cc5661149ba0663cfb.json
 │   │   ├── query-1d257c5770421ea27b9975f8ad59f294a3d833cf1cf9602e4160f58ace42d958.json
+│   │   ├── query-1ffd88674ec7eff09163111ce383166c5ee2eefa1f7380154d8c8bbcad6a5c25.json
+│   │   ├── query-2033b7ec561910a08952adae41cdb989a026efa1b05e28510c382ae1a53729a7.json
 │   │   ├── query-21fe97c0f75b080d627cc5a7d1138793f6e87e1baf2141cf897626a749e0d90d.json
+│   │   ├── query-2525f09f5e77d96822bb39dba0dc96b52fa1cd39b7408160a2d2d8fa79510132.json
 │   │   ├── query-2eab054a4b610920d8694fe91b232a7b76ee94eac230b085673c386d76cfa781.json
 │   │   ├── query-2f8e7e732fd5f8fb5dec2fef3ec711da2eefe38a80fd8efa52033be5f66e7ff3.json
+│   │   ├── query-31f9f492b88b602ffb0c357f1abb7da3a3aaf3749d8cb45cbf1503e4b8fd1a31.json
+│   │   ├── query-3b4900c388e252469b89c0916d58611f394f1ec8d53b8e5548fc3bab39367de0.json
+│   │   ├── query-3cbb5c750aa31a35d2b2f3cb40c787ec1a9a5f7f9364c317cad2d2d7f4535feb.json
+│   │   ├── query-3fdd28f6053832c235ac9931aefba6a915c45d2a395df7a41beaa44e678c5437.json
+│   │   ├── query-4217394cda59c270ff8f1f8f329a2832c40c20c2435fa52f873bec5782ce0631.json
+│   │   ├── query-422945d1ea0f5e77ed64a2d01562823383358168c5a1ea93e26845379afb7aa7.json
+│   │   ├── query-47d6a1db8fa6696648cfb2ba35bd1536f9510d25948835328068dc90ff706e16.json
+│   │   ├── query-4a4a09be193ebd1d427199665715f5cce683a1e301ebce94497640d9b1ce63c8.json
+│   │   ├── query-4c665df3eb0af3097be5f0aa6a740117569670d0499a5627569f6b2845c97224.json
+│   │   ├── query-4d305876ddc9ec563d75abd82cd73a0c7c47e98572071caf7b526eb176b4ffc2.json
+│   │   ├── query-4e52a08d00f14a0e149a8fedf15d7c0cc8daf6554db5007348ce2359fbc3648d.json
+│   │   ├── query-501958f9c1e5a4217caae79c8894ecc0d77e8b26f06e8f864433e85e9e51d325.json
 │   │   ├── query-504bb10d9d1acaa8b1a604c343d9e75d9961201b0b561201fb47543b68397540.json
+│   │   ├── query-5078acd4068bb9f15694cc5018d193f7011c51a80e1260c38bdddc3a5512980a.json
+│   │   ├── query-50c9ceff0f0a26f516a6756c6007218310e919446b30b0bf2dbe90aefef48ed4.json
+│   │   ├── query-51d2bad9d120cc551757a8a5139dde5d9daa4679388ec6165c268ef962cbe680.json
+│   │   ├── query-557aaec3379cbbca83337ee721a83437120411cc311c3aafa4131857dcc514e0.json
+│   │   ├── query-56f2dcd84ac169ecfb5209e4e8a82f9def2a861e9e00a1e98946b36ae3716b28.json
 │   │   ├── query-58662f8409a6763ad2ef6f116217481feefa46817a4a72268be6d2fe737f2cca.json
-│   │   ├── query-5b05b4f8b4e188217fbe37004875e4ca5842b7207a05a097e5720f995400e1e2.json
+│   │   ├── query-5c1ca48c101b2d84177b0098ae6bb484b5b120a2659bda2868c7d54ba8beab3f.json
+│   │   ├── query-5ee1f3f5677a6df5e63c30e8592c94d0d394164a4d2761c12a7aaa960c1e86ba.json
+│   │   ├── query-6549e93e9d3fa9fc32973cfdd59082e7d26a79e7e0eab6b7335168fefe28c36f.json
+│   │   ├── query-65e694e51599dc3f79ae76876dbd9529b50f27b444587a499a51c927bf365acc.json
+│   │   ├── query-65f32b0e3a2e814563a103b238794cdfe4edd0663188ad0e9fcac8353e1fe68a.json
 │   │   ├── query-686d7b00f8b3551269b25bde037294bad5cc223094e60c81edb3955970dd8aa5.json
 │   │   ├── query-6ae44265239e30e60bcc5fb28c36c8022e5c71029ed4feda736733d37ae007fd.json
 │   │   ├── query-6ae5b1b7c90cf1741f7c255b998683a60c43659705252e2165524eada9ba60fc.json
+│   │   ├── query-6bec54899cb0b791f34bfa2db85c58fb71a7fab30bfcd94c0852f436b81ab9a8.json
+│   │   ├── query-6cad2f92e3f1d078d1a09dfde788e9a66ef89d6ea4b4e5e690f25115d5a81030.json
+│   │   ├── query-6d385d56df9bf9123aa57fbe63e8da3260ed679ce9f74236d3a44524215c77df.json
 │   │   ├── query-6d8aee94067b977387d9d980c934e73093f7b01b67d83eda8321d2e4c12a3b52.json
+│   │   ├── query-6d926fd5d774b75bbca42e59c22a34f10ed6c47b531bc30b9f9a0f215fc04e7a.json
 │   │   ├── query-6e0b0a6d76316c7dfc932c066ea08289310e89dd3443d47d1c5822e75d6781c5.json
-│   │   ├── query-6e77614589b2b3402a6857f33b4094755bbc2aa4ba974c23886d297d64825e63.json
+│   │   ├── query-6fcedb5d6dc4705ebd39c119d6acb5c6e8c96caddbb324b01964a2489ce4dc83.json
+│   │   ├── query-70eeba5401f09d1c16679714765d3bf4658654455d7cc29c2d1c51f053a46506.json
+│   │   ├── query-7272e2310b0a9db1a7682b032d526d632f29e668dd04bbb29d16894a90b279a2.json
+│   │   ├── query-771a0f38dda749ef0e94676fe809b3e09ee02c12cb03a022ceef6649fb0dd81d.json
 │   │   ├── query-7792ef7b58a03a353102fb3c1d047ffd791c22dffb762f69308cf84b27574aaf.json
-│   │   ├── query-78e3dc792de35dfb8550165a1e9fdcc40eb904052bbafe3c7124bbaf3e823a10.json
 │   │   ├── query-7b4880944fa59a005fa38b3bf541dd37fea87165bfcf86d6247c803570a33864.json
 │   │   ├── query-7b94ee4856049a338a4f13643f50a2abf72f60854b231f579ddc4784b211c181.json
+│   │   ├── query-7bab0b0ae4ac073c2fbc4d03e13396d15fe98b330b69c4bbe73dd24a22707951.json
 │   │   ├── query-7f2710b27f5d4bb5466cab35402394b1cb33543497e16fdaef53b32b14a4d3f7.json
-│   │   ├── query-8757104888e270d98dc7ed0f1d5665403d33869510b688e15175b756867557fe.json
+│   │   ├── query-7f70623433ba69523e5a26ca72c34cc894b586d4ed651c2d9eff3bb691512471.json
+│   │   ├── query-80d8fdc0879a6346c5bf470ce4da2edf15f610645a6a0500f2c4684038bc6a89.json
+│   │   ├── query-80e382efcdc29cfafc63c519cc54c9de360efe8f53040c08dfc821cedb46058f.json
 │   │   ├── query-8afda25e573ff6d0c5e91c569349419019f4a0ad869c521d97ac12302035d88c.json
+│   │   ├── query-8e877f5017edd8dcb8c6748deb5c317f62438bd3ef3cf29bda0385bb597b2f03.json
 │   │   ├── query-8f117f8122686bf5ff7a9f1b532a6b0c6be4490d228c06d19ff1dd09f5363f1a.json
+│   │   ├── query-9025e9380f67b9aa7d0e0a3f874dc62ab77f1c1ba45960ee4409d6905b1ff846.json
 │   │   ├── query-94133011365b4f1332e45aeeaf8cbefb99bf50d2349da41dd64bd9e2b19f9144.json
-│   │   ├── query-9c0ad6d9af1b4cb2eb1ff619d49ca710156599b649af7dd366f9d456f47d71ce.json
+│   │   ├── query-96bf1577fcea1f5d13841b9a9ce03a7737e116111ced48650ef585d790c435d9.json
 │   │   ├── query-9f1c15123aa2e4b46b4a55d58d10d9ebc3a7fa3134d056d2761349f8a858e24d.json
 │   │   ├── query-9f4c6314efa03d05a37e9b62f48c0404a10efb5c1357b2ee9f2e97fccb6efe37.json
-│   │   ├── query-a04af223719aaaf781120eede3e7d422182ff7f188db8746b5885bcac564ec45.json
 │   │   ├── query-a0abbb748123d5e36055a101ac669b4701aa26c42fc822da53f1bfbfd7fb6cc8.json
-│   │   ├── query-a78b7bcbde7331a9be9ee57a87d0c2bd88116bd3a5360cca47fd204cf1321ebd.json
+│   │   ├── query-a2dad64b87f5c8ab15ce06dbfa506250db72de9372cda0013cea2013712b2e0d.json
+│   │   ├── query-a47e9d1a871f224524ce7f690511cff269c7d41813853aeb69485ceb15327daf.json
 │   │   ├── query-a89d0aeee677e7b9bc81580b5b2953892e9ad894b5619e94ab4972c495c22ed7.json
 │   │   ├── query-a972fef1932b47c19f89bd198e9d6fd5a2f10ac69e019a10d8093a830a7189ed.json
 │   │   ├── query-aa7da762a7f47c4ef881573f7663096f8c92700ffec435bdf97d664bcceb5943.json
 │   │   ├── query-ab0cce1ffdb31cdc548a9db10b1ed6f8e5acf11b4dd8696b009c7e19f33acf85.json
-│   │   ├── query-af987b954fa9a4bc9226d84b525bd28daa478eb77fb5172563f592625e9db19c.json
-│   │   ├── query-b0e1e399fac61ff97e90730cae93eb6eb528838618038a565d585c94b40ba0f0.json
+│   │   ├── query-ab646428609dca2c8bf4497b5c2d3a93b30430871a7f95db0d890fe94b204374.json
 │   │   ├── query-b25d3df9557606ee1b85f9c82dae7a27424947e1853cc93dc83f6f050ece86e3.json
+│   │   ├── query-b358c44bc854ea78d293a61f300ca620702d91e966cf4e8ec6a5340f99fed5a0.json
+│   │   ├── query-b4f48586e556cc69365dc96be741ba41207533209ab26dbadf60e555b8bdf7dd.json
+│   │   ├── query-b729fb39247e3746d2e98476686c5e59f50cec5bda19d2633c7d985532b8fd86.json
+│   │   ├── query-b774090302bf0436e30c05c4332a45f6bfe173de391e388fef9752fc110509c3.json
+│   │   ├── query-ba3f16aef1e01da1155d28689dd9ecacab35e40a900e0e57d6cf022be27361c0.json
 │   │   ├── query-bfb1fa7b781377cd678e93d2a14cd1d4da3f30e03e22b3eb2cc6a56915a32835.json
+│   │   ├── query-c267de97a1899882a1ca8aaad17183559ea2eec6f8c62d4231191414adcbf91b.json
+│   │   ├── query-c26c7e3fce2603e758dbd0ab2e748ef59d5f735484d8401fcb9222914cbe6370.json
 │   │   ├── query-c89473e846f3eaad6bc0a9809fb32b8218428441259615f3386d72582089e6f3.json
 │   │   ├── query-caf2afbfed30b6a01c8d8cb481e7fceae98ec8a46c14fa738e6b7286ddfb3219.json
 │   │   ├── query-ccda82c8abc414e4de464ca11b4060878e8a088fac3395485420d9e1fa8e82ac.json
+│   │   ├── query-d02c30dd926f175e74f6620805c5ee4901a06e9643c868f194761903226f1a15.json
 │   │   ├── query-d0895a312b57a574f339f725183ac02db9b5b8317866a9bb759952987e4de660.json
 │   │   ├── query-d4a6a6a4cd25ab554b5c2e974e52fa080e1d2bedf580a7b8c85cd814a0d7de29.json
 │   │   ├── query-d6d8844892f1b568bbea629e59e47323e1eef8387e0193511e695ebc1a95a7bb.json
+│   │   ├── query-dadb0474722f670dad17fd5939779b32f4f55a28dde5a8e820e743eda60a23f5.json
 │   │   ├── query-db3e79697a5716a6f8371a59bea1a91d3bfc75af0b0f751bad075fbefe790756.json
+│   │   ├── query-db58b8946bdfd1b3e414701093b7d10a1ca91faf6e46c450ba424c47893a526d.json
+│   │   ├── query-dbf96a88b223fff4dd9f688ae75537251181edad0038ee7aeb11994f1cba4ce3.json
 │   │   ├── query-dc6561a9d8fe748f5fedaf3cb9c5c4353f043b3d135785294f3bfb840615daeb.json
+│   │   ├── query-e0688a80fa29c32b98b3fe9e06aa01a37d3c07cb616d432f77f8ec1c21d65661.json
+│   │   ├── query-e5dc5e01be0f95b027d410625213df216a0509a766346ce01c559630030e7490.json
 │   │   ├── query-e881ef1e06a3956b9e69be1e17773b3754e05ceee7dcc3fa628a3a662d0335ce.json
+│   │   ├── query-e9119b5b1282d02f7383fa9f7759960a41f31ba10a3b33be35988364a8535fb1.json
 │   │   ├── query-ed5b0029459c6b0edb9aaf577f0bd754fde0368d1d0a279d4539e49313c98af4.json
-│   │   ├── query-edacb6e61734470b96a0effb01a399fa19b8e68def8dba8dd463495c7fb5ca9a.json
 │   │   ├── query-eeb771500badb4e97eb811503153ae4427d6570aff0fbb4f8f4a4c3d7e1cd7a7.json
+│   │   ├── query-ef0a3f8aa0cfdf6fc47f9a2dc26017c575ffa6acfa0fa6dd2aabb35ae939ffd8.json
+│   │   ├── query-f26905413b173f8289d72731a3bf6e1496dbfe3f365e66bb91cc0965e631d702.json
 │   │   ├── query-f3eb31a860213723bddd7a653963e36d6a0526dba4a0420a4708b225cefbf2fb.json
 │   │   ├── query-f6203ce2e7420f387e30ef5adbafe5b81d03c387ebf152be355690665510bedd.json
 │   │   ├── query-f77e280016b749b99c31c13c80829629899461430bc4ebfc2621955b37cb0222.json
+│   │   ├── query-f84d56c3359d259f1da8bb0f7f73608559ac61a69fa6c4e3679e80c9bca29f20.json
+│   │   ├── query-fa5cc50a32abd745e1718371a5bf939c2c30692ee5873d03b26a78431d1ac440.json
 │   │   └── query-fefa098d3d7661a15dd8eddd2e22f706b3c3c2c80b877c45f1e55fe28996332e.json
 │   ├── src
 │   │   ├── distributions.rs
 │   │   ├── engine
 │   │   │   ├── domain.rs
+│   │   │   ├── event_manager.rs
 │   │   │   ├── mod.rs
-│   │   │   └── orchestrator.rs
+│   │   │   ├── orchestrator.rs
+│   │   │   └── runner.rs
 │   │   ├── errors.rs
 │   │   ├── handlers
 │   │   │   ├── auth.rs
@@ -109,18 +171,21 @@
 │   │   │   ├── dividends.rs
 │   │   │   ├── events.rs
 │   │   │   ├── expenses.rs
+│   │   │   ├── fund_plans.rs
+│   │   │   ├── fund_simulation.rs
 │   │   │   ├── funds.rs
+│   │   │   ├── lifecycle.rs
 │   │   │   ├── mod.rs
 │   │   │   ├── plans.rs
 │   │   │   ├── revenue.rs
 │   │   │   ├── staffing.rs
 │   │   │   └── valuation.rs
 │   │   ├── main.rs
+│   │   ├── main.rs.bak
 │   │   ├── middleware.rs
 │   │   ├── models.rs
 │   │   └── projection.rs
 │   └── tree.txt
-├── cleanup.sh
 ├── docker-compose.prod.yml
 ├── docker-compose.yml
 ├── .dockerignore
@@ -128,9 +193,11 @@
 │   ├── ARCHITECT_BE.md
 │   ├── ARCHITECT_FE.md
 │   ├── ARCHITECTURAL_CONTEXT_CLI.md
+│   ├── ARCHITECTURAL_CONTEXT_CLI.md.bak
 │   ├── ARCHITECTURAL_CONTEXT_PRODUCTION.md
 │   ├── Architectural_Reference_the_fortress_standard_260116.md
 │   ├── Architectural_Reference_V3_Freeze_for_V4.md
+│   ├── Architectural_Reference_V4_Updates_for_Freeze_for_V5.md
 │   ├── audit_baseline.md
 │   ├── Audit Checklist for Code Architects.md
 │   ├── audit_MVP_freeze_auth-check.md
@@ -141,7 +208,35 @@
 │   ├── BE_Execution_Tracking.md
 │   ├── COMMAND_LOG.md
 │   ├── Context_History.md
+│   ├── Ergosim_2
+│   │   ├── .stfolder
+│   │   │   └── DO_NOT_DELETE.txt
+│   │   └── .stversions
+│   │       └── .nomedia
 │   ├── FE_Prompts.md
+│   ├── Graham-Android
+│   │   ├── ACT.md
+│   │   ├── Business is breaking X because business is breaking the laws of econophysics.md
+│   │   ├── Dojo practices.md
+│   │   ├── Ergodicity-Agency-Circularity-What.md
+│   │   ├── Everyday Habits reflections.md
+│   │   ├── Evolutesix 2025 Q34 activity arena.md
+│   │   ├── NBM25.md
+│   │   ├── .obsidian
+│   │   │   ├── appearance.json
+│   │   │   ├── app.json
+│   │   │   ├── core-plugins.json
+│   │   │   ├── core-plugins.sync-conflict-20250728-163436-YYIZVVC.json
+│   │   │   ├── graph.json
+│   │   │   ├── workspace.json
+│   │   │   └── workspace-mobile.json
+│   │   ├── .stfolder
+│   │   │   └── syncthing-folder-8027b4.txt
+│   │   ├── .stversions
+│   │   ├── .trash
+│   │   │   └── Untitled
+│   │   ├── Video topics.md
+│   │   └── Video topics.sync-conflict-20250915-112734-YYIZVVC.md
 │   ├── Handoffs_BE_API_STANDARDS_V3_260116.md
 │   ├── Handoffs_BE.md
 │   ├── Handoffs_Deployment+Historical.md
@@ -152,9 +247,837 @@
 │   │   ├── app.json
 │   │   ├── core-plugins.json
 │   │   └── workspace.json
+│   ├── Obsidian-toplevel
+│   │   ├── 0100.md
+│   │   ├── 0-Clients.md
+│   │   ├── 0-Investors-Key.md
+│   │   ├── 0-Investors-Key.sync-conflict-20260111-074513-YYIZVVC.md
+│   │   ├── Academia.md
+│   │   ├── Alice de Rothschild.md
+│   │   ├── Alice Leguay.md
+│   │   ├── Alicja Hlibowicka.md
+│   │   ├── Alie-Korijn.md
+│   │   ├── Andrew McCue.md
+│   │   ├── Anna-Branten.md
+│   │   ├── Anna Muoio.md
+│   │   ├── Anton Baumann Empowerment Capital.md
+│   │   ├── Arthur Wood.md
+│   │   ├── Barbara Leão de Carvalho.md
+│   │   ├── bforgoodleaders.md
+│   │   ├── Bob De Wilde.md
+│   │   ├── Brandon Lopez.md
+│   │   ├── Bruce-Beach.md
+│   │   ├── Business_Products.md
+│   │   ├── Carmen Ortiz.md
+│   │   ├── Cecilia Scolaro.md
+│   │   ├── Christopher Marquis.md
+│   │   ├── Climate-KIC.md
+│   │   ├── Clippings
+│   │   │   ├── Constable, Sarah --- _A Corporate Conscience__ [2015] UNSWLawJlStuS 1; (2015) UNSWLJ Student Series No 15-01.md
+│   │   │   ├── Manifold Bio Barcoded Biologics.md
+│   │   │   └── The birth of the Wisdom Economy.md
+│   │   ├── Custodia-Nysa.md
+│   │   ├── Dana Ulrike Glatz.md
+│   │   ├── Daniel-Hires.md
+│   │   ├── Daniel Mihai.md
+│   │   ├── Danny Sandoval.md
+│   │   ├── Dan-Wood.md
+│   │   ├── Deep Transitions Lab.md
+│   │   ├── Dennis Heijn.md
+│   │   ├── Diana Velasco.md
+│   │   ├── DSLR webcam.md
+│   │   ├── Dylan Tull.md
+│   │   ├── Econophysics.md
+│   │   ├── Eli Ingraham.md
+│   │   ├── Emmanuel Savard Dimanche.md
+│   │   ├── Eric Fath-Kolmes.md
+│   │   ├── Eugene Kirpichov.md
+│   │   ├── Europe core strength for talk.md
+│   │   ├── Evolutesix-People_projects-2020
+│   │   │   ├── 0-Ergodicity Links.md
+│   │   │   ├── 0-Primary Hashtags.md
+│   │   │   ├── 0-Useful-Links.md
+│   │   │   ├── 0-Useful-Links.sync-conflict-20251025-112102-EXXT24M.md
+│   │   │   ├── 10K-Jared-Yellin.md
+│   │   │   ├── Aaron-Perry.md
+│   │   │   ├── Alan-Livshin.md
+│   │   │   ├── Alessandro-Mele.md
+│   │   │   ├── Alexandra-Korijn.md
+│   │   │   ├── Alistair-Langer.md
+│   │   │   ├── Andreas-Alfredsson.md
+│   │   │   ├── Andrew-Hewitt.md
+│   │   │   ├── Andrew-Watson.md
+│   │   │   ├── Andrew-Winston.md
+│   │   │   ├── Andy-Lürling.md
+│   │   │   ├── Anna-Marie-Swan.md
+│   │   │   ├── Anna-Wozniak.md
+│   │   │   ├── Anneloes-Smitsman.md
+│   │   │   ├── Anne-Snick.md
+│   │   │   ├── Anne-Therese-Gennari.md
+│   │   │   ├── Antonio-Chanoca.md
+│   │   │   ├── Antony-Upward.md
+│   │   │   ├── Arun-Maira.md
+│   │   │   ├── Ashley-Scarborough.md
+│   │   │   ├── Aunnie-Patton-Power.md
+│   │   │   ├── Bankers-Without-Borders.md
+│   │   │   ├── Bárbara-de-Carvalho.md
+│   │   │   ├── Ben-Kimura-Gross.md
+│   │   │   ├── Ben-Roberts.md
+│   │   │   ├── Bernadette-Wesley.md
+│   │   │   ├── Big-Path-Capital.md
+│   │   │   ├── Brenden-Keon.md
+│   │   │   ├── Brian-Bauer.md
+│   │   │   ├── Brian-Spengemann.md
+│   │   │   ├── Brian-von-Herzen.md
+│   │   │   ├── Bruno-Delepierre.md
+│   │   │   ├── Carl-Pitchford.md
+│   │   │   ├── Carrie-Norton.md
+│   │   │   ├── Carsten-Beck-Nilsson.md
+│   │   │   ├── CelestialGroup.md
+│   │   │   ├── Cendana.md
+│   │   │   ├── Chad-Frischmann.md
+│   │   │   ├── Charlene-Chen.md
+│   │   │   ├── Christina-Bowen.md
+│   │   │   ├── Christin-ter-Braak-Forstinger.md
+│   │   │   ├── Clients
+│   │   │   │   ├── 0Template.md
+│   │   │   │   ├── CeltiCrescent.md
+│   │   │   │   ├── Climathon.md
+│   │   │   │   ├── CoLiving-DAO.md
+│   │   │   │   ├── Dental-Alon.md
+│   │   │   │   ├── Helix.md
+│   │   │   │   ├── UniOne.md
+│   │   │   │   ├── Vets.md
+│   │   │   │   └── VME-Retail.md
+│   │   │   ├── Clippings
+│   │   │   │   ├── Hub-and-Spoke Biotechs Nimbus Therapeutics.md
+│   │   │   │   ├── Roche CEO says Novo's Catalent buyout 'could be a problem' for smaller drugmakers 1.md
+│   │   │   │   └── Roche CEO says Novo's Catalent buyout 'could be a problem' for smaller drugmakers.md
+│   │   │   ├── Cole-Hoover.md
+│   │   │   ├── Collaboratio-Helvetica.md
+│   │   │   ├── Cordell-Jacks.md
+│   │   │   ├── Craig-Buchanan.md
+│   │   │   ├── Craig-Jonas.md
+│   │   │   ├── Curt-Lyon.md
+│   │   │   ├── Daniel-Hogendoorn.md
+│   │   │   ├── Dan-Misleh.md
+│   │   │   ├── Danny-Balla.md
+│   │   │   ├── Dan Sherrard-Smith.md
+│   │   │   ├── Dan-Wallace.md
+│   │   │   ├── David-Sloan-Wilson.md
+│   │   │   ├── David-Weber.md
+│   │   │   ├── David-Wilcock.md
+│   │   │   ├── Davoud--Taghawi-Nejad.md
+│   │   │   ├── Deborah-A.md
+│   │   │   ├── Denise-Hearn.md
+│   │   │   ├── Diarra-Smith.md
+│   │   │   ├── Dominic-Hofstetter.md
+│   │   │   ├── Dorchess-de-Koning.md
+│   │   │   ├── Drawdown.md
+│   │   │   ├── DSW-Coalition-Economy-Reboot.md
+│   │   │   ├── Dyno-Tyson-Bertmaring.md
+│   │   │   ├── Edgewater.md
+│   │   │   ├── Ed-Mayo.md
+│   │   │   ├── Eduardo-Esparza.md
+│   │   │   ├── Eike-Post.md
+│   │   │   ├── Emily-Prieto.md
+│   │   │   ├── Erica-Mesker.md
+│   │   │   ├── Evan-Steiner.md
+│   │   │   ├── Evoluter-Ecosystem
+│   │   │   │   ├── CCWM-2.0.md
+│   │   │   │   ├── Common-Intelligence.md
+│   │   │   │   ├── EcoHom.md
+│   │   │   │   ├── Evolutesix-Ecosystem.md
+│   │   │   │   ├── Lumen.md
+│   │   │   │   ├── Shala.md
+│   │   │   │   ├── SolveEarth.md
+│   │   │   │   ├── Unstitution.md
+│   │   │   │   └── Urben-Pupen.md
+│   │   │   ├── EvoluterStartups
+│   │   │   │   ├── E6-Digital.md
+│   │   │   │   ├── E6-Publishing.md
+│   │   │   │   ├── E6-RegenDAO.md
+│   │   │   │   ├── Solve-Earth.md
+│   │   │   │   └── Thrive.md
+│   │   │   ├── FEST.md
+│   │   │   ├── First-Round.md
+│   │   │   ├── Flourishing-Enterprise-Institute.md
+│   │   │   ├── Foresight.md
+│   │   │   ├── Foundations-Philanthropy.md
+│   │   │   ├── Fractal.md
+│   │   │   ├── Francesca-Pick.md
+│   │   │   ├── Frank-Dixon.md
+│   │   │   ├── Frank-Eggink.md
+│   │   │   ├── Gabriel-Malek.md
+│   │   │   ├── Gary-Sheng.md
+│   │   │   ├── Gathering-of-Tribes.md
+│   │   │   ├── Generation-Re.md
+│   │   │   ├── Gillian-Marcelle.md
+│   │   │   ├── Glenn-Hallam.md
+│   │   │   ├── GlobalEcovillageNetwork-GEN.md
+│   │   │   ├── GlobalSolutionSummit2024.md
+│   │   │   ├── Glo-Moss.md
+│   │   │   ├── Grace-Broughton.md
+│   │   │   ├── Greg-Fisher.md
+│   │   │   ├── Greg-Judelman.md
+│   │   │   ├── Gregor-Herdmann.md
+│   │   │   ├── Gregory-Wendt.md
+│   │   │   ├── Hans-Stegeman.md
+│   │   │   ├── Hari-Balasubramanian.md
+│   │   │   ├── Heather-Matson.md
+│   │   │   ├── Helen-Slottje.md
+│   │   │   ├── HUMCapital.md
+│   │   │   ├── Internal
+│   │   │   │   ├── 0-Associates.md
+│   │   │   │   ├── 0-CoreStaff+Allies.md
+│   │   │   │   ├── 0Template.md
+│   │   │   │   ├── AO-Consulting.md
+│   │   │   │   ├── Autistic-organisation-diagnosis.md
+│   │   │   │   ├── AW-Public.md
+│   │   │   │   ├── Evoluter 1.md
+│   │   │   │   ├── Evoluter.md
+│   │   │   │   ├── FSC-Consulting.md
+│   │   │   │   ├── HX-Platform.md
+│   │   │   │   ├── Incorporation-Diagnosis.md
+│   │   │   │   ├── Marketing.md
+│   │   │   │   ├── Marketing.sync-conflict-20250829-105943-EXXT24M.md
+│   │   │   │   ├── Mumpreneurs.md
+│   │   │   │   ├── Pitching-Deck.md
+│   │   │   │   ├── Pitching-Stories.md
+│   │   │   │   ├── Publishing.md
+│   │   │   │   ├── RebuildCompanion.md
+│   │   │   │   └── Rebuild.md
+│   │   │   ├── Invest-Ecos-Allies-1
+│   │   │   │   ├── 0-FC-WG.md
+│   │   │   │   ├── Alex-Johnston.md
+│   │   │   │   ├── Bill-Baue.md
+│   │   │   │   ├── Chris-Selth.md
+│   │   │   │   ├── David-Bruehlmeier.md
+│   │   │   │   ├── Donna-Nelham.md
+│   │   │   │   ├── Elizabeth-Dreicer.md
+│   │   │   │   ├── Enrico-Fiore.md
+│   │   │   │   ├── FC-AG-Acadamia.md
+│   │   │   │   ├── FC-AG-Builders.md
+│   │   │   │   ├── FC-AG-Consciousness.md
+│   │   │   │   ├── FC-AG-Investment.md
+│   │   │   │   ├── Gil-Friend.md
+│   │   │   │   ├── IISC.md
+│   │   │   │   ├── Joe-Lopardo.md
+│   │   │   │   ├── Killu-Sanborn.md
+│   │   │   │   ├── Klaus-Michael-Christensen.md
+│   │   │   │   ├── Lawrence-Ford.md
+│   │   │   │   ├── Mark-Sloss.md
+│   │   │   │   ├── Melea.md
+│   │   │   │   ├── Mila-Aliana.md
+│   │   │   │   ├── Patrick-Martel.md
+│   │   │   │   ├── Ralph-Thurm.md
+│   │   │   │   ├── Steve-Cook.md
+│   │   │   │   ├── Steve-Schueth.md
+│   │   │   │   └── Thomas-Caffrey-Osvald.md
+│   │   │   ├── Invest-Ecos-Allies-1-Potl
+│   │   │   │   ├── Albert-Wenger.md
+│   │   │   │   ├── Ben-Keene.md
+│   │   │   │   ├── David-Jackson.md
+│   │   │   │   ├── Duane-Roberts.md
+│   │   │   │   ├── Ebru-Kaya.md
+│   │   │   │   ├── Geoff-McDonald.md
+│   │   │   │   ├── John-Fullerton.md
+│   │   │   │   ├── John-Montgomery.md
+│   │   │   │   ├── Jon-Shell.md
+│   │   │   │   ├── Josiane-Smith.md
+│   │   │   │   ├── Kristina-Inrig.md
+│   │   │   │   ├── Kurt-Peleman.md
+│   │   │   │   ├── Lynn-Marie-DePippo.md
+│   │   │   │   ├── Marc-Castagnet.md
+│   │   │   │   ├── Marcus-Lenz.md
+│   │   │   │   ├── Mark-Beam.md
+│   │   │   │   ├── Nathan-Snyder.md
+│   │   │   │   ├── Paul-Polman.md
+│   │   │   │   ├── Pieter-van-der-Gaag.md
+│   │   │   │   ├── RSA.md
+│   │   │   │   ├── Sharon-Chang.md
+│   │   │   │   └── Tomas-Bjorkman.md
+│   │   │   ├── Invest-Ecos-Allies-2
+│   │   │   │   ├── Achim-Hensen.md
+│   │   │   │   ├── Akanksha-Anand.md
+│   │   │   │   ├── Alexander-Rozenfeld.md
+│   │   │   │   ├── Antonio-Potenza.md
+│   │   │   │   ├── Ben-Combs.md
+│   │   │   │   ├── Brian-Le-Gette.md
+│   │   │   │   ├── Capitals-Coalition.md
+│   │   │   │   ├── Daniel-Gaechter.md
+│   │   │   │   ├── Felipe-Witchger.md
+│   │   │   │   ├── Hubert-Rhomberg.md
+│   │   │   │   ├── Ibi-Thomson.md
+│   │   │   │   ├── Jackie-Knechtel.md
+│   │   │   │   ├── James-Glasscock.md
+│   │   │   │   ├── Jamil-Wyne.md
+│   │   │   │   ├── Jef-Teugels.md
+│   │   │   │   ├── Jenny-Elissen.md
+│   │   │   │   ├── Jill-Richmond.md
+│   │   │   │   ├── Joost-Schouten.md
+│   │   │   │   ├── Jordan-Sukut.md
+│   │   │   │   ├── Kevin-Jones.md
+│   │   │   │   ├── Nicholas-Colloff.md
+│   │   │   │   ├── Nils-Johnson.md
+│   │   │   │   ├── Oona-Eager.md
+│   │   │   │   ├── Sarah-Dubreil.md
+│   │   │   │   └── Vivi.md
+│   │   │   ├── Investment
+│   │   │   │   ├── 0-Activities.md
+│   │   │   │   ├── 0-Activities.sync-conflict-20260111-074512-YYIZVVC.md
+│   │   │   │   ├── 50-Year.md
+│   │   │   │   ├── CoPeace.md
+│   │   │   │   ├── Effective-Altruism.md
+│   │   │   │   ├── Fund-Raising-Allies.md
+│   │   │   │   ├── LGT.md
+│   │   │   │   ├── Telos-Impact.md
+│   │   │   │   └── Vishesh-Srivastava.md
+│   │   │   ├── investment-notes.md
+│   │   │   ├── Jake-Hoban.md
+│   │   │   ├── Jake-Lawy.md
+│   │   │   ├── James-King.md
+│   │   │   ├── Jaume.md
+│   │   │   ├── Jed-Emerson.md
+│   │   │   ├── Jennifer-Menke.md
+│   │   │   ├── Jenny-Stefanotti.md
+│   │   │   ├── Jen van der Meer.md
+│   │   │   ├── Jeremy-Agnew.md
+│   │   │   ├── Jeroen-Spoelstra.md
+│   │   │   ├── Jeroen-Vermeer.md
+│   │   │   ├── Jess-Hackett.md
+│   │   │   ├── Jillian-Jordan-McFarland.md
+│   │   │   ├── Joachim-Monkelbaan.md
+│   │   │   ├── Joe-Brewer.md
+│   │   │   ├── John-Garry.md
+│   │   │   ├── John-Stokes.md
+│   │   │   ├── John-Warner.md
+│   │   │   ├── Joseph-Merz.md
+│   │   │   ├── Joseph-Rowntree-Foundation.md
+│   │   │   ├── Julia-Anne-Gross.md
+│   │   │   ├── Julie-Guegan.md
+│   │   │   ├── Kare-Wangel.md
+│   │   │   ├── Kate-Walsh.md
+│   │   │   ├── Katharina-Leistenschneider.md
+│   │   │   ├── Katie-Boland.md
+│   │   │   ├── Katy Shields.md
+│   │   │   ├── Kim-Lien.md
+│   │   │   ├── Kim-Patrick-Kobza.md
+│   │   │   ├── Kirk-Drage-LeapSheep.md
+│   │   │   ├── Leonie-Joubert.md
+│   │   │   ├── Leon-Seefeld.md
+│   │   │   ├── Linda-MacDonald-Glenn.md
+│   │   │   ├── Lionel-Slusny.md
+│   │   │   ├── Livable-Future-Francesco-Eco.md
+│   │   │   ├── Louise-Armstrong.md
+│   │   │   ├── Lucia-Hernandez.md
+│   │   │   ├── Lucie-Blondel.md
+│   │   │   ├── Lyn-McDonell.md
+│   │   │   ├── Marcel-Kaiser-Defiria.md
+│   │   │   ├── Marco-Vangelisti.md
+│   │   │   ├── Marie-Amelie-Stiernet.md
+│   │   │   ├── Marie-Ringler.md
+│   │   │   ├── Mark-Anielski.md
+│   │   │   ├── Mark-Riva.md
+│   │   │   ├── Markus-Freiburg.md
+│   │   │   ├── Mary-Lou-Hardy.md
+│   │   │   ├── Matt-Elston.md
+│   │   │   ├── Matthew-Schutte.md
+│   │   │   ├── ().md
+│   │   │   ├── Michael-Mainelli.md
+│   │   │   ├── Michel-Bauwens.md
+│   │   │   ├── Michele-Thatcher.md
+│   │   │   ├── Mike Berners-Lee.md
+│   │   │   ├── Mike-Wistow.md
+│   │   │   ├── Moh-Al-Haifi.md
+│   │   │   ├── Morgan-Simon.md
+│   │   │   ├── Mumta-Ito.md
+│   │   │   ├── Naomi-Sheehan.md
+│   │   │   ├── Nassim-Taleb.md
+│   │   │   ├── Nate-Hagens.md
+│   │   │   ├── Natures-Rights.md
+│   │   │   ├── New-Paradigm-Coalition NPC.md
+│   │   │   ├── Nic-MacPhail.md
+│   │   │   ├── Nicole-Bastien.md
+│   │   │   ├── Niklas-Zennström.md
+│   │   │   ├── Nilu.md
+│   │   │   ├── Nisha-Polouse.md
+│   │   │   ├── .obsidian
+│   │   │   │   ├── appearance.json
+│   │   │   │   ├── app.json
+│   │   │   │   ├── core-plugins.json
+│   │   │   │   ├── core-plugins-migration.json
+│   │   │   │   ├── graph.json
+│   │   │   │   ├── hotkeys.json
+│   │   │   │   ├── workspace
+│   │   │   │   └── workspace.json
+│   │   │   ├── Olivier-Hamant.md
+│   │   │   ├── Olivier-Onghena-'t Hooft.md
+│   │   │   ├── OpenPeopleNetwork.md
+│   │   │   ├── Or-Katzman.md
+│   │   │   ├── OShaughnessy.md
+│   │   │   ├── Partners-key
+│   │   │   │   ├── 0Template.md
+│   │   │   │   ├── 7-billion-presidents.md
+│   │   │   │   ├── Fraendi.md
+│   │   │   │   ├── FutureCapital.md
+│   │   │   │   ├── Hyephi-CoherenceConsortium.md
+│   │   │   │   ├── IW.md
+│   │   │   │   ├── Nautealus.md
+│   │   │   │   ├── Oxford.md
+│   │   │   │   ├── Pebblewave.md
+│   │   │   │   ├── R3.0.md
+│   │   │   │   ├── SEEDS-Hypha.md
+│   │   │   │   ├── Stephen-Vasconcellos.md
+│   │   │   │   ├── Umycel.md
+│   │   │   │   └── WE.md
+│   │   │   ├── Partners-Potential
+│   │   │   │   ├── 2N.md
+│   │   │   │   ├── CVC.md
+│   │   │   │   ├── Frederic-Pons.md
+│   │   │   │   ├── Gaianet.md
+│   │   │   │   ├── Jeff-Hulett.md
+│   │   │   │   ├── Network-of-Networks.md
+│   │   │   │   ├── Patrick-Fitzgerald.md
+│   │   │   │   ├── ProSocial.md
+│   │   │   │   ├── Purpose-Foundation.md
+│   │   │   │   ├── Regenerative-Alliance.md
+│   │   │   │   └── Trina-Stout.md
+│   │   │   ├── Pasted image 20240129121533.png
+│   │   │   ├── Pasted image 20240215104800.png
+│   │   │   ├── Paul-Boudrye.md
+│   │   │   ├── People
+│   │   │   │   ├── Aaron-Stewart.md
+│   │   │   │   ├── Adrian-Meyer.md
+│   │   │   │   ├── Agathe-de-la-Ployp.md
+│   │   │   │   ├── Alan-Robinson.md
+│   │   │   │   ├── Alberto-Boin.md
+│   │   │   │   ├── Alia-Aurami.md
+│   │   │   │   ├── Aliki-Ko.md
+│   │   │   │   ├── Ali-Moiz.md
+│   │   │   │   ├── Allison-Byers.md
+│   │   │   │   ├── Alon.md
+│   │   │   │   ├── Amber-B-OFC.md
+│   │   │   │   ├── Amit-Paul.md
+│   │   │   │   ├── Amy-Duffuor.md
+│   │   │   │   ├── Anja-Koenig.md
+│   │   │   │   ├── Anna-Plodowski.md
+│   │   │   │   ├── Antoine-Sakho.md
+│   │   │   │   ├── Antoine-Sepulchre.md
+│   │   │   │   ├── Antoinette-Weibel.md
+│   │   │   │   ├── Barry-Stamos.md
+│   │   │   │   ├── Bart-Hoorweg.md
+│   │   │   │   ├── Bart-van-der-Zande.md
+│   │   │   │   ├── Bela-Hatvany.md
+│   │   │   │   ├── Ben-Baker.md
+│   │   │   │   ├── Ben-Bingham.md
+│   │   │   │   ├── Ben-Johnson.md
+│   │   │   │   ├── Berit-Muhlhausen.md
+│   │   │   │   ├── Bert-Ola-Bergstrand.md
+│   │   │   │   ├── Bjarke-Kovshoj.md
+│   │   │   │   ├── Bobbi-Dunphy.md
+│   │   │   │   ├── Brad-Peirce.md
+│   │   │   │   ├── Brandon-Dube.md
+│   │   │   │   ├── Bronwen-Morgan.md
+│   │   │   │   ├── Carolina-Connor.md
+│   │   │   │   ├── Caroline-Bergaud.md
+│   │   │   │   ├── Catherine-Willems.md
+│   │   │   │   ├── Cedric-Torossian.md
+│   │   │   │   ├── Charlie-Hartwell.md
+│   │   │   │   ├── Christian-Wandeler.md
+│   │   │   │   ├── Christine-McDougall.md
+│   │   │   │   ├── Clay-Cockrell.md
+│   │   │   │   ├── Daisy-Ford-Downes.md
+│   │   │   │   ├── Dana-Burch.md
+│   │   │   │   ├── Daniel-Aprea.md
+│   │   │   │   ├── Daniel-Espeland.md
+│   │   │   │   ├── Daniel-Gardonyi.md
+│   │   │   │   ├── Daren-Williams.md
+│   │   │   │   ├── David-Coats.md
+│   │   │   │   ├── David-Kish.md
+│   │   │   │   ├── David Mason.md
+│   │   │   │   ├── David-Theuvenet.md
+│   │   │   │   ├── Delphine.md
+│   │   │   │   ├── Devon White.md
+│   │   │   │   ├── Diego-Callizo.md
+│   │   │   │   ├── Donnie-Maclurcan.md
+│   │   │   │   ├── Doug-Horn.md
+│   │   │   │   ├── Dunia-Reverter.md
+│   │   │   │   ├── Elisa-Turner.md
+│   │   │   │   ├── Eller-Everett.md
+│   │   │   │   ├── Ellie-Rose-Hilton.md
+│   │   │   │   ├── Ellie-Young.md
+│   │   │   │   ├── Elliott-Bayev.md
+│   │   │   │   ├── Fabiaan-Van-Vrekhem.md
+│   │   │   │   ├── Felix-Fritsch.md
+│   │   │   │   ├── Frank-Eiselt.md
+│   │   │   │   ├── Frans-Versteeg.md
+│   │   │   │   ├── Franz-Allmayer.md
+│   │   │   │   ├── Gabriela-BK.md
+│   │   │   │   ├── Gabriel-Grant.md
+│   │   │   │   ├── Gabriel-Kram.md
+│   │   │   │   ├── Galahad-Clark.md
+│   │   │   │   ├── Gareth-Thompson.md
+│   │   │   │   ├── Gavin-Starks-Dgen.md
+│   │   │   │   ├── George-Thomas.md
+│   │   │   │   ├── Grace-Rachmany.md
+│   │   │   │   ├── Greg-Wallace.md
+│   │   │   │   ├── Hendrik-Berberich.md
+│   │   │   │   ├── Ian-Edwards.md
+│   │   │   │   ├── Ian-Kaplan.md
+│   │   │   │   ├── Indy-Johar.md
+│   │   │   │   ├── Jakob-von-Egidy.md
+│   │   │   │   ├── James-Bidwell.md
+│   │   │   │   ├── James-Cauwelier.md
+│   │   │   │   ├── Jason-Wiener.md
+│   │   │   │   ├── Jean-Claude-Pierre.md
+│   │   │   │   ├── Jeff-Cherry.md
+│   │   │   │   ├── Jeff-Genung.md
+│   │   │   │   ├── Jeff-Parrett.md
+│   │   │   │   ├── Jeff-Su.md
+│   │   │   │   ├── Jenna-Anita-Nicholas.md
+│   │   │   │   ├── Jerry-Michalski.md
+│   │   │   │   ├── Jessica-Belbin.md
+│   │   │   │   ├── Jo-Edwardes.md
+│   │   │   │   ├── John-Caswell.md
+│   │   │   │   ├── John-Elkington.md
+│   │   │   │   ├── John-Fisher.md
+│   │   │   │   ├── John-Myers.md
+│   │   │   │   ├── John-van-der-Linden.md
+│   │   │   │   ├── Jon-Brewer.md
+│   │   │   │   ├── Josh-Graham.md
+│   │   │   │   ├── Josie-Warden.md
+│   │   │   │   ├── Julianne-Zimmerman.md
+│   │   │   │   ├── Jyo-Maan.md
+│   │   │   │   ├── Katherine-Trebeck.md
+│   │   │   │   ├── Kelly-Kiefer.md
+│   │   │   │   ├── Kyungmi-Kim.md
+│   │   │   │   ├── Laureen-Golden.md
+│   │   │   │   ├── Lauren-Hatvany.md
+│   │   │   │   ├── Lawrence-Ampofo.md
+│   │   │   │   ├── Leen-Schelfhout.md
+│   │   │   │   ├── Lisa-Ma.md
+│   │   │   │   ├── Luc-Bretonnes.md
+│   │   │   │   ├── Luigi-Meschini.md
+│   │   │   │   ├── Luni-Libes.md
+│   │   │   │   ├── Manuela-Mueller.md
+│   │   │   │   ├── Marius-Cortsen.md
+│   │   │   │   ├── Marko-Mueller.md
+│   │   │   │   ├── Marko-Wolf.md
+│   │   │   │   ├── Mark-Siegenbeek.md
+│   │   │   │   ├── Marshall-Romero.md
+│   │   │   │   ├── Martha-Karimi.md
+│   │   │   │   ├── Martin-Bjergegaard.md
+│   │   │   │   ├── Martin-Morales.md
+│   │   │   │   ├── Matthew-Bonnstetter.md
+│   │   │   │   ├── Matthias-Kannegiesser.md
+│   │   │   │   ├── Meg-Pagani.md
+│   │   │   │   ├── Melanie-Harwood-Robbie.md
+│   │   │   │   ├── Michael-Haupt.md
+│   │   │   │   ├── Michael-Healy.md
+│   │   │   │   ├── Michael-Steinrueck.md
+│   │   │   │   ├── Miguel-Serrano.md
+│   │   │   │   ├── Mike-Goodwin.md
+│   │   │   │   ├── Mike-Marburg.md
+│   │   │   │   ├── Mitch-Tyson.md
+│   │   │   │   ├── Morgan-Curtis.md
+│   │   │   │   ├── Moshe-Garelik.md
+│   │   │   │   ├── Naomi-Smith.md
+│   │   │   │   ├── Nicolas-Dujacquier.md
+│   │   │   │   ├── Nils-von-Heijne.md
+│   │   │   │   ├── Norman-Wolfe.md
+│   │   │   │   ├── Ole-Peters.md
+│   │   │   │   ├── Oliver-Devillard.md
+│   │   │   │   ├── Otti-Vogt.md
+│   │   │   │   ├── Pascal-Hazeleger.md
+│   │   │   │   ├── Patrick-Fransen.md
+│   │   │   │   ├── Paul-Barnett.md
+│   │   │   │   ├── Paul-Mooney.md
+│   │   │   │   ├── Peter-Koenig.md
+│   │   │   │   ├── Peter-Schelstraete.md
+│   │   │   │   ├── Phoenix-CEC.md
+│   │   │   │   ├── Prabhu-Guptara.md
+│   │   │   │   ├── Prisca-Mueller.md
+│   │   │   │   ├── Randall-Zindler.md
+│   │   │   │   ├── Raphael-Gasser.md
+│   │   │   │   ├── Rense-Bos.md
+│   │   │   │   ├── Richard-Barrett.md
+│   │   │   │   ├── Richard-Verboomen.md
+│   │   │   │   ├── Richie-Kendall.md
+│   │   │   │   ├── Rieki-Cordon.md
+│   │   │   │   ├── Robbie-Stamp.md
+│   │   │   │   ├── Roberto-Hinestrosa.md
+│   │   │   │   ├── Robert-Smith.md
+│   │   │   │   ├── Robert-Styles.md
+│   │   │   │   ├── Rob-Gierke.md
+│   │   │   │   ├── Rob-Jameson.md
+│   │   │   │   ├── Rory-RD.md
+│   │   │   │   ├── Sandra-Romero.md
+│   │   │   │   ├── Sebastien-Dupuis.md
+│   │   │   │   ├── Simon-Carter.md
+│   │   │   │   ├── Simon-Grant.md
+│   │   │   │   ├── Sol-Alsina.md
+│   │   │   │   ├── Sonja-Blignaut.md
+│   │   │   │   ├── Stefan-Blachfellner.md
+│   │   │   │   ├── Stefan-Doering.md
+│   │   │   │   ├── Stefan-Fiedler.md
+│   │   │   │   ├── Stephan-Bostoen.md
+│   │   │   │   ├── Stephanie-Frick.md
+│   │   │   │   ├── Stephanie-Sousslof.md
+│   │   │   │   ├── Sterling-Proffer.md
+│   │   │   │   ├── Steve-Gill.md
+│   │   │   │   ├── Steve-Haggerty.md
+│   │   │   │   ├── Suvi-Rinkinen.md
+│   │   │   │   ├── Suzie-Lewis.md
+│   │   │   │   ├── Ted-Rau.md
+│   │   │   │   ├── Tim-Bemer.md
+│   │   │   │   ├── Tim-Macdonald.md
+│   │   │   │   ├── Timm-Urschinger.md
+│   │   │   │   ├── Tobias-Temmen.md
+│   │   │   │   ├── Todd-Youngblood.md
+│   │   │   │   ├── Tom-Hyland.md
+│   │   │   │   ├── Tom-Nixon.md
+│   │   │   │   ├── Tom-Rausch.md
+│   │   │   │   ├── Trae-Ashley-Garen.md
+│   │   │   │   ├── William-Reynolds.md
+│   │   │   │   ├── William-Russell.md
+│   │   │   │   ├── Xue-Jiang.md
+│   │   │   │   └── Youval.md
+│   │   │   ├── Peter-Tooher.md
+│   │   │   ├── Phoebe-Barnard.md
+│   │   │   ├── Pia-Nieminen.md
+│   │   │   ├── Pieter-Graag.md
+│   │   │   ├── Rafael-Alden.md
+│   │   │   ├── Rainer-von-Leoprechting.md
+│   │   │   ├── Randy-Nye.md
+│   │   │   ├── Rebecca-Saltman.md
+│   │   │   ├── Remy-Bourganel.md
+│   │   │   ├── Rex-Raimond.md
+│   │   │   ├── Ricardo-Bayon.md
+│   │   │   ├── Richard-Howitt.md
+│   │   │   ├── Robert-Gladitz.md
+│   │   │   ├── Rob-Wheeler.md
+│   │   │   ├── Rod-Holden.md
+│   │   │   ├── Ron-Porter.md
+│   │   │   ├── Rory-Sutherland.md
+│   │   │   ├── Rosa-Lee.md
+│   │   │   ├── Ruben-Daniels.md
+│   │   │   ├── Russel-Standish.md
+│   │   │   ├── Rysto-Väyrynen.md
+│   │   │   ├── Sandra-Myburgh.md
+│   │   │   ├── Sarah-Greenfield-Clark.md
+│   │   │   ├── Sebastian-Neumann.md
+│   │   │   ├── Simon-Blöthner-Defiria.md
+│   │   │   ├── Sleipnir.md
+│   │   │   ├── ssl.gstatic.com
+│   │   │   │   └── ui
+│   │   │   │       └── v1
+│   │   │   │           └── icons
+│   │   │   │               └── common
+│   │   │   ├── Stephane-Riot.md
+│   │   │   ├── Stephanie-Gripne.md
+│   │   │   ├── Stephan Nicoleau.md
+│   │   │   ├── Steve-Keen.md
+│   │   │   ├── Steve-Waddell.md
+│   │   │   ├── Stuart-Cowan.md
+│   │   │   ├── Tanuja-Prasad.md
+│   │   │   ├── Taylor-Pearson.md
+│   │   │   ├── Team-1-Core
+│   │   │   │   ├── Graham-Boyd.md
+│   │   │   │   ├── Leonie-Scholten.md
+│   │   │   │   └── Marie-Schuster.md
+│   │   │   ├── Team-2-Active
+│   │   │   │   ├── Colten-Zijcik.md
+│   │   │   │   ├── Davi-Lemos.md
+│   │   │   │   ├── Freeman-Willerton.md
+│   │   │   │   ├── Jack-Reardon.md
+│   │   │   │   ├── Niky-Guleria.md
+│   │   │   │   ├── Robin-Toller.md
+│   │   │   │   └── Roman-Fernandez.md
+│   │   │   ├── Team-3-Cheering
+│   │   │   │   ├── Andrew-Weiss.md
+│   │   │   │   ├── Cecil-Schmitt.md
+│   │   │   │   ├── Craig-Griffiths.md
+│   │   │   │   ├── Daniela-Spielmann.md
+│   │   │   │   ├── Iyas-Ait-Benhiba.md
+│   │   │   │   ├── Magdalena-Schaefer.md
+│   │   │   │   ├── Manon-Braeck.md
+│   │   │   │   ├── Manushri-Ivaturi.md
+│   │   │   │   ├── Michal-Simko.md
+│   │   │   │   ├── Nour.md
+│   │   │   │   ├── Rob-Bigge.md
+│   │   │   │   └── Stephanie-Bouju.md
+│   │   │   ├── Terry-Mollner.md
+│   │   │   ├── Thomas-Haas.md
+│   │   │   ├── Thomas-Schindler.md
+│   │   │   ├── Tim-Gieseke.md
+│   │   │   ├── Tim-Wolters.md
+│   │   │   ├── Tom-Woodroof.md
+│   │   │   ├── Transcap.md
+│   │   │   ├── TWIST.md
+│   │   │   ├── Ulrike-de-Jong.md
+│   │   │   ├── Ulrike-Glatz.md
+│   │   │   ├── Viliana-Dzhartova.md
+│   │   │   ├── Vincent-van-Kalkeren.md
+│   │   │   ├── Vivek-Menon.md
+│   │   │   ├── Wei-Yi-Ang.md
+│   │   │   ├── Wendy-McLean.md
+│   │   │   ├── William-Aal.md
+│   │   │   ├── Will-Ruddick.md
+│   │   │   └── Yonca-Braeckman.md
+│   │   ├── FairCapitalPartners.md
+│   │   ├── Fenna_Blomsma.md
+│   │   ├── Ferananda Ibarra.md
+│   │   ├── Filippos Zisopoulos.md
+│   │   ├── Florent-Durieux.md
+│   │   ├── Florent-Durieux.sync-conflict-20260121-093302-YYIZVVC.md
+│   │   ├── Florentine Weber.md
+│   │   ├── Frdo sustainability conference.md
+│   │   ├── Gavin Peacock.md
+│   │   ├── George Kinder.md
+│   │   ├── Georg-Holzknecht.md
+│   │   ├── Global Startup Awards.md
+│   │   ├── Graham-Android
+│   │   │   ├── ACT.md
+│   │   │   ├── Business is breaking X because business is breaking the laws of econophysics.md
+│   │   │   ├── Dojo practices.md
+│   │   │   ├── Ergodicity-Agency-Circularity-What.md
+│   │   │   ├── Everyday Habits reflections.md
+│   │   │   ├── Evolutesix 2025 Q34 activity arena.md
+│   │   │   ├── NBM25.md
+│   │   │   ├── .obsidian
+│   │   │   │   ├── appearance.json
+│   │   │   │   ├── app.json
+│   │   │   │   ├── core-plugins.json
+│   │   │   │   ├── core-plugins.sync-conflict-20250728-163436-YYIZVVC.json
+│   │   │   │   ├── graph.json
+│   │   │   │   ├── workspace.json
+│   │   │   │   └── workspace-mobile.json
+│   │   │   ├── .stfolder
+│   │   │   │   └── syncthing-folder-5e576c.txt
+│   │   │   ├── .trash
+│   │   │   │   └── Untitled
+│   │   │   ├── Video topics.md
+│   │   │   └── Video topics.sync-conflict-20250915-112734-YYIZVVC.md
+│   │   ├── Günter-Schmittberger.md
+│   │   ├── Individual_Products.md
+│   │   ├── Investor_Products.md
+│   │   ├── Investor_Products.sync-conflict-20250913-184731-EXXT24M.md
+│   │   ├── Investor_Products.sync-conflict-20251025-112104-YYIZVVC.md
+│   │   ├── James Pearson.md
+│   │   ├── Jim-O'Shaughnessy.md
+│   │   ├── Jim Rutt.md
+│   │   ├── Joe Hsueh.md
+│   │   ├── Joe Milam.md
+│   │   ├── Jon-Schull.md
+│   │   ├── Joscha Raue.md
+│   │   ├── Joshua_Prieto.md
+│   │   ├── Julie Calkins.md
+│   │   ├── Kate Bennett.md
+│   │   ├── Kent-Babin.md
+│   │   ├── Kirsten-Andersen.md
+│   │   ├── Lars-Urheim.md
+│   │   ├── Laura Fernandez Sacra Experience.md
+│   │   ├── Laurie Lane-Zucker.md
+│   │   ├── Lawrence-Harvey.md
+│   │   ├── Lennard-Bog.md
+│   │   ├── Marianne Wyne.md
+│   │   ├── Mark Chasan.md
+│   │   ├── Marleen Kappert.md
+│   │   ├── Mary Adams.md
+│   │   ├── Max Lacey-Barnacle.md
+│   │   ├── Melanie Larkins.md
+│   │   ├── Nadja Soares de Andrade.md
+│   │   ├── NBM25.md
+│   │   ├── Nico-Michaelsen.md
+│   │   ├── Noam Rifkind.md
+│   │   ├── .obsidian
+│   │   │   ├── appearance.json
+│   │   │   ├── app.json
+│   │   │   ├── app.sync-conflict-20250803-210508-EXXT24M.json
+│   │   │   ├── app.sync-conflict-20251025-112103-YYIZVVC.json
+│   │   │   ├── app.sync-conflict-20260111-074512-YYIZVVC.json
+│   │   │   ├── backlink.json
+│   │   │   ├── community-plugins.json
+│   │   │   ├── core-plugins.json
+│   │   │   ├── core-plugins.sync-conflict-20250803-210508-EXXT24M.json
+│   │   │   ├── core-plugins.sync-conflict-20250829-105943-YYIZVVC.json
+│   │   │   ├── graph.json
+│   │   │   ├── plugins
+│   │   │   │   ├── auto-note-mover
+│   │   │   │   │   ├── main.js
+│   │   │   │   │   └── manifest.json
+│   │   │   │   ├── tag-wrangler
+│   │   │   │   │   ├── main.js
+│   │   │   │   │   └── manifest.json
+│   │   │   │   └── templater-obsidian
+│   │   │   │       ├── main.js
+│   │   │   │       ├── manifest.json
+│   │   │   │       └── styles.css
+│   │   │   ├── workspace.json
+│   │   │   └── workspace-mobile.json
+│   │   ├── Pasted image 20250331184039.png
+│   │   ├── Pasted image 20250428182830.png
+│   │   ├── Pasted image 20250428182917.png
+│   │   ├── Pasted image 20250428182934.png
+│   │   ├── Pasted image 20250428182947.png
+│   │   ├── Peta Milan.md
+│   │   ├── Peter-Merry.md
+│   │   ├── Pierre-Bondoux.md
+│   │   ├── Pilar Mejia.md
+│   │   ├── Product_Market_Fit.md
+│   │   ├── Product.md
+│   │   ├── RegenBEE.md
+│   │   ├── Richard Muller.md
+│   │   ├── Robert Kadar.md
+│   │   ├── Screenshot From 2025-04-08 10-44-15.png
+│   │   ├── Sophie Jackson.md
+│   │   ├── Stephan Multhaupt.md
+│   │   ├── Steward-Ownership-Belgium.md
+│   │   ├── .stfolder
+│   │   │   └── DO_NOT_DELETE.txt
+│   │   ├── Strategy_Core.md
+│   │   ├── .stversions
+│   │   │   ├── Evolutesix-People_projects-2020
+│   │   │   │   └── Investment
+│   │   │   │       └── 0-Activities.md
+│   │   │   ├── Graham-Android
+│   │   │   │   └── .obsidian
+│   │   │   │       └── workspace-mobile.json
+│   │   │   └── .obsidian
+│   │   │       └── workspace.json
+│   │   ├── Sun-Young Park.md
+│   │   ├── Suzanne Jenkins.md
+│   │   ├── Tai-Aracen.md
+│   │   ├── TBLI.md
+│   │   ├── TechBBQ.md
+│   │   ├── Tharald Nustad.md
+│   │   ├── The Silliness of Pseudoscience.md
+│   │   ├── Tina-Stroobandt.md
+│   │   ├── Tomas Veloz.md
+│   │   ├── Toplevel_Plan_to_the_full_Ergodic_Simulation.md
+│   │   ├── .trash
+│   │   │   ├── Test.md
+│   │   │   ├── Untitled 1.md
+│   │   │   ├── Untitled 2.md
+│   │   │   ├── Untitled 3.md
+│   │   │   ├── Untitled 4.md
+│   │   │   ├── Untitled 5.md
+│   │   │   ├── Untitled.canvas
+│   │   │   └── Untitled.md
+│   │   ├── Untitled
+│   │   ├── Untitled 1
+│   │   ├── Untitled 2
+│   │   ├── Weekly SM strategy and posts.md
+│   │   ├── Zachary-Marlow.md
+│   │   └── Zeynap.md
 │   ├── PRODUCTION_LEARNINGS_V1.md
 │   ├── Progess.md
 │   ├── ROADMAP.md
+│   ├── .stfolder
+│   │   └── syncthing-folder-715df0.txt
+│   ├── .stfolder.removed-20260126-224422
+│   │   └── DO_NOT_DELETE.txt
 │   ├── STRATEGIST.md
 │   ├── Tools_Manifest.md
 │   ├── Toplevel_Plan_to_the_full_Ergodic_Simulation.md
@@ -169,9 +1092,15 @@
 │   │   ├── fund
 │   │   │   └── [fundId]
 │   │   │       ├── ClientPage.tsx
-│   │   │       └── page.tsx
+│   │   │       ├── inputs
+│   │   │       │   └── page.tsx
+│   │   │       ├── page.tsx
+│   │   │       └── results
+│   │   │           └── page.tsx
 │   │   ├── globals.css
 │   │   ├── help
+│   │   │   └── page.tsx
+│   │   ├── improve
 │   │   │   └── page.tsx
 │   │   ├── layout.tsx
 │   │   ├── login
@@ -192,6 +1121,9 @@
 │   │       └── page.tsx
 │   ├── components
 │   │   ├── CashFlowChart.tsx
+│   │   ├── display
+│   │   │   └── FundKPICards.tsx
+│   │   ├── EventList.tsx
 │   │   ├── forms
 │   │   │   ├── AuthForm.tsx
 │   │   │   ├── CapitalForm.tsx
@@ -200,16 +1132,23 @@
 │   │   │   ├── CompanyForm.tsx
 │   │   │   ├── CreditForm.tsx
 │   │   │   ├── DividendForm.tsx
+│   │   │   ├── EventForm.tsx
 │   │   │   ├── ExpenseForm.tsx
 │   │   │   ├── FundForm.tsx
 │   │   │   ├── PlanForm.tsx
 │   │   │   ├── RevenueForm.tsx
 │   │   │   ├── shared
 │   │   │   │   └── VolatilityInputs.tsx
+│   │   │   ├── ShockForm.tsx
 │   │   │   ├── StaffingForm.tsx
 │   │   │   └── ValuationForm.tsx
+│   │   ├── FundChart.tsx
 │   │   ├── Layout.tsx
+│   │   ├── modals
+│   │   │   └── MoveCompanyModal.tsx
 │   │   ├── Navbar.tsx
+│   │   ├── ShockList.tsx
+│   │   ├── TemplateCard.tsx
 │   │   └── ui
 │   │       ├── Button.tsx
 │   │       ├── Card.tsx
@@ -225,8 +1164,369 @@
 │   ├── lib
 │   │   ├── api.ts
 │   │   ├── api.ts.bak
+│   │   ├── api.ts.fund
 │   │   ├── currency.ts
 │   │   └── presets.ts
+│   ├── .next
+│   │   ├── app-build-manifest.json
+│   │   ├── build-manifest.json
+│   │   ├── cache
+│   │   │   ├── swc
+│   │   │   │   └── plugins
+│   │   │   │       └── v7_linux_x86_64_0.106.15
+│   │   │   ├── .tsbuildinfo
+│   │   │   └── webpack
+│   │   │       ├── client-development
+│   │   │       │   ├── 0.pack.gz
+│   │   │       │   ├── 10.pack.gz
+│   │   │       │   ├── 11.pack.gz
+│   │   │       │   ├── 12.pack.gz
+│   │   │       │   ├── 13.pack.gz
+│   │   │       │   ├── 14.pack.gz
+│   │   │       │   ├── 15.pack.gz
+│   │   │       │   ├── 16.pack.gz
+│   │   │       │   ├── 17.pack.gz
+│   │   │       │   ├── 18.pack.gz
+│   │   │       │   ├── 19.pack.gz
+│   │   │       │   ├── 1.pack.gz
+│   │   │       │   ├── 20.pack.gz
+│   │   │       │   ├── 21.pack.gz
+│   │   │       │   ├── 22.pack.gz
+│   │   │       │   ├── 23.pack.gz
+│   │   │       │   ├── 24.pack.gz
+│   │   │       │   ├── 2.pack.gz
+│   │   │       │   ├── 3.pack.gz
+│   │   │       │   ├── 4.pack.gz
+│   │   │       │   ├── 5.pack.gz
+│   │   │       │   ├── 6.pack.gz
+│   │   │       │   ├── 7.pack.gz
+│   │   │       │   ├── 8.pack.gz
+│   │   │       │   ├── 9.pack.gz
+│   │   │       │   ├── index.pack.gz
+│   │   │       │   └── index.pack.gz.old
+│   │   │       ├── client-production
+│   │   │       │   ├── 0.pack
+│   │   │       │   ├── 10.pack
+│   │   │       │   ├── 11.pack
+│   │   │       │   ├── 12.pack
+│   │   │       │   ├── 1.pack
+│   │   │       │   ├── 2.pack
+│   │   │       │   ├── 3.pack
+│   │   │       │   ├── 4.pack
+│   │   │       │   ├── 5.pack
+│   │   │       │   ├── 6.pack
+│   │   │       │   ├── 7.pack
+│   │   │       │   ├── 8.pack
+│   │   │       │   ├── 9.pack
+│   │   │       │   ├── index.pack
+│   │   │       │   └── index.pack.old
+│   │   │       ├── edge-server-production
+│   │   │       │   ├── 0.pack
+│   │   │       │   └── index.pack
+│   │   │       ├── server-development
+│   │   │       │   ├── 0.pack.gz
+│   │   │       │   ├── 10.pack.gz
+│   │   │       │   ├── 11.pack.gz
+│   │   │       │   ├── 12.pack.gz
+│   │   │       │   ├── 13.pack.gz
+│   │   │       │   ├── 14.pack.gz
+│   │   │       │   ├── 15.pack.gz
+│   │   │       │   ├── 16.pack.gz
+│   │   │       │   ├── 17.pack.gz
+│   │   │       │   ├── 18.pack.gz
+│   │   │       │   ├── 19.pack.gz
+│   │   │       │   ├── 1.pack.gz
+│   │   │       │   ├── 20.pack.gz
+│   │   │       │   ├── 21.pack.gz
+│   │   │       │   ├── 2.pack.gz
+│   │   │       │   ├── 3.pack.gz
+│   │   │       │   ├── 4.pack.gz
+│   │   │       │   ├── 5.pack.gz
+│   │   │       │   ├── 6.pack.gz
+│   │   │       │   ├── 7.pack.gz
+│   │   │       │   ├── 8.pack.gz
+│   │   │       │   ├── 9.pack.gz
+│   │   │       │   ├── index.pack.gz
+│   │   │       │   └── index.pack.gz.old
+│   │   │       └── server-production
+│   │   │           ├── 0.pack
+│   │   │           ├── 1.pack
+│   │   │           ├── 2.pack
+│   │   │           ├── 3.pack
+│   │   │           ├── 4.pack
+│   │   │           ├── 5.pack
+│   │   │           ├── index.pack
+│   │   │           └── index.pack.old
+│   │   ├── package.json
+│   │   ├── react-loadable-manifest.json
+│   │   ├── server
+│   │   │   ├── app
+│   │   │   │   ├── company
+│   │   │   │   │   └── [companyId]
+│   │   │   │   │       ├── page_client-reference-manifest.js
+│   │   │   │   │       └── page.js
+│   │   │   │   ├── fund
+│   │   │   │   │   └── [fundId]
+│   │   │   │   │       ├── inputs
+│   │   │   │   │       │   ├── page_client-reference-manifest.js
+│   │   │   │   │       │   └── page.js
+│   │   │   │   │       ├── page_client-reference-manifest.js
+│   │   │   │   │       ├── page.js
+│   │   │   │   │       └── results
+│   │   │   │   │           ├── page_client-reference-manifest.js
+│   │   │   │   │           └── page.js
+│   │   │   │   ├── login
+│   │   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   │   └── page.js
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   ├── page.js
+│   │   │   │   ├── plan
+│   │   │   │   │   └── [planId]
+│   │   │   │   │       ├── inputs
+│   │   │   │   │       │   ├── page_client-reference-manifest.js
+│   │   │   │   │       │   └── page.js
+│   │   │   │   │       └── results
+│   │   │   │   │           ├── page_client-reference-manifest.js
+│   │   │   │   │           └── page.js
+│   │   │   │   └── structure
+│   │   │   │       ├── page_client-reference-manifest.js
+│   │   │   │       └── page.js
+│   │   │   ├── app-paths-manifest.json
+│   │   │   ├── interception-route-rewrite-manifest.js
+│   │   │   ├── middleware-build-manifest.js
+│   │   │   ├── middleware-manifest.json
+│   │   │   ├── middleware-react-loadable-manifest.js
+│   │   │   ├── next-font-manifest.js
+│   │   │   ├── next-font-manifest.json
+│   │   │   ├── pages-manifest.json
+│   │   │   ├── server-reference-manifest.js
+│   │   │   ├── server-reference-manifest.json
+│   │   │   ├── vendor-chunks
+│   │   │   │   ├── asynckit.js
+│   │   │   │   ├── axios.js
+│   │   │   │   ├── call-bind-apply-helpers.js
+│   │   │   │   ├── chart.js.js
+│   │   │   │   ├── combined-stream.js
+│   │   │   │   ├── debug.js
+│   │   │   │   ├── delayed-stream.js
+│   │   │   │   ├── dunder-proto.js
+│   │   │   │   ├── es-define-property.js
+│   │   │   │   ├── es-errors.js
+│   │   │   │   ├── es-object-atoms.js
+│   │   │   │   ├── es-set-tostringtag.js
+│   │   │   │   ├── follow-redirects.js
+│   │   │   │   ├── form-data.js
+│   │   │   │   ├── function-bind.js
+│   │   │   │   ├── get-intrinsic.js
+│   │   │   │   ├── get-proto.js
+│   │   │   │   ├── gopd.js
+│   │   │   │   ├── has-flag.js
+│   │   │   │   ├── hasown.js
+│   │   │   │   ├── has-symbols.js
+│   │   │   │   ├── has-tostringtag.js
+│   │   │   │   ├── @kurkle.js
+│   │   │   │   ├── lucide-react.js
+│   │   │   │   ├── math-intrinsics.js
+│   │   │   │   ├── mime-db.js
+│   │   │   │   ├── mime-types.js
+│   │   │   │   ├── ms.js
+│   │   │   │   ├── next.js
+│   │   │   │   ├── proxy-from-env.js
+│   │   │   │   ├── react-chartjs-2.js
+│   │   │   │   ├── supports-color.js
+│   │   │   │   └── @swc.js
+│   │   │   └── webpack-runtime.js
+│   │   ├── static
+│   │   │   ├── chunks
+│   │   │   │   ├── app
+│   │   │   │   │   ├── company
+│   │   │   │   │   │   └── [companyId]
+│   │   │   │   │   │       └── page.js
+│   │   │   │   │   ├── fund
+│   │   │   │   │   │   └── [fundId]
+│   │   │   │   │   │       ├── inputs
+│   │   │   │   │   │       │   └── page.js
+│   │   │   │   │   │       ├── page.js
+│   │   │   │   │   │       └── results
+│   │   │   │   │   │           └── page.js
+│   │   │   │   │   ├── layout.js
+│   │   │   │   │   ├── login
+│   │   │   │   │   │   └── page.js
+│   │   │   │   │   ├── page.js
+│   │   │   │   │   ├── plan
+│   │   │   │   │   │   └── [planId]
+│   │   │   │   │   │       ├── inputs
+│   │   │   │   │   │       │   └── page.js
+│   │   │   │   │   │       └── results
+│   │   │   │   │   │           └── page.js
+│   │   │   │   │   └── structure
+│   │   │   │   │       └── page.js
+│   │   │   │   ├── app-pages-internals.js
+│   │   │   │   ├── main-app.js
+│   │   │   │   ├── polyfills.js
+│   │   │   │   └── webpack.js
+│   │   │   ├── css
+│   │   │   │   └── app
+│   │   │   │       └── layout.css
+│   │   │   ├── development
+│   │   │   │   ├── _buildManifest.js
+│   │   │   │   └── _ssgManifest.js
+│   │   │   ├── media
+│   │   │   │   ├── 19cfc7226ec3afaa-s.woff2
+│   │   │   │   ├── 21350d82a1f187e9-s.woff2
+│   │   │   │   ├── 8e9860b6e62d6359-s.woff2
+│   │   │   │   ├── ba9851c3c22cd980-s.woff2
+│   │   │   │   ├── c5fe6dc8356a8c31-s.woff2
+│   │   │   │   ├── df0a9ae256c0569c-s.woff2
+│   │   │   │   └── e4af272ccee01ff0-s.p.woff2
+│   │   │   └── webpack
+│   │   │       ├── 0590f02211c23045.webpack.hot-update.json
+│   │   │       ├── 1a8cb5c8f2051b73.webpack.hot-update.json
+│   │   │       ├── 2ea8b596d13d9b01.webpack.hot-update.json
+│   │   │       ├── 3286b3e22e8e483a.webpack.hot-update.json
+│   │   │       ├── 4b699e1ef1587be2.webpack.hot-update.json
+│   │   │       ├── 4bb17bce9869ee10.webpack.hot-update.json
+│   │   │       ├── 633457081244afec._.hot-update.json
+│   │   │       ├── 663dbfd9b7884209.webpack.hot-update.json
+│   │   │       ├── 7664a2de32fb8e28.webpack.hot-update.json
+│   │   │       ├── 878034df53f1e106.webpack.hot-update.json
+│   │   │       ├── 8aed3e0f177c8910.webpack.hot-update.json
+│   │   │       ├── 8af67e27108406bd.webpack.hot-update.json
+│   │   │       ├── 9068b1cff8f991c6.webpack.hot-update.json
+│   │   │       ├── 92d7576079f3b59f.webpack.hot-update.json
+│   │   │       ├── a111a85addc9fc90.webpack.hot-update.json
+│   │   │       ├── a155709c07dfd09b.webpack.hot-update.json
+│   │   │       ├── a17d96b62ea8c94f.webpack.hot-update.json
+│   │   │       ├── app
+│   │   │       │   ├── fund
+│   │   │       │   │   └── [fundId]
+│   │   │       │   │       ├── inputs
+│   │   │       │   │       │   ├── page.4b699e1ef1587be2.hot-update.js
+│   │   │       │   │       │   ├── page.7664a2de32fb8e28.hot-update.js
+│   │   │       │   │       │   ├── page.8aed3e0f177c8910.hot-update.js
+│   │   │       │   │       │   ├── page.a155709c07dfd09b.hot-update.js
+│   │   │       │   │       │   ├── page.b21cce92b24a9522.hot-update.js
+│   │   │       │   │       │   ├── page.ea05610af2a88efd.hot-update.js
+│   │   │       │   │       │   └── page.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       │   │       ├── page.4b699e1ef1587be2.hot-update.js
+│   │   │       │   │       ├── page.7664a2de32fb8e28.hot-update.js
+│   │   │       │   │       ├── page.8aed3e0f177c8910.hot-update.js
+│   │   │       │   │       ├── page.a155709c07dfd09b.hot-update.js
+│   │   │       │   │       ├── page.b21cce92b24a9522.hot-update.js
+│   │   │       │   │       ├── page.ea05610af2a88efd.hot-update.js
+│   │   │       │   │       ├── page.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       │   │       └── results
+│   │   │       │   │           ├── page.0590f02211c23045.hot-update.js
+│   │   │       │   │           ├── page.3286b3e22e8e483a.hot-update.js
+│   │   │       │   │           ├── page.4b699e1ef1587be2.hot-update.js
+│   │   │       │   │           ├── page.7664a2de32fb8e28.hot-update.js
+│   │   │       │   │           ├── page.8aed3e0f177c8910.hot-update.js
+│   │   │       │   │           ├── page.a155709c07dfd09b.hot-update.js
+│   │   │       │   │           ├── page.b21cce92b24a9522.hot-update.js
+│   │   │       │   │           ├── page.ea05610af2a88efd.hot-update.js
+│   │   │       │   │           └── page.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       │   ├── layout.0590f02211c23045.hot-update.js
+│   │   │       │   ├── layout.3286b3e22e8e483a.hot-update.js
+│   │   │       │   ├── layout.4b699e1ef1587be2.hot-update.js
+│   │   │       │   ├── layout.663dbfd9b7884209.hot-update.js
+│   │   │       │   ├── layout.7664a2de32fb8e28.hot-update.js
+│   │   │       │   ├── layout.878034df53f1e106.hot-update.js
+│   │   │       │   ├── layout.8aed3e0f177c8910.hot-update.js
+│   │   │       │   ├── layout.92d7576079f3b59f.hot-update.js
+│   │   │       │   ├── layout.a111a85addc9fc90.hot-update.js
+│   │   │       │   ├── layout.a155709c07dfd09b.hot-update.js
+│   │   │       │   ├── layout.b21cce92b24a9522.hot-update.js
+│   │   │       │   ├── layout.b4c000cc5f65bfa5.hot-update.js
+│   │   │       │   ├── layout.b8c39b03065f5c18.hot-update.js
+│   │   │       │   ├── layout.d66e7386e4cd776b.hot-update.js
+│   │   │       │   ├── layout.ea05610af2a88efd.hot-update.js
+│   │   │       │   ├── layout.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       │   ├── login
+│   │   │       │   │   ├── page.4b699e1ef1587be2.hot-update.js
+│   │   │       │   │   ├── page.7664a2de32fb8e28.hot-update.js
+│   │   │       │   │   ├── page.8aed3e0f177c8910.hot-update.js
+│   │   │       │   │   ├── page.a155709c07dfd09b.hot-update.js
+│   │   │       │   │   ├── page.b21cce92b24a9522.hot-update.js
+│   │   │       │   │   ├── page.ea05610af2a88efd.hot-update.js
+│   │   │       │   │   └── page.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       │   ├── page.4b699e1ef1587be2.hot-update.js
+│   │   │       │   ├── page.7664a2de32fb8e28.hot-update.js
+│   │   │       │   ├── page.8aed3e0f177c8910.hot-update.js
+│   │   │       │   ├── page.a155709c07dfd09b.hot-update.js
+│   │   │       │   ├── page.b21cce92b24a9522.hot-update.js
+│   │   │       │   ├── page.ea05610af2a88efd.hot-update.js
+│   │   │       │   ├── page.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       │   └── structure
+│   │   │       │       ├── page.4b699e1ef1587be2.hot-update.js
+│   │   │       │       ├── page.663dbfd9b7884209.hot-update.js
+│   │   │       │       ├── page.7664a2de32fb8e28.hot-update.js
+│   │   │       │       ├── page.878034df53f1e106.hot-update.js
+│   │   │       │       ├── page.8aed3e0f177c8910.hot-update.js
+│   │   │       │       ├── page.92d7576079f3b59f.hot-update.js
+│   │   │       │       ├── page.a111a85addc9fc90.hot-update.js
+│   │   │       │       ├── page.a155709c07dfd09b.hot-update.js
+│   │   │       │       ├── page.b21cce92b24a9522.hot-update.js
+│   │   │       │       ├── page.d66e7386e4cd776b.hot-update.js
+│   │   │       │       ├── page.ea05610af2a88efd.hot-update.js
+│   │   │       │       └── page.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   │       ├── b197d847dc388987.webpack.hot-update.json
+│   │   │       ├── b21cce92b24a9522.webpack.hot-update.json
+│   │   │       ├── b4c000cc5f65bfa5.webpack.hot-update.json
+│   │   │       ├── b8c39b03065f5c18.webpack.hot-update.json
+│   │   │       ├── bd8009d2c242f545.webpack.hot-update.json
+│   │   │       ├── d66e7386e4cd776b.webpack.hot-update.json
+│   │   │       ├── ea05610af2a88efd.webpack.hot-update.json
+│   │   │       ├── ffcbe7b9b4c0fc8c.webpack.hot-update.json
+│   │   │       ├── webpack.0590f02211c23045.hot-update.js
+│   │   │       ├── webpack.1a8cb5c8f2051b73.hot-update.js
+│   │   │       ├── webpack.2ea8b596d13d9b01.hot-update.js
+│   │   │       ├── webpack.3286b3e22e8e483a.hot-update.js
+│   │   │       ├── webpack.4b699e1ef1587be2.hot-update.js
+│   │   │       ├── webpack.4bb17bce9869ee10.hot-update.js
+│   │   │       ├── webpack.663dbfd9b7884209.hot-update.js
+│   │   │       ├── webpack.7664a2de32fb8e28.hot-update.js
+│   │   │       ├── webpack.878034df53f1e106.hot-update.js
+│   │   │       ├── webpack.8aed3e0f177c8910.hot-update.js
+│   │   │       ├── webpack.8af67e27108406bd.hot-update.js
+│   │   │       ├── webpack.9068b1cff8f991c6.hot-update.js
+│   │   │       ├── webpack.92d7576079f3b59f.hot-update.js
+│   │   │       ├── webpack.a111a85addc9fc90.hot-update.js
+│   │   │       ├── webpack.a155709c07dfd09b.hot-update.js
+│   │   │       ├── webpack.a17d96b62ea8c94f.hot-update.js
+│   │   │       ├── webpack.b197d847dc388987.hot-update.js
+│   │   │       ├── webpack.b21cce92b24a9522.hot-update.js
+│   │   │       ├── webpack.b4c000cc5f65bfa5.hot-update.js
+│   │   │       ├── webpack.b8c39b03065f5c18.hot-update.js
+│   │   │       ├── webpack.bd8009d2c242f545.hot-update.js
+│   │   │       ├── webpack.d66e7386e4cd776b.hot-update.js
+│   │   │       ├── webpack.ea05610af2a88efd.hot-update.js
+│   │   │       └── webpack.ffcbe7b9b4c0fc8c.hot-update.js
+│   │   ├── trace
+│   │   └── types
+│   │       ├── app
+│   │       │   ├── company
+│   │       │   │   └── [companyId]
+│   │       │   │       └── page.ts
+│   │       │   ├── fund
+│   │       │   │   └── [fundId]
+│   │       │   │       ├── inputs
+│   │       │   │       │   └── page.ts
+│   │       │   │       ├── page.ts
+│   │       │   │       └── results
+│   │       │   │           └── page.ts
+│   │       │   ├── layout.ts
+│   │       │   ├── login
+│   │       │   │   └── page.ts
+│   │       │   ├── page.ts
+│   │       │   ├── plan
+│   │       │   │   └── [planId]
+│   │       │   │       ├── inputs
+│   │       │   │       │   └── page.ts
+│   │       │   │       └── results
+│   │       │   │           └── page.ts
+│   │       │   └── structure
+│   │       │       └── page.ts
+│   │       └── package.json
 │   ├── next.config.js
 │   ├── next-env.d.ts
 │   ├── package.json
@@ -245,6 +1545,7 @@
 │   ├── ai_prompt_packet.txt
 │   ├── ai_solution.md
 │   ├── apply.py
+│   ├── audit_fallbacks.sh
 │   ├── audit_scan.sh
 │   ├── backups
 │   │   ├── apply.py
@@ -264,6 +1565,8 @@
 │   │   └── try_build.sh
 │   ├── builder.py
 │   ├── clean-slate.sh
+│   ├── cleanup.sh
+│   ├── current_frontend_state.sh
 │   ├── deploy.sh
 │   ├── Dockerfile
 │   ├── do_task_alt.sh
@@ -274,6 +1577,7 @@
 │   ├── harvester.py
 │   ├── harvest_packet.txt
 │   ├── pack_context.sh
+│   ├── test_v4.sh
 │   ├── transplant.sh
 │   ├── trigger-update.sh
 │   ├── try_build.sh
@@ -281,4 +1585,4 @@
 │   └── verify_auth.sh
 └── tree.txt
 
-33 directories, 249 files
+161 directories, 1425 files

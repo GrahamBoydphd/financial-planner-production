@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Plus, Trash2, Edit2, Save, X, Users, DollarSign, Calendar, TrendingUp, Briefcase } from "lucide-react"
+import { Plus, Edit2, Save, X, Users, DollarSign, Calendar, TrendingUp, Briefcase } from "lucide-react"
 import { StaffingRole } from "@/lib/api"
 import Card from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import Tooltip from "@/components/ui/Tooltip"
+import DeleteButton from "@/components/ui/DeleteButton"
 
 interface StaffingFormProps {
   planId: string
@@ -85,17 +86,16 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this role?")) {
-      try {
-        setIsLoading(true)
-        await onDelete(id)
-        setRoles(roles.filter(r => r.id !== id))
-      } catch (err) {
-        console.error("Failed to delete role:", err)
-        setGlobalError("Failed to delete role. Please try again.")
-      } finally {
-        setIsLoading(false)
-      }
+    // Confirmation handled by DeleteButton
+    try {
+      setIsLoading(true)
+      await onDelete(id)
+      setRoles(roles.filter(r => r.id !== id))
+    } catch (err) {
+      console.error("Failed to delete role:", err)
+      setGlobalError("Failed to delete role. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -390,7 +390,7 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                       <td className="px-4 py-3">{role.target_count}</td>
                       <td className="px-4 py-3">Month {role.start_month}</td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 items-center">
                           <button
                             onClick={() => handleEdit(role)}
                             className="p-1 text-blue-600 hover:text-blue-800 rounded hover:bg-blue-50"
@@ -398,13 +398,10 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(role.id)}
-                            className="p-1 text-red-600 hover:text-red-800 rounded hover:bg-red-50"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <DeleteButton 
+                            onDelete={() => handleDelete(role.id)}
+                            disabled={isLoading}
+                          />
                         </div>
                       </td>
                     </tr>

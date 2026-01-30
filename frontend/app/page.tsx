@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import DeleteButton from '@/components/ui/DeleteButton';
+import TemplateCard from '@/components/TemplateCard';
 import { api, Fund, Company, Template } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Copy, Trash2, MoveRight } from 'lucide-react';
@@ -15,12 +16,6 @@ import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
 const CopyIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5" />
-  </svg>
-);
-
-const DownloadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
   </svg>
 );
 
@@ -331,64 +326,15 @@ export default function Dashboard() {
         </div>
       ) : (
         // TEMPLATES VIEW
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {templates.map((template) => {
-            const isProcessing = loadingOp === template.id;
-            return (
-            <div key={template.id} className="flex flex-col h-full">
-              <Card className="flex-1 flex flex-col border-t-4 border-t-emerald-500 hover:shadow-lg transition-shadow">
-                <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800">
-                      {template.name}
-                    </h2>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Template</p>
-                  </div>
-                  {isProcessing ? (
-                     <div className="p-2 text-emerald-600"><Spinner /></div>
-                  ) : (
-                    <button
-                        onClick={() => handleImportTemplate(template.id)}
-                        className="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 p-2 rounded-full transition-colors"
-                        title="Import Template"
-                        disabled={!!loadingOp}
-                    >
-                        <DownloadIcon />
-                    </button>
-                  )}
-                </div>
-                
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-400">Description</h3>
-                    <p className="text-gray-600 text-sm mt-1">{template.description}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-400">Industry</h3>
-                      <p className="text-gray-800 text-sm font-medium">{template.industry}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-400">Complexity</h3>
-                      <p className="text-gray-800 text-sm font-medium">{template.complexity}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-3 border-t border-gray-100">
-                   <button
-                    onClick={() => handleImportTemplate(template.id)}
-                    className="w-full bg-emerald-600 text-white py-2 rounded hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                    disabled={!!loadingOp}
-                  >
-                    {isProcessing ? <Spinner /> : <DownloadIcon />}
-                    {isProcessing ? 'Importing...' : 'Import Template'}
-                  </button>
-                </div>
-              </Card>
-            </div>
-          )})}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {templates.map((template) => (
+            <TemplateCard 
+              key={template.id}
+              template={template}
+              onCopy={handleImportTemplate}
+              isProcessing={loadingOp === template.id}
+            />
+          ))}
 
           {templates.length === 0 && (
              <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">

@@ -1,0 +1,1 @@
+#investor-channel sent email, she has connnections to Omidyar and Synergos. 

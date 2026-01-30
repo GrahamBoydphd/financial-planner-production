@@ -141,7 +141,7 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
                     className="flex-1 flex items-center justify-center gap-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 py-2 rounded transition-colors border border-gray-200"
                   >
                     <Edit2 className="h-3 w-3" />
-                    Edit Config
+                    Edit Scenario
                   </Link>
                   <Link 
                     href={`/fund/${fundId}/results?fund_plan_id=${plan.id}`}

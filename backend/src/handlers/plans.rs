@@ -20,6 +20,7 @@ pub struct GetProjectionQuery {
     pub initial_cash: Option<Decimal>,
     pub mode: Option<String>,
     pub stop_insolvency: Option<bool>,
+    pub events_active: Option<bool>,
 }
 
 pub async fn create_plan(
@@ -280,16 +281,33 @@ pub async fn get_plan_projection(
     .fetch_all(&pool)
     .await?;
 
-    let event_shocks: Vec<crate::models::EventShock> = sqlx::query_as!(
-        crate::models::EventShock,
+    // Map new 'events' table to 'Event' struct
+    // UPDATED: Fetch events linked to Plan OR Company OR Fund
+    let events: Vec<crate::models::Event> = sqlx::query_as!(
+        crate::models::Event,
         r#"
         SELECT 
-            id as "id!", plan_id as "plan_id!", shock_name as "shock_name!", 
-            shock_month as "shock_month!", impact_type as "impact_type!", 
-            impact_value as "impact_value!", duration_months, created_at as "created_at!" 
-        FROM event_shocks 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
+            e.id as "id!", 
+            e.plan_id, 
+            e.fund_ids, 
+            e.company_ids,
+            e.event_name as "event_name!", 
+            e.start_month, 
+            e.event_category, 
+            e.impact_type, 
+            e.impact_value, 
+            e.duration_months, 
+            e.likelihood_annual_pct, 
+            e.magnitude, 
+            e.direction, 
+            e.duration_category,
+            e.is_counter_cyclic,
+            e.created_at as "created_at!" 
+        FROM events e
+        JOIN financial_plans p ON p.id = $1
+        JOIN companies c ON c.id = p.company_id
+        WHERE (e.plan_id = $1 OR c.id = ANY(e.company_ids) OR c.fund_id = ANY(e.fund_ids))
+        AND p.tenant_id = $2
         "#,
         id,
         claims.tenant_id
@@ -395,8 +413,10 @@ pub async fn get_plan_projection(
     let initial_cash = params.initial_cash.unwrap_or(plan.initial_cash);
     let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
     let stop_insolvency = params.stop_insolvency.unwrap_or(false);
+    let events_active = params.events_active.unwrap_or(true);
 
     let result = generate_simulation(
+        plan.company_id,
         plan.plan_name.clone(),
         plan.currency_code.clone(),
         months,
@@ -404,7 +424,7 @@ pub async fn get_plan_projection(
         revenue_items,
         expense_items,
         staffing_roles,
-        event_shocks,
+        events,
         capital_injections,
         credit_facility,
         dividend_policy,
@@ -412,6 +432,7 @@ pub async fn get_plan_projection(
         capital_growth,
         use_monte_carlo,
         stop_insolvency,
+        events_active,
         plan.pooling_fraction,
         plan.insolvency_threshold
     );

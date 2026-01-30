@@ -1,4 +1,5 @@
 pub mod domain;
+pub mod event_manager;
 pub mod orchestrator;
 pub mod runner;
 

@@ -236,6 +236,95 @@ JSON
 
 ---
 
+## Swan Events
+
+Here is the complete reference list of the exact values and options the Frontend now sends to the Backend for a `SwanEvent`. This includes the **Semantic Strings** (words instead of numbers) and the **Formatting Fixes** (percentages) we implemented today.
+
+### 1. Magnitude (Impact Size)
+
+_Previously sent as numbers (`0.10`), now sent as semantic words:_
+
+- `"small"` (10% impact)
+    
+- `"medium"` (30% impact)
+    
+- `"large"` (50% impact)
+    
+- `"catastrophic"` (80% impact) — _Added per your request._
+    
+
+### 2. Duration (Time Span)
+
+_Previously sent as months (`3`), now sent as semantic words:_
+
+- `"short"` (1-4 months)
+    
+- `"medium"` (4-8 months)
+    
+- `"long"` (8-24 months)
+    
+
+### 3. Direction (Who wins/loses)
+
+- `"detrimental_only"` (Bad for everyone)
+    
+- `"beneficial_only"` (Good for everyone)
+    
+- `"both_neutral"` (Mixed bag, net neutral)
+    
+- `"both_biased_detrimental"` (Mixed, but mostly bad)
+    
+- `"both_biased_beneficial"` (Mixed, but mostly good)
+    
+
+### 4. Scope & Targets
+
+- **Scope:** `"local"` or `"global"`
+    
+- **Target IDs:** An array of UUID strings `["uuid-1", "uuid-2"]`.
+    
+    - If Global: These are Fund IDs.
+        
+    - If Local: This is a Company ID.
+        
+
+### 5. Probability (Likelihood)
+
+- **Format:** Sent as a whole number string representing the percentage.
+    
+- **Example:** `"50"` (represents 50%).
+    
+    - _Correction:_ We no longer send `"0.5"`.
+        
+
+### 6. New: Distribution (Counter-Cyclic)
+
+_Only sent for Global + "Both" directions:_
+
+- **Field:** `is_counter_cyclic`
+    
+- **Value:** `true` or `false`
+    
+    - `false` (Default): All companies react the same way (Unified).
+        
+    - `true`: Companies are split between positive and negative reactions based on the bias.
+        
+
+### 7. Event Type
+
+- `"revenue_shock"`
+    
+- `"expense_shock"`
+    
+- `"valuation_shock"`
+    
+
+### 8. Event Name
+
+- A standard text string (e.g., `"Market Crash 2026"`).
+
+--- 
+
 ## 3. CORE
 ## 3.1. CORE ENGINE LOGIC (`backend/src/projection.rs`)
 * **Mechanism:** Breadth-First Traversal (Time-step based).

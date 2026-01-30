@@ -173,10 +173,31 @@ pub struct ValuationAssumption {
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Event {
+    pub id: Uuid,
+    pub plan_id: Option<Uuid>,
+    pub fund_ids: Option<Vec<Uuid>>, // Changed to Array
+    pub company_ids: Option<Vec<Uuid>>, // Changed to Array
+    pub event_name: String, // Renamed from shock_name
+    pub start_month: Option<i32>, // Renamed from shock_month, Relaxed
+    pub event_category: Option<String>,
+    pub impact_type: Option<String>, // Relaxed
+    pub impact_value: Option<Decimal>, // Relaxed
+    pub duration_months: Option<i32>,
+    pub likelihood_annual_pct: Option<Decimal>,
+    pub magnitude: Option<String>,
+    pub direction: Option<String>,
+    pub duration_category: Option<String>,
+    pub is_counter_cyclic: Option<bool>,
+    pub created_at: DateTime<Utc>,
+}
+
+// Legacy struct for backward compatibility with projection engine
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct EventShock {
     pub id: Uuid,
     pub plan_id: Uuid,
-    pub shock_name: String, // Renamed from event_name
+    pub shock_name: String,
     pub shock_month: i32,
     pub impact_type: String,
     pub impact_value: Decimal,
@@ -317,4 +338,33 @@ pub struct UpdatePlanRequest {
     pub pooling_fraction: Option<Decimal>,
     pub initial_cash: Option<String>,
     pub insolvency_threshold: Option<String>,
+}
+
+// --- Event Requests ---
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum EventPayload {
+    Fixed {
+        start_month: i32,
+        impact_value: String,
+        duration_months: Option<i32>,
+    },
+    Stochastic {
+        occurrence_probability: String,
+        magnitude: String,
+        direction: String,
+        duration: String, // Maps to duration_category
+        is_counter_cyclic: Option<bool>,
+    },
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateEventRequest {
+    pub scope: String, // "global", "local", "plan"
+    pub target_ids: Vec<Uuid>, // Changed to Array
+    pub event_name: String,
+    pub event_type: String, // Renamed from shock_type
+    #[serde(flatten)]
+    pub data: EventPayload,
 }

@@ -65,6 +65,7 @@ pub struct Shock {
     pub impact_type: String,
     pub impact_value: f64,
     pub duration_months: Option<i32>,
+    pub target_company_id: Option<Uuid>, // Added for routing stochastic shocks
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -165,6 +166,7 @@ impl SimState {
             opex: Decimal::ZERO,
             gross_profit: Decimal::ZERO,
             net_income: Decimal::ZERO,
+            treasury_gain: Decimal::ZERO,
             cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
             is_solvent: true,
             interest_expense: Decimal::ZERO,
@@ -183,7 +185,7 @@ impl SimState {
         self.current_cash = 0.0;
     }
 
-    pub fn step(&mut self, month: i32) -> (f64, f64) {
+    pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
         if !self.is_solvent {
             // Push "Erasure" (Zero) state
             self.history.push(MonthlyData {
@@ -194,6 +196,7 @@ impl SimState {
                 opex: Decimal::ZERO,
                 gross_profit: Decimal::ZERO,
                 net_income: Decimal::ZERO,
+                treasury_gain: Decimal::ZERO,
                 cash_balance: Decimal::ZERO,
                 is_solvent: false,
                 interest_expense: Decimal::ZERO,
@@ -208,10 +211,13 @@ impl SimState {
             return (0.0, 0.0);
         }
 
+        // Merge External Shocks (Persist them in state)
+        self.shocks.extend_from_slice(external_shocks);
+
         let mut monthly_rev = 0.0;
         let mut monthly_cogs = 0.0;
         let mut monthly_opex = 0.0;
-        let monthly_interest = 0.0;
+        let mut monthly_interest = 0.0;
 
         // 1. Revenue
         for (i, item) in self.revenues.iter().enumerate() {
@@ -295,20 +301,50 @@ impl SimState {
             }
         }
 
-        // 4. Shocks
+        // 4. Apply Active Shocks
         for shock in &self.shocks {
-            if month == shock.month {
-                let mult = 1.0 + (shock.impact_value / 100.0);
+            let duration = shock.duration_months.unwrap_or(1);
+            if month >= shock.month && month < shock.month + duration {
+                
+                let raw_pct = shock.impact_value / 100.0;
+                
+                // Updated is_expense check to include "expense_shock"
+                let is_expense = matches!(shock.impact_type.as_str(), "expense" | "opex" | "cogs" | "expense_shock");
+                
+                let mult = if is_expense { 1.0 - raw_pct } else { 1.0 + raw_pct };
+                let mult = mult.max(0.0);
+                
                 match shock.impact_type.as_str() {
-                    "revenue" => { monthly_rev *= mult; monthly_cogs *= mult; },
-                    "expense" | "opex" => monthly_opex *= mult,
+                    "revenue" | "revenue_shock" => { 
+                        monthly_rev *= mult; 
+                        monthly_cogs *= mult; 
+                    },
+                    "expense" | "opex" | "expense_shock" => {
+                        monthly_opex *= mult;
+                    },
                     "cogs" => monthly_cogs *= mult,
+                    "cash" | "cash_shock" => {
+                        self.current_cash *= mult;
+                    },
+                    "valuation" | "valuation_shock" => {
+                        // Valuation shocks do not affect operational cash flow or cash balance directly.
+                        // They affect the theoretical equity value, which is calculated downstream or in aggregation.
+                    },
                     _ => {}
                 }
             }
         }
 
-        // 5. Injections
+        // 5. Interest on Credit Facility (New Logic)
+        if self.current_cash < 0.0 {
+            if let Some(cf) = &self.credit_facility {
+                let debt = self.current_cash.abs();
+                let rate = if cf.is_annual_rate { cf.interest_rate / 12.0 } else { cf.interest_rate };
+                monthly_interest = debt * rate;
+            }
+        }
+
+        // 6. Injections
         for injection in &self.injections {
             if month == injection.month {
                 self.current_cash += injection.amount;
@@ -320,10 +356,10 @@ impl SimState {
         let total_expenses = monthly_opex + monthly_interest;
         let operating_profit = gross_profit - total_expenses;
 
-        // 6. Update Cash
+        // 7. Update Cash
         self.current_cash += operating_profit;
 
-        // 7. Investment Gain (Treasury)
+        // 8. Investment Gain (Treasury)
         let mut investment_gain = 0.0;
         if self.current_cash > 0.0 {
             if let Some(policy) = &self.capital_growth {
@@ -336,7 +372,7 @@ impl SimState {
         }
         self.current_cash += investment_gain;
 
-        // 8. Pooling Contribution
+        // 9. Pooling Contribution
         let total_profit = operating_profit + investment_gain;
         let mut contribution = 0.0;
         
@@ -358,6 +394,7 @@ impl SimState {
             opex: Decimal::from_f64_retain(monthly_opex).unwrap_or_default(),
             gross_profit: Decimal::from_f64_retain(gross_profit).unwrap_or_default(),
             net_income: Decimal::from_f64_retain(net_income).unwrap_or_default(),
+            treasury_gain: Decimal::from_f64_retain(investment_gain).unwrap_or_default(),
             cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
             is_solvent: self.is_solvent,
             interest_expense: Decimal::from_f64_retain(monthly_interest).unwrap_or_default(),

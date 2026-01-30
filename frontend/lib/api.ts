@@ -219,6 +219,7 @@ export interface MonthlyData {
   is_solvent: boolean;
   solvent_companies?: number;
   total_companies?: number;
+  treasury_gain?: string;
 }
 
 export interface SimulationResult {
@@ -259,6 +260,8 @@ export interface SimulationResult {
   single_run_valuation?: string;
   p50_runway?: number;
   p50_valuation?: string;
+
+  average_event_count?: number;
 }
 
 export interface Template {
@@ -267,6 +270,21 @@ export interface Template {
   description: string;
   industry: string;
   complexity: string;
+}
+
+export interface SwanEvent {
+  id: string;
+  event_name: string;
+  event_type: string;
+  scope: 'global' | 'local';
+  target_ids: string[];
+  fund_ids?: string[];
+  company_ids?: string[];
+  occurrence_probability: string;
+  magnitude: string;
+  direction: string;
+  duration: string;
+  is_counter_cyclic?: boolean;
 }
 
 // --- API METHODS ---
@@ -325,7 +343,8 @@ export const api = {
     fund_pooling_fraction?: string, 
     months?: number, 
     stop_insolvency?: boolean,
-    include_initial_capital?: boolean 
+    include_initial_capital?: boolean,
+    events_active?: boolean
   }) => 
     (await apiClient.get<SimulationResult>(`/api/funds/${fundId}/simulation`, { params })).data,
 
@@ -371,7 +390,14 @@ export const api = {
     await apiClient.delete(`/api/plans/${id}`);
   },
 
-  getProjection: async (planId: string, params?: { mode?: string, months?: number, stop_insolvency?: boolean, initial_cash?: number, insolvency_threshold?: string }) => 
+  getProjection: async (planId: string, params?: { 
+    mode?: string, 
+    months?: number, 
+    stop_insolvency?: boolean, 
+    initial_cash?: number, 
+    insolvency_threshold?: string,
+    events_active?: boolean
+  }) => 
     (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
 
   // REVENUE
@@ -464,4 +490,46 @@ export const api = {
   // TEMPLATES
   getTemplates: async () => (await apiClient.get<Template[]>('/api/lifecycle/templates', { timeout: 60000 })).data,
   importTemplate: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/templates/${id}/clone`, {}, { timeout: 60000 })).data,
+
+  // SWAN EVENTS (Formerly Shocks)
+  getEvents: async (targetIds: string[]) => {
+    const params = new URLSearchParams();
+    if (targetIds.length) {
+      params.append('target_ids', targetIds.join(','));
+    }
+    // Use any[] to allow mapping from alternative backend field names
+    const response = await apiClient.get<any[]>('/api/events', { params });
+    
+    return response.data.map((item) => {
+      // Normalization Logic
+      let scope = item.scope;
+      if (!scope) {
+        if (item.fund_ids && item.fund_ids.length > 0) scope = 'global';
+        else if (item.company_ids && item.company_ids.length > 0) scope = 'local';
+        else scope = 'global'; // Default fallback
+      }
+
+      // Ensure target_ids is populated
+      const target_ids = item.target_ids || [...(item.fund_ids || []), ...(item.company_ids || [])];
+
+      return {
+        ...item,
+        scope,
+        target_ids,
+        // Map backend fields to frontend fields
+        occurrence_probability: item.occurrence_probability || item.likelihood_annual_pct || '0',
+        event_type: item.event_type || item.event_category || 'revenue_hit',
+        magnitude: item.magnitude,
+        direction: item.direction,
+        duration: item.duration || item.duration_category,
+        is_counter_cyclic: item.is_counter_cyclic
+      };
+    }) as SwanEvent[];
+  },
+  
+  createEvent: async (event: Omit<SwanEvent, 'id'>) => (await apiClient.post<SwanEvent>('/api/events', event)).data,
+  
+  updateEvent: async (id: string, event: Partial<SwanEvent>) => (await apiClient.put<SwanEvent>(`/api/events/${id}`, event)).data,
+  
+  deleteEvent: async (id: string) => (await apiClient.delete(`/api/events/${id}`)),
 };

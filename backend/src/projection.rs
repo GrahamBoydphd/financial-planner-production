@@ -12,6 +12,7 @@ pub struct MonthlyData {
     pub opex: Decimal,
     pub interest_expense: Decimal,
     pub net_income: Decimal,
+    pub treasury_gain: Decimal,
     pub cash_balance: Decimal,
     pub dividend_paid: Decimal,
     pub cumulative_dividends: Decimal,
@@ -34,6 +35,7 @@ impl MonthlyData {
             opex: Decimal::ZERO,
             interest_expense: Decimal::ZERO,
             net_income: Decimal::ZERO,
+            treasury_gain: Decimal::ZERO,
             cash_balance: Decimal::ZERO,
             dividend_paid: Decimal::ZERO,
             cumulative_dividends: Decimal::ZERO,
@@ -83,4 +85,6 @@ pub struct SimulationResult {
     pub single_run_valuation: Option<Decimal>,
     pub p50_runway: Option<i32>,
     pub p50_valuation: Option<Decimal>,
+
+    pub average_event_count: Option<f64>,
 }

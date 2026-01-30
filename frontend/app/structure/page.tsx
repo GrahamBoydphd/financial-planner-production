@@ -7,6 +7,7 @@ import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import FundForm from '@/components/forms/FundForm';
 import CompanyForm from '@/components/forms/CompanyForm';
+import EventList from '@/components/EventList';
 import { api, Company, Fund } from '@/lib/api';
 
 export default function StructurePage() {
@@ -16,7 +17,7 @@ export default function StructurePage() {
   // Edit State
   const [editingFund, setEditingFund] = useState<Fund | null>(null);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-
+  
   // Loading State for Operations
   const [loadingOp, setLoadingOp] = useState<string | null>(null);
 
@@ -122,18 +123,18 @@ export default function StructurePage() {
                 onCancel={() => setEditingFund(null)}
               />
             </Card>
-            
+
             <div className="bg-white rounded shadow p-4">
               <h3 className="font-bold border-b pb-2 mb-2">Existing Funds</h3>
               {funds.length === 0 ? <p className="text-gray-500">No funds yet.</p> : (
                 <div className="space-y-2">
                   {funds.map(f => (
-                    <Link href={`/fund/${f.id}`} key={f.id} className="block group hover:bg-gray-50 rounded p-2 -mx-2 transition-colors">
+                    <div key={f.id} className="block group rounded p-2 -mx-2 transition-colors hover:bg-gray-50">
                         <div className="flex justify-between items-center">
-                            <div>
+                            <Link href={`/fund/${f.id}`} className="flex-grow">
                                 <span className="font-medium text-gray-900 group-hover:text-blue-600">{f.fund_name}</span>
                                 <span className="text-xs text-gray-400 font-mono ml-2">{f.id.slice(0,8)}...</span>
-                            </div>
+                            </Link>
                             <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity items-center">
                                 {loadingOp === f.id ? (
                                     <Loader2 className="animate-spin text-indigo-600" size={16} />
@@ -173,10 +174,19 @@ export default function StructurePage() {
                                 )}
                             </div>
                         </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Event List (Moved below Existing Funds) */}
+            <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+              <EventList 
+                fundId={null} 
+                companies={companies} 
+                funds={funds}
+              />
             </div>
           </div>
 

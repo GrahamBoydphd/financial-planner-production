@@ -1,4 +1,3 @@
-
 # Status: UNIVERSAL CONSTITUTION (Read by every agent)
 # Role: Immutable Constraints & Patterns
 
@@ -109,6 +108,9 @@ These rules are non-negotiable.
 * **Table:** `p50_data` (Object Array) -> Detailed Financials for the median run.
 * **Cliff:** `survival_rate` (Decimal Array).
 
+### C. Event Management
+* `GET /api/events?target_ids=uuid1,uuid2` -> Batch retrieve events for specific targets (Plans, Funds, or Companies). Returns empty list if no IDs provided.
+
 ---
 
 ## 6. CORE ENGINE LOGIC (`backend/src/projection.rs`)
@@ -139,14 +141,10 @@ These rules are non-negotiable.
 3. **Staffing "Role Name"**: Scoped naming `role_name`.
 4. **Transactions**: Any "Duplicate" or "Clone" action MUST use `sqlx::Transaction`.
 5. **Naming**: Cloned entities append `(Copy)` to the name.
+6. **Event Nomenclature**: API uses `event_name` and `event_type` exclusively, replacing legacy `shock` terminology.
 
 ---
 
 # === UNIVERSAL BUILDER PROTOCOL ===
 * **File Operations:**
-    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...</file>`.
-    * Do not use placeholders like `// ... existing code ...`.
-* **Testing:**
-    * If `last_error.log` is provided, priority #1 is fixing that error.
-* **Dependencies:**
-    * Do not add new crates/packages unless explicitly instructed by the Architect prompt.
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...

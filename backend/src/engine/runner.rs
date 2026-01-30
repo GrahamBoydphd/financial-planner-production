@@ -1,5 +1,5 @@
 use crate::models::{
-    RevenueItem, ExpenseItem, StaffingRole, EventShock, CapitalInjection, 
+    RevenueItem, ExpenseItem, StaffingRole, Event, CapitalInjection, 
     CreditFacility, DividendPolicy, ValuationAssumption, CapitalGrowthPolicy
 };
 use crate::projection::SimulationResult;
@@ -38,6 +38,7 @@ fn create_sampler_from_db(
 /// Generates a full Monte Carlo simulation for a single company entity.
 /// Maps database models to the V4 Engine domain models and executes the orchestrator.
 pub fn generate_simulation(
+    company_id: Uuid,
     plan_name: String,
     currency_code: String,
     months: i32,
@@ -45,7 +46,7 @@ pub fn generate_simulation(
     revenue_items: Vec<RevenueItem>,
     expense_items: Vec<ExpenseItem>,
     staffing_roles: Vec<StaffingRole>,
-    event_shocks: Vec<EventShock>,
+    events: Vec<Event>,
     capital_injections: Vec<CapitalInjection>,
     credit_facility: Option<CreditFacility>,
     dividend_policy: Option<DividendPolicy>,
@@ -53,6 +54,7 @@ pub fn generate_simulation(
     capital_growth: Option<CapitalGrowthPolicy>,
     _use_monte_carlo: bool,
     stop_insolvency: bool,
+    events_active: bool,
     pooling_fraction: Decimal,
     insolvency_threshold: Decimal,
 ) -> SimulationResult {
@@ -155,14 +157,20 @@ pub fn generate_simulation(
         }
     }).collect();
 
-    // 6. Map Event Shocks
-    let engine_events: Vec<domain::Shock> = event_shocks.iter().map(|s| {
-        domain::Shock {
-            name: s.shock_name.clone(),
-            month: s.shock_month,
-            impact_type: s.impact_type.clone(),
-            impact_value: s.impact_value.to_f64().unwrap_or(0.0),
-            duration_months: s.duration_months,
+    // 6. Map Events (Deterministic Shocks)
+    let engine_events: Vec<domain::Shock> = events.iter().filter_map(|s| {
+        // Destructure the Option fields from the Event
+        if let (Some(month), Some(val), Some(itype)) = (s.start_month, s.impact_value, &s.impact_type) {
+            Some(domain::Shock {
+                name: s.event_name.clone(),
+                month: month,
+                impact_type: itype.clone(),
+                impact_value: val.to_f64().unwrap_or(0.0),
+                duration_months: s.duration_months,
+                target_company_id: None, // Deterministic shocks apply to self
+            })
+        } else {
+            None
         }
     }).collect();
 
@@ -208,7 +216,7 @@ pub fn generate_simulation(
 
     // 10. Construct Simulation State
     let sim_state = SimState {
-        id: Uuid::new_v4(),
+        id: company_id,
         company_name: plan_name,
         currency: currency_code,
         pooling_fraction: pooling_fraction.to_f64().unwrap_or(0.0),
@@ -235,11 +243,13 @@ pub fn generate_simulation(
     };
 
     // 11. Initialize Orchestrator (Ensemble Mode for Single Company Simulation)
-    let mut orchestrator = FundOrchestrator::<EnsembleMode>::new(
+    let orchestrator = FundOrchestrator::<EnsembleMode>::new(
         1000, 
         vec![sim_state], 
         months, 
-        stop_insolvency
+        stop_insolvency,
+        events_active,
+        events // Pass raw events for stochastic generation
     );
 
     // 12. Execute Simulation

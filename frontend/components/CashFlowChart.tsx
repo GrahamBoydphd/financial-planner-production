@@ -57,6 +57,8 @@ interface Props {
 }
 
 export default function CashFlowChart({ data, singleRunData, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
+  const linearFloor = creditLimit > 0 ? -(creditLimit * 1.5) : 0;
+  
   const labels = data.labels;
   const datasets: any[] = [];
 
@@ -242,18 +244,15 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     // Extract P50 values for clamping calculations
     let p50Vals: number[] = [];
     if (data.p50_data) {
-        // Map from pathwise data (Total Value)
-        p50Vals = data.p50_data.map(d => Number(d.total_value));
+        // Map from pathwise data (Cash Balance for Cash-Only Logic)
+        p50Vals = data.p50_data.map(d => Number(d.cash_balance));
     } else if (data.p50_value) {
         // Legacy fallback
         p50Vals = data.p50_value.map(v => Number(v));
     }
 
     // CALCULATE CLAMPING FLOORS
-    // Linear Floor: 2x lower than P50 min
-    const minP50 = Math.min(...p50Vals);
-    // If minP50 is positive, floor is 0? If negative, floor is 2 * minP50?
-    const linearFloor = minP50 >= 0 ? 0 : minP50 * 2.0;
+    // New Logic: Floor based on credit limit to prevent extreme negative scaling
     const logFloor = 100;
 
     const clamp = (vals: (number | string)[] | undefined) => {
@@ -345,7 +344,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
     // LAYER 7: Median
     datasets.push({
-      label: 'Median (P50)',
+      label: 'Median Cash (P50)',
       data: clamp(p50Vals),
       rawValues: p50Vals,
       borderColor: 'rgb(37, 99, 235)', 
@@ -444,9 +443,9 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
         position: 'left' as const,
         title: { 
           display: true, 
-          text: `Value (${currencySymbol})${isLog ? ' - Log Scale' : ''}` 
+          text: `Cash Balance (${currencySymbol})${isLog ? ' - Log Scale' : ''}` 
         },
-        min: isLog ? 100 : undefined,
+        min: isLog ? 100 : linearFloor,
         max: yAxisMax,
         ticks: {
           callback: (value: any) => {
@@ -514,24 +513,56 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
       tooltip: {
         callbacks: {
           label: function(context: any) {
-            let label = context.dataset.label || '';
-            if (label.includes('Top Edge')) return null;
-            if (label) label += ': ';
+            const labelStr = context.dataset.label || '';
+            if (labelStr.includes('Top Edge')) return null;
             
             let value = context.parsed.y;
             if (context.dataset.rawValues && context.dataset.rawValues[context.dataIndex] !== undefined) {
                 value = context.dataset.rawValues[context.dataIndex];
             }
 
+            const fmt = (v: number) => currencySymbol + Number(v).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+
+            // --- NEW: Strict Debt Handlers ---
+            if (labelStr === 'Fantasy Debt (Excess)') {
+                const excess = Math.max(0, value - creditLimit);
+                return 'Fantasy (Insolvent): ' + fmt(excess);
+            }
+            if (labelStr === 'Covered Overdraft') {
+                return 'Covered (Credit): ' + fmt(value);
+            }
+            // ---------------------------------
+
             // Handle Survival Rate %
             if (context.dataset.yAxisID === 'y1') {
-                return label + (Number(value) * 100).toFixed(1) + '%';
+                return labelStr + ': ' + (Number(value) * 100).toFixed(1) + '%';
             }
 
-            if (value !== null && value !== undefined) {
-              label += currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+            // --- NEW: Negative Cash Logic ---
+            if (labelStr === 'Cash on Hand' && value < 0) {
+                const deficit = Math.abs(value);
+                const coveredDebt = Math.min(deficit, creditLimit);
+                const fantasyDebt = Math.max(0, deficit - creditLimit);
+
+                const lines = [];
+                // Line 1: Original Total
+                lines.push(`${labelStr}: ${fmt(value)}`);
+                // Line 2: Covered
+                lines.push(`Covered (Credit): ${fmt(coveredDebt)}`);
+                // Line 3: Fantasy (if any)
+                if (fantasyDebt > 0) {
+                    lines.push(`Fantasy (Insolvent): ${fmt(fantasyDebt)}`);
+                }
+                return lines;
             }
-            return label;
+            // --------------------------------
+
+            let finalLabel = labelStr;
+            if (finalLabel) finalLabel += ': ';
+            if (value !== null && value !== undefined) {
+              finalLabel += fmt(value);
+            }
+            return finalLabel;
           }
         }
       }

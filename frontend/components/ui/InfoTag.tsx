@@ -13,7 +13,7 @@ export default function InfoTag({ content }: InfoTagProps) {
     <div className="relative inline-flex ml-2 align-text-bottom z-10">
       <button
         type="button"
-        className="flex items-center justify-center w-4 h-4 text-[10px] font-serif font-bold text-gray-500 bg-gray-100 border border-gray-300 rounded-full hover:bg-gray-200 hover:text-gray-800 focus:outline-none cursor-help transition-colors"
+        className="flex items-center justify-center w-4 h-4 text-[10px] font-serif font-bold text-gray-500 bg-gray-100 border border-gray-300 rounded-full hover:bg-gray-200 hover:text-gray-800 focus:outline-none cursor-default transition-colors"
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
         onClick={(e) => {

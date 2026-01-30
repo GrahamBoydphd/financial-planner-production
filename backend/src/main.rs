@@ -102,10 +102,9 @@ async fn main() {
         .route("/api/valuation", post(handlers::valuation::upsert_valuation_assumption))
         .route("/api/plans/:id/valuation", get(handlers::valuation::get_valuation_assumption))
 
-        // Events
-        .route("/api/events", post(handlers::events::create_event_shock))
-        .route("/api/events/:id", get(handlers::events::get_event_shock).delete(handlers::events::delete_event_shock))
-        .route("/api/plans/:id/events", get(handlers::events::get_plan_event_shocks))
+        // Events (Renamed from Shocks, Generic Endpoint)
+        .route("/api/events", post(handlers::events::create_event).get(handlers::events::get_events))
+        .route("/api/events/:id", get(handlers::events::get_event).delete(handlers::events::delete_event).put(handlers::events::update_event))
 
         // Staffing
         .route("/api/staffing", post(handlers::staffing::create_staffing_role))

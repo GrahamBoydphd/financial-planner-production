@@ -263,8 +263,18 @@ git branch | grep "ai-fix-" | xargs git branch -D
     backend/migrations/20260109130000_create_users_table.sql
     ```
 
-work@graham-ThinkPad-T480s:~/3_Evolutesix/Research/Jules-BP/current/backend$ docker-compose exec db psql -U postgres -d finance_db_local -c "DELETE FROM _sqlx_migrations WHERE version = 20240522000000;"
-DELETE 1
+## Deleting an erroneously created database sql file's outcomes:
+Delete file, and then do: `docker-compose exec db psql -U postgres -d finance_db_local -c "DELETE FROM _sqlx_migrations WHERE version = 20240522000000;"`
+Success if it says DELETE 1
+
+
+
+### Look at all the sql files by cat-ting them into one: 
+`for f in migrations/*.sql; do echo "${f%.*}"; cat "$f"; done >all_sql.log`
+ 
+
+
+
 
 # New Version: Backup directory and clean it.
 ### 1. Create the Backup Directory
@@ -354,6 +364,99 @@ Now that your backup is safe, you are ready to start the next stage in your `cur
 # Demo Admin superuser
 Since we haven't built a "Super Admin Dashboard" UI yet, and the database trigger is currently locking out everyone (it's set to the `0000...` UUID), you have to perform a "Coronation" manually in the database.
 
+### First get into SQL; 
+#### Option 1: The "Hacker" Way (Command Line)
+
+If you have PostgreSQL installed on your machine (which you likely do if the app is running locally), you have a tool called `psql`.
+
+1. **Find your Connection URL:** Open your `backend/.env` file and copy the `DATABASE_URL` (e.g., `postgres://postgres:password@localhost:5432/my_db`).
+    
+2. **Run the command:** Paste this into your terminal:
+    
+    Bash
+    
+    ```
+    psql "postgres://postgres:password@localhost:5432/my_db"
+    ```
+    
+    _(Replace the URL string with the one from your `.env` file)_
+    
+3. **Run your SQL:** Once you see the `postgres=#` prompt, you can paste your queries:
+    
+    SQL
+    
+    ```
+    SELECT username, tenant_id FROM users;
+    ```
+    
+    (Type `\q` to exit).
+    
+
+---
+
+
+#### Option 2: The "Docker" Way (If using Containers)
+
+If your database is running inside a Docker container (common in dev setups), you can jump directly inside it without installing anything on your laptop.
+
+1. **Find the Container ID:**
+    
+    Bash
+    
+    ```
+    docker ps
+    ```
+    
+2. **Open the SQL Shell:**
+    
+    Bash
+    
+    ```
+    docker exec -it <CONTAINER_ID_OR_NAME> psql -U postgres -d <YOUR_DB_NAME>
+    ```
+Localhost:  `docker exec -it 5466f9dd5bae psql -U postgres -d finance_db_local`
+
+### 1. Identify the Correct Database
+
+Inside your `psql` shell, run the following command to see all available databases:
+
+SQL
+
+```
+\l
+```
+
+Look for a database name like **`evolutesix`**, **`jules_bp`**, or **`current`**.
+
+### 2. Connect to the Right Database
+
+Once you see the correct name in that list, you can switch to it without leaving the shell:
+
+SQL
+
+```
+\c your_database_name_here
+```
+
+Result:  \c finance_db_local
+
+### 3. Verify the Tables
+
+To make 100% sure you are in the right place, list the tables:
+
+SQL
+
+```
+\dt
+```
+
+You should see `users`, `events`, `funds`, and others. If you see them, your original query will now work:
+
+SQL
+
+```
+SELECT email, username, tenant_id FROM users;
+```
 Here is the 3-step sequence to promote yourself to **Demo Admin** and publish your first template.
 
 ### Step 1: Find your Tenant ID
@@ -388,6 +491,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 ```
+Enter these lines line by line. The first CREATE opens a new level of shell, which ends with the last `$$`
 
 ### Step 3: Publish the Template
 
@@ -404,6 +508,8 @@ UPDATE funds
 SET is_public_template = true 
 WHERE id = 'THE-FUND-UUID-HERE';
 ```
+Enter 2. lines line by line. 
+
 
 **Result:**
 

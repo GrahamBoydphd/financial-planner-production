@@ -58,6 +58,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
   const [poolingFraction, setPoolingFraction] = useState<number>(0);
   const [years, setYears] = useState<number>(5);
   const [stopInsolvency, setStopInsolvency] = useState<boolean>(true);
+  const [eventsActive, setEventsActive] = useState<boolean>(true);
   
   // Investor Track State
   const [targetMultiple, setTargetMultiple] = useState<number>(3.0);
@@ -95,6 +96,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
           fund_pooling_fraction: poolingFraction.toFixed(1),
           stop_insolvency: stopInsolvency,
           include_initial_capital: includeInitialCapital,
+          events_active: eventsActive,
       };
 
       // Single API call for all data
@@ -107,7 +109,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
     } finally {
       setSimLoading(false);
     }
-  }, [fund, fundId, fundPlanId, poolingFraction, years, stopInsolvency, includeInitialCapital]);
+  }, [fund, fundId, fundPlanId, poolingFraction, years, stopInsolvency, includeInitialCapital, eventsActive]);
 
   // Trigger simulation on dependency change
   useEffect(() => {
@@ -330,6 +332,14 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                 {/* NEW CHECKBOX */}
                 <div className="flex items-center gap-2">
                     <input 
+                    type="checkbox" id="eventsActive" 
+                    checked={eventsActive} onChange={(e) => setEventsActive(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    />
+                    <label htmlFor="eventsActive" className="text-xs font-medium cursor-pointer text-purple-700">Events Active</label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input 
                     type="checkbox" id="stopInsolvency" 
                     checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
                     className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
@@ -419,16 +429,23 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                     {/* KPI Row */}
                     <div className="w-full">
                         {activeData && (
-                            <FundKPICards 
-                                data={activeData} 
-                                currency={currency} 
-                                mode="single"
-                                currentPathValues={currentPathValues}
-                                isRow={true}
-                                targetMultiple={targetMultiple}
-                                dpiValue={lastDpi}
-                                likelihoodValue={lastLikelihood}
-                            />
+                            <>
+                                <Card className='mb-4 border-l-4 border-purple-500 p-4'>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
+                                    <div className='text-xs text-gray-400'>Events per lifetime</div>
+                                </Card>
+                                <FundKPICards 
+                                    data={activeData} 
+                                    currency={currency} 
+                                    mode="single"
+                                    currentPathValues={currentPathValues}
+                                    isRow={true}
+                                    targetMultiple={targetMultiple}
+                                    dpiValue={lastDpi}
+                                    likelihoodValue={lastLikelihood}
+                                />
+                            </>
                         )}
                     </div>
                 </div>
@@ -487,8 +504,9 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                         
                         {/* Info Text */}
                         <div className="flex justify-center">
-                            <span className="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                                Total Fund Value = Sum(Company Cash) + Sum(Dividends Paid)
+                            <span className="text-xl font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100 block text-center">
+                                Total Fund Value = Sum(Company Cash + Dividends Paid)<br />
+                                We do everything on a cash basis, not accrual, so that the impact of insolvency is visible.
                             </span>
                         </div>
                     </div>
@@ -498,6 +516,11 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                         {activeData && (
                             <div className="sticky top-6">
                                 <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">Key Metrics</h3>
+                                <Card className='mb-4 border-l-4 border-purple-500 p-4'>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
+                                    <div className='text-xs text-gray-400'>Events per lifetime</div>
+                                </Card>
                                 <FundKPICards 
                                     data={activeData} 
                                     currency={currency} 

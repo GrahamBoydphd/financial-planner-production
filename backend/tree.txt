@@ -1,5 +1,5 @@
 .
-├── 20260116163008_multi_currency_support.sql
+├── all_sql.log
 ├── Cargo.lock
 ├── Cargo.toml
 ├── Dockerfile
@@ -26,8 +26,6 @@
 │   ├── 20260113095020_standardize_staffing_naming.sql
 │   ├── 20260116081601_standardize_valuation_naming.sql
 │   ├── 20260116092316_sync_fortress_names.sql
-│   ├── 20260116092801_fix_fortress_schema_sync.bak
-│   ├── 20260116093208_align_models_and_audit.bak
 │   ├── 20260116093903_final_fortress_sync.sql
 │   ├── 20260116094310_ensure_audit_columns.sql
 │   ├── 20260116095602_fortress_repair_and_sync.sql
@@ -38,7 +36,11 @@
 │   ├── 20260121065332_create_fund_plans.sql
 │   ├── 20260121075842_add_tenant_to_fund_plans.sql
 │   ├── 20260124083638_lifecycle_and_demo_guard.sql
-│   └── 20260125084951_add_insolvency_threshold.sql
+│   ├── 20260125084951_add_insolvency_threshold.sql
+│   ├── 20260126171152_semantic_shocks.sql
+│   ├── 20260127050735_refine_events_schema.sql
+│   ├── 20260127064506_multi_target_events.sql
+│   └── 20260128131914_add_counter_cyclic.sql
 ├── .sqlx
 │   ├── query-052a4dd2b1dd8ca8b4393fb0268e36208200db764098f736736c9e2731f1cd28.json
 │   ├── query-07113e05fc0fc59929fa6e20e1442ef8f669c08d7183f17960957727a9891d3b.json
@@ -154,6 +156,7 @@
 │   ├── distributions.rs
 │   ├── engine
 │   │   ├── domain.rs
+│   │   ├── event_manager.rs
 │   │   ├── mod.rs
 │   │   ├── orchestrator.rs
 │   │   └── runner.rs
@@ -183,4 +186,4 @@
 │   └── projection.rs
 └── tree.txt
 
-6 directories, 178 files
+6 directories, 181 files

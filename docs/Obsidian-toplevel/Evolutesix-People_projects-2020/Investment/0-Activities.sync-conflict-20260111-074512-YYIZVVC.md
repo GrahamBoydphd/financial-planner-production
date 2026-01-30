@@ -1,0 +1,656 @@
+
+### 2025
+- 251129 FOLLOW UP . https://www.linkedin.com/posts/bioregional-weaving-labs-collective_our-approach-to-bioregional-financing-activity-7399820249774120960-5w8W?utm_source=share&utm_medium=member_android&rcm=ACoAAAFHwiUBa_fgWEch6yuaW_sE1GeKsDF0BbY
+- 251125 [[Brandon Lopez]] First call, strong alignment. 
+- 251113 [Sandra Ponce de Leon]()  — first conversation, she may not be systemic enough to be ready for us, but we can see. 
+- 251113 [Nikki Neff] Met on the TBLI call. Good connection. She will intro to Naidu. Good follow-up otential. Maybe also. 
+- 251112 [Joe Milam](https://www.linkedin.com/in/joemilam1/) #Investor #Ergodicity potential reached out on LI to connect. Doing interesting stuff. #Investor-potential #investor-channel Chased on 251125. 
+- 251107 [Timothy Macken](https://www.linkedin.com/in/timothy-macken-92109516?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app) #investor in Antwerp, meet at commons hub then at HOST architects of hope event. He's keen to meet maybe at Ardelis. 
+- 251030 [Henrike Gootjes]  Regenerative book author, artist, young daughter, lives part in NL part in FR, met at [[Michel de Kemetter]] event. 
+- 251010 [Ermelinda Hajdari] connected with Nilu, after attending her ALBAN event last night at the Albanian emasy after [[Michel de Kemetter]] invited me. 
+- 251007 [[Brian-von-Herzen]]  2nd call, he's keen to collaborate on venture studio stuff. 
+- 251006 [**Chuck Collins**](https://www.linkedin.com/in/chuck-collins-33b1415/) LI message. Author of Burned by Billionaires and many other books on wealth inequality. #1-InvestorInfluencer #1-FamilyOffice 
+- 251006 [Sydney Cano](https://www.linkedin.com/in/sidney-cano-1b0a1813/) (She) #Investor #regenerative part of regenesis. May well be key to follow up on! 
+- 250930 [Nick Natrella](https://www.linkedin.com/in/nick-n-b50949121/) student in RE publiched [Who is Homo Economicus](https://rethinkeconomics.org/blog/2025/07/29/homo-economicus/?link_id=6&can_id=9e5254d243271d9fff149aa931294619&source=email-september-newsletter-start-of-term-updates-events-and-more&email_referrer=email_2903637&email_subject=new-format-same-mission-rethink-economics) he's in Postgrowth Institute with Donnie etc. 
+- 250901 [Timothée Brès]() Potential interest for Genesis project at the commons hub.
+- 250924 [**Cecilia Scolaro**]() replied to her email, suggested Marie follow up. She consults [Design Reparations](https://www.designreparations.com/) on regenerative orgs. based on indigenous.  #regenerative #Ally #FSC-potential-client #Potential-Partner  Marie spoke to her, not quite sure how to proceed, follow up with Marie. 
+- 250911 [Peta Milan](https://www.linkedin.com/in/peta-milan-she-her-b4307a27/) mentioned by [[Alistair-Langer]], she accepted LI conxn immediately. 
+- 250911 [Sanja Mitrovska](https://www.linkedin.com/in/sanja-mitrovska/)  Founder of The Founder Games | Supporting founders break barriers & join the 2% who act on their ideas | Guinness World Record Holder. #Ally  #1-AmplifierBig 
+- 250911 [**Michael McElligott**](https://www.linkedin.com/in/michaelmcelligott/) Conscious Capital | Regenerative Returns #investor-channel #1-InvestorInfluencer 
+- 250911 [Nadine Schmidt](https://www.linkedin.com/in/schmidtnadine/) Bewusstseinsarbeit & Entwicklung von Potentialen | Coachin für Responsible Leadership & Future Intelligence | Workshops, Retreats & Workations auf dem Biohof
+- 250911 [Veronika Zrubakova](https://www.linkedin.com/in/veronika-zrubakova-bb79b515b/) VC at 0100 that organised Hungary. Interest in Green. 
+- 250911 [Katrina de Angelis](https://www.linkedin.com/in/katrina-de-angelis/) potential #Ally Building the next paradigm of business & leadership through regenerative strategy and coaching | Co-Founder, MILO Human Care | Board Member, Conscious Capitalism LA
+- 250911 [Jacqui Pohl](https://www.linkedin.com/in/jacquie-pohl-b00082183/) film maker, former neuroscientist, RSA origin, now in Aus, fled due to apartheid. #Ally maybe. #marketing 
+- 250911 [John Sechrest](https://www.linkedin.com/in/johnsechrest/) intro from  Paula Lucia Neme. His theme is *moss*.
+- 250911 [Bob de Wilde](https://www.linkedin.com/in/bobdewilde/) intro from Paula Lucia Neme
+- 250818 [[James Pearson]] first call. 
+- 250812 [[Erinch Sahan]] email on his new Joseph Rowntree role to look at EIS #Ergodicity  He replied, good idea, but no clear readiness to hire me. 
+- 250725 [Ondine Hoogeboom](https://www.linkedin.com/in/ondinehogeboom/) works with [[Antony-Upward]] and runs her Flourishing Startup Model business in Canada. Former RSA, Durban. #Evoluter #Potential-Partner #1-RegenLeader 
+- 250725 [Monty Bryant](https://www.linkedin.com/in/montybryant/) made a good [LI post on Regen](https://www.linkedin.com/posts/montybryant_the-network-nations-movement-starts-activity-7352713946589470720-Oe9Z?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAFHwiUBa_fgWEch6yuaW_sE1GeKsDF0BbY) on the role of networked nations.
+- 250725 [[Joscha Raue]] maybe good regen collaborator 
+- 250725 [Tomas Veloz](https://www.linkedin.com/in/tomas-veloz-028b6717/) followed up to meet after meeting him on an NPC call. Interst in #Ergodicity and former physics. Now economics. Worked in Brussels at VUB occasionally.
+- 250724 [Mary Adams]() connected by Darby Hobbs. MA wrote a book on [Intangible Capital](https://www.amazon.com/Intangible-Capital-Knowledge-21st-Century-Organization/dp/0313380740).  Maybe a good connection for her [Insights7](https://insights7.com/about/) platform insuring people connect the why of strategy with the what and how of their work. Maybe very useful in an ergodic ecosystem of companies. 
+- 250715 [Blair DuQuesnay](https://www.linkedin.com/in/blairduquesnay/) Investor, part of [[George Kinder]] FIAT initiative. Blog post:  https://www.blairbellecurve.com/p/what-if-there-was-a-global-fiduciary  #Investor-potential Works for [Ritholz Wealth Management](https://www.linkedin.com/company/ritholtz-wealth-management/) 
+- 250707 [Matthew Ross](https://www.linkedin.com/in/matthew-ross-5bb85144/) investor in regen reached out to connect. Chase to meet. #Investor-potential 
+- 250707 [Pedro Carvalho]() send email to propose meeting.
+- 250707 [Elodie van den Avenne](https://www.linkedin.com/in/elodie-vanden-avenne-456154126/)   [Lana Hemelaere](https://www.linkedin.com/in/lana-hemelaere-3a2941142/)  intro from [Peter Michel Heilmann](https://www.linkedin.com/in/pmheilmann/) 
+- 250707 [Peter Hopton]() First call, maybe interest in a North of England investment vehicle. Assessment: he's too conventional focussed, not enough on regen, to see the full benefits. But maybe a part way journey. 
+- 250704 [Matthew Patrick Perreira](https://www.linkedin.com/in/matthew-patrick-pereira-prrmat007/) RSA economics and sustainability risk practitioner. 
+- 250704 [Jutta Jerlich](https://www.linkedin.com/in/juttajerlich/) wanted a list of all corporate forms to teach on in her course. Potential collaborator etc. T Uni Wien lecturer. #Academic
+- 250703 [Josephine (Josie) Watson](https://www.linkedin.com/in/josephine-watson-81a103a8/) connected by [[Dylan Tull]] accepted connection and wants to meet. 
+- 250702 [Alex Pielaet](), Post-Growth, on the call with Hans Stegeman, follow up with him. 
+- 250702 [Andrew McCue]() LI response to my article on washing, keen to connect, set up meeting. 
+- 250630 [global society for good leadership](https://leadershipsociety.world/) signed up for podcast by Hans Stegeman.
+- 250623 [Sebastiaan Kennes]() intro from [[Marie-Amelie-Stiernet]]
+- 250618 Kevin Bailey Dreamfuel podcast interview. 
+- 250618 [Rudy de Waele](https://www.linkedin.com/in/rudydewaele/) keep in contact and meet in Brussels sometime. 
+- 250612 [[Leen-Schelfhout]] at Commons Hub for my talk. Met [[Florent-Durieux]] intro from [[Patrick-Martel]], Rob Bigge, Timothy Macken, Anna Zanghi, Kristel (Coop expert, challenged the idea of a company having agency), Veerle wallebroek, Itzel, Mara, Inge Wiame, 
+- 250612 [Judith Saragossi](https://www.linkedin.com/in/judithsaragossi/) met at Commons Hub with [[Leen-Schelfhout]] before my talk. She's active in Brussels for IDG, sustainability, ex P&G engineering, knows Patrizio etc.
+- 250415 [[Christopher Marquis]] first meeting. 
+- 250415 [[Anton Baumann Empowerment Capital]] first meeting. 
+- 250409 Jean-Philippe Schepens and Tina Stroobants of Axon.jay AI firm in Brussels, also in favour of studios not VC, maybe a sales potential for #Ergodicity and #FSC-potential-client Chase. Brussels based. Robin sent me the link to his [Davos youtube](https://www.youtube.com/watch?v=EM9o8tVStiU&t=1541s) 
+- 250409 [[Dennis Heijn]] descendent of Albert Heijn reached out to connect on LI. 
+- 250408 [Désirée Dosch] [Alvicus AG](https://www.alvicus.com/) Connected by [[Günter-Schmittberger]]   proposed a meeting on 29 April w Marie  
+- 250408 [Derek Wall](https://www.gold.ac.uk/politics-and-international-relations/staff/wall/) author of Ostrom's rules for radicals - emaied in case interest in FSC. 
+- 250407 [[Mark Chasan]] found by Marie via [[Laurie Lane-Zucker]] webinar. 
+- 250407 Jeroen Veldman introduced me to IJsbrand van Straten.
+- 250404 [Jon Mowll](https://www.linkedin.com/in/jon-mowll/) Thirty Percy economics expert with [[Louise-Armstrong]] - he accepted LI conxn request. #Ergodicity #investment-conxn #investor-channel #Investor-potential 
+- 250402 [Jasmine Chen](https://www.linkedin.com/in/jasmine-chen-b6747621a/) maths student works with [[Joe Hsueh]] and [[Jess-Hackett]] on C4I. She's a maths student and may be perfect for #Ergodicity She is also an intern somewhere in [[Alice de Rothschild]] company. 
+- 250402 [[Günter-Schmittberger]] reached out by email, replied, offered him EIS training for his funds, and reach out when we fund raise. #Ergodicity #investor-channel #investor-angel #investment-conxn  First [email](https://mail.google.com/mail/u/0/#inbox/FMfcgzQZTqCVbWQsRdDsZJntwwfFKlCN) 
+- 250327 [Guenola Nonet](https://www.linkedin.com/in/gueno/) connected after her KFF whatsapp post on her regen training programme . 
+- 250327 [[Jenny-Elissen]] proposed talk on 16 or 23 April following email
+- 250326 [Rudi Plettinx](https://www.linkedin.com/in/rudiplettinx/) reached out again, replied, on LI. 
+- 250324 [[Lyn-McDonell]] conversation towards collaboration.
+- 250324 [Wim Naude](https://www.linkedin.com/in/wimnaude/)  connected on LI. RSA, former ANC councillor, now in UK, NL, and Aachen as professor on economics of planet. 
+- 250227 [Ida Laerke Holm](https://www.linkedin.com/in/ida-l%C3%A6rke-holm-47abb01b0/)  Staff of KR foundation and P4NE sent a LI message to connect. 
+- 250227 Jo Swinson commented on this [LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7270001960265613312/) article comment. 
+- 250227 [[Suzanne Jenkins]] talked for 45 minutes today. She likes AW, Marie's proposal, menaing-making, going beyond systemic. 
+- 250227 [[Melanie Larkins]] [Linkedin](https://www.linkedin.com/in/melanielarkins/) reached out after I responded to her [LI post](https://www.linkedin.com/posts/melanielarkins_sustainability-leadership-futureofwork-activity-7300161289438281728-Orot?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAFHwiUBa_fgWEch6yuaW_sE1GeKsDF0BbY)
+- 250225 [Leah Seligmann](https://www.linkedin.com/in/leah-seligmann-7bb3385/) CEO of the B-Team - sent a LI request to connect and 2 videos on EIS and FSC. 
+- 250225 [[Julia-Anne-Gross]] with supervisor Fenna Blomsma - agreed to work!
+- 250224 [Jennifer Wilkins](https://www.linkedin.com/in/jenniferwilkinsnz/) posted on [LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7299528744593936388/) on Blackrock rebuttal - maybe a really good advertiser. Strong in #PostGrowth 
+- 250220 [Stephen Gomes](https://www.linkedin.com/in/dr-stephen-gomes-030b314/) SEEDS talk on the [[FEST]] call today - #Ergodicity #Ally  He signed up to my youtube. I note he doesn't really understand at my level, and he talks a lot without limit.
+- 250220 [[Kent-Babin]] and [[Guru-Vishwas]] with Jonathan Olwenyi and Trinity Morphy - deinite interest for ReFI and FSC. Maybe links to [[Ellie-Young]]. First intro by [[Kate Bennett]] who came via [[SEEDS-Hypha]] Franz and Alex.
+- 250219 [[Jomme-Desair]] - he sees lots of common ground, not sure how to take forwards, other than take my insights in. My financial calcs can be helpful to him. 
+- 250218 [[Johan-Myrberger]] #FSC-potential-client #Evoluter-potential-client #Ally #Ergodicity  He does interesting stuff with graphs. Maybe he can identify which investors are most receptive to our ideas. 
+- 250213 [[Lars-Urheim]] replied interested in an ergodic fund proposal. 
+- 250213 [[Kent-Babin]] responded to set up a meeting on Ergodicity with Vishwas and Kate and Jonathan
+- 250212 [[Lawrence-Harvey]] search agency represented by Ross Townsend and George Davies - potential excellent support for recruiting. 
+- 250209 [[Anna-Branten]] connected on [LI](https://www.linkedin.com/in/anna-branten-9ba58b/) may be a key collaborator to investors #investor-channel #Ally 
+- 250205 [[Dan-Wood]] (https://www.linkedin.com/in/dan-regenerating-woods/) an invesmemtn advider on regenrating forests working with FO #investor-channel #1-FamilyOffice #investor-angel 
+- 250205 [[Tina-Stroobandt]] Flemish entrepreneur in residence, works with Impact Shakers and [[Yonca-Braeckman]] - Keen to start her own game changing company but doesn't yet have the business concept. 
+- 250205 [Sacha Palaversic Ferrand](https://www.linkedin.com/in/sachapf/) #investor-channel 
+- 250204 [[Kirsten-Andersen]] connected by Vili . Center for Sustainable Finance and Private Wealth (CSP) North America
+- 250204 [[Tai-Aracen]] Reached out on [LI](https://www.linkedin.com/in/taiaracen/) to connect.
+- 250203 [Juliane Naumann](https://www.linkedin.com/in/juliane-naumann/) Intro on LI by Marc Rodenkirchen former T-Systems via [[Georg-Holzknecht]] 
+- 250203 [Auke Hunneman](https://www.linkedin.com/in/aukehunneman/) *Associate Dean for the Master of Science in Business Analytics at BI Norwegian Business School* has an interest in my work. 
+- 250203 Camille Puype met on EBBF call, she loves my work, maybe sales. 
+- 250203 [Maria Wahlberg](https://www.linkedin.com/in/mariadecidawahlberg/) finds Rebuild amazing. Maybe work together on Regen stuff? 
+- 250203 Alex Farlander interested in FSC for his travel firm, but can't afford to pay right now, hopes to find investors to raise the game for all. 
+- 250130 [[Katie-Boland]] connected on LI after post responses. 
+- 250130 [Philip McKenzie](https://www.linkedin.com/in/philiplesliemckenzie/) interacted with Donna and Indy, podcaster, maybe a good lead to be  on a podcast. Part of Hyper Island.
+- 250130 [[Jasper van Brakel]] speaker on [[John-Fullerton]] discovery call. Key potential channel to investors and courses. 
+- 250130 [One Step Closer Fund](https://www.linkedin.com/company/osc-fund/posts/) maybe can sell them #Ergodicity and #FSC-potential-client and investor services. #regenerative 
+- 250130 [Carsten Christiani](https://www.linkedin.com/in/carsten-christiani/) on Johns call building with Powers a bioregional fund. German in NL. 
+- 250130 [[Mike Berners-Lee]] reached out on LI to connect potentially useful ally **CHASE** 
+- 250130 [[Katy Shields]] reached out on LI to connect, regenerative economist! She accepted.  **CHASE** by mid-Feb if not. 
+- 250129 [[Gregor-Herdmann]] firt call maybe sell AW. 
+- 250128 [[Stuart-Cowan]] email on him convening a big project folliwng call with [[Antony-Upward]] 
+- 250128 [[Ashley-Scarborough]] first call - works with [[Viliana-Dzhartova]]
+- 250128 [[Rod-Holden]] first call
+- 250126 [Frederik Verstraete] potential Belgian #Client #Investor-potential #systemic-investing #Ergodicity 
+- 250126 **[[Jen-Hooke]]** LI message to meet. Part of Thirty Percy and leading the RZ Accelerator triggered by them. 
+- 250125 **[[Louise-Armstrong]]** from Thirty Percy met at money event at the Commons Hub of [[Leen-Schelfhout]] with [[Francesca-Pick]]
+- 250124 [[Jeremy-Agnew]] engaged on LI curious.
+- 250123 [Grace Broughton](https://www.linkedin.com/in/grace-emily-broughton-56048194/) of [[Generation-Re]] 
+- 250122 [[Anthony-Ryan]] first sales meeting, definite interest, will be ready mid-year.
+- 250121 [Sam Rye](https://www.linkedin.com/in/samrye/) LI conxn request on #systemic-investing based on his [blog](https://www.samrye.xyz/on-systemic-investing/) check out and see where we can go he may have leads. #investor-channel #Ergodicity 
+- 250121 [[Or-Katzman]] met on [[Elliott-Bayev]] Wisdom Council end 24 
+- 250116 [[Glo-Moss]] livestream podcast
+- 250116 [[David-Weber]] call with [[David-Wilcock]] and Stefan. David Weber agency works for [[Steve-Farrell]] who is now raising a fund to support Humanities Team. Close friend of **Charles Eisenstein** - get to an intro? Also friends with Jeff Mendelsohn - intro? raised money for Bucky's vision Geoship! 
+- 250116 [[Samantha-Power]] message on LI after [[FEST]] call
+- 250116 [Mahe Zahra](https://www.linkedin.com/in/mahe-zahra-b89b481b4/) marketing and admin potential assistant.
+- 250116 [Grace Emily Broughton](https://www.linkedin.com/in/grace-emily-broughton-56048194/) set up meeting. [Website](https://regenerativeem.com/) #Ergodicity #impact-investor #sales-channel #1-Podcaster #1-InvestorInfluencer 
+- 250115 [[Alison-Lingane]] call went well. Employee ownership. [Predistribution initiative](https://www.predistributioninitiative.org/)
+- 250115 [Sarah Kearney](https://www.linkedin.com/in/kearneysarah/) and [Anna Goldstein](https://www.linkedin.com/in/annagoldstein/) of [PRIME Coalition](https://www.linkedin.com/company/primecoalition/) - key potential ally - via [[TWIST]]. Sent investor erg video to AG on LI - chase. 
+- 250114 [Ashley Scarborough](https://www.linkedin.com/in/ashley-scarborough-080a3120/) #regenerative lives in Berlin commented on a post of mine. Keen, maybe join the team! I asked [[Viliana-Dzhartova]] about her experience working with her. Vili excited about her, but not so hot on investors, more a lovely person and excellent trainer and faci.
+- 250114 [Paz Constantini](https://www.linkedin.com/in/paz-costantini-256107124/) #regenerative LI connection after comment works with [[Viliana-Dzhartova]]
+- 250114 [Hunter Hastings](https://www.linkedin.com/in/hunterhastings/) Podcast and [substack](https://hunterhastings.substack.com/p/the-power-of-knowledge-flow-how-kfsos?utm_source=post-email-title&publication_id=1918746&post_id=152774340&utm_campaign=email-post-title&isFreemail=true&r=c050o&triedRedirect=true&utm_medium=email) and [investment firm](https://www.bialla.com/bialla-venture-partners) based on complexity economics and Austrian Eco. He was once invested in by P&G #1-Podcaster #Ergodicity  #investor-channel #Investor-potential  Mentioned by [[Simon-Blöthner-Defiria]]
+- 250106 [Visa Kurki](https://www.linkedin.com/in/visa-kurki-96a22123/) LI connection - author of seminal legal personhood paper
+- Connected with Matt Lloyd-Rose who works with [[Anna-Marie-Swan]]
+- 250101 [[Roshan Paul]] [LI](https://www.linkedin.com/posts/roshanjpaul_impactstartups-climatetech-climateaction-activity-7281676298999980032-Yoa2/?utm_source=share&utm_medium=member_desktop)  [Climate Talent Services](https://www.climate-talent.org/services) Reply: doesn't think relevant to his non-profit and pure energy focus. Reply email. 
+- 250101 [[Xavier Logan-Sievers]] [LI](https://www.linkedin.com/in/xavier-logan/) Podcaster on climate stuff. 
+
+
+### 2024
+- XXX [Sebastian Wolf Siebzehnruebl](https://www.linkedin.com/in/siebzehnruebl/) complexity faci often in my space. 
+- 241231 [Newspaper article on a wealthy RSA potential investor](https://www.iol.co.za/news/opinion/dr-iqbal-surve-lessons-from-south-africas-billionaire-entrepreneur-who-built-an-empire-against-the-odds-bf45c05b-093f-4cb4-9896-8636910bc848)  #Investor-potential #investor-philanthropy 
+- 241220 [Emily Broughton](https://www.linkedin.com/in/emily-broughton-56048194/) intro to me by [[Alice Leguay]]  She is part of [Generation-Re](https://www.linkedin.com/company/generation-re/) investment syndicate #Investor-potential #Ergodicity #regenerative #investor-channel 
+- 241220 [[Alice Leguay]]  [LinkedIn](https://www.linkedin.com/in/aliceleguay/) #Investor-potential #Ergodicity #regenerative 
+- 241218 [Marie-Amelie Viatte](https://www.linkedin.com/in/marieamelieviatte/)  scheduled meeting. 240930 - Scotland, urban farming, #accelerator #Ergodicity 
+- 241218  [Alison Lingane](https://www.linkedin.com/in/alingane/)  scheduled to meet in January - 241121 of Ownership Capital talk at Francesco webinar, reached out on email to connect. Potential #ergosim #Ergodicity #FSC-potential-client 
+- 241218 finally followed up and proposed a time to meet. 240927 [Jenny Stefanotti](https://www.linkedin.com/in/jstefanotti/) promotes new economy etc., interviews John Fullerton etc. [Becoming Denizen](https://www.becomingdenizen.com/) Wrote [rebuttal]( https://developingjen.medium.com/in-response-to-marc-andreessens-techno-optimist-manifesto-31cee3a5350c) to Marc Andreessen #Ergodicity  - superb for broadcasting my ideas ... Responded on LI and keen to engage.
+- 241217 [Ida Faldbakken]() Key to follow up with her on her future plans and work. 
+- 241217 [Steve Cohen](https://www.linkedin.com/in/steve-cohen-goldcoast/)  Gold Coast Advisers, works with FO and merchant banking. Conventional but on the edge to innovation. Working with two Cornell professors on innovation. Sent email with TBLI link. 
+- 241217 [Sam Sutaria](https://www.linkedin.com/in/sam-sutaria-a15a4368/) of [WaterBear](https://www.waterbear.com/watch) - LI mssage to connect and follow up on engagement
+- 241217 [Kees Klomp](https://www.linkedin.com/in/kees-klomp-5029b54/) note to him on his new book. 
+- 241215 [Christiaan o](https://www.linkedin.com/in/christiaan-o/) in NL also on entrep. Knows [[Kirk-Drage-LeapSheep]] and in Lisbon. Commented on Norris Krueger post. 
+- 241215 [Nadia Waggie](https://www.linkedin.com/in/nadia-waggie-87276739/) and [Reon van der Merwe](https://www.linkedin.com/in/reon-van-der-merwe/) of UCT entrepreneur network - maybe follow up on #Ergodicity and on #Evoluter-potential-client  Commented on Norris Krueger post. 
+- 241215 [**Norris Krueger**](https://www.linkedin.com/in/norriskrueger/)  and his ecosystem policy [LinkedIn post](https://www.linkedin.com/posts/norriskrueger_policy-brief-1-page-exec-summ-activity-7273978654752149504-6No4/?utm_source=share&utm_medium=member_desktop) #Evoluter-potential-client #Academia #Potential-Partner #Ergodicity 
+- 241214 Manon Klein follow-up email to help with their Impact Hub amsterdam #regenerative programme for entrepreneurs. 
+- 241214 [Dan Wallace](https://www.linkedin.com/in/danwallace/) email ask to connect to Nate Hagens, (last talked 2312XX - marketing, philosophy, loves my work and Ergodicity, encourage me to get onto https://bigthink.com/ )
+- 241214 [David Carlin](https://www.linkedin.com/in/david-carlin7/) sent LI message offering help. #Ergodicity #FSC 
+- 241214 [Magenta Ceiba](https://www.linkedin.com/in/magentaceiba/) #bioregional #ergosim #Ergodicity 
+- 241214 [Mikkel Larsen](https://www.linkedin.com/in/mikkellarsen1/) Activist, ideals close to mine, 25k LI followers. #marketing 
+- 241208 [Nazia Sultana](https://www.linkedin.com/in/nazia-sultana-32267b84/) Potential partner for videos and Islamic climate activities etc. 
+- 241208 [**Marc Rubinstein**](https://www.linkedin.com/in/marc-rubinstein/) ex hedge fund #Investor-potential  and now blogger [degreesofcertainty](https://degreesofcertainty.blog/) saw blog [Ever Increasing Complexity](https://degreesofcertainty.blog/2019/12/29/ever-increasing-complexity/) on Tim Harford and #Ergodicity  he also blogs on [Net Interest](https://www.netinterest.co/)
+- 241205 [Paul Mesarcik](https://www.linkedin.com/in/paul-mesarcik-69a193a3/) #ergosim #Ergodicity #Regenerative-CapInst #FSC-potential-client 
+- 241205 [Steven Lovink](https://www.linkedin.com/in/jslovink/) transforming finance #ergosim #Ergodicity 
+- 241205 [Catarina Fernandes Alves](https://www.linkedin.com/in/catarinaalves/) customer of #ergosim #Ergodicity 
+- 241202 [[George Kinder]] talk on his launch of FIAT. 
+- 241202 [George Marshal](https://www.linkedin.com/in/climategeorge/) Don't Even think about it 
+- 241201 [**Nature-Positive Economy**]()  [LI posts](https://www.linkedin.com/posts/siobhan-mcquaid-48664483_naturepositive-naturepositiveeconomy-cop16-activity-7267129702853619712-xo1i/?utm_source=share&utm_medium=member_android) by  [Niak Sian Koh](https://www.linkedin.com/in/niak-sian-koh-4192ba62/) and [Siobhan McQuaid](https://www.linkedin.com/in/siobhan-mcquaid-48664483/) academic researchers Horizon2020 supported. #Ergodicity #FSC  Responded, interest. Niak by LI, Siobhan by email. 
+- 241201 [Dominique Hes](https://www.linkedin.com/in/dominique-hes/) of Australia interest in nature in org governance. Policy adviser to gov. 
+- 241121 [Philipa Duthie](https://www.linkedin.com/in/philipa-duthie-355a917a/) of the RSA Oceanea invited me to talk at an RSA even next week. 
+- 241119 [Shiva Dustdar](https://www.linkedin.com/in/shivadustdar/)  EIB director, key on II, many common contacts, emailed to intro to EIS.
+- 241117 [Ethar Alali](https://www.linkedin.com/in/ethar-alali/) reached out on LI to connect after his [post on leaving B-Corp](https://www.linkedin.com/posts/ethar-alali_its-official-today-we-choose-to-decertify-activity-7263254810039136256-Alix).  Sent him Ch 16
+- 241115 [Peter Harris]() of Resonate and FS pioneer in Berlin. 
+- 241107 Menno Lammers interested. 
+- 241107 [Yann Teste]() talked after his Musk post, he's intrigued for his supply chain, esp . ZF, liked the Mondragon example. 
+- 241106 [Peter Dunbar](https://www.linkedin.com/in/peter-dunbar-992a8422/) responsible investing at StepStone. LI outreach to him on #Ergodicity 
+- 241106 [Richard J Murphy](https://www.linkedin.com/in/richard-murphy-08468522/) economist, UK, connected with me. Chase on #Ergodicity 
+- 241018 [Steve Cohen](https://www.linkedin.com/in/steve-cohen-goldcoast/)  in [[Elliott-Bayev]] call - Impact investor, NB profile - #investor-channel #ergosim #Ergodicity 
+- 241018 [Tim Freundlich](https://www.linkedin.com/in/timfreundlich/)  in [[Elliott-Bayev]] call - Impact investor, NB profile - #investor-channel #ergosim #Ergodicity 
+- 241018 [Preeti Sinha](https://www.linkedin.com/in/preetisinha70/)   in [[Elliott-Bayev]] call - Former UN capital manager, NB profile - #investor-channel #ergosim #Ergodicity 
+- 241017 [Or Katzman](https://www.linkedin.com/in/or-katzman-073347a7/)  in [[Elliott-Bayev]] call His framework: https://ebfcommons.org/ Focus on web3-impact bridging. Emailed on 241122 to set up a call. 
+- 241017 [Vagner Perez](https://www.linkedin.com/in/vagner-perez-93720519/)  in [[Elliott-Bayev]] call into Commoning,   #FSC-potential-client 
+- 241017 [Matthew Schutte](https://www.linkedin.com/in/matthewschutte/) in [[Elliott-Bayev]] call core founder of Holochain, keen to know more.
+- 241017 [Sofia Sunaga](https://www.linkedin.com/in/sofia-sunaga/) in [[Elliott-Bayev]] call - Intergen.Family - #investor-channel #ergosim #Ergodicity  - she knew about me from [[Donna-Nelham]] and very interested in my work. Works with [Forrest Landry]() who is interested in my work too, and complements his work. 
+- 241015 [**James Seriph**](https://www.linkedin.com/in/james-seriph-b7197429/) - spoke to him, excellent call, strong potential! #investor-channel #investor-attracting running Frequency - maybe bring in the investors etc. we need. connection suggested by [Charlotte Fradet](https://www.linkedin.com/in/charlotte-fradet-23353717/) - met at GOT - both run Frequency connected regen investors and founders - Greg Berry of [[Lawrence-Ford]] Consc Wealth is part of the team. 
+- 241015 [Yann Teste]() of Volvo Brussels LI post on Musk, engaged, maths and physics background, interest in #Ergodicity #ergosim 
+- 241009 [Anna Korlath](https://www.linkedin.com/in/anna-korlath/) designer, illustrator for sustaiability. LI conxn
+- 241009 [Jules Feeney](https://www.linkedin.com/in/jules-f-2a2025284/) - 6th descendent of P&G founders, with sister [Justine Epstein](https://www.morganhcurtis.com/justine-epstein), [Reuters](https://www.reuters.com/business/retail-consumer/bid-by-pg-founders-descendants-oust-ceo-board-committee-fails-2024-10-08/), [CBS](https://www.cbsnews.com/news/procter-gamble-relative-call-for-change/)  ... reached out on LI with message offering insights and both Accountability and TBLI videos. 
+- 241009 [Christina Bowen](https://www.linkedin.com/in/christina-bowen-449a8563/) keen to meet - ecology and complex systems mapping - socialroots founder. #ergosim #Ergodicity #FSC-potential-client #Ally 
+- 241007 **[[Alex-Johnston]]** emailed on Trans investor - he's a potential key ally, was very keen to help last time we spoke. I oughn't to have lost sight of him ... 
+- 241007 [Tim Chang](https://www.linkedin.com/in/timchang1/) Mayfield, Integral Studies steward, into eco retreats ... 
+- 241005 **Brian Kettenring** [[Foundations-Philanthropy]] 2nd LI message offer help. Founder of  [The Global Fund for a New Economy](https://www.linkedin.com/company/the-global-fund-for-a-new-economy/posts/) #Ergodicity 
+- 241005 Asked [[Evan-Steiner]] to connect me to [Wealth Hackers Initiative](https://hackingwealth.xyz/) [Emma Shaw](https://www.linkedin.com/in/emmakshaw/) part of it, LI messaged her. And [The Global Fund for a New Economy](https://www.linkedin.com/company/the-global-fund-for-a-new-economy/posts/) #Ergodicity 
+- 241003 [[John-Stokes]] [**John Stokes**](https://www.linkedin.com/in/johnstokes/) of [**Real Ventures**](https://www.linkedin.com/company/real-ventures/) - highly likely good for #Ergodicity and #FSC-potential-client and #Potential-Partner  Responded 241004 keen to talk. 
+- 241002  [Viliana Dzhartova](https://www.linkedin.com/in/viliana-dzhartova-77b40420/) (loves my work, wants to talk more) from [[TWIST]] thinks my work and hers are the same from different stances.
+- 241002 [**Peter Michel Heilmann**](https://www.linkedin.com/in/pmheilmann/) reached out to me on LI. #Investor #Investor-potential #investor-channel #participant-channel #ergosim #Ergodicity 
+- 241001 [Dafne Sartorio Barbosa](https://www.linkedin.com/in/dafnesartorio/) Runs a venture builder oneUp in Antwerpen - can we support her on #FSC-potential-client #Ergodicity #Ally 
+- 240927 [**Nadine Maarhuis**](https://www.linkedin.com/in/nadinemaarhuis/) - asked her to interview me after Nour tagged me on her post. #marketing 
+- 240927 [Machtelt Groothuis](https://www.linkedin.com/in/machtelt-groothuis/) #Investor-potential founder of [Rubio VC](https://www.rubio.vc/team/) works in WIRE with Tera Terpstra. Maybe interest in #Ergodicity LI outreach. 
+- 240925 [Peter Stavros](https://www.linkedin.com/in/peter-stavros-1b3a633/) of KKR, an employee ownership advocate, see his [Peter Stavros KKR on employee ownership](https://www.npr.org/2024/09/20/g-s1-23465/most-americans-dont-like-their-job-a-private-equity-investor-says-he-has-a-fix)
+- 240925 [Paul Caprez](https://www.linkedin.com/in/paul-caprez-a0a1192/) UCT potl Baha'i, #Investor #Ergodicity 
+- 240924 [[Kent-Babin]] connected by [[Kate Bennett]] - chase, could be ideal for us!
+- 240924 [[Diarra-Smith]] conversation. Promised to intro to [Marie Ekeland](https://www.linkedin.com/in/marieekeland/) 
+- 240924  [Kate Bennett](https://www.linkedin.com/in/ktlbennett/) agreed to talk; 240612 intro from Franz and Alex Prate - she's doing a phd in ecosystem investing. #ergosim #Ergodicity 
+- 240920 [Debbi Evans](https://www.linkedin.com/in/debbievans/) writer, copywriter, editor, distill complex into simple. Replied to [Indy's 2024 summer letter on LI](https://www.linkedin.com/posts/indy-johar-b440b010_dm04summer-letter-activity-7241633141528932352-xmVT?utm_source=share&utm_medium=member_desktop)
+- 240920 [Geoffrey West](https://www.santafe.edu/people/profile/geoffrey-west) of Santa Fe, wrote Scale book, emailed him about my EIE book. Mentioned by Lars. 
+- 240920 [Rachel Taylor](https://www.linkedin.com/in/rachelmariataylor/) partner of Sofia Sarkar of Gathering of Tribes. Storyteller. #regenerative #Ergodicity #FSC 
+- 240920 [Evan Galasso](https://www.linkedin.com/in/evan-galasso-753742126/) investor partner of Joshua Prieto of Seeds of Tao. #investor-channel #ergosim #Ergodicity 
+- 240920 [[Brenden-Keon]] [**Brenden Keon**](https://www.linkedin.com/in/brenden-keon-188558a/) [Barefoot Ventures](https://www.barefoot.ventures/) He lives in Eindhoven. Intro via Lars Grote. High potential #Investor #investor-channel #ergosim #Ergodicity 
+- 240919 [[Ebru-Kaya]] call - more potential to sell her our services - though she sees EIS as beyond her current fund and scale. 
+- 240906 Brian Reyland Jones on LI - maybe synergies? He sent a [deck](https://mail.google.com/mail/u/0/#sent/FMfcgzQVzXXhTTrnsDtWkZbZcwPgbkss) already for us to invest in. Circular economy water bottles. 
+- 240906 Christin ter Braak-Forstinger of Chi Capital emailed - Charly and Bozesan are advisers.
+- 240905 [Nicholas Niggli](https://www.linkedin.com/in/nicholas-c-niggli/) intro from Charles Blass, team of Building Bridges - key investment forum ally - maybe I talk in December at their conference. 
+- 240905 [Dmitri Sarle](https://www.linkedin.com/in/sarle/) intro by Dima - his Earthians seems similar to our vision and he angel invests. 
+- 240904 [Jessica-Groopman] and [Danielle-Lanyard] sales call on their IT ecosystem stuff. Jessica in regen space interest in #Ergodicity  and Danielle formerly with Anyshares and [[Rob-Jameson]]
+- 240828 Joy Anderson - TWIST followup - gender violence, and her Criterion trust. #FSC-potential-client and #Ergodicity  to combat gender violence systemically. 240920 sent follow-up email.
+- 240828 Tony Greenham - LI message on EIS - now with British Business Bank. 
+- 240808 [Paul Armstrong]() TBD founder - invited me to join - 
+- 240808 [Karen Wilson](https://www.linkedin.com/in/karen-e-wilson-890a958/) #investor-channel #ergosim she conected on LI
+- 240808 [Erum Khan](https://www.linkedin.com/in/erumkhan1/) she conct LI - potl advocate, amplifier, connct with Jaume etc.
+- 240808 [Tom Jackson](https://www.linkedin.com/in/tom-jackson-ho/) #FSC-potential-client #ergosim he conct on LI
+- 240808 [Jana Skokan](https://www.linkedin.com/in/jana-skokan/) potl #FSC-potential-client #Ergodicity she connct on LI
+- 240729 Francesca Pick introduced me to Satya Kumar, Vishal Chaddha, Sid Sthalekar who are starting an asia-pacific climate fund. 
+- 240729 [Dan Matthies](https://www.linkedin.com/in/danmatthies/) connected to me by [[David Wilcock]] on his visit to Brussels. [Reaction](https://www.reaction.global/)
+- 240724 [Noreen Bautista](https://www.linkedin.com/in/noreenbautista/) - interest - possible sale of ecosystem support services for her plan to strengthen the whole Philippine SU ecosystem. She teaches entrep. and Uni of Manila, and active in startups, esp. [Panublix](https://www.panublix.com/) From [[John-Fullerton]] course DD in 2024
+- 240723 [**Tasmin Vosloo**](https://www.linkedin.com/in/tasmin-vosloo-9717b749/) She loves my work, keen to stay in touch, keen to work as media / brand consultant for me, make a documentary, get to know my work. She could become a key E6 partner doing all docu work for all startups in Ecosystem. 
+- 240722 [**Lisette Schuitemakers**](https://www.linkedin.com/in/lisette-schuitemaker-77a488/) Excellent first call. Follow up during August latest!
+- 240718 [[Will-Ruddick]] really good first call. 
+- 240717 Ronee Walsh [email](https://mail.google.com/mail/u/0/#inbox/FMfcgzQVxHfCQnStPpctQwNNFcHHbtTp) of Anthropy.uk - interest in me presenting to their conference this or next year. (B for Good Leaders, John O'Brien key link, spoke to)
+- 240716 **Yogesh Suresh** - *Maybe our community guy*. excellent offer to help with community curation and sales leads especially to investors. He was in a sad place - so focussed on process, what can he do coaching people 1-1. Inner Dev his top focus. Focus on revenue. 
+- 240711 [**Tim Wolters**]() first meeting, excellent, he's a geek and intrigued about ergodicity and FSC. potl key #Ally #Adviser-potential  we may use his crowdsolve platform for our Evoluter. 
+- 240709 [Donna Morton](https://www.linkedin.com/in/donna-morton-a2417214b/) key interest via [Edge Finance](https://www.linkedin.com/company/edge-finance/) LI message to talk ... she replied yes, and will bring in Jordan Luftig - Cohort 2 offer and suggested talk. Cordell Jacks was on cohort 1
+- 240709 [Lynn Carpenter](https://www.linkedin.com/in/lynnwcarpenter/) *Co-Founder at EPOCH Pi | Purposeful Investment Banking Marrying Values-Led Companies with Like-Minded Partners* LI connxn - she reached out to me. 
+- 240709 [Jean-Marc La Flamme](https://www.linkedin.com/in/futurevillages/) Deep into regeneration, ceramic building approaches. 
+- 240708 [**Robert Rubinstein**](https://www.linkedin.com/in/robertrubinstein/) 1st call, #investor-channel #ergosim #Ergodicity #FSC He may be a key ally. Good friends with [[John-Fullerton]] ... [Watch video](https://www.youtube.com/watch?v=010hnOEf2go) 
+- 240705 [Scott Christensen](https://www.linkedin.com/in/schristensen32/) First call, he's intrigued by FSC and EIS, maybe a client for our GP services. #ergosim #FSC-potential-client #Evoluter-potential-client #investment-conxn 
+- 240705 [Jim Rutt](https://www.linkedin.com/in/jimrutt/) connected with me on LI  Game B .. [[Jim Rutt]]
+- 240702 [[Sebastian-Neumann]] first talk. 
+- 240625 emailed ergodicity proposal to P4NE that Jo Swinson is director of. 
+- 240625 [[Alistair-Langer]] first call. 
+- 240625 [Quentin Millington] first call.
+- 240624 [[Ulrike-Glatz]] first call
+- 240624 [Julie Menter](https://www.linkedin.com/in/julie-menter/) Transform Finance with Curt Lyon. #Ally #investor-channel #ergosim 
+- 240624 [**Alison Lingane**](https://www.linkedin.com/in/alingane/) Talked on Felipe call. #ergosim #Ergodicity #FSC-potential-client #Investor-potential #investor-channel 
+- 240624 [Stacey Jewell](https://www.linkedin.com/in/staceyjewell/) 
+- 240624 [Kimberly Griffin](https://www.linkedin.com/in/kimberlymariegriffin/) maybe interest in #ergosim 
+- 240621 [[Erinch Sahan]] - 240422 Kate Raworth forwarded to  - nudged on 240621 - meeting planned for August 6
+- 240624 followed up [Prof Atul Shah](https://www.linkedin.com/in/atulkshah/) - 240228 reached out to connect. BBC, prof, speaker, adviser ... 
+- 240624 [Mark Siegenbeek van Heukelom](https://www.linkedin.com/in/marksvh/) intro by [[John-van-der-Linden]] coach and sustainabillity maybe a client 
+- 240624 [**Sebastian Neumann**](https://www.linkedin.com/in/sebastiande/) responded by email with his deck and I sent mine. #Ally #FSC-potential-client #ergosim #Ergodicity #Evoluter-potential-client #Potential-Partner   Also his CEO https://www.linkedin.com/in/andreas-m-rickert-59933689/ and check  https://www.linkedin.com/company/nixdorf-kapital/  240702 talk scheduled
+- 240624 [Dan Sherrard-Smith](https://www.linkedin.com/in/dan-sherrard-smith/)  [dan@mymothertree.com](mailto:dan@mymothertree.com)  #ergosim #Ally
+- 240624 Alex Papworth LI follow-up.
+- 240624 Stuart Cowan agrees to talk. Set for 8 July. 
+- 240624 nxt meeting with  [[Craig-Jonas]] - 240206 first conversation went well. #ergosim #Ergodicity #FSC-potential-client #investor-channel #Investor-potential 
+- 240621 email nudged after [[Stuart-Cowan]] reached out on LI. into systems investing after the Transcap conf on systemic investing - potl #Ally  and #investor-channel and #Ergodicity  **He'll reach out in a few weeks chase if not.**
+- 240620 Brock Weatherup first call. 
+- 240620 [Tim Wolters](https://www.linkedin.com/in/timwolters/) reached out after seeing a comment from Brock Weatherup. #investor-channel #participant-channel Key #Ally potential with his Crowdsolve and 1000Gretas.  
+- 240620 [Geoff Workman](https://www.linkedin.com/in/geoffworkman/) reached out to me on LI. Works with FO. #investor-channel #ergosim #Ergodicity 
+- 240618 [Leslie Hill](https://www.linkedin.com/in/leslie-hill-4a09859/) interest in 101, may be a collaborator, may be a client. Economist background, into indicators, climate change, and renewable energy. #ergosim #Ergodicity #FSC-potential-client 
+- 240618 [Lizzie Shupak](https://www.linkedin.com/in/lizzieshupak/)  and [Hubert Fonteijn](https://www.linkedin.com/in/hubertfonteijn/) have read The ergodic investor & entrepreneur during a group project in which Lizzie and me (together with 2 fellow students) adapted some of the ergodicity ideas into a proposal for a local business accelerator for the Torbay area.  #Ally #potential-staff #FSC-potential-client #ergosim 
+- 240617 [**Jeff Gitterman**](https://www.linkedin.com/in/jeffgitterman/) connected on LI. His [Gitterman Wealth](https://gittermanwealth.com/#investment-management) uses a SMART for investment management that would benefit from EIS to reduce risk. Emailed follow-up info. He is on Darby's email list. 
+- 240614 [**Quentin Millington**](https://www.linkedin.com/in/quentinmillington/) intro via [[Jaume]] group. Was head of investment banking, knows an SDG fund looking to invest in 50M up ticket sizes.
+- 240612 [[Kevin-Jones]] and Philip Browning connected to me by Felipe Witchger of [[Livable-Future-Francesco-Eco]]
+- 240611 [[Amit-Paul]] and [[Nils-von-Heijne]] - good call - next call talk about ergodic fincap pooling to complement the 20+ people in their RCO foundation pool 
+- 240611 [Tom Chi](https://www.atoneventures.com/) emailed [[Gil-Friend]] to connect us with details of why. 
+- 240611 **[Terry Mollner](https://www.linkedin.com/in/terry-mollner-9062326/)** chased after late Feb intro #investor-channel #Investor-potential  by [[Jed-Emerson]] and is starting a fund on [Common Good Investing](https://impactalpha.com/we-invest-for-the-common-good-so-lets-call-it-common-good-investing/)  and he started Calvert II fund!! #ergosim 
+- 240605 [Christiana Gardikioti](https://www.linkedin.com/in/christiana-d-gardikioti-aba0969/) #FSC-potential-client #Ergodicity 
+- 240605  [Juan Trujillo](https://www.linkedin.com/in/byjuanctrujillo/) ? Colombian politics and economics, did I meet at BforGoodLeaders?
+- 240527 [[Alice Leguay]] [LinkedIn](https://www.linkedin.com/in/aliceleguay/) Connected - potential #ergosim 
+- 240508 [Oliver Specht](https://www.linkedin.com/in/oliver-specht-6b1439ab/) Weberbank privat clients director met at AusserGewoehnlich Berlin and interest in #ergosim #Ergodicity 
+- 240430 [Bruno Delepierre](https://www.linkedin.com/in/bdelepierre/) **key contact** #ergosim #Ergodicity 
+- 240429 [[Olivier-Onghena-'t Hooft]] first call - wants a second in 3 weeks.
+- 240428 [RobertoHinestrosa]()  and [Mary Lou Hardy](https://www.linkedin.com/in/marylouhardy/) - watched old recording zoom meeting from 20211108 - potential #Ally #investor-channel #ergosim ?
+- 240426 [Ingmar Rentzhog]() - invited me to partner, asked if a subsidised way - Founder & CEO  [Wedonthavetime.org](https://r.sib.wedonthavetime.org/mk/cl/f/sh/7nVU1aA2nfy8RYq2HbxGJxIwfgZy4aP/nGWLzjyeCqed)  emailed on Ergodicity to raise investment #investor-channel #ergosim #Ergodicity #Ally 
+- 240423 [[Eike-Post]] first meeting, potl collaborator and #FSC-potential-client #Ergodicity #ergosim 
+- 240423 Anastasia Kalinina from NPC meeting set up.
+- 240423 [Rebecca Kirstein Resch](https://www.linkedin.com/in/rebeccakirstein/)  met on NPC call of [[David-Sloan-Wilson]]. #Ergodicity #investor-channel **Potl key person** - meeting set up.
+- 240419 [Alexander Wolf](https://www.linkedin.com/in/alexander-s-wolf-25681413/) Founder of [GICA - Global Impact Capital Alliance](https://www.linkedin.com/company/gica-global-impact-capital-alliance/) #investor-channel #ergosim #Ergodicity 
+- 240419 [Matt Orsagh]()  #investor-channel #ergosim #Ergodicity LI connection, writer and adviser, maybe podcasts with me, offer training. 
+- 240418 [Georg Kell](https://www.linkedin.com/in/georgkell/) LI message on EIS - Chairman of Arabesque of [[Jaume]]
+- 240417 [Francesco Lombardi Stocchetti](https://www.linkedin.com/in/francesco-lombardi-stocchetti-6672a3203/) of the [Bellona Foundation](https://eu.bellona.org/) based in Norway and founded by [Frederic Hauge](https://www.linkedin.com/in/frederic-hauge-4a543a279/overlay/about-this-profile/)] 
+- 240416 emailed Hareter on ergodicity.
+- 240416 [Frank Eggink](https://www.linkedin.com/in/frank-eggink-ab710a6/) and his co [Heartwork](https://heartwork.earth/) - #Adviser-potential #Ally [[Kim-Lien]] friend connected us. #investor-channel #ergosim  
+- 240416 [Duke Jones](https://www.linkedin.com/in/dukejones/) intro by [[David-Wilcock]] as also at the Castle Gathering and interested in funding the commons. 
+- 240415 [Robert Ricigliano](https://www.linkedin.com/in/robert-ricigliano-abb675b/) Systems and Complexity at The Omidyar Group, interest in our ergodicity stuff, target for #ergosim #Ergodicity #investor-channel  
+- 240415 [[Lucia-Hernandez]] first call, potl #Ally #Associate #faculty-TBC #potential-staff 
+- 240411 nudged to chat by email 240220 [Efi Pylarinou](https://www.linkedin.com/in/efipylarinou/) agreed to talk. LI message. #ergosim #Ergodicity #investor-channel 
+- 240411 emailed dates. 240306 [Anne Snick](https://www.linkedin.com/in/annesnick/) in Lier, part of CoR Rethinking Finance, lots in common - chase as a route to CoR! Maybe EIS and Rebuild useful for Arne Loosveldt Fonds and her Young Persons' Guide to the Future · Freelance. Replied, sent her links. 
+- 240410 [Anaiz Anthonioz Blanc](https://www.linkedin.com/in/ana%C3%AFk-anthonioz-blanc/) interview for her research for Unearthodox. She felt hope because I shared my personal side, bike accident and depression, because I say sustainability has failed, because my ideas are crazy. Also so much clearer than my website and books pages. 
+- 240410 [[Sandra-Myburgh]] emailed set up next meeting 
+- 240408 Contacted - **Ertan Can / Michael Jackson [multiple capital](https://www.linkedin.com/company/multiplecapital/)** via their website form offering input on ergodicity. 
+- 240408 [Jennifer Brandsberg-Engelmann](https://www.linkedin.com/in/jennifer-brandsberg-engelmann/) busy writing a regen book for schools, connected by  [Filippos Zisopoulos](https://www.linkedin.com/in/filippos-zisopoulos) who may be able to help with the game. 
+- https://www.linkedin.com/company/commonwealth-climate-and-law-initiative/about/   https://commonwealthclimatelaw.org/
+- 240403 [[Eduardo-Esparza]] spoke - keen!  Blue Dot founder - followed up with comment, reading book posted this - [connect with folk](https://www.linkedin.com/feed/update/urn:li:activity:7164263281912725505?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7164263281912725505%2C7164359463078985729%29&replyUrn=urn%3Ali%3Acomment%3A%28activity%3A7164263281912725505%2C7165340605504557057%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287164359463078985729%2Curn%3Ali%3Aactivity%3A7164263281912725505%29&dashReplyUrn=urn%3Ali%3Afsd_comment%3A%287165340605504557057%2Curn%3Ali%3Aactivity%3A7164263281912725505%29)  #ergosim #investor-channel #Investor 
+- 240328 **[Faraz Khan](https://www.linkedin.com/in/farazprofile/)**  #Investor #impact-investor #ergosim 
+- 240328 **[Kathryn Wortsman](https://www.linkedin.com/in/kathrynwortsman/)** reached out on LI. #Investor #impact-investor Managing Partner of Amplify Capital, one Canada's oldest and leading impact funds. **a prime prospect source of investors and pax for our #ergosim game**
+- 240328 [Alan Hudson](https://www.linkedin.com/in/alan-hudson-02496b150/) #investor co-founding partner of [Mercuri](https://www.linkedin.com/company/mercuri-vc/) and investor and member of [VentureESG](https://www.ventureesg.com/) **a prime prospect source of investors and pax for our #ergosim game**
+- 240327 [[Thomas-Schindler]] first talk
+- 240325 [Claudia Chwalisz](https://www.linkedin.com/in/claudiachwalisz/) of Democracy Next with [[Robbie-Stamp]] as adviser and her coach. LI connext - key possibilities as an ally, her democracy needs our FSC and EIS.
+- 240318 [**Dr. Fabien Paillusson**](https://www.linkedin.com/in/fabien-paillusson-31a66821/) invited to talk on ergodicity at Lincoln. 
+- 240315 [Andrew Crosby](https://www.linkedin.com/in/ACoAAAAe1ncB1SGUVagDtKLroFaDNIyHJe1Jsf0?lipi=urn%3Ali%3Apage%3Ad_flagship3_messaging_conversation_detail%3B4w9ADqe4TAK%2Fy7gD1PI0qg%3D%3D) met on Unearthodox
+- 240314 [Vincent-Brekel] #FSC-potential-client His BV [Stokhos Emergency Mathematics](https://www.linkedin.com/company/stokhos-emergency-mathematics-bv/) is not fulfilling his moral social obligations, wants to stay in touch. He is also a startup mentor via [O3NL](https://www.linkedin.com/company/stichting-o3nl/)
+- 240314 [Villars Institute](https://villarsinstitute.org/) message and note to CEO [Lee Howell](https://www.linkedin.com/in/lee-howell-830bb65) - note their summit perfect for us. 
+- 240314 [Lucia Hernandez](https://www.linkedin.com/in/luciahd/) met on Unearthodox call. [Website](https://luciahernandez.co/about/) on platform economy, etc. #Ally #Potential-Partner 
+- 240314 [Jess Daggers](https://www.linkedin.com/in/jessdaggers/)  [Johannes Tschiderer](https://www.linkedin.com/in/johannes-tschiderer/) [Ivana Gazibara](https://www.linkedin.com/in/ivanagazibara/) - [[Transcap]] - and Benjamin Kumpf (OECD) and Hannah Stranger-Jones (impact consultant) met on the TCI call. #Ergodicity - Jess and Johannes esp interested. 
+- 240313 [Alex Pazaitis](https://www.linkedin.com/in/alex-pazaitis/) works on commons with [[Michel-Bauwens]] and does research. Academic. Proposed speaks at our webinars. May act on #Ergodicity 
+- 240311 [Jeroen Veldman](https://www.linkedin.com/in/jeroenveldman-associateprofessor/) replied to my message
+- 240307 [[Sandra-Myburgh]] linked by [[Anna-Wozniak]] 
+- 240306 **[Venx](https://www.venx.vc/)** reached out to [Hyuk-Jeen Suh](https://www.linkedin.com/in/hyukjeensuh/) after reading [Techcrunch](https://techcrunch.com/2024/03/01/venx-collaborative-launch/) **Ideal customer for our GP services** and #investor-channel #Investor-potential 
+- 240306 [Anna Castella](https://www.linkedin.com/in/anna-lu%C3%ADza-behrens-castella-a9789b6a/) also P4NE sent a LI message ... 
+- 240306 [Kelly Clark](https://www.linkedin.com/in/kelly-clark-1ba88a2/) of P4NE sent connection request. Recall tried to reach Jo Swinson last year and messaged their contact form. Connected with KR 
+- - 240306 [[Sarah-Dubreil]] chat. 
+- 240306 [Justin Pace](https://www.linkedin.com/in/hjustinpace/) law professor into stakeholders. LI engagement
+- 240305 [[Rainer-von-Leoprechting]] conversation, new path with [[Fraendi]] and CADRA, collaborate on 11 year journey and Climate Majority Project.
+- 240304 [[Brian-Spengemann]] first call, potential #Ally #FSC-potential-client #Evoluter-potential-client #investor-channel 
+- 240304 chased [[Chad-Frischmann]] **key #Ally**
+- 240304 [[Flourishing-Enterprise-Institute]] excellent meeting with Randy and Jason, schedule next one soon.
+- 240302 [Alexander Steiner](https://www.linkedin.com/in/steineralexander/) in Brussels works for a funding platform [Doorway](https://www.doorwayplatform.com/en/network/our-values) Maybe the platform we use. Offer to train them.  [steiner.alexander92@gmail.com](mailto:steiner.alexander92@gmail.com)  **#ergosim** #Investor-potential #Investor 
+- 240301 [[Jennifer-Menke]] invite to Ergosim game, 101, FSC consulting.  1st meeting after [[John-Fullerton]] intro.
+- 240229 [[Moh-Al-Haifi]] good first call, he'll come back if he can find a royalties way of working.
+- 240228 [Vincent van den Brakel](https://www.linkedin.com/in/vincentvandenbrekel/) keen to talk to me after my post. He's a mathematician, consultant, and investor. #investor-channel #Ergodicity 
+- 240228 [Olivier Onghena](https://www.olivieronghena.com/noble-purpose/)  agrees to talk early in April. Noble Purpose guy. 
+- 240228 [[Francesca-Pick]] long good talk, she's offered to help advertise our programmes and materials. 
+- 240226 [Howard Fischer](https://www.linkedin.com/in/howard-fischer-006a0954/)  [good post](https://www.linkedin.com/posts/howard-fischer-006a0954_new-frontiers-in-value-creation-a-guide-activity-7167488643933151232-n8Ab?utm_source=share&utm_medium=member_desktop) friend of [[John-Fullerton]] and #investor-channel #Investor-potential #ergosim 
+- 240411 chased via email 240221 [Danielle Lanyard](https://www.linkedin.com/in/dlanyard/) #FSC-potential-client  worked with Anyshares [[Rob-Jameson]] LI 
+- 240221 [Manik Dhingra](https://www.linkedin.com/in/manik-dhingra-279813196/) #FSC-potential-client  interest in trustees LI conxn
+- 240221 [Greg Berry](https://www.linkedin.com/in/gregberry/) part of [[Lawrence-Ford]] network, wealth adviser, #investor-channel LI chat #ergosim 
+- 240221 [Filippos Zisopoulos](https://www.linkedin.com/in/filippos-zisopoulos) potential #potential-staff #Ally #Ergodicity  LI chat may be able to help with Ergosim and game
+- 240219 Jerome Garnier-Brun worked at  [Econophysix](https://www.econophysix.com/)   funded by [CFM](https://www.cfm.com/) a potential investor in us!  Chair is [Michael Benzaquen](https://www.linkedin.com/in/michael-benzaquen-027572193/) who may be a good lead to investment. Michael accepted my LI conxn request. Head of CFM research is [Jean-Philippe Bouchaud](https://www.linkedin.com/in/jean-philippe-bouchaud-bb08a15/) - maybe a source of money.   #investor-channel  #ergosim #Ergodicity 
+- 240219 [[Sarah-Dubreil]] Her new [Regen initiative in France](https://www.linkedin.com/feed/update/urn%3Ali%3Aactivity%3A7160551782731956224/?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7160551782731956224%2C7164723608328548352%29&dashCommentUrn=urn%3Ali%3Afsd%5Fcomment%3A%287164723608328548352%2Curn%3Ali%3Aactivity%3A7160551782731956224%29) is a potential big channel for pax and investors. 
+- 240219 [Gregory Wendt](https://www.linkedin.com/in/gregorywendt/) #investor-channel  proposed to talk ... 
+- 240219 [Rebecca Kowalski Overstory](https://www.linkedin.com/in/rebecca-kowalski-overstory/) #investor-channel investment adviser, commented on [Wendt post](https://www.linkedin.com/feed/update/urn%3Ali%3Aactivity%3A7164263281912725505/?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7164263281912725505%2C7164874954675572736%29&dashCommentUrn=urn%3Ali%3Afsd%5Fcomment%3A%287164874954675572736%2Curn%3Ali%3Aactivity%3A7164263281912725505%29) -- #ergosim #Ergodicity 
+- 240215 [[OShaughnessy]] 240215 first zoom meeting. They seemed interested, intrigued, but said we don't yet have enough companies that we have equity in, enough experience for them to see whether we are a good investment or not. Keep them in the loop and come back in a year or so. 
+- 240214 David Wilcock offer sent, and he connected me with Kim Lien
+- 240214 [Julia Schäper](https://www.linkedin.com/in/juliaschaeper/) the designer with the commons article refering to [[John-Fullerton]] 
+- 240213 Daniel Saul Zeff Zoom on marketing and Assembly Theory, and the DSM5 in place of demographics. He used to be Unilever, has good leads there, and has leads to investors. #investor-channel 
+- 240213 **[Joshua Haynes](https://www.linkedin.com/in/joshuahaynes/)** of [Masawa Fund](https://masawa.fund/) Nuture Capital investing in mental health LI connextn emailed to set up a meeting. #Potential-Partner #Investor-potential #investor-channel 
+- 240212 [Margot Brandenburg](https://www.linkedin.com/in/margot-brandenburg-5834585/) of the [Ford Foundation](https://www.fordfoundation.org/work/challenging-inequality/future-of-workers/)] Best chance is their Mission Investing - $1B in impact; or their grants, focus on the future of work. Also Gerald Pambo-Awich good (investment experience) and Megan Walsh Thompson (Economics study and likely Catholic)
+- 240212 [Daniel Nowack](https://www.linkedin.com/in/danielnowack/) connected on LI - chase for **WEF** where he heads social enterprise. #investor-channel 
+- 240212 [Cecile Vaucelle](https://www.linkedin.com/in/cecile-goron-vaucelle/) CEO of Team for the Planet and former P&G sales. 
+- 240212 [Eduard-Müller](https://www.linkedin.com/in/eduard-m%C3%BCller-a618229/) - replied, he's keen to meet! 
+- 240210 Lynne Hoey of [Kataly Foundation](https://www.katalyfoundation.org/) with Nwakama Agbo that I emailed after [[r3.0]]
+- 240209 [Anna Muoio](https://www.linkedin.com/in/amuoio/) emailed after LI forgetting since 2021 #Investor 
+- 240208 [[Andrew-Hewitt]] 1st call great resonance. 
+- 240208 [Chris Cucci](https://www.linkedin.com/in/chriscucci/) of Climate First Bank connected on LI, I messaged him about book. 
+- 240208 Bruno Roche sent LI message. He's part of Fourth Sector Group with Heerad Sabeti
+- 240208 [Johan Schot](https://www.linkedin.com/in/johan%2Dschot%2D8356ba221/) into systems investing after the Transcap conf on systemic investing - potl #Ally  and #investor-channel and #Ergodicity 
+- 240207 Dave Chambers - emailed after watching [[David-Sloan-Wilson]] talk. #FSC-potential-client and 101 offer
+- 240207 [Thomas Ohr](https://www.linkedin.com/in/thomas-ohr-29481140/) of EU Startups - offered to talk, he offered a free ticket to attend. 
+- 240207 David Hodgson LI message to talk, he's with Eduardo Müller in Common Earth, taking time off to recover. Follow up in March  / april 
+- 240207 [[Jed-Emerson]] email to ask to talk, replied to talk.  
+- 240207 [Raj Thamotheram](https://www.linkedin.com/in/rajthamotheram/) LI 101 message
+- 240207 [Jean-Louis Robaday](https://www.linkedin.com/in/jlrobadey/) #investor-channel #Potential-Partner  of [Regengroup](https://regengroup.net/what-we-do) offered 101
+- 240202 [[Craig-Buchanan]] potential key bigger investor offered EIS MC
+- 240202 [[CelestialGroup]] Jennifer Pereira and Camilla Lastein
+- 240202 [[Frank-Dixon]] and Claudine Perlet systems change folk emailed 101 and deck
+- 240202 [Bryan Zhang](https://www.linkedin.com/in/bryanzhengzhang/) of [Cambridge](http://www.jbs.cam.ac.uk/ccaf)
+- 240202 [Frederico Bonaglia](https://www.linkedin.com/in/federico-bonaglia-18b90224/) OECD met in Delhi RIS.
+- 240201 Marcus Link sent 101 and previously travelling - reconnect in mid-Feb. - New Foundation Farms - not clear if any synergy, deprecate. 
+- 240201 [[Ben-Johnson]] sent 101 key ally 
+- 240201 [[Jeremy-Agnew]] sent 101 and info; linked to [[Bart-van-der-Zande]]
+- 240201 [[Bart-van-der-Zande]] sent 101 and pitchdeck and offer to collab. #investor-channel #Ally #Potential-Partner 
+- 240201 Ferananda Ibarra very interested in our approach #Potential-Partner #Evoluter-potential-client 
+- 240201 Kristin Hull of Nia Capital - LI message on EIS
+- 240201 [Sandra Myburgh](https://www.linkedin.com/in/sandramyburgh/) #Investor-potential of [Fern](https://www.linkedin.com/company/fern-impact-partners/) - Anna Wozniak linked. 
+- 240131 [[Anna-Wozniak]] 101 and new deck - linked me to Sandra Myburgh
+- 240131 [[Allison-Byers]] LI conxn request and 101 post comment
+- 240131 [[Alex-Johnston]] 101 and deck
+- 240131 [[Achim-Hensen]] emailed 101
+- 240131 [[Ellie-Young]] emailed 101 
+- 240131 [Alejandro Borda](https://www.linkedin.com/in/alejandra-borda/) of [[50-Year]] sent LI message offer MC and pitchdeck #investor-opening 
+- [[Tim-Chang]] 240131 101 offer and new deck. 230923 new deck and book 220719 emailed again
+- 240131 [[10K-Jared-Yellin]] emailed 101 and deck
+- 240131 Dawna Jones maybe as collaborator?
+- 240131 Francesca Pick reached out to interview
+- 240131 [[Carl-Pitchford]] first chat on Signal
+- 240131 [Joe Hsueh](https://www.linkedin.com/in/joehsueh/) emailed deck - follow up with course offer. [Simfo](https://www.simfo.org/)multi-family office. #Investor [Guardian on complexity](https://www.theguardian.com/sustainable-business/systems-change-joe-hsueh-secondmuse) Email to simfo bounced, sent to Omplexity and LI message.
+- 240131 [Arthur Wood](https://www.linkedin.com/in/arthur-wood-a3ba3/) LI post response, a key #investor-channel , big in impact investment, messaged on LI and to [Equity4Humanity](https://www.gcsp.ch/Equity4Humanity) and [total Impact Capital](https://www.totalimpactcapital.com/what-we-do) 
+- 240131 **Fred Freundlich** of Mondragon email reminder after [[Aaron-Perry]] intro. 
+- 240130 [[Vivek-Menon]] potential sales agent and for #Evoluter-potential-client 
+- 240130 [Helen Bertelli](https://www.linkedin.com/in/helenbertelli/) climate change marketing stragy - source of awareness for us? 
+- 240130 Cole Hooper #investor-channel #Potential-Partner   sent deck and 101 email  https://www.linkedin.com/in/cole-hoover-6614a718/
+- 240129 Amena Bal and [[Rob-Wheeler]] keen to talk after Mumta intro - GEN.
+- 240125 [[Brian-Bauer]] will invite me to talk to UNEP - first an interview. See email.
+- 240125 Marcello Palazzo and [Leen Zevenbergen](https://www.linkedin.com/in/leen-zevenbergen-a8a0147/) aplied to join their BforGood
+- 240125 [Alexandra Wang](https://www.linkedin.com/in/alexandra-jing-yi-wang-258066102/) for [Marlene Engelhorn](https://millionairesforhumanity.org/the-millionaires/marlene-engelhorn/) LI message to AW after reading [Guardian](https://www.theguardian.com/news/2024/jan/23/austrian-heiress-marlene-engelhorn-who-is-giving-away-90-per-cent-of-her-wealth-im-creating-the-tax-i-would-want-to-pay) and then [Guter Rat](https://guterrat.info) and [TaxMeNow](https://www.taxmenow.eu/)  which I also contacted via website. 
+- 240125 Global Ethical Finance Network filled in contact form with II article series and Boudrye's playlist. they showcase financial products - maybe next. Amy a trustee? Many of the lead team are 2nd LI degree.
+- 240125 [[Christin-ter-Braak-Forstinger]] re-emailed, request, offer.  230809 emailed, she responded OK to meet and will look at deck but no money.
+- 240125 Amy Clarke. She accepted my conxn request after LI message to invest, and message to her Tribe Impact Capital page.  We need a system upgrade. Company law, etc. Impact Investing as a source of new code. [Youtube talk](https://www.youtube.com/watch?v=teTppY1KJZ0}) [LI post](https://www.linkedin.com/posts/clarkeamy_amy-clarke-impact-investing-can-it-save-activity-6707610485883318272-POH0/?utm_source=share&utm_medium=member_android) Her [Tribe Impact Capital](https://tribeimpactcapital.com/) is science-based, SDG guided, and committed to leading the charge esp. in governing themselves. 
+- 240125 Robert Pye LI message after [[Michael-Haupt]] suggestion.
+- 240118 Chaotic Capital emailed to team@   https://chaotic.capital/  
+- 240118 Sarah Saadoun https://www.linkedin.com/in/sarahsaadoun/ after https://www.hrw.org/news/2024/01/17/human-rights-economy-key-sustainable-development forward to Mumta Ito
+- 240117 Joe Thomas MD of an LP holding company connected to me on LI. #Investor-potential https://www.linkedin.com/company/janeiroinvestments/about/
+- 240117 Donald Brown researcher in Positive Sum VC fund and former astronomer, LI conxn request. Positive Sum linked to [[OShaughnessy]]
+- 240117 [[OShaughnessy]] messaged to talk about investment or fellowship. Attached deck, Ben, Impact Insider.  And emailed **Jim O'Shaughnessy** directly after Rory Sutherland shared his email. 
+- 240116 Dana Burch investment raise email. #investor-channel 
+- 240116 Rory Sutherland email ask for advice and leads to investors.
+- 240116 Marc Elsberg connected with me on LI - author Gier, into EE and climate change. [[James-King]] suggested. 
+- 240116 Sebastian Fittko - founder Bundesinitiative Impact Investing - [[Ben-Kimura-Gross]] suggested I reach out. 
+- 240116 [[Robert Kadar]] and Steve Roth accepted EIS for their Evonomics magazine, although dormant will do for me, write for the borader economics transformation audience in line with their existing articles.
+- 240113 Konkankoh Joshua https://www.linkedin.com/in/joshuakonkankoh/ potential client / partner in Africa, food etc. Link maybe to [[Rex-Raimond]]. Key potential food ecosystem client. 
+- 240113 Alexandra Pittman https://www.linkedin.com/in/alexandra-pittman-phd-3951112/ reached out on LI - #Investor-potential https://winventures.no/ and potential pax for ergodic. 
+- 240112 [[Eli Ingraham]] #investor-channel sent email, she has connnections to Omidyar and Synergos. 
+- 240112 [Suzanne Bowles](https://www.linkedin.com/in/suzanne-bowles-985bb0b/) investor, philanthropy, FO advise, [Cattail Strategy](https://www.cattailstrategy.com/)  - she is also linked to [[Steve-Waddell]] who emailed her about me 241023 and suggested we talk, reply on 241122. 
+- 240112 [[Patrick-Fitzgerald]] potential collaborator and ally. 
+- 240112 Ihor Kendiukhov https://www.linkedin.com/in/ikendiukhov/ LI message and contact request  https://medium.datadriveninvestor.com/time-average-or-ensemble-average-the-case-of-multiple-gambles-a01aa0da6f01 #Ergodicity 
+- 240111 Brian Kettenring of Hewlett Foundation LI message followup
+- 240111 [[Steve-Keen]] Asked for leads to investors and to Yanis
+- 240111 [[David-Sloan-Wilson]] asked for leads to investors
+- 240110 Goldy David Goldstein #investor-channel emailed to get at Nick Hanauer and offer for their Civic Ventures book. [[David-Sloan-Wilson]] Alliance
+- 240109 Michael Pirson co-founder Wellbeing Alliance of [[David-Sloan-Wilson]] group emailed if collab. 
+- 240109 [[Curt-Lyon]] v. good initial call, he'll help raise investment, his focus this year get money flowing. 
+- 240109 [[Simon-Blöthner-Defiria]]
+- 240108 [[Rex-Raimond]] meeting and investor outreach. Potential sell FSC.
+- 240105 Piet Colruyt LI message and invite to Steve Keen. 
+
+**Who and dates-reach out**
+- PYM - high priority? https://www.linkedin.com/in/emiliedegerlache/
+- Hermann Hauser?? https://www.theguardian.com/business/2022/jul/23/hermann-hauser-founder-of-arm-brexit-is-the-biggest-loss-of-sovereignty-since-1066  https://www.amadeuscapital.com/  
+- Go through whole investor webinar group of 2020
+- There are several options to obtain early stage funding for your startup, beyond venture capital. [Here's an article by our GP Check Warner](https://medium.com/ada-ventures/venture-is-not-the-only-option-5041963f1f7) breaking down the pros and cons of alternative funding options.  And finally, if you believe venture is the way to go - [here's Fundfinder by Concept Ventures](https://www.fundfinder.live/) - a resource that can help you find other pre-seed / seed venture funds that could be worth contacting.
+- [KR Foundation](https://krfnd.org/about-us/)  The executive director is called Brian Valbjørn Sørensen. I don't have his phone number, but his mail is:   [bvs@krfnd.org](mailto:bvs@krfnd.org)  
+
+  
+
+
+
+**2023**
+- 231230 Gary Stevenson https://www.wealtheconomics.org/ contacted via his form.
+- 231220 **Sandra Myburgh** of Fern Impact reached out on LI to connect:  https://www.linkedin.com/in/sandramyburgh/ and https://www.fernimpact.com/ #investor-channel #Investor-potential 
+- 231220 [[Alexandra-Korijn]]  Twist email to get to talk and intro to Charly and Lisa - replied 20 min later she has done and will keep doing so. 
+- 231219 [[Antony-Upward]] excellent call, next in Feb, see if we can collaborate.
+- 231219 John Myers https://www.linkedin.com/in/john-myers-18b4421a/ growth coach, potential investor and #investor-channel interested in collaboration. LI message. Runs ten:ten, has followed us since 2021, keen to partner, see old emails. 
+- 231218 [Dan Wallace](https://www.linkedin.com/in/danwallace/) coaching Nate Hagens, marketing, philosophy, loves my work and Ergodicity, encourage me to get onto https://bigthink.com/
+- 231218 [Joel Getzendanner](https://www.linkedin.com/in/joelgetzendanner/) friend of [[Antonio-Chanoca]], works with Heerad Sabeti too https://www.fourthsector.org/joel-getzendanner
+- Gathering of Tribes - do in 2024, and build on Daneel etc. 2022. 
+- 231213 [[Linda-MacDonald-Glenn]] 1st call, she wants to work with us, in what role? 
+- 231213 Arun Maira email - from RIS - he knows and liked by [[David-Sloan-Wilson]] and Dennis Snower, maybe a key collaborator. https://en.wikipedia.org/wiki/Arun_Maira 
+- 231213 [[Taylor-Pearson]] emailed requested call for his Mutiny Fund to invest in us and collab. 
+- 231212 David LeZaks LI message to explore collaboration. https://www.linkedin.com/in/davidlezaks/
+- 231212 Gregory Wendt reached out on LI - perfect #investor-channel https://www.linkedin.com/in/gregorywendt/
+- 231212 [[James-King]] good talk, follow up.
+- 231211 Jacqueline Novogratz LI message https://www.linkedin.com/in/jacqueline-novogratz/
+- 231211 Darian Stibbe into collaboration former quantum physicist  https://www.linkedin.com/in/darianstibbe/ sent LI conxn request. 
+- 231211 Eric Berseth LI message outreach ... https://www.linkedin.com/in/eric-berseth-9b435319/
+- 231211 Guillaume Boury of Telos - II / VP / LP advisory services #investor-channel   https://www.linkedin.com/in/guillaumeboury/   https://www.telosimpact.com/
+- 231211 [[Jeroen-Spoelstra]] first call - excellent follow up.
+- 231211  Minou Schilling https://thegreensprint.com/ responded with interest and action to  emailed deck and interviews, follow up , maybe ideal partner. 
+- 231211 Max von Abendroth  #investor-channel https://www.linkedin.com/in/maxvonabendroth/ 
+- 231207 [[Nicole-Bastien]] - potential leads to investors and collaborating ... keen to work with us.
+- 231207 Capitals Coalition presentation given, synergies, via Stephany Breytenbach,  met r3.0, key source of investor.
+- 231207 Valerie Itey - hair-hemp mats - SF propose sales call. 
+- 231205 Francois Gade #Ergodicity check his thinktank and sell to his members. 
+- 231205 Curt responded meeting set for Jan Julie Menter and Curt Lyon potential investor channel and ally https://www.linkedin.com/in/julie-menter/ from post In Zebras, response to [Julie Menter](https://www.hylo.com/groups/zebras-unite/members/28155) post https://www.hylo.com/groups/zebras-unite/post/66550/comments/125129 on Zebras Unite https://ssir.org/articles/entry/investing_in_enterprises_that_work_for_everyone and part of https://www.transformfinance.org/ potential ally231205 Pai Charasika - thinkFish - 1st call
+- 231205 [[Vincent-van-Kalkeren]] talk
+- 231201 Andrea Armeni https://www.linkedin.com/in/andreaarmeni/ part of Transform Finance with Curt Lyon and XXX - maybe a key person to connect with and route to investors. 
+- 231201 Randy Nye capital for coops after Mike Wistow intro.
+- 231123 [[Yonca-Braeckman]]  LI nudge to meet, sent pitchdeck. 
+- 231121 [[Ben-Johnson]] emailed in reply to his email - can he lead us to #investor-channel  He connected me with James Scroggs and Marcus Link, reached out to both for a meeting. 
+- 231121 Gordon Casey Canada Brave inspired by FairShares https://www.linkedin.com/in/gordonwcasey/ talk! In Zebras, response to [Julie Menter](https://www.hylo.com/groups/zebras-unite/members/28155) post https://www.hylo.com/groups/zebras-unite/post/66550/comments/125129
+- 231120 Dan Wallace LI chat he is coaching Nate Hagens, will connect us for an interview when Nate is less overwhlmed
+- 231120 [[Carrie-Norton]] excellent conversation
+- 231119 Chris Jurgens of Omidyar Network https://www.linkedin.com/in/chris-jurgens-76152/ LI message requesting meeting. 
+- 231118 Rajiv Joshi and Heerad Sabeti email to go to India COP preparation. 
+- 231114 [[Natures-Rights]] - Mumta and Jonathan - Meeting 2 agreed to support
+- 231114 [[Carsten-Beck-Nilsson]] - agreed monthly contributions start in Jan 2024
+- 231113 Melinda Gates - Pivotal Ventures - LI message to https://www.linkedin.com/in/brittneyriley/ and https://www.linkedin.com/in/renataarauz/
+- 231107 [[Hari-Balasubramanian]] Pitch, interest, follow up in a few months. 
+- 231106 Lex Fridman - pitched https://mail.google.com/mail/u/0/#inbox/FMfcgzGwHVSvCdxjwpkVNNBvmpNnpCph to be a guest on his programme here:  https://submit.jotform.com/lexfridman/podcast-guest-pitch after watching his interview with Steve Keen. 
+- 231106 David Pinto Met online on ProSocial call https://www.linkedin.com/in/ACoAAAJacsYB2Y_6gQwv1LrpMT_2-e6zJoUQjWw?lipi=urn%3Ali%3Apage%3Ad_flagship3_messaging_conversation_detail%3B6Ug86NuPRz2YgRBK7MXq7g%3D%3D
+- 231106 [**Markus Müller**](https://www.linkedin.com/in/markus-h-p-m%C3%BCller-20a6a082/) potential investor - Deutsche Bank ....   after [bloomberg article](https://www.linkedin.com/feed/update/urn:li:activity:7123686029949050880?updateEntityUrn=urn%3Ali%3Afs_updateV2%3A%28urn%3Ali%3Aactivity%3A7123686029949050880%2CFEED_DETAIL%2CEMPTY%2CDEFAULT%2Cfalse%29&lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base%3B42IwGN%2F3RSW6J6X5JYrcXA%3D%3D) #ergosim #Ergodicity #investor-channel and his [Talking transformation newsletter](https://www.linkedin.com/newsletters/talking-transformation-7181996978145218561/) 
+- 231106 Connor Sailes Film maker https://www.linkedin.com/in/connorsailes/
+- 231106 Eli Ingraham potential investor and collaborator. https://www.linkedin.com/in/eliingraham/ In Transition Collective roundtable. 
+- 231106 Kevin Brown https://www.linkedin.com/in/kevinlbrown/ RSA branding for funding. alerted by [[Patrick-Martel]]
+- 231103 Lauren Gibbons Paul - asked to interview me. 
+- 231031 Mark Henderson Alex Papworth email consulting offer.
+- 231031 Sharon Nielsen LI message to meet to sell 
+- 231027 [[Greg-Fisher]] meeting
+- 231027 Jerome Warren agreed to meet.  https://www.linkedin.com/in/jerome-nikolai-warren/
+- 231027 Anna Muoio https://www.linkedin.com/in/amuoio/ sent an email to her gmail with videos and slide deck
+- 231027 Amy Domini LI message https://www.linkedin.com/in/amy-domini-34207b25/ based on https://www.linkedin.com/feed/update/urn:li:activity:7123501007984025600/
+- 231026 [[David-Sloan-Wilson]]  excellent call! connection established by [[Denise-Hearn]]
+- 231026 [[Paul-Boudrye]] invited to talk. 
+- 231026 Jean-Louis Robadey https://www.linkedin.com/in/jlrobadey/ potential client or investor https://regengroup.net/working-together
+- 231026 Richard Hames connected LI - NB amplifier / WOM  https://www.linkedin.com/in/richardhames/ sent deck.
+- 231024 [[Dan-Misleh]] potential sale of EIS courses, later consult / support building a full net positive (negative emissions) business ecosystem
+- 231023 Stephen Dynako - Raise Green - not sure what might emerge here - only backburner.
+- 231020 Armando Castel-Branco (Family of an FO, and NB check out Vroom https://www.vroom-ventures.com/) https://www.linkedin.com/in/armandoc/ and https://www.linkedin.com/company/white-castle-partners/
+- 231020 Joel Solomon email message - try to get at him, maybe via [[Deborah-A]]
+- 231019 [[Aaron-Perry]] keen for me to write a chapter for his book reached out via [[Michael-Haupt]] on LI. 
+- 231019 [[Sleipnir]] emailed
+- 231016 [[Anna-Wozniak]] excellent. Shell link to Sandra of https://www.linkedin.com/company/fern-impact-partners/about/
+- 231014 Hannes Matt after r3.0 response - ask for funding leads?  https://www.linkedin.com/in/hannes-matt-37759b119/
+- 231012 Dan Misleh from [[Livable-Future-Francesco-Eco]] wants to meet.
+- 231011 **Nick Flores** LI request [[Livable-Future-Francesco-Eco]]
+- 231011 Katie McCloskey LI request [[Livable-Future-Francesco-Eco]]
+- 231011 Katharina Pistor - asked [[Denise-Hearn]] for an intro - best I do directly she said.
+- 231011 Edge Network - philanthropy - messaged https://www.edgefunders.org/contacts/
+- 231009 Niels de Fraguier emailed - what's next and his book 
+- 231006 Neil MacGilp LI message on book. 
+- 231006 Bill Miller LI inmail see [[Foundations-Philanthropy]]
+- 231006 [[Alexander-Rozenfeld]] email with deck etc. 
+- 231006 Bezos Earth Fund via Paul Bodnar LI Inmail. 
+- 231006 Baillie Gifford emailed [[Ole-Peters]] and Colm to connect / permission / forward.
+- 231006 Anna Wozniak responded to meet.   https://www.linkedin.com/in/anna-teresa-wozniak/
+- 231004 Brian Kettenring of Hewlett Foundation LI message and conxn request. 
+- 231004 Emma Boyd https://www.linkedin.com/in/emma-howard-boyd-cbe-4958b6a/?originalSubdomain=uk LI contact request and point at book. Green Finance chair and much more. 
+- 231004 Maja Göpel, economist and board adviser, https://www.maja-goepel.de/, emailed https://mail.google.com/mail/u/0/#sent/QgrcJHsTfQZfKqkDqrkgjQfHRzlZRkcWZBB
+- 231004 Brian Sorensen https://www.linkedin.com/in/brianvsorensen/ of https://krfnd.org/ LI message, deck, offer and request. 
+- 231004 Hanna Stähle and Stefanos Oikonomou of https://philea.eu/ emailed re https://events.philea.eu/event/bb33eb97-cd82-44b1-996d-0e8f8f98eb66/websitePage:645d57e4-75eb-4769-b2c0-f201a0bfc6ce 
+- 231004 Veronique Letellier replied on LI, will put me in touch with AXA head of regen Mathieu Verillaud
+- 231002 Lenka Moore partner of Stephany B at Capitals Coalition replied to set meeting. Reading EIE. LI chat.
+- 231002 P4NE [Partners for a New Economy](https://p4ne.org/) [[Foundations-Philanthropy]] filled in form for contact. Linked to KR Foundation of [[Carsten-Terp]] 
+- 231002 [[Drawdown]]  filled in form for engage in capital accelerator. 
+- 231002 [[Brian-von-Herzen]] talked, seek collaboration. 
+- 231001 Emmanuelle Verhagen - Belgian, in Wolvertem, transsex, Barrett, sustainability, etc. https://www.linkedin.com/in/emmanuelleverhagen/
+- 231001 [[Niklas-Zennström]] LI conexn request
+- 231001 Ed May email to meet he's linked to Niklas Zennstroem
+- 231001 Richard Bookstaber LI message on book, wiki, and deck. https://fabricrisk.com/ 
+- 230929 LI conex req [[Chad-Frischmann]] and he replied to set up a meeting.
+- 230929 Paul van Zyl, Conduit co-founder and creative head.  https://www.linkedin.com/in/paul-van-zyl-13441672/ LI message. 
+- 230929 Meg Brown https://www.linkedin.com/in/meg-brown-3169a211/ LI message with deck, emphasis on radical collaboration between businesses.  https://www.linkedin.com/company/conduit-capital/
+- 230929 Paul Pizzala, now with Ethex, **crowdfunding platform**. 
+- 230929 Joyce Klein Aspen Institute Director of Business Ownership email on EIS and FSC.  https://mail.google.com/mail/u/0/#sent/QgrcJHsbgZrDWwSFRNwVGttrQpPxVbgctBL  https://www.aspeninstitute.org/programs/economic-opportunities-program/ https://www.aspeninstitute.org/people/joyce-klein/
+- 230928 [[Andreas-Alfredsson]] emailed with request to warm intro to [[Niklas-Adalberth]] of [[Norrsken]]  (later fup to [niklas@norrskenfoundation.org](mailto:niklas@norrskenfoundation.org) given by AA)
+- 230927 [[Stephan Nicoleau]] LI message and connection request. 
+- 230927 [[Indy-Johar]] email ask for help finding investors, sent deck, and email to [[Joseph-Rowntree-Foundation]]
+- 230927 emailed Daniel Tomlinson and Rachelle Earwaker of [[Joseph-Rowntree-Foundation]] - cf Urvi Kelkar. https://www.jrf.org.uk/contact/rachelle-earwaker  https://www.jrf.org.uk/contact/dan-tomlinson 
+- 230926 [[Cendana]] email and LI to Michael Kim 
+- 230925 Christopher Walker agreed!  230923 Christopher Walker Asked https://www.linkedin.com/in/christopher-walker-a4a9a0178/ to review Ergodic.
+- 230925 Andreas Alfredsson LI message, met on Regen Finance, asked to connect with Norrsken and to support. He wants to find a message to make regen attractive despite loss and costs. 
+- 230923 [[Markus-Freiburg]] emailed deck and book.
+- 230923 [[Kristina-Inrig]] emailed deck and book
+- 230923 Simon Evill LI message https://www.linkedin.com/in/simonevill/ - his full system regen Ag business may need us. 
+- 230923 David Neaum https://www.linkedin.com/in/david-n-0b686a1b7/ did I meet at the EVPA?
+- 230923 Jeremy Rogers  https://www.linkedin.com/in/jeremy-rogers-44594a17/ LI message book and deck.
+- 230923 Kieron Boyle LI message https://www.linkedin.com/in/kjboyle/ and Big Society Capital board and Impact Investing Institute UK. 
+- 230923 Joseph Rowntree Foundation and Urvi Kelkar - LI message to Urvi. Maybe we can be one of their pathfinder groups. 
+- 230923 Simon Jessop LI message offer book review https://www.linkedin.com/in/simon-jessop-032a379/
+- 230923 [[James-Bidwell]] email sent with deck and EIE link..
+- 230923 [[Lawrence-Ford]] and Chris Fure - emailed deck again and asked ... 
+- 230923 [[Edgewater]] Scott connected and asked for link to book. LI message to https://edgewaterfamilywealth.com/ vi connection request to https://www.linkedin.com/in/taimibek/ based on https://www.linkedin.com/feed/update/urn:li:activity:7107688513319395329/.
+- 230922 [[First-Round]] LI message to Annie Duke. 
+- 230922 [[Kate-Walsh]] of the GIIN - 1st meeting, 2nd late Oct - Nov. set.
+- 230921 https://www.linkedin.com/in/lauraom/ LI conxn request - key customer and investor TBD. #Ergodicity ? 
+- 230922 [[Hans-Stegeman]] Sent a LI message to read Ch 3 then 7 and emph. long and short term view connection. 
+- 230921 Mihaela Ulieru, met r3.0 with [[Anneloes-Smitsman]], MU doing great things in blockchain, with startups, potential collab, part of WEF and Game B. 
+- 230921 Max Song messaged and deck on LI https://www.linkedin.com/in/songmax/ met him in 2022 online. 
+- 230921 Jason Hickel via his website https://www.jasonhickel.org/contact
+- 2309XX Kate Raworth email, responded, offered to circulate in her community.
+- 230918 [[Michael-Mainelli]] reply and invitation with deck. Agreed to follow up in 231130 after his Lord Mayor role has ended.
+- 230917 Emailed [[Oona-Eager]] to offer ergodicity to https://aqua-spark.nl/ another holding company perfectly suited to an EIS.
+- 230917 LI message to Nils Johnson https://www.linkedin.com/in/nilsjohnson/
+- 230917 LI message Heather Boushey https://www.linkedin.com/in/heather-boushey-0bab129a/ after https://www.theguardian.com/business/2023/sep/17/biden-adviser-calls-for-spending-race-to-the-top-on-green-tech-heather-boushey
+- - 230912 Ada Ventures UK Declined https://mail.google.com/mail/u/0/#inbox/FMfcgzGtwzsqMRkPfsXzlWVMmqpTfRQX  https://www.adaventures.com/
+- 230911 LI message to Wendy Oliver **VoLo Foundation** https://www.linkedin.com/in/wendyoliver/  https://volofoundation.org/mission/
+- 230910 emailed [[Jamil-Wyne]]
+- 230829 LI message to Raj Thamotheram with book nudge and moon deck
+- 230829 LI message to Simon Wilcox https://www.linkedin.com/in/simon-wilcox-3aa2853 with book ref and circular deck.
+- 230825 Dan Murray-Serter sent deck and link to rebuild via form on https://www.danmurrayserter.com/startups
+- 230825 Alexa von Tobel Inspired Capital https://inspiredcapital.com/mission emailed deck and LI connection request to her after https://www.cnbc.com/2023/08/23/investor-alex-von-tobel-lessons-from-harvard-happiness-lab.html. email:  https://mail.google.com/mail/u/0/#sent/KtbxLvHcHtxRfjPtrNpwQtCrpGbgBcpwzL
+- 230825 Olga Yermolenko Sent deck and link to the book. https://www.linkedin.com/in/olgayermolenko/ also part of https://www.portfolia.co/greenandsustain-1
+- 230824 messaged Ann Lai https://www.linkedin.com/in/laiann/ https://techcrunch.com/2023/05/01/ann-lai-says-she-was-fired-from-bullpen-capital-after-helping-deliver-a-145m-fund/
+- 230823 Tom Kagerer LI message
+- 230823 Martin Morales email - book and deck, request to share.
+- 230823 Michael Smith, Impact Bridge, LI response to meet. and moonshot deck
+- 230823 Emmanuel Mossay emailed request to look and share book, connect iwth investors.
+- 230823 Dima Syrotkin emailed new deck and request to share book.
+- 230823 Jessica Groopman - she's excited about EIS, asked to share the deck.
+- 230823 Niko Leon LI message with deck (web3.0 / crypto version) and conxn request.
+- 230823 Alicia Glennon LI message to connect, if will be at r3.0, else can we talk. https://www.linkedin.com/in/alicia-glennon/
+- 230823 Hermann Hauser?? https://www.theguardian.com/business/2022/jul/23/hermann-hauser-founder-of-arm-brexit-is-the-biggest-loss-of-sovereignty-since-1066  https://www.amadeuscapital.com/  LI letter - maybe reach out to others if no response.
+- 230823 [[Dimitry-Gershenson]] LI message to talk. His ventures similar, and his funding. https://www.enduring.ventures/ https://enduringplanet.com/about/team
+- 230822 Applied to become an Unreasonable fellow. https://unreasonablegroup.com/
+- 230822 [[Andrew-Watson]] first call good potential
+- [[Jon-Shell]] 230821 Book info and deck email
+- Michael Haupt 230817 LI message with deck and book.
+- Nicolas Weber 230817 LI message with book and deck.
+- [[Kelly-Kiefer]] 230816 emailed, she's in personal stuff dealing off-grid time
+- [[Ben-Keene]] 230816 Deck, LI request. 
+- 230815 emailed brian cox via MonkeyCage@bbc.co.uk
+- 230813 LI message, he follows me. **Colin le Duc.** Founder of **Al Gore's** Generation Investment Management, https://www.linkedin.com/in/colinleduc/. https://algore.com/contact 
+- Mosaic Ventures 230808 uploaded deck and submitted. Also reached out to Gavin Starks for an intro, he's LI connected to Toby and Simon. Johannes Barth may be another prime contact.
+- [[Marco-Vangelisti]] 230719 LI conxn request and meeting request
+- [[Ricardo-Bayon]] 230720 Emailed Felipe Nisha int. and deck3.0
+- [[Wei-Yi-Ang]] 230720 LI message to connect
+- John O'Neil [[Livable-Future-Francesco-Eco]] 230725 2nd meeting request
+- [[Livable-Future-Francesco-Eco]] 230726 emailed to request collab and forward.
+- [[Jess-Hackett]] 230727 sent deck on LI
+- [[Nassim-Taleb]] 230727 emailed Universa contact promising to send 2 books to him and Mark
+- [[Matt-Elston]] 230727 sent deck by LI.
+- Daisy Ford-Downes 230803  https://www.linkedin.com/in/daisy-ford-downes/
+
+**2023 - Existing backers**
+- [[Thomas-Haas]] 230726
+- 
+
+**2023 older contacts upgrading**
+- [[Kurt-Peleman]] 230816 230816 Emailed on book, deck, and meeting.
+- [[Kelly-Kiefer]] 230816 emailed deck and book request.
+- [[Steve-Schueth]] 230816 emailed deck and book request.
+- [[Mark-Sloss]] 230816 emailed deck, book links, request.
+
+**2023 declined / on ice**
+
+- 230926 Declined 230923 Jean de Fougerolles LI message to https://www.linkedin.com/in/jeandefougerolles/ after reading Christopher Walker Impact Investor magazine interview and applied on Ascension https://www.ascension.vc/
+
+
+**Who and dates-big SOP**
+- [[James-Bidwell]] 220923 follow-up email to meet - Laura gone
+- [[Geoff-McDonald]] 220826 emailed 1-p and v
+- [[Jill-Richmond]] 220820 emailed 1-p and v
+- [[James-Glasscock]] 220820 emailed 1-p and v
+- [[50-Year]] 220820 twitter message 1-pager and video
+- [[David-Jackson]] 220811 met and sent 1-p
+- [[Bobbi-Dunphy]] 220719 LI & email message 1-p
+- [[Tim-Bemer]] 220719 sent 1-pager; [[Joe-Lopardo]]
+- [[Hugh-McNeill]]  220715 emailed
+- [[Robert-Smith]] 220715 emailed 1-pager, seeking advice
+- [[Oona-Eager]] 220714. Sent her 1-pager.
+- [[Sharon-Chang]] 220617 2nd call
+- [[Alex-Johnston]] NB keen and powerful supporter. 220614 conversation
+- [[Amy-Duffuor]] 220609 LI message to connect.
+- [[Clay-Cockrell]] 220606 messaged via his contact form
+- [[Lawrence-Ford]] [[Mark-Sloss]]  220606 emailed on synergies with FC and us covering part costs.
+- [[Bert-Ola-Bergstrand]] 220525 LI message with 1-pager
+- [[CoPeace]] 220523 emailed [[Steve-Schueth]] to intro
+- [[David-Coats]] 220315 emailed to nudge
+
+
+**Who and dates-small SOP**
+-  [[Gillian-Marcelle]] 230707 emailed
+- [[Anja-Koenig]] via [[David-Bruehlmeier]] 220920 emailed
+- [[Trae-Ashley-Garen]] 220908 emailed 1p v
+- [[Tim-Macdonald]] 220908 first email
+- [[Paul-Barnett]] 220909 3rd meeting
+- [[Lisa-Ma]] 220822 emailed 1-p and v
+- [[Killu-Sanborn]] 220721 emailed 1-p
+- [[Andrew-Campbell]] 220721 emailed 1-p
+- [[Gabriel-Grant]] 220719 emailed again.
+- [[Jef-Teugels]] 220719 sent on LI 1-p and emailed
+- [[Enrico-Fiore]]  220719 sent 1-pager
+- [[Daniel-Gaechter]] 220719 Sent 1-pager
+- [[Simon-Wilcox]] 220719 LI message
+- [[Alex-Tee]] 220719 LI message with 1-pager, met on [[Felipe-Witchger]] call with [[Elizabeth-Garlow]]
+- [[Joost-Schouten]] 220722 met, send 1-pager, set next meeting soon.
+- [[Felipe-Witchger]] 220628 suggested meeting.
+- [[Jakob-von-Egidy]] 220623 first conversation. Follow up in a month.
+- [[Allison-Byers]] 220609 sent twitter message
+- [[Jeff-Cherry]]  220529 - End June. 220525 emailed with 1-pager
+- [[Ibi-Thomson]]  230705 book and 1-pager 220525 1-pager email
+- [[Frans-Versteeg]]  220525 LI message with 1-pager
+- [[Steve-Gill]]   220119 emailed, no response.
+
+**Pure Leads**
+- 220715 [[John-van-der-Linden]] emailed 1-pager
+- 220714 [[Davi-Lemos]] emailed 1-pager
+- 220714 [[Gareth-Thompson]] and Daneel and Daniel-Aprea 220714 updated version.
+
+**Potentials**
+- https://www.linkedin.com/in/elizabethgarlow/  [[Felipe-Witchger]]
+- Gil Ben-Artzy and Shuly Galili of UpWest see https://www.slideshare.net/gilbenartzy/money-talks-things-you-learn-after-77-investment-rounds and focus on collab as natural.
+
+**On Ice**
+- [[Jenna-Anita-Nicholas]] 220701 - response - only stay on mailing list. 220630 15 minute call - asked for next call
+- [[Charlie-Hartwell]]  220530 only from series A. 220525 emailed 1-pager
+- Morgan Curtis. Email response, no bandwidth, I left a message on her page.
+- [[Caroline-Bergaud]] 220715 response no interest only deep tech - she didn't read well 220715 emailed 1-pager and request to meet on zoom
+
+**NO forever**
+
+

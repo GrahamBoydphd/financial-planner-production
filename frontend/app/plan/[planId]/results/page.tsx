@@ -17,9 +17,10 @@ interface KPIProps {
   stopInsolvency: boolean;
   currency: string;
   valuationMethod: string;
+  activePathData?: any[];
 }
 
-const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, valuationMethod }: KPIProps) => {
+const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, valuationMethod, activePathData }: KPIProps) => {
     if (!projection) return null;
 
     // Helper to format with currency
@@ -27,9 +28,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
-    // FIX: No fallback to lastData if single_run_data is missing
-    const singleLastData = projection.single_run_data?.[projection.single_run_data.length - 1];
-
+    
     let totalVal = lastData.total_value;
     let valuation = projection.deterministic_valuation;
     let subtitle = 'Deterministic Average';
@@ -57,12 +56,16 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
     };
 
     if (simMode === 'single') {
-        if (singleLastData) {
-            totalVal = singleLastData.total_value;
+        // Use activePathData if available (dynamic navigation), else fallback to single_run_data
+        const currentData = activePathData || projection.single_run_data;
+        const currentLast = currentData?.[currentData.length - 1];
+
+        if (currentLast) {
+            totalVal = currentLast.total_value;
             valuation = projection.single_run_valuation;
-            subtitle = 'Single Run Result';
-            insolvencyMonth = checkInsolvency(projection.single_run_data);
-            runwayVal = calculateRunway(Number(singleLastData.cash_balance), Number(singleLastData.net_income));
+            subtitle = activePathData ? 'Selected Path Result' : 'Single Run Result';
+            insolvencyMonth = checkInsolvency(currentData);
+            runwayVal = calculateRunway(Number(currentLast.cash_balance), Number(currentLast.net_income));
         } else {
             totalVal = 0;
             subtitle = 'Data Unavailable';
@@ -73,25 +76,20 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         valuation = projection.p50_valuation;
         subtitle = 'Median (P50)';
         
-        // Fix P50 Runway Logic: Check if last month is insolvent or cash <= 0
-        const lastP50 = projection.p50_data?.[projection.p50_data.length - 1];
-        const isP50Insolvent = lastP50 && (
-            lastP50.is_solvent === false || 
-            Number(lastP50.cash_balance) <= 0
-        );
-
-        const backendRunway = projection.p50_runway ?? 'Infinite';
-
-        if (isP50Insolvent) {
-            // Regression Test: Check if the company is insolvent BUT 'proj.p50_runway' > 0
-            if (backendRunway !== 'Infinite' && Number(backendRunway) > 0) {
-                console.warn('Backend Data Mismatch: Insolvent P50 run has positive runway');
-            }
-            // Strictly show '0 Mo' if insolvent, ignoring positive backend value
-            runwayVal = 0;
+        // --- CHANGED LOGIC START ---
+        // Use survival_rate to find first month < 0.5
+        const survivalRates = projection.survival_rate || [];
+        const dropIndex = survivalRates.findIndex((r: any) => Number(r) < 0.5);
+        
+        if (dropIndex !== -1) {
+             insolvencyMonth = projection.p50_data?.[dropIndex]?.month_index ?? (dropIndex + 1);
         } else {
-            runwayVal = backendRunway;
+             insolvencyMonth = -1;
         }
+
+        const lastP50 = projection.p50_data?.[projection.p50_data.length - 1] || {};
+        runwayVal = calculateRunway(Number(lastP50.cash_balance), Number(lastP50.net_income));
+        // --- CHANGED LOGIC END ---
         
     } else {
         // Standard
@@ -131,11 +129,26 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         )}
 
         <Card className="text-center border-b-4 border-gray-500 mb-4">
-          <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value (Cash+Divs)</h3>
-          <p className={`text-2xl font-bold ${totalVal < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-            {fmt(totalVal)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+          {simMode === 'monte_carlo' ? (
+             <>
+                <h3 className="text-gray-500 text-xs uppercase font-bold">Median Cash Position</h3>
+                <p className={`text-xl font-bold ${p50Cash < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    {fmt(p50Cash)}
+                </p>
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">Total Wealth (inc. Divs)</p>
+                    <p className="text-xl font-bold text-gray-500">{fmt(totalVal)}</p>
+                </div>
+             </>
+          ) : (
+             <>
+                <h3 className="text-gray-500 text-xs uppercase font-bold">Net Value (Cash+Divs)</h3>
+                <p className={`text-2xl font-bold ${totalVal < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    {fmt(totalVal)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+             </>
+          )}
         </Card>
 
         {simMode === 'monte_carlo' && (
@@ -165,7 +178,9 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
                 <div className="text-red-600">
                     <p className="text-xl font-bold">Insolvent in Month {insolvencyMonth}</p>
                     <p className="text-xs mt-1">
-                        {stopInsolvency ? 'Trading Stopped' : 'Showing fantasy projection'}
+                        {simMode === 'monte_carlo' 
+                            ? 'Survival Probability < 50%' 
+                            : (stopInsolvency ? 'Trading Stopped' : 'Showing fantasy projection')}
                     </p>
                 </div>
             ) : runwayVal === 0 ? (
@@ -175,6 +190,14 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
             ) : (
                 <p className="text-2xl font-bold text-purple-600">Infinite</p>
             )}
+        </Card>
+
+        <Card className="text-center mb-4">
+            <h3 className="text-gray-500 text-sm uppercase">Avg. Shocks (Universe)</h3>
+            <p className="text-2xl font-bold text-indigo-600">
+                {projection.average_event_count?.toFixed(1) ?? 0}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Events per lifetime</p>
         </Card>
       </>
     );
@@ -218,6 +241,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
   const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
   const [stopInsolvency, setStopInsolvency] = useState(true); // Default to TRUE
+  const [eventsActive, setEventsActive] = useState(true); // Default to TRUE
   const [insolvencyThreshold, setInsolvencyThreshold] = useState("0");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
@@ -317,13 +341,14 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
             }
         }
 
-        // Use standard or monte_carlo depending on UI
-        const backendMode = simMode === 'monte_carlo' ? 'monte_carlo' : 'single';
+        // Force monte_carlo to get all data at once
+        const backendMode = 'monte_carlo';
         const proj = await api.getProjection(planId, {
            mode: backendMode,
            stop_insolvency: stopInsolvency,
            initial_cash: Number(p.initial_cash || 0),
            months: years * 12, // FIX: Pass months based on years selector
+           events_active: eventsActive,
            // insolvency_threshold removed: Backend uses stored plan value
         });
 
@@ -331,34 +356,6 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
             setValuationMethod(proj.valuation_method);
         }
         
-        // --- DATA MAPPING FOR TABLE ---
-        // FIX: Strict source selection
-        let sourceData = (simMode === 'standard') ? proj.deterministic_data : [];
-        
-        if (simMode === 'monte_carlo' && proj.p50_data) {
-            sourceData = proj.p50_data;
-        } else if (simMode === 'single' && proj.single_run_data) {
-            sourceData = proj.single_run_data;
-        }
-
-        const tableData = sourceData ? sourceData.map((m: any) => {
-           return {
-               month_index: m.month_index,
-               date: m.date,
-               revenue: m.revenue,
-               cogs: m.cogs,
-               gross_profit: m.gross_profit,
-               opex: m.opex,
-               net_income: m.net_income,
-               cumulative_pool_received: m.cumulative_pool_received,
-               cash_balance: m.cash_balance,
-               total_value: m.total_value,
-               dividend_paid: m.dividend_paid,
-               is_solvent: m.is_solvent
-           };
-        }) : [];
-        
-        (proj as any).cash_flow_data = tableData;
         setProjection(proj);
         
         // Reset path index when projection changes
@@ -373,7 +370,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
       }
     };
     load();
-  }, [planId, years, simMode, stopInsolvency, refreshTrigger]); // Removed insolvencyThreshold from deps
+  }, [planId, years, /* simMode removed */, stopInsolvency, eventsActive, refreshTrigger]); // Removed insolvencyThreshold from deps
 
   // --- 3. HANDLERS ---
   const handleAddCapital = async () => {
@@ -451,6 +448,37 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const totalPaths = projection?.all_paths?.length || 0;
   const currentPathData = projection?.all_paths?.[pathIndex];
 
+  // --- DATA MAPPING FOR TABLE (Moved from useEffect) ---
+  let sourceData = [];
+  if (projection) {
+      if (simMode === 'standard') {
+          sourceData = projection.deterministic_data;
+      } else if (simMode === 'monte_carlo') {
+          sourceData = projection.p50_data;
+      } else if (simMode === 'single') {
+          // Use current path if available, else fallback to single_run_data
+          sourceData = currentPathData || projection.single_run_data;
+      }
+  }
+
+  const tableData = sourceData ? sourceData.map((m: any) => {
+       return {
+           month_index: m.month_index,
+           date: m.date,
+           revenue: m.revenue,
+           cogs: m.cogs,
+           gross_profit: m.gross_profit,
+           opex: m.opex,
+           net_income: m.net_income,
+           cumulative_pool_received: m.cumulative_pool_received,
+           cash_balance: m.cash_balance,
+           total_value: m.total_value,
+           dividend_paid: m.dividend_paid,
+           treasury_gain: m.treasury_gain,
+           is_solvent: m.is_solvent
+       };
+  }) : [];
+
   if (!plan) return <Layout>Loading...</Layout>;
 
   return (
@@ -515,6 +543,16 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                   className="rounded text-red-600"
                 />
                 <label htmlFor="stopInsolvency" className="text-sm font-medium cursor-pointer text-red-800">Stop on Insolvency</label>
+              </div>
+
+              {/* Events Toggle */}
+              <div className="flex items-center gap-2 border-l pl-4">
+                <input 
+                  type="checkbox" id="eventsActive" 
+                  checked={eventsActive} onChange={(e) => setEventsActive(e.target.checked)}
+                  className="rounded text-purple-600"
+                />
+                <label htmlFor="eventsActive" className="text-sm font-medium cursor-pointer text-purple-800">Events Active</label>
               </div>
 
               {/* Insolvency Threshold */}
@@ -661,7 +699,15 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
           {simMode === 'single' && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               <KPICards simMode={simMode} projection={projection} creditLimit={creditLimit} stopInsolvency={stopInsolvency} currency={currency} valuationMethod={valuationMethod} />
+               <KPICards 
+                 simMode={simMode} 
+                 projection={projection} 
+                 creditLimit={creditLimit} 
+                 stopInsolvency={stopInsolvency} 
+                 currency={currency} 
+                 valuationMethod={valuationMethod}
+                 activePathData={currentPathData}
+               />
             </div>
           )}
 
@@ -758,6 +804,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                   <th className="px-4 py-3">Gross Profit</th>
                   <th className="px-4 py-3">OpEx</th>
                   <th className="px-4 py-3">Net Income</th>
+                  <th className="px-4 py-3 text-right text-green-700">Treasury Gain</th>
                   <th className="px-4 py-3 text-orange-600">Pool Received</th>
                   <th className="px-4 py-3 text-gray-900 font-bold">Cash Bal</th>
                   <th className="px-4 py-3 text-green-600">Dividends</th>
@@ -765,8 +812,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 </tr>
               </thead>
               <tbody>
-                {(projection as any).cash_flow_data.length > 0 ? (
-                    (projection as any).cash_flow_data.map((row: any) => {
+                {tableData.length > 0 ? (
+                    tableData.map((row: any) => {
                       const isRowInsolvent = !row.is_solvent;
                       return (
                       <tr key={row.month_index} className={`border-b ${isRowInsolvent ? 'bg-gray-50 text-gray-400' : 'hover:bg-gray-50 bg-white'}`}>
@@ -775,6 +822,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                         <td className="px-4 py-2">{fmt(row.gross_profit)}</td>
                         <td className="px-4 py-2">{fmt(row.opex)}</td>
                         <td className={`px-4 py-2 ${isRowInsolvent ? '' : (row.net_income < 0 ? 'text-red-500' : 'text-green-600')}`}>{fmt(row.net_income)}</td>
+                        <td className={`px-4 py-2 text-right ${isRowInsolvent ? '' : (row.treasury_gain > 0 ? 'text-green-600' : row.treasury_gain < 0 ? 'text-red-600' : 'text-gray-400')}`}>{row.treasury_gain ? fmt(row.treasury_gain) : '-'}</td>
                         <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-orange-600'}`}>{fmt(row.cumulative_pool_received)}</td>
                         <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900')}`}>{fmt(row.cash_balance)}</td>
                         <td className={`px-4 py-2 ${isRowInsolvent ? '' : 'text-green-600'}`}>{row.dividend_paid > 0 ? fmt(row.dividend_paid) : '-'}</td>
@@ -786,7 +834,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     })
                 ) : (
                     <tr>
-                        <td colSpan={9} className="px-4 py-8 text-center text-gray-400 italic">
+                        <td colSpan={10} className="px-4 py-8 text-center text-gray-400 italic">
                             Data Unavailable for this mode.
                         </td>
                     </tr>

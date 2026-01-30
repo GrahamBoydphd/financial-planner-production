@@ -156,7 +156,7 @@ Improve the clean version with better guidance to the user.
 
 - [x] Set up BE gem
 - [x] Rebuild docs/ARCHITECTURAL_CONTEXT_CLI.md
-- [ ] On the FE change code temporarily to freeze currencies to Fund currency. 
+- [x] On the FE change code temporarily to freeze currencies to Fund currency, all frozen to Euro. 
 - [x] Clean up the root, and make a final V3 archive. 
 - [x] Put in the first prompt from Strategist. 
       We may need to completely refactor the company level engine. What I believe we will need is 
@@ -169,10 +169,19 @@ Improve the clean version with better guidance to the user.
 			2. Company-level simulation manager. Calls  Individual Company Iterator for company A in universe X. If a standard or single company volitlity, repeats to the end of the time T. If a Monte Carlo, repeats the call in breadth first for one time step across all universes, pools profit between the universes, then repeats for the next time step until the end of time T. Suggestion: only re-run the simulation if the user requests it via a button to re-run it, similar to the call for the single company volatility. Not if the user merely refreshes the page etc., nor if the the ergodicity correction, the capital stack, the credit facility, or the dividend policy changes 
 			3. Fund-level simulation manager. Calls  Individual Company Iterator for each company A, B, C etc. in universe X. If a standard or single fund volatility, repeats to the end of the time T only for Universe X. If a Monte Carlo, repeats the call in breadth first for one time step across all universes and each company in the universe, pools profit between the companies within a universe, then repeats for the next time step until the end of time T.  Suggestion: only re-run the simulation if the user requests it via a button to re-run it, similar to the call for the single company volatility. Not if the user merely refreshes the page etc., nor if the the ergodicity correction, the capital stack, the credit facility, or the dividend policy changes 
 - [x] Add a line for the fund achieving a 3X return?  Or similar? 
-- [ ] And add a comment on the fund graph page about the fund being based  on cash, not on valuation, for simplicity of understanding. together with Total Fund Value = Sum(Company Cash) + Sum(Dividends Paid). And this as the top, and bigger. 
+- [x] And add a comment on the fund graph page about the fund being based  on cash, not on valuation, for simplicity of understanding. together with Total Fund Value = Sum(Company Cash) + Sum(Dividends Paid). And this as the top, and bigger. 
 - [x] Change insolvent cut-off to 100 and add comment to the plots and FAQ.
+- [x] Confirm that the insolvent shutdown only happens after exhausting the overdraft. Done now. 
+- [x] Check the insolvent + overdraft respected. 
+- [x] Fix the fantasy and approved overdraft being the same. 
 - [x] Next stage add an input function for the insolvent cut-off, maybe only in paid, and default to 100. 
-- [ ] FE to add to the company data table a column for treasury management gains / losses. 
+- [x] FE to Add  to the fund graphs the same red line showing cumulative investment to date that we have in the company graphs. Do you already have the data you need, or does the Backend Architect need to do work? 
+- [x] FE to Add to the company data table a column for treasury management gains / losses. 
+- [x] Bi directional event and Counter cyclic events.
+- [x] Register demo user. 
+- [ ] Make full companies demo on server. 
+- [ ] Make video. 
+- [ ] Upgrade help page. 
 - [ ] Add checks to all FE input items to insure in a valid range. Esp. flat check if the steps are between 1 and 20 (or some smallish number).  And add in Fortress checks in the code, and clear messages on screen if errors in operation. You are absolutely right. The previous "blind clamp" proposal was too permissive. In a financial simulation, silently converting `-2` (which is logically invalid) to `+2` is dangerous because it hides a configuration error from the user.
 	- [ ] **Big refactor** This code runs deep inside the simulation loop (`sample()` function) which returns a simple `f64`. It cannot easily return an `Result<Error>` to the user without rewriting the entire engine signature (a massive, risky change).
 	- [ ] **The Fortress Standard:** We must not allow invalid state to execute. If the user asks for `-2` intervals, the simulation _should_ likely fail or warn, not just guess.
@@ -181,7 +190,6 @@ Improve the clean version with better guidance to the user.
 - [x] Duplicate a plan in a company on the company page; Duplicate a whole company in a fund on the dashboard page and the structure page; move a company from one fund to another on the dashboard and on the structure page;  duplicate a whole fund on both the Structure page and the Fund page .  When a company is Duplicated, all plans are Duplicated with it. When a fund is Duplicated, all companies and their plans are duplicated.
 - [x] Have a user called demo_admin that runs the "Demo Fund" of the "Demo Tenant" and manages the demo fund and demo companies. Either 1) All users can see the demo fund, see the results, but cannot edit it. And they can copy the demo into their own trial and then edit that. Or alternately 2) if it's better for security, a copy is copied in on registration as their personal "demo fund and companies". 1. is preferred because then they can always restore the demo fund, and if we improve it they can copy the improved version. Please advise though on the security implications.
 - [ ] I want to add new functionality to both the company charts and the fund charts. On the Monte Carlo simulation runs, I want to add a card that shows the performance improvement when the ergodic correction is switched on. This should give a number for the P50 end value that shows how much bigger the total value of the fund is, is the fund is, is at the...
-- [ ] enable companies to be created during the fund's lifetime.
 - [ ] Improve the information and description and FAQ. 
 	- [ ] "The Frankenstein Median" : The "Zombie Resurrection" (2 → 1 → 2) happens because the engine currently calculates the P50 **Cross-Sectionally** (month-by-month): 
 	      - **Month 10:** The engine sorts all 1,000 runs. The median (Run #500) happens to be a solvent company. **Count: 2/2**. 
@@ -190,31 +198,21 @@ Improve the clean version with better guidance to the user.
 	    Because the "Median" is a statistical abstraction, not a single continuous company, it can exhibit impossible behaviors like coming back to life.
 - [ ] Add to the Authorisation the different registration levels, but blanked out.
 - [ ] Add a route to Open Collective to support completion of the project, including early payment for full tokens.
+- [ ] tomorrow on events: FE: One more fine-tuning. The events card is between the New Fund card and the List of existing funds. Better to put the list above the events, below the Fund card. And now that the funds are in the Events as a tick box list, no need for the "manage swan events" action icon in the funds list; the events card is always there.
 ---
-What we have done: 
-The Short Answer:
-
-It returns the Total Fund Value, which is defined as:
-
-$$\text{Fund Value} = \sum (\text{Company Cash Balance}) + \sum (\text{Company Cumulative Dividends})$$
-
-It does **not** return _only_ the "Cash Balance" for the charts.
-
-The Reason:
-
-If we simulated only "Cash Balance," then every time a profitable company paid a dividend to you (the simulation owner), cash would leave the company bank account, and the chart would drop. This would look like a loss, even though that money was actually a profit secured in your pocket.
-
-By using **Total Value**, the chart correctly always goes **up** (or stays flat) when a dividend is paid, reflecting the total wealth generated by the portfolio.
-
-### 🔍 Breakdown of the Data
-
-1. **For the Charts (`p0_value` ... `p100_value`):**
+1. **Insolvency = Zero (or Negative):** In `domain.rs`, once a company is flagged insolvent, its `cash_balance` is forced to `0.0` for all future months. Even in the exact month it dies, it likely has a negative or low cash balance.
     
-    - These lines represent the **Total Value**.
+2. **The Sorting "Sinks" the Dead:** When we sort by `cash_balance`:
+    
+    - **Indices 0 to 599:** The 600 Insolvent companies (Value = 0).
         
-    - _Formula:_ `Sum of all Companies' Cash + Sum of all Companies' Paid Dividends`.
+    - **Indices 600 to 999:** The 400 Solvent companies (Value > 0).
         
-2. **For the Table (`p50_data`):**
+3. **The Median (P50) Pick:** The code picks the item at index 500. Since indices 0–599 are all 0, **Index 500 is 0**.
+    
+
+**Conclusion:** The P50 line will flatline at **0 (Insolvent)** the moment more than half your simulated universes fail. It does **not** accidentally switch to "the P50 of the survivors."
+1. **For the Table (`p50_data`):**
     
     - We send the detailed breakdown for the Median run.
         
@@ -253,6 +251,42 @@ Yes, the simulation performs a **simulation of every single company** (1,000 tim
 - Investor (Includes Company) (Gold)
 	- 
 
+# First iteration shock structure:
+
+### Future Logic (For your awareness)
+
+When we get to the **Engine** phase (next prompt), I will implement the "Translator" logic you requested:
+
+- **Likelihood:** $P(Monthly) = 1 - (1 - P(Annual))^{1/12}$
+    
+- **Magnitude Mapping (Example):**
+    
+    - `small` $\rightarrow$ $\mu = 5\%$
+        
+    - `medium` $\rightarrow$ $\mu = 15\%$
+        
+    - `large` $\rightarrow$ $\mu = 30\%$
+        
+- **Direction Mapping (Example):**
+    
+    - `detrimental_only` $\rightarrow$ Multiply by $-1$, force Max $< 0$.
+        
+    - `both_biased_detrimental` $\rightarrow$ Skew Normal Distribution with negative $\alpha$ (tail to the left).
+
+### 2. The Logic Change (Handler)
+
+The backend handler will inspect `scope` and `target_id`:
+
+- **Scope "global"** $\rightarrow$ Save `fund_id = target_id`.
+    
+- **Scope "local"** $\rightarrow$ Save `company_id = target_id`.
+    
+- **Mapping:** The handler will derive `impact_type` (required for math) from your `shock_type` (e.g., "revenue_hit" $\rightarrow$ "revenue").
+
+--- 
+
+
+
 #### Multi-Fund Structure (The "Clean Break")
 We paused this earlier. Now that the simulation kernel is stable, we could return to the database refactor to allow a **Company to belong to multiple Funds** (Many-to-Many). 
 - **Why:** This is essential for the "Structure" page to truly reflect complex ownership (e.g., Company A is owned by Fund X and Fund Y).
@@ -279,6 +313,11 @@ We have simulated the _Company_. Now we need to simulate the _Investor_. This me
 
 ## Stage 5
 
+
+### Specific Tasks
+- [ ] Open the fund to all currencies, but keep the companies frozen to the fund currency
+- [ ] 
+
 ### User Authorisation
 - Build in the full token management etc. of Stage 3
 
@@ -298,6 +337,11 @@ We have simulated the _Company_. Now we need to simulate the _Investor_. This me
 	- **Direct Holdings:** At this stage investors can hold a Company directly, and the "Multi-Fund Structure" allows a company to be in multiple funds.
 
 ## Stage 6
+
+### Specific Tasks
+- [ ] Add in exchange rates between currencies, potentially with fluctuations, and then open the companies to different currencies to the fund. 
+- [ ] Enable companies to be created during the fund's lifetime.
+
 
 ### Company-Level Simulation 
 ### Investor-Level Simulation 

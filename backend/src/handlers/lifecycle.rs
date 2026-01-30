@@ -8,7 +8,7 @@ use chrono::Utc;
 use crate::models::{
     Fund, Company, FinancialPlan, RevenueItem, ExpenseItem, 
     CapitalInjection, DividendPolicy, CreditFacility, 
-    ValuationAssumption, EventShock, CapitalGrowthPolicy, StaffingRole,
+    ValuationAssumption, Event, CapitalGrowthPolicy, StaffingRole,
     Claims
 };
 use crate::errors::AppError;
@@ -117,15 +117,50 @@ async fn copy_plan_internal(
         ).execute(&mut **txn).await?;
     }
 
-    // Copy Event Shocks
-    let shocks = sqlx::query_as!(EventShock, "SELECT * FROM event_shocks WHERE plan_id = $1", source_plan_id)
-        .fetch_all(&mut **txn).await?;
-    for item in shocks {
+    // Copy Events
+    let events = sqlx::query_as!(
+        Event,
+        r#"
+        SELECT 
+            id as "id!", 
+            plan_id, 
+            fund_ids, 
+            company_ids, 
+            event_name as "event_name!", 
+            start_month, 
+            event_category, 
+            impact_type, 
+            impact_value, 
+            duration_months, 
+            likelihood_annual_pct, 
+            magnitude, 
+            direction, 
+            duration_category, 
+            is_counter_cyclic, 
+            created_at as "created_at!"
+        FROM events 
+        WHERE plan_id = $1
+        "#,
+        source_plan_id
+    )
+    .fetch_all(&mut **txn)
+    .await?;
+    
+    for item in events {
         sqlx::query!(
-            r#"INSERT INTO event_shocks (
-                id, plan_id, shock_name, shock_month, impact_type, impact_value, duration_months, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
-            Uuid::new_v4(), new_plan_id, item.shock_name, item.shock_month, item.impact_type, item.impact_value, item.duration_months, Utc::now()
+            r#"INSERT INTO events (
+                id, plan_id, fund_ids, company_ids, event_name, start_month, 
+                event_category, impact_type, impact_value, duration_months, 
+                likelihood_annual_pct, magnitude, direction, duration_category, 
+                is_counter_cyclic, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
+            Uuid::new_v4(), new_plan_id, 
+            item.fund_ids.as_deref(), 
+            item.company_ids.as_deref(), 
+            item.event_name, item.start_month,
+            item.event_category, item.impact_type, item.impact_value, item.duration_months,
+            item.likelihood_annual_pct, item.magnitude, item.direction, item.duration_category, 
+            item.is_counter_cyclic, Utc::now()
         ).execute(&mut **txn).await?;
     }
 

@@ -1,0 +1,576 @@
+migrations/20251207202039_initial_schema
+-- 20251207202039_initial_schema.sql
+
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS financial_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    start_month DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+migrations/20251207204450_financial_data_models
+-- V2__financial_data_models.sql
+
+-- Revenue Items
+CREATE TABLE revenue_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    source TEXT NOT NULL,
+    -- CRITICAL CHANGE: These must be INTEGER (relative months), not DATE
+    start_month INTEGER NOT NULL,
+    end_month INTEGER,
+    initial_amount DECIMAL NOT NULL,
+    growth_rate_percent DECIMAL NOT NULL,
+    frequency TEXT NOT NULL
+);
+
+-- Expense Items
+CREATE TABLE expense_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    -- CRITICAL CHANGE: These must be INTEGER
+    start_month INTEGER NOT NULL,
+    end_month INTEGER,
+    initial_amount DECIMAL NOT NULL,
+    annual_increase_percent DECIMAL NOT NULL,
+    frequency TEXT NOT NULL,
+    pct_of_revenue DECIMAL
+);
+
+-- Valuation Assumptions
+CREATE TABLE valuation_assumptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    method TEXT NOT NULL,
+    multiplier DECIMAL NOT NULL,
+    date_applied DATE
+);
+
+-- Event Shocks
+CREATE TABLE event_shocks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    -- CRITICAL CHANGE: Must be INTEGER
+    shock_month INTEGER NOT NULL,
+    impact_type TEXT NOT NULL,
+    impact_value DECIMAL NOT NULL,
+    duration_months INTEGER
+);
+
+CREATE TABLE capital_growth_policies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    
+    volatility_type TEXT CHECK (volatility_type IN ('none', 'flat', 'student_t', 'nrig')),
+    
+    -- Parameters
+    vol_min DECIMAL,
+    vol_max DECIMAL,
+    vol_intervals INTEGER,
+    vol_mean DECIMAL,
+    vol_scale DECIMAL,
+    vol_freedom DECIMAL,
+    vol_alpha DECIMAL,
+    vol_beta DECIMAL,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ensure 1 policy per plan
+CREATE UNIQUE INDEX idx_capital_growth_plan ON capital_growth_policies(plan_id);
+migrations/20251212144500_add_multi_company_model
+-- V3__add_multi_company_model.sql
+
+-- 1. Create Funds Table
+CREATE TABLE funds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 2. Create Companies Table
+CREATE TABLE companies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fund_id UUID NOT NULL REFERENCES funds(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 3. Insert Default Data (To handle existing plans safely)
+INSERT INTO funds (id, user_id, name) 
+VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'Default Fund');
+
+INSERT INTO companies (id, fund_id, name) 
+VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Default Company');
+
+-- 4. Alter Financial Plans Table
+-- Add column as nullable first
+ALTER TABLE financial_plans ADD COLUMN company_id UUID;
+
+-- Backfill existing rows with the Default Company ID
+UPDATE financial_plans SET company_id = '00000000-0000-0000-0000-000000000001' WHERE company_id IS NULL;
+
+-- Make it NOT NULL and add Foreign Key
+ALTER TABLE financial_plans ALTER COLUMN company_id SET NOT NULL;
+ALTER TABLE financial_plans ADD CONSTRAINT fk_company FOREIGN KEY (company_id) REFERENCES companies(id);
+
+-- Drop the old user_id column
+ALTER TABLE financial_plans DROP COLUMN user_id;
+migrations/20251213150000_update_expense_logic
+-- V4__update_expense_logic.sql
+
+-- Rename the column to reflect generic growth (monthly)
+ALTER TABLE expense_items 
+RENAME COLUMN annual_increase_percent TO growth_rate_percent;
+
+-- Ensure it defaults to 0 if null (safety)
+ALTER TABLE expense_items 
+ALTER COLUMN growth_rate_percent SET DEFAULT 0;
+migrations/20251213170000_add_volatility_params
+-- Revenue Items Volatility
+ALTER TABLE revenue_items
+ADD COLUMN volatility_type TEXT DEFAULT 'none', -- 'none', 'flat', 'student_t'
+ADD COLUMN vol_min DECIMAL,
+ADD COLUMN vol_max DECIMAL,
+ADD COLUMN vol_intervals INTEGER,
+ADD COLUMN vol_mean DECIMAL,   -- Usually same as growth_rate_percent, but explicit
+ADD COLUMN vol_scale DECIMAL,
+ADD COLUMN vol_freedom DECIMAL;
+
+-- Expense Items Volatility
+ALTER TABLE expense_items
+ADD COLUMN volatility_type TEXT DEFAULT 'none',
+ADD COLUMN vol_min DECIMAL,
+ADD COLUMN vol_max DECIMAL,
+ADD COLUMN vol_intervals INTEGER,
+ADD COLUMN vol_mean DECIMAL,
+ADD COLUMN vol_scale DECIMAL,
+ADD COLUMN vol_freedom DECIMAL;
+migrations/20251213180000_add_nrig_fields
+-- Add NRIG specific columns
+ALTER TABLE revenue_items
+ADD COLUMN vol_alpha DECIMAL,
+ADD COLUMN vol_beta DECIMAL;
+
+ALTER TABLE expense_items
+ADD COLUMN vol_alpha DECIMAL,
+ADD COLUMN vol_beta DECIMAL;
+migrations/20251214180000_add_v2_features
+-- 1. Add IMT Classification to Companies (Point 2 & 5)
+ALTER TABLE companies
+ADD COLUMN industry TEXT,
+ADD COLUMN business_model TEXT,
+ADD COLUMN technology TEXT;
+
+-- 2. Add Cost of Revenue to Revenue Items (Point 3)
+ALTER TABLE revenue_items
+ADD COLUMN cost_of_revenue_percent DECIMAL;
+
+-- 3. Create Capital Injections Table (Point 6)
+CREATE TABLE capital_injections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    amount DECIMAL NOT NULL,
+    month INTEGER NOT NULL
+);
+
+-- 4. Create Dividend Policy Table (Point 4 & 7)
+CREATE TABLE dividend_policies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    safety_threshold DECIMAL NOT NULL DEFAULT 0,
+    payout_ratio DECIMAL NOT NULL DEFAULT 0
+);
+
+-- 5. Create Credit Facility Table (Point 5 & 10)
+CREATE TABLE credit_facilities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    facility_limit DECIMAL NOT NULL DEFAULT 0,
+    interest_rate DECIMAL NOT NULL DEFAULT 0,
+    is_annual_rate BOOLEAN NOT NULL DEFAULT TRUE
+);
+migrations/20251218081052_add_cascade_delete
+-- Migration: Add Cascade Delete to Financial Plans
+
+-- Note: The 'companies' table already has ON DELETE CASCADE defined in its creation,
+-- so we only need to fix the 'financial_plans' table.
+
+ALTER TABLE financial_plans
+DROP CONSTRAINT IF EXISTS fk_company;
+
+ALTER TABLE financial_plans
+ADD CONSTRAINT fk_company
+    FOREIGN KEY (company_id)
+    REFERENCES companies(id)
+    ON DELETE CASCADE;
+migrations/20251219140000_add_staffing_roles
+DROP TABLE IF EXISTS staffing_roles;
+
+CREATE TABLE staffing_roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id UUID NOT NULL REFERENCES financial_plans(id) ON DELETE CASCADE,
+    role_name VARCHAR(255) NOT NULL,
+    annual_salary DECIMAL NOT NULL,
+    start_month INTEGER NOT NULL,
+    count INTEGER NOT NULL DEFAULT 1,
+    annual_increase DECIMAL NOT NULL DEFAULT 0.0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+migrations/20251220100000_upgrade_staffing_schema
+-- Upgrading Staffing Roles to Sophisticated Model
+
+-- 1. Rename 'count' to 'target_count' if it exists, otherwise create it
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='staffing_roles' AND column_name='count') THEN
+        ALTER TABLE staffing_roles RENAME COLUMN count TO target_count;
+    END IF;
+END $$;
+
+-- 2. Add new columns for hiring ramps and inflation
+ALTER TABLE staffing_roles 
+ADD COLUMN IF NOT EXISTS hiring_plan TEXT NOT NULL DEFAULT 'fixed_count',
+ADD COLUMN IF NOT EXISTS hiring_rate INT, -- Nullable, used if plan is monthly_rate
+ADD COLUMN IF NOT EXISTS annual_increase DECIMAL NOT NULL DEFAULT 0.0;
+migrations/20260103144940_add_pooling_fraction
+ALTER TABLE financial_plans ADD COLUMN pooling_fraction DECIMAL NOT NULL DEFAULT 0.0;
+migrations/20260109104134_init_auth_tables
+-- 20260109104134_init_auth_tables.sql
+
+-- 1. Create the Tenants Table (The "Parent" entity)
+CREATE TABLE IF NOT EXISTS tenants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Update the EXISTING Users Table (Do NOT create it)
+-- We add the new columns required for the new Auth system.
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
+ADD COLUMN IF NOT EXISTS password_hash TEXT,
+ADD COLUMN IF NOT EXISTS full_name TEXT,
+ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id);
+
+-- 3. Backfill Data (Safety Step)
+-- If there are any "Ghost Users" from the old system, give them a default tenant
+-- so the NOT NULL constraints don't crash the app later.
+DO $$
+DECLARE
+    default_tenant_id UUID;
+BEGIN
+    IF EXISTS (SELECT 1 FROM users WHERE tenant_id IS NULL) THEN
+        -- Create a placeholder tenant
+        INSERT INTO tenants (name) VALUES ('Legacy Migration Tenant') 
+        RETURNING id INTO default_tenant_id;
+        
+        -- Assign all orphans to this tenant
+        UPDATE users SET tenant_id = default_tenant_id WHERE tenant_id IS NULL;
+    END IF;
+END $$;
+
+-- 4. Add Multi-Tenancy to Business Tables
+-- We use UUIDs now to match the strict new 'tenants' table.
+
+ALTER TABLE companies
+ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id);
+
+ALTER TABLE funds
+ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id);
+
+-- Note: Using 'financial_plans' as defined in 20251207_initial_schema
+ALTER TABLE financial_plans
+ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id);
+
+-- 5. Create Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_companies_tenant_id ON companies(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_funds_tenant_id ON funds(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_plans_tenant_id ON financial_plans(tenant_id);
+migrations/20260109114841_enforce_tenant_not_null
+-- Enforce tenant_id strictness via PL/pgSQL block
+DO $$
+DECLARE
+    legacy_tenant_id UUID;
+BEGIN
+    -- 1) Select 'Legacy Migration Tenant' ID (or create if missing)
+    SELECT id INTO legacy_tenant_id 
+    FROM tenants 
+    WHERE name = 'Legacy Migration Tenant' 
+    LIMIT 1;
+
+    IF legacy_tenant_id IS NULL THEN
+        -- Create the legacy tenant if it doesn't exist
+        -- We assume the tenants table has id, name, and created_at columns
+        INSERT INTO tenants (id, name, created_at)
+        VALUES (gen_random_uuid(), 'Legacy Migration Tenant', NOW())
+        RETURNING id INTO legacy_tenant_id;
+    END IF;
+
+    -- 2) UPDATE 'funds', 'companies', and 'financial_plans' to set 'tenant_id'
+    UPDATE funds 
+    SET tenant_id = legacy_tenant_id 
+    WHERE tenant_id IS NULL;
+
+    UPDATE companies 
+    SET tenant_id = legacy_tenant_id 
+    WHERE tenant_id IS NULL;
+
+    UPDATE financial_plans 
+    SET tenant_id = legacy_tenant_id 
+    WHERE tenant_id IS NULL;
+
+    -- 3) ALTER these tables to set 'tenant_id' to NOT NULL
+    -- We use EXECUTE because ALTER TABLE is a DDL statement
+    EXECUTE 'ALTER TABLE funds ALTER COLUMN tenant_id SET NOT NULL';
+    EXECUTE 'ALTER TABLE companies ALTER COLUMN tenant_id SET NOT NULL';
+    EXECUTE 'ALTER TABLE financial_plans ALTER COLUMN tenant_id SET NOT NULL';
+END $$;
+migrations/20260110131527_ensure_cascade_deletes
+-- Migration: Ensure Cascade Deletes
+-- Description: Updates foreign key constraints to enforce ON DELETE CASCADE across the hierarchy.
+-- This ensures that deleting a Fund, Company, or Plan automatically cleans up all related child records.
+
+-- 1. Funds -> Companies
+ALTER TABLE companies 
+    DROP CONSTRAINT IF EXISTS companies_fund_id_fkey,
+    ADD CONSTRAINT companies_fund_id_fkey FOREIGN KEY (fund_id) REFERENCES funds(id) ON DELETE CASCADE;
+
+-- 2. Companies -> Financial Plans
+ALTER TABLE financial_plans 
+    DROP CONSTRAINT IF EXISTS financial_plans_company_id_fkey,
+    ADD CONSTRAINT financial_plans_company_id_fkey FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+
+-- 3. Financial Plans -> Revenue Items
+ALTER TABLE revenue_items 
+    DROP CONSTRAINT IF EXISTS revenue_items_plan_id_fkey,
+    ADD CONSTRAINT revenue_items_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES financial_plans(id) ON DELETE CASCADE;
+
+-- 4. Financial Plans -> Expense Items
+ALTER TABLE expense_items 
+    DROP CONSTRAINT IF EXISTS expense_items_plan_id_fkey,
+    ADD CONSTRAINT expense_items_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES financial_plans(id) ON DELETE CASCADE;
+
+-- 5. Financial Plans -> Staffing Roles
+ALTER TABLE staffing_roles 
+    DROP CONSTRAINT IF EXISTS staffing_roles_plan_id_fkey,
+    ADD CONSTRAINT staffing_roles_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES financial_plans(id) ON DELETE CASCADE;
+
+-- 6. Financial Plans -> Capital Injections
+ALTER TABLE capital_injections 
+    DROP CONSTRAINT IF EXISTS capital_injections_plan_id_fkey,
+    ADD CONSTRAINT capital_injections_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES financial_plans(id) ON DELETE CASCADE;
+migrations/20260110154428_add_initial_cash_to_plans
+ALTER TABLE financial_plans ADD COLUMN initial_cash DECIMAL NOT NULL DEFAULT 0;
+migrations/20260113083505_standardize_capital_growth
+-- 1. Add the standardized column
+ALTER TABLE capital_growth_policies 
+ADD COLUMN IF NOT EXISTS growth_rate_percent DECIMAL NOT NULL DEFAULT 0;
+
+-- 2. Data Migration: Move existing Mean values from vol_mean to the new column
+UPDATE capital_growth_policies 
+SET growth_rate_percent = vol_mean 
+WHERE vol_mean IS NOT NULL;
+migrations/20260113095020_standardize_staffing_naming
+-- Migration: Standardize Staffing Increase Naming
+-- Renames annual_increase to annual_increase_percent for system-wide consistency
+ALTER TABLE staffing_roles 
+RENAME COLUMN annual_increase TO annual_increase_percent;
+
+-- Ensure it defaults to 0 if null
+ALTER TABLE staffing_roles 
+ALTER COLUMN annual_increase_percent SET DEFAULT 0.0;
+migrations/20260116081601_standardize_valuation_naming
+-- Migration: Standardize Valuation Naming
+ALTER TABLE valuation_assumptions 
+RENAME COLUMN name TO valuation_name;
+migrations/20260116092316_sync_fortress_names
+-- Standardize Event Shocks
+ALTER TABLE event_shocks RENAME COLUMN name TO event_name;
+
+-- Ensure all tables have created_at if requested
+-- (Adding IF NOT EXISTS logic where applicable)
+ALTER TABLE dividend_policies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+migrations/20260116093903_final_fortress_sync
+-- 1. Add missing created_at columns required by plans.rs queries
+ALTER TABLE revenue_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE capital_injections ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE dividend_policies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE credit_facilities ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE valuation_assumptions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- 2. Standardize Credit Facility naming if not already done
+-- Previous errors showed limit_amount was missing; rename it to facility_limit
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='credit_facilities' AND column_name='limit_amount') THEN
+        ALTER TABLE credit_facilities RENAME COLUMN limit_amount TO facility_limit;
+    END IF;
+END $$;
+migrations/20260116094310_ensure_audit_columns
+-- backend/migrations/20260116120000_ensure_audit_columns.sql
+ALTER TABLE revenue_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE capital_injections ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE dividend_policies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE credit_facilities ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE valuation_assumptions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+migrations/20260116095602_fortress_repair_and_sync
+-- 1. Standardize Event Shocks (Rename if 'name' still exists)
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='event_shocks' AND column_name='name') THEN
+        ALTER TABLE event_shocks RENAME COLUMN name TO event_name;
+    END IF;
+END $$;
+
+-- 2. Add 'created_at' and enforce NOT NULL for core tables
+-- This resolves the "trait bound DateTime<Utc>: From<Option...>" errors
+DO $$ 
+DECLARE 
+    t TEXT;
+BEGIN 
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' 
+    AND table_name IN ('revenue_items', 'expense_items', 'capital_injections', 'dividend_policies', 'credit_facilities', 'valuation_assumptions', 'event_shocks') 
+    LOOP
+        EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()', t);
+        EXECUTE format('UPDATE %I SET created_at = NOW() WHERE created_at IS NULL', t);
+        EXECUTE format('ALTER TABLE %I ALTER COLUMN created_at SET NOT NULL', t);
+    END LOOP;
+END $$;
+
+-- 3. Standardize Credit Facility naming (resolves 'limit_amount' mismatch)
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='credit_facilities' AND column_name='limit_amount') THEN
+        ALTER TABLE credit_facilities RENAME COLUMN limit_amount TO facility_limit;
+    END IF;
+END $$;
+migrations/20260116113044_hardened_net_value_audit
+-- backend/migrations/20260116130000_hardened_net_value_audit.sql
+-- Ensure all tables related to Net Value (Cash + Dividends) are tracked
+ALTER TABLE dividend_policies ADD COLUMN IF NOT EXISTS tracking_enabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE financial_plans ADD COLUMN IF NOT EXISTS last_p50_net_value DECIMAL(20,4);
+migrations/20260116163008_multi_currency_support
+-- 1. Add Currency to Fund (Portfolio Level)
+ALTER TABLE funds ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'USD';
+
+-- 2. Add Currency to Company (Entity/Legal Level)
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'USD';
+
+-- 3. Add Currency to Financial Plans (Operational/Projection Level)
+ALTER TABLE financial_plans ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'USD';
+
+-- 4. Create Exchange Rates Table for V3 Consolidation
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    from_currency CHAR(3) NOT NULL,
+    to_currency CHAR(3) NOT NULL,
+    rate DECIMAL(20,6) NOT NULL,
+    rate_month DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id)
+);
+migrations/20260117180606_rename_to_scoped_names
+ALTER TABLE funds RENAME COLUMN name TO fund_name;
+ALTER TABLE companies RENAME COLUMN name TO company_name;
+ALTER TABLE financial_plans RENAME COLUMN name TO plan_name;
+ALTER TABLE revenue_items RENAME COLUMN name TO revenue_name;
+ALTER TABLE expense_items RENAME COLUMN name TO expense_name;
+ALTER TABLE capital_injections RENAME COLUMN name TO injection_name;
+migrations/20260118073929_rename_event_shocks
+ALTER TABLE event_shocks RENAME COLUMN event_name TO shock_name;
+migrations/20260121065332_create_fund_plans
+CREATE TABLE IF NOT EXISTS fund_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fund_id UUID NOT NULL REFERENCES funds(id) ON DELETE CASCADE,
+    plan_name VARCHAR(255) NOT NULL,
+    selected_plans JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_fund_plans_fund_id ON fund_plans(fund_id);
+migrations/20260121075842_add_tenant_to_fund_plans
+-- Add the tenant_id column to enforce multi-tenancy security
+ALTER TABLE fund_plans 
+ADD COLUMN tenant_id UUID NOT NULL;
+
+-- Index for performance and security filtering
+CREATE INDEX idx_fund_plans_tenant_id ON fund_plans(tenant_id);
+migrations/20260124083638_lifecycle_and_demo_guard
+-- Idempotent Migration: Lifecycle and Demo Guard
+-- Handles 'Ghost' file conflicts by checking existence before modification.
+
+DO $$
+BEGIN
+    -- 1. Check if the column 'is_public_template' exists on 'funds'
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'funds'
+        AND column_name = 'is_public_template'
+    ) THEN
+        -- Case A: Column exists. Sanitize it.
+        -- 1. Fix any NULLs
+        UPDATE funds SET is_public_template = FALSE WHERE is_public_template IS NULL;
+        -- 2. Enforce Default
+        ALTER TABLE funds ALTER COLUMN is_public_template SET DEFAULT FALSE;
+        -- 3. Enforce Not Null
+        ALTER TABLE funds ALTER COLUMN is_public_template SET NOT NULL;
+    ELSE
+        -- Case B: Column does not exist. Create it.
+        ALTER TABLE funds ADD COLUMN is_public_template BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+END $$;
+
+-- 2. Index for performance (The "Library" View)
+-- Uses IF NOT EXISTS to prevent errors on re-runs
+CREATE INDEX IF NOT EXISTS idx_funds_public_template ON funds(is_public_template) WHERE is_public_template = TRUE;
+
+-- 3. The Ironclad Guard Function
+-- CREATE OR REPLACE handles idempotency for functions
+CREATE OR REPLACE FUNCTION guard_public_templates()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- ⚠️ SECURITY: REPLACE THIS UUID WITH YOUR ACTUAL DEMO ADMIN TENANT ID ⚠️
+    -- Logic: Only the specific Demo Admin Tenant can set is_public_template = TRUE
+    IF NEW.is_public_template = TRUE AND NEW.tenant_id != '00000000-0000-0000-0000-000000000000'::uuid THEN
+        RAISE EXCEPTION 'Security Violation: Only the designated Demo Admin can publish templates.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 4. The Trigger
+-- Drop first to ensure clean state, then recreate
+DROP TRIGGER IF EXISTS enforce_template_security ON funds;
+
+CREATE TRIGGER enforce_template_security
+BEFORE INSERT OR UPDATE ON funds
+FOR EACH ROW
+EXECUTE FUNCTION guard_public_templates();
+migrations/20260125084951_add_insolvency_threshold
+-- Add the insolvency_threshold column with a default of 100.0
+ALTER TABLE financial_plans 
+ADD COLUMN insolvency_threshold DECIMAL NOT NULL DEFAULT 100.0;
+migrations/20260126171152_semantic_shocks
+-- Add migration script here

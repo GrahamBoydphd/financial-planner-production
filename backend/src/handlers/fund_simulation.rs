@@ -28,6 +28,7 @@ pub struct SimParams {
     pub stop_insolvency: Option<bool>,
     pub include_initial_capital: Option<bool>,
     pub fund_pooling_fraction: Option<String>,
+    pub events_active: Option<bool>,
 }
 
 #[debug_handler]
@@ -69,6 +70,9 @@ pub async fn run_fund_simulation(
     .fetch_all(&pool)
     .await?;
 
+    // Capture company IDs for event filtering later
+    let company_ids: Vec<Uuid> = companies.iter().map(|c| c.id).collect();
+
     // NEW: Handle Fund Plan Selection
     let mut selected_plans_map: HashMap<String, Uuid> = HashMap::new();
 
@@ -95,6 +99,7 @@ pub async fn run_fund_simulation(
     // Extract simulation parameters early to pass to SimState builder
     let stop_insolvency = params.stop_insolvency.unwrap_or(true);
     let include_init = params.include_initial_capital.unwrap_or(false);
+    let events_active = params.events_active.unwrap_or(true);
 
     // Parse fund_pooling_fraction (Global Real Pooling Rate)
     // Standard: Input is percentage (e.g. "100.0"), Factor is input/100 (e.g. "1.0")
@@ -172,8 +177,39 @@ pub async fn run_fund_simulation(
     let months = params.months.unwrap_or(60).clamp(1, 1200);
     // stop_insolvency is already defined above
 
+    // Fetch Stochastic Events (Probabilistic events with no fixed start_month)
+    let stochastic_events = sqlx::query_as!(
+        models::Event,
+        r#"
+        SELECT 
+            id as "id!", 
+            plan_id, 
+            fund_ids, 
+            company_ids,
+            event_name as "event_name!", 
+            start_month, 
+            event_category, 
+            impact_type, 
+            impact_value, 
+            duration_months, 
+            likelihood_annual_pct, 
+            magnitude, 
+            direction, 
+            duration_category,
+            is_counter_cyclic,
+            created_at as "created_at!"
+        FROM events
+        WHERE ($1 = ANY(fund_ids) OR company_ids && $2)
+          AND start_month IS NULL
+        "#,
+        fund_id,
+        &company_ids
+    )
+    .fetch_all(&pool)
+    .await?;
+
     // Initialize FundOrchestrator with 1000 iterations (Portfolio Mode for Fund Simulation)
-    let orchestrator = FundOrchestrator::<PortfolioMode>::new(1000, sim_states, months, stop_insolvency);
+    let orchestrator = FundOrchestrator::<PortfolioMode>::new(1000, sim_states, months, stop_insolvency, events_active, stochastic_events);
     let result = orchestrator.run();
 
     Ok(Json(result))
@@ -278,13 +314,33 @@ async fn fetch_and_map_company_state(
     .fetch_optional(pool)
     .await?;
 
-    // Fetch Event Shocks
-    let event_shocks = sqlx::query_as!(
-        models::EventShock,
+    // Fetch Events (Renamed from Shocks)
+    // UPDATED: Fetch events linked to Plan OR Company OR Fund
+    let events = sqlx::query_as!(
+        models::Event,
         r#"
-        SELECT id, plan_id, shock_name, shock_month, impact_type, impact_value, duration_months, created_at
-        FROM event_shocks
-        WHERE plan_id = $1
+        SELECT 
+            e.id as "id!", 
+            e.plan_id, 
+            e.fund_ids, 
+            e.company_ids,
+            e.event_name as "event_name!", 
+            e.start_month, 
+            e.event_category, 
+            e.impact_type, 
+            e.impact_value, 
+            e.duration_months, 
+            e.likelihood_annual_pct, 
+            e.magnitude, 
+            e.direction, 
+            e.duration_category,
+            e.is_counter_cyclic,
+            e.created_at as "created_at!"
+        FROM events e
+        JOIN financial_plans p ON p.id = $1
+        JOIN companies c ON c.id = p.company_id
+        WHERE (e.plan_id = $1 OR c.id = ANY(e.company_ids) OR c.fund_id = ANY(e.fund_ids))
+        AND e.start_month IS NOT NULL
         "#,
         plan.id
     )
@@ -333,7 +389,7 @@ async fn fetch_and_map_company_state(
         dividend_policy,
         credit_facility,
         valuation_assumption,
-        event_shocks,
+        events,
         staffing_roles,
         capital_growth_policy,
         stop_insolvency,
@@ -353,7 +409,7 @@ fn map_to_sim_state(
     dividend_policy: Option<models::DividendPolicy>,
     credit_facility: Option<models::CreditFacility>,
     valuation_assumption: Option<models::ValuationAssumption>,
-    event_shocks: Vec<models::EventShock>,
+    events: Vec<models::Event>,
     staffing_roles: Vec<models::StaffingRole>,
     capital_growth_policy: Option<models::CapitalGrowthPolicy>,
     stop_insolvency: bool,
@@ -453,13 +509,19 @@ fn map_to_sim_state(
         date_applied: v.date_applied,
     });
 
-    let engine_shocks: Vec<domain::Shock> = event_shocks.into_iter().map(|s| {
-        domain::Shock {
-            name: s.shock_name,
-            month: s.shock_month,
-            impact_type: s.impact_type,
-            impact_value: s.impact_value.to_f64().unwrap_or(0.0),
-            duration_months: s.duration_months,
+    // Map Events to Shocks, filtering out incomplete definitions
+    let engine_shocks: Vec<domain::Shock> = events.into_iter().filter_map(|s| {
+        if let (Some(month), Some(imp_type), Some(imp_val)) = (s.start_month, s.impact_type, s.impact_value) {
+            Some(domain::Shock {
+                name: s.event_name,
+                month: month,
+                impact_type: imp_type,
+                impact_value: imp_val.to_f64().unwrap_or(0.0),
+                duration_months: s.duration_months,
+                target_company_id: None, // Deterministic shocks apply to self
+            })
+        } else {
+            None
         }
     }).collect();
 

@@ -1,0 +1,149 @@
+[[Felipe-Witchger]]
+
+**Strategy**
+- **Felipe**, email to, linked to Evan Steiner pdf of **human flourishing fund**: I'm wondering: what if a small group of us come together to actually build such a human flourishing / Francesco / Livable Future fund? Something that can provide the catalytic capital needed to get more capital flowing?
+	- **230726** emailed request, offer to join endeavour.
+- Work with Elizabeth - what are the barriers to raising 13.5M & her other comments to prompt 3.
+- Monthly small group. Nicky keen, as are others. 
+- **John O'Neil** former silicon valley, also a VC, send book link. https://cocreoimpact.com/  #investor-opening #investor-channel  Maybe he can be a cofounding investor ... 
+	- 230725 Propose second meeting.
+	- 230503 First good meeting.  https://fathom.video/share/5xMr7Rps5ofm28zkmcdrs-jQgMpz6H1j
+	- 220411 emailed  requested meeting. Scheduled for 25 or 26th inst.
+
+**Community Calls**
+- 231106 Bill Hatch conversation - keep to support us - help him recruit for 2024. 
+- 231011 **Katie McCloskey** - Sisters of Mercy - investor - challenge to integrate poor and earth cry - intrigued by FSC and EIS.
+- 231011 - replied for coffee on zoom. https://www.linkedin.com/in/bill-hatch/ - replacing Felipe on paternity leave.
+- 231011 https://www.linkedin.com/in/rubenomarhernandez/ ? 3rd fund opening.
+- 231011 **Nick Flores** https://www.linkedin.com/in/floresnick/ #Investor-potential Multi-family-office https://caprock.com/about/our-team/nick-flores/ 
+- 231012 meeting set 231011 Stephen Dynako  https://www.linkedin.com/in/dynako/
+
+
+**My subgroup**
+ - **Ben Wilson**. Maybe #investor-channel #awareness #participant-channel #Academia Recently started a job at a Uni in the BS. Working out how to integrate his CST theology career into business. 
+	 - Prompt 1: Uganda time, and roommate now Ukraininan priest.
+	 - Prompt 3: Teaching our stuff in Notre Dame.
+ - **Catherine Devitt**. #investor-channel Works for an org. advising faith-based investors. She's very climate aware and struggling with just doing her daily job. Was in environmental justice space.Workshop an eye-opener for the potential for investments to be transformative.  
+	 - **230726** emailed with deck ask and offer based on Prompt 3.
+	 - https://cooperativecapital.org/author/cathfaithinvest/
+	 - Prompt 1: sick pigeon, link life and death.
+	 - Prompt 2:  He oppnent pushing for the pragmatic argument. 
+	 - Prompt 3:  **Ally**. She gets climate science. Her vision aligns. She wants to be part of the new economy movements-invite her in. She wants to get financial capital moving into faith-based investing, ask her to help.  “The self-doubts, questioning, dissonance and tensions, and general search for meaning will be a thing of the past. I will be trust, with confidence, that I am doing the work that is best for me. ”
+ - **Evan Steiner.** [[Evan-Steiner]] LI connection https://www.linkedin.com/in/evansteiner1/. #investor-channel Focus on post-capitalist economics. Into commons, participatory democracy, etc.  Excellent paper on funding:  https://static1.squarespace.com/static/53d866f9e4b0240b1ae43fe6/t/5e7bc98e68c169737be6a2ac/1585170832709/human+flourishing+fund+-+Aug+3.pdf
+	 - 230814 replied, not yet, try in October.
+	 - 230809 emailed to talk with deck. https://mail.google.com/mail/u/0/#sent/KtbxLvhCFwGkzJSwFGllpstSFMzKtkhsnq
+	 - Asked for a 1-1 on 230320
+	 - Prompt 1: Cassandra effect. he's also trying to change the underlying system, sees the greenwashing. 
+	 - Prompt 2: Chat GPT blog
+	 - Prompt 3:  A whole person society containing a whole person economy. He was to write a book, this is where we can help. And when we next talk, refer back to this because what we’re building is a whole person economy in a whole person society.
+ - **Nicky Santos**, #Academia #investor-channel #participant-channel He's leading a programme re-imagingin Jesuit Business Education. Into solidarity etc. economy. On Uni etc. boards. He wants to engage with companies that share his vision - maybe Evolutesix? 
+	 - 230809 emailed with deck. https://mail.google.com/mail/u/0/#sent/KtbxLrjdsRpRNMnNtDvSqnGKvXtHMFlSjB Offered to do a seminar.
+	 - Prompt 2: his ideals, integral ecology, 
+	 - Prompt 3: Reimagining business education to help create a just, equitable and sustainable world.. The first is the Inspirational Paradigm of Jesuit Business Education. This is an initiative of the International Association of Jesuit Universities that aims at aligning what we teach in our Jesuit business schools with Laudato Si’ and the UN SDGs. The second is the Humanistic Leadership Academy (HLA) that is an offshoot of the Inspirational Paradigm initiative that has a lofty aim of creating a world that works for 100% of humanity.  Potential synergies with Lawrence and Future Capital.
+- [[Christin-ter-Braak-Forstinger]].   
+	- 230809 emailed deck and EIS.  She replied - no money to invest, but will read.
+	- dropped out.
+
+#### **Key people to**
+- Adrienne Kalmes.
+	- P2 - orchestra and tension.
+- Agostin Pandolfini. 
+	- https://cooperativecapital.org/author/agustinpandolfini/
+	- Prompt 1 - aid project after donor died.
+	- P2  
+	- P3:  
+- Amanda Joseph. #investor-channel ?  Prompt 1. Jewish idendity, justice a strong driver, powerful story of Quakers and consequences of disinvestment. 
+- Carlos Saavedra. Former illegal migrant in USA. Good letter on this. 
+	- https://cooperativecapital.org/author/carlosayni/
+	- P2 - dominant culture too strong.
+- Ciara Feehely. Coach. **maybe a good person to connect with**.
+- Christine Healy. #investor-channel #Investor-potential #FSC-potential-client  Healey Foundation. [chealey@healeyedfoundation.org](mailto:chealey@healeyedfoundation.org)
+	- Response to my prompt 1 touching on the "evidence" quote.
+	- Prompt 1: imperative to repay the investment of earth, air, fire - and family blindness to this. 
+	- P2:  Her family office response to her proposal - maybe a good partner?
+- **[[Craig-Buchanan]]**, Capshift, #investor-channel  - **he sources investment opportunities for philanthropic capital.** Definitely talk! 
+	- 230809 emailed.
+	- LI message on 230330 to talk. 
+	- https://cooperativecapital.org/author/cbuchanancapshiftcom/
+	- Prompt 1: climate change and broken relationships. Bullied at school for being different, relationship poverty. Loves nature, has gone from tearing down structures to rebulding them. _"I long to use my big voice and heart to advocate for others who were in a similar situation to me – invisible, experiencing broken relationships, and longing for a place to belong."_
+	- P2:  Different frame of reference. Not sure if he is anti-abortion end or not ... _"align on their view of “right relationship” in regards to ~80% of this issue area, but because they  fundamentally disagree on ~20%, they refuse to partake in the entire fund altogether. It saddens me."_
+	- P3:  Professionally I hope this vision has an outcome of winning new clients for our firm in the next year. While I hope this creates 180 degree changes amongst individuals, institutions, and communities, I need to focus on the 1 degree that I could help with each day I show up. In reality, I may only move one person one degree, and even if it seems small on the surface I think even that would be worth it. My goal is to be able to unite broad groups of people, who together, when united, can effectively deploy large amounts of capital towards this vision. **Invite in to my P#4 proporsal**
+- [[Dan-Misleh]]:   
+	- 231024 met
+	- 231012 intent to meet. 
+	- Prompt 1 - Suicide of son Zachary. #investor-channel #Investor-potential  
+	- Prompt 3:  Luadato Si rep in USA. Founder of Catholic Energies, entrepreneur, wants to get renewable energy scaled up.
+- Drew Lazzeri. ??
+	- 220411 emailed request 1-1
+	- Maths background 
+- **[[Duane-Roberts]]**   . #investor-channel [www.danainvestment.com/team-member/duane-roberts-cfa/](https://www.danainvestment.com/team-member/duane-roberts-cfa/ "https://www.danainvestment.com/team-member/duane-roberts-cfa/") 25 years in finance, before an engineer. 
+	- 230809 emailed deck. 
+	- Offered to talk and mutual support. Wooden panelling background.
+	- Prompt 1: heartbreak of 2008 crash.  _my most important work at this stage in my life is to find ways to nudge finance (and economics and politics, through support of other changemakers as I am not directly involved in those areas) to be in better service to humanity and the common good._  https://cooperativecapital.org/author/drr84/
+	- Prompt 3: He wants to far more actively influence the holders of the money he manages towards faith-based investing. Even though he’s primarily large Equity, there may be some people in his network with a venture philanthropic approach.
+	- 4th meeting - not sure how to turn to action.
+- Jidan Terry-Koon	- Appreciated my input. 
+	- P2:  Her focus on indicators
+- **[John-Garry]].**   #investor-channel ? 
+	- Prompt 1: He sees clearly the problems of PE in our current neo-classical eco world and tries to build another. 
+	- Prompt 2: He could benefit from our Ergodicity. _FOLLOW UP_   Many investors look at our strategy and say, “you’re too concentrated and you’re too long-term, and these structures are unnecessarily funky”
+	- Prompt 3: he is starting a fund so aligned with us!
+	- **His reply to Felipe email on Tim's VC transformation spot on** https://mail.google.com/mail/u/0/#inbox/FMfcgzGsltTpfdbVsgXKKpdmnlVxbPdM ... esp his second bullet point on governance. and third bullet points at ergodicity.
+	- 230414 asked to meet him. appt for 230420. https://mail.google.com/mail/u/0/#inbox/KtbxLzGcCdNvtTLBzNVphZmgZTsSpvgFDB
+- **Jonathan Swanson.** #Investor-potential Part of a big bank - Graystone? Morgan Stanley? He's very engaged, and seems to talk from strength. 
+	- Prompt 1 on being part of the problem and hence find solution.
+	- Prompt 3: critically important with his Morgan Stanley background. 
+- **Jose Mari Luzarraga** Mondragon Academy. Keen to help. 5 years in China. Transformative experiences with the poor in Mother Theresa house. 
+	- Grateful for the community, for meeting the people. NB to set up a 1-1
+	- _Emailed, he's keen to engage._ Maybe a place for FSC etc. and ergodicity. He said "Catholic religious institutions need to embrace disruptive innovation. Maybe Impact Investing is the tool. Gets my commitment". 
+	- **Send book and invite Mondragon into a workshop** Sell it ... 
+	- https://cooperativecapital.org/author/jmluzarraga/
+	- P1:  Loss of father, shift from high paid consultant to making the world better after time in Theresa house. 
+	- P2:  Bridge Church and Mondragon, loonshots, 
+	- P3:  
+- **Joshua Kaplan**: We talked in first large gmeeting 1-1. Strong resonance. Suffers 4-5 migraines per month, now injections of Emgality Works for Ascension, was hesitant as mistrusted whole social responsibility. Maybe #investor-channel #Investor-potential. Keen to help.
+	- Prompt 1 - ethical reason to resign like me in P&G.  
+	- Prompt 2: 
+	- Prompt 3: Impact premium. Maybe I can help with FSC and Ergodicity, maybe he can help find investors. 
+- **Lewis Weil**,  #investor-channel   Founder- Money Positive, resonates with me. prompt 1: airport destroyed a small prairie.
+	- Prompt 2: His investment coop - followup on FSC and Ergodicity.
+	- Prompt 3:  He may be a prime prospect to explore facias comes in corporation, and to help us find investment. I commented that perhaps his business ought to be seen as abstract land, never to be owned.
+- **Meg Distler.** #investor-channel 3 catholic investment committees. Prmpt 1: migrants at border, individual injustince
+	- Prompt 3:  _She enjoys mathematics_ but without being deep into it, so maybe sell her on our ergodicity course. She enjoys convening and influencing, so maybe she can play a role in convening some kind of pitching program. She feels a bit overwhelmed. She wants to make a difference, and may be some of her funds could invest in us. Check.
+- Patrick Morin ?? 
+	- Prompt 1: SVB and diversity.
+	- Prompt 2: Works with foundations
+- **[[Peter-Tooher]]** #Investor-potential #investor-channel Investor, Cambridge Associates, advises endowments and foundations.  https://cooperativecapital.org/author/pmtooher/
+	- Grateful for how eye-opening, especially that Philanthropy has failed. 
+	- _offered to talk, emailed on 230330_
+	- Prompt1: inequality and ownership. Really starting to get the issue of ownership! **ERGODICITY**
+	- P2: How can a client get both high returns (7%) and deliver impact / ESG etc. **ERGODICITY**
+	- Prompt 3:  _Vision Statement:  Investment is a vital tool for human flourishing that when done well, can lift us up and when done poorly, can harm or suppress.  Recognizing that with great power comes great responsibility, I will use my formation and place in the investment industry to advance the goodness of humankind and of our common home._  He may be a good conduit to investment, even though he may not be directly able to invest. He mentioned the FairShares Commons and the imperative to explore alternatives to traditional company ownership and to explore self-development (**AW**).
+- Sarah Geisler. #investor-channel . [sgeisler@rcif.org](mailto:sgeisler@rcif.org)
+	- Her deeply felt seeing Ubuntu in my prompt
+	- Prompt 1: son getting angry with her prompting action. 
+- **Ruben Hernandez** #Investor-potential #investor-channel Full Spectrum Capital. Co-founder https://www.linkedin.com/in/taj-james/ https://fullspectrumcapitalpartners.us/
+	- https://cooperativecapital.org/author/rubenomarhernandez2021/
+	- _He's keen to support - follow up._
+	- Video etc. for prompt 2
+	- Prompt 1: Family healing after 2 Covid deaths. 
+	- Prompt 2: 
+	- Prompt 3: _Not a single baby born in poverty in Latin America by 2050._ A $5 billion trust fund investing in businesses and providing grants to underpin that. He may well benefit from the FairShares commons.
+- **Serena Viti** #investor-channel Definitely follow up. 
+	- Prompt 1: Her year in Mauritious seeing real hardship in women entrepreneurs. 
+	- Prompt 2: Questions, and is it just self-serving to meet own moral need.
+	- Prompt 3 - connecter. I want to serve the Church and her faithful through the application of CST to a more humane, ethical economy
+- Tori K --  She's into the communities really having governance power in the companies they invest in. Multi-stakeholder approach. 
+- Victoria Kuper. 
+	- https://cooperativecapital.org/author/kupervictoria/
+	- P2: Dream is clear.
+- Wendy Turman. #investor-channel  [wendyturman@gmail.com](mailto:wendyturman@gmail.com)
+	- Responded powerfully to my prompt 1. 
+
+
+**Leads beyond cohort**
+- Morgan Simon - #investor-channel #Investor-potential  responded, lukewarm, followup when book ready. 
+- [[Stephanie-Gripne]] - Key #investor-channel 
+- Industrial Commons  https://theindustrialcommons.org/  
+	- Contact form on 230407
+- 

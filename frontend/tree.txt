@@ -38,6 +38,7 @@
 │   ├── CashFlowChart.tsx
 │   ├── display
 │   │   └── FundKPICards.tsx
+│   ├── EventList.tsx
 │   ├── forms
 │   │   ├── AuthForm.tsx
 │   │   ├── CapitalForm.tsx
@@ -46,12 +47,14 @@
 │   │   ├── CompanyForm.tsx
 │   │   ├── CreditForm.tsx
 │   │   ├── DividendForm.tsx
+│   │   ├── EventForm.tsx
 │   │   ├── ExpenseForm.tsx
 │   │   ├── FundForm.tsx
 │   │   ├── PlanForm.tsx
 │   │   ├── RevenueForm.tsx
 │   │   ├── shared
 │   │   │   └── VolatilityInputs.tsx
+│   │   ├── ShockForm.tsx
 │   │   ├── StaffingForm.tsx
 │   │   └── ValuationForm.tsx
 │   ├── FundChart.tsx
@@ -59,6 +62,8 @@
 │   ├── modals
 │   │   └── MoveCompanyModal.tsx
 │   ├── Navbar.tsx
+│   ├── ShockList.tsx
+│   ├── TemplateCard.tsx
 │   └── ui
 │       ├── Button.tsx
 │       ├── Card.tsx
@@ -102,6 +107,8 @@
 │   │       │   ├── 20.pack.gz
 │   │       │   ├── 21.pack.gz
 │   │       │   ├── 22.pack.gz
+│   │       │   ├── 23.pack.gz
+│   │       │   ├── 24.pack.gz
 │   │       │   ├── 2.pack.gz
 │   │       │   ├── 3.pack.gz
 │   │       │   ├── 4.pack.gz
@@ -115,6 +122,8 @@
 │   │       ├── client-production
 │   │       │   ├── 0.pack
 │   │       │   ├── 10.pack
+│   │       │   ├── 11.pack
+│   │       │   ├── 12.pack
 │   │       │   ├── 1.pack
 │   │       │   ├── 2.pack
 │   │       │   ├── 3.pack
@@ -143,6 +152,7 @@
 │   │       │   ├── 19.pack.gz
 │   │       │   ├── 1.pack.gz
 │   │       │   ├── 20.pack.gz
+│   │       │   ├── 21.pack.gz
 │   │       │   ├── 2.pack.gz
 │   │       │   ├── 3.pack.gz
 │   │       │   ├── 4.pack.gz
@@ -166,9 +176,11 @@
 │   ├── react-loadable-manifest.json
 │   ├── server
 │   │   ├── app
-│   │   │   └── structure
-│   │   │       ├── page_client-reference-manifest.js
-│   │   │       └── page.js
+│   │   │   ├── login
+│   │   │   │   ├── page_client-reference-manifest.js
+│   │   │   │   └── page.js
+│   │   │   ├── page_client-reference-manifest.js
+│   │   │   └── page.js
 │   │   ├── app-paths-manifest.json
 │   │   ├── interception-route-rewrite-manifest.js
 │   │   ├── middleware-build-manifest.js
@@ -215,8 +227,9 @@
 │   │   ├── chunks
 │   │   │   ├── app
 │   │   │   │   ├── layout.js
-│   │   │   │   └── structure
-│   │   │   │       └── page.js
+│   │   │   │   ├── login
+│   │   │   │   │   └── page.js
+│   │   │   │   └── page.js
 │   │   │   ├── app-pages-internals.js
 │   │   │   ├── main-app.js
 │   │   │   ├── polyfills.js
@@ -236,26 +249,20 @@
 │   │   │   ├── df0a9ae256c0569c-s.woff2
 │   │   │   └── e4af272ccee01ff0-s.p.woff2
 │   │   └── webpack
+│   │       ├── 05e85ab16fc94d69.webpack.hot-update.json
 │   │       ├── 633457081244afec._.hot-update.json
-│   │       ├── 77139fff750b9c8b.webpack.hot-update.json
-│   │       ├── a4f19a752e5820de.webpack.hot-update.json
 │   │       ├── app
-│   │       │   ├── layout.77139fff750b9c8b.hot-update.js
-│   │       │   ├── layout.a4f19a752e5820de.hot-update.js
-│   │       │   ├── layout.d4ebb2be82e7cc28.hot-update.js
-│   │       │   └── structure
-│   │       │       ├── page.77139fff750b9c8b.hot-update.js
-│   │       │       └── page.a4f19a752e5820de.hot-update.js
-│   │       ├── d4ebb2be82e7cc28.webpack.hot-update.json
-│   │       ├── webpack.77139fff750b9c8b.hot-update.js
-│   │       ├── webpack.a4f19a752e5820de.hot-update.js
-│   │       └── webpack.d4ebb2be82e7cc28.hot-update.js
+│   │       │   └── layout.05e85ab16fc94d69.hot-update.js
+│   │       ├── b8ce4e499fffc5c0.webpack.hot-update.json
+│   │       ├── webpack.05e85ab16fc94d69.hot-update.js
+│   │       └── webpack.b8ce4e499fffc5c0.hot-update.js
 │   ├── trace
 │   └── types
 │       ├── app
 │       │   ├── layout.ts
-│       │   └── structure
-│       │       └── page.ts
+│       │   ├── login
+│       │   │   └── page.ts
+│       │   └── page.ts
 │       └── package.json
 ├── next.config.js
 ├── next-env.d.ts
@@ -269,4 +276,4 @@
 ├── tsconfig.json
 └── tsconfig.tsbuildinfo
 
-55 directories, 215 files
+54 directories, 223 files

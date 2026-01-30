@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { api, RevenueItem } from '@/lib/api';
-import VolatilityInputs from './shared/VolatilityInputs';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface Props {
@@ -23,19 +22,16 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [freq, setFreq] = useState('monthly');
   const [cogsPercent, setCogsPercent] = useState('');
 
-  // Volatility
-  const [volType, setVolType] = useState('none');
+  // Volatility State
+  const [volType, setVolType] = useState('');
   const [volMin, setVolMin] = useState('');
   const [volMax, setVolMax] = useState('');
-  const [volIntervals, setVolIntervals] = useState('');
-  const [volMean, setVolMean] = useState('');
+  const [numSteps, setNumSteps] = useState(''); // Changed from stepSize
   const [volScale, setVolScale] = useState('');
   const [volFreedom, setVolFreedom] = useState('');
   const [volAlpha, setVolAlpha] = useState('');
   const [volBeta, setVolBeta] = useState('');
 
-  // UI State for Simple/Advanced Mode
-  const [isAdvanced, setIsAdvanced] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
   // --- EFFECT: POPULATE FORM ON EDIT ---
@@ -50,18 +46,25 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       setFreq(itemToEdit.frequency);
       setCogsPercent(itemToEdit.cost_of_revenue_percent ? itemToEdit.cost_of_revenue_percent.toString() : '');
       
-      const vType = itemToEdit.volatility_type || 'none';
+      // Map legacy 'none' or null to '' to force selection, or use existing
+      const vType = itemToEdit.volatility_type === 'none' ? '' : (itemToEdit.volatility_type || '');
       setVolType(vType);
+
       setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
       setVolMax(itemToEdit.vol_max ? itemToEdit.vol_max.toString() : '');
-      setVolIntervals(itemToEdit.vol_intervals ? itemToEdit.vol_intervals.toString() : '');
-      setVolMean(itemToEdit.vol_mean ? itemToEdit.vol_mean.toString() : '');
+      
+      // Direct map for numSteps
+      if (vType === 'flat' && itemToEdit.vol_intervals) {
+          setNumSteps(itemToEdit.vol_intervals.toString());
+      } else {
+          setNumSteps('');
+      }
+
       setVolScale(itemToEdit.vol_scale ? itemToEdit.vol_scale.toString() : '');
       setVolFreedom(itemToEdit.vol_freedom ? itemToEdit.vol_freedom.toString() : '');
       setVolAlpha(itemToEdit.vol_alpha ? itemToEdit.vol_alpha.toString() : '');
       setVolBeta(itemToEdit.vol_beta ? itemToEdit.vol_beta.toString() : '');
 
-      // Default to Simple Mode
     } else {
       clearForm();
     }
@@ -76,10 +79,9 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     setEndMonth('');
     setFreq('monthly');
     setCogsPercent('');
-    setVolType('none');
-    setVolMin(''); setVolMax(''); setVolIntervals('');
-    setVolMean(''); setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
-    setIsAdvanced(false);
+    setVolType('');
+    setVolMin(''); setVolMax(''); setNumSteps('');
+    setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
     setErrors([]);
   };
 
@@ -91,7 +93,37 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     if (!name.trim()) newErrors.push("Name is required");
     if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
     if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
+    if (!volType) newErrors.push("Volatility Model is required");
     
+    // Logic for Flat Mode
+    let finalGrowth = growth;
+    let finalIntervals: number | undefined = undefined;
+
+    if (volType === 'flat') {
+        const min = parseFloat(volMin);
+        const max = parseFloat(volMax);
+        const steps = parseInt(numSteps);
+        
+        if (isNaN(min) || isNaN(max) || isNaN(steps) || steps < 1) {
+            newErrors.push("Min, Max, and Number of Steps are required for Flat volatility");
+        } else {
+            if (min >= max) newErrors.push("Min growth must be less than Max growth");
+            
+            const rawAvg = (min + max) / 2;
+            // Clean Average Logic
+            const cleanAvg = Math.abs(rawAvg) >= 1 ? rawAvg.toFixed(2) : parseFloat(rawAvg.toPrecision(3)).toString();
+            
+            finalGrowth = cleanAvg;
+            finalIntervals = steps;
+        }
+    } else if (volType === 'nrig' || volType === 'student_t') {
+        // Use explicitly entered growth rate
+        if (!growth || isNaN(Number(growth))) {
+            newErrors.push("Average Growth Rate is required");
+        }
+        finalGrowth = growth;
+    }
+
     if (newErrors.length > 0) {
         setErrors(newErrors);
         return;
@@ -103,17 +135,19 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             revenue_name: name,
             source: source.toLowerCase(),
             initial_amount: String(amount),
-            growth_rate_percent: String(growth),
+            growth_rate_percent: String(finalGrowth),
             start_month: Number(startMonth),
             end_month: endMonth ? Number(endMonth) : undefined,
             frequency: freq.toLowerCase(),
             cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
             
-            volatility_type: volType !== 'none' ? volType as any : undefined,
+            volatility_type: volType as any,
             vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
             vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
-            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
-            vol_mean: volMean ? String(volMean) : undefined,
+            vol_intervals: finalIntervals,
+            
+            // For advanced modes, growth is the mean
+            vol_mean: (volType === 'nrig' || volType === 'student_t') ? String(finalGrowth) : undefined,
             vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
             vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
             vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
@@ -134,13 +168,21 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     }
   };
 
+  const getCalculatedAverage = () => {
+      const min = parseFloat(volMin);
+      const max = parseFloat(volMax);
+      if (!isNaN(min) && !isNaN(max)) {
+          const avg = (min + max) / 2;
+          if (Math.abs(avg) >= 1) return avg.toFixed(2);
+          return parseFloat(avg.toPrecision(3)).toString();
+      }
+      return '---';
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
       <div className="flex justify-between items-center mb-1">
          <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
-         {itemToEdit && (
-            <button type="button" onClick={onCancel} className="text-xs text-red-500 underline">Cancel Edit</button>
-         )}
       </div>
       <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
 
@@ -167,20 +209,13 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1">
             Initial Amount ({currencySymbol}) *
             <Tooltip content="Initial amount of revenue in Starting Month" />
           </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500 flex items-center gap-1">
-            Growth Rate (%/mo)
-            <Tooltip content="Monthly growth rate percentage." />
-          </label>
-          <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={growth} onChange={e => setGrowth(e.target.value)} />
         </div>
         <div>
             <label className="text-xs text-gray-500 flex items-center gap-1">
@@ -211,23 +246,134 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         </div>
       </div>
 
-      {/* SHARED VOLATILITY COMPONENT */}
-      <VolatilityInputs 
-        volType={volType} setVolType={setVolType}
-        volMean={volMean} setVolMean={setVolMean}
-        volMin={volMin} setVolMin={setVolMin}
-        volMax={volMax} setVolMax={setVolMax}
-        volIntervals={volIntervals} setVolIntervals={setVolIntervals}
-        volScale={volScale} setVolScale={setVolScale}
-        volFreedom={volFreedom} setVolFreedom={setVolFreedom}
-        volAlpha={volAlpha} setVolAlpha={setVolAlpha}
-        volBeta={volBeta} setVolBeta={setVolBeta}
-        isAdvanced={isAdvanced} setIsAdvanced={setIsAdvanced}
-      />
+      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
+      <div className="border-t pt-4 mt-4">
+        <h4 className="text-sm font-bold text-gray-700 mb-3">Growth & Volatility</h4>
+        
+        <div className="mb-4">
+            <label className="text-xs text-gray-500">Volatility Model *</label>
+            <select 
+                className="w-full border p-2 rounded text-sm" 
+                value={volType} 
+                onChange={e => setVolType(e.target.value)}
+            >
+                <option value="" disabled>Select Volatility Model...</option>
+                <option value="flat">Simple (Min/Max)</option>
+                <option value="nrig">Comprehensive</option>
+                <option value="student_t">Student's T</option>
+            </select>
+        </div>
 
-      <button className={`w-full text-white p-2 rounded font-bold ${itemToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-        {itemToEdit ? 'Update Stream' : 'Add Stream'}
-      </button>
+        {/* BLOCK A: Simple (flat) */}
+        {volType === 'flat' && (
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="text-xs text-gray-500">Minimum Growth (%)</label>
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        placeholder="negative = loss"
+                        className="w-full border p-2 rounded text-sm" 
+                        value={volMin} 
+                        onChange={e => setVolMin(e.target.value)} 
+                    />
+                </div>
+                <div>
+                    <label className="text-xs text-gray-500">Maximum Growth (%)</label>
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        className="w-full border p-2 rounded text-sm" 
+                        value={volMax} 
+                        onChange={e => setVolMax(e.target.value)} 
+                    />
+                </div>
+                <div>
+                    <label className="text-xs text-gray-500">Number of Steps</label>
+                    <input 
+                        type="number" 
+                        min="1" 
+                        placeholder="e.g. 10"
+                        step="1" 
+                        className="w-full border p-2 rounded text-sm" 
+                        value={numSteps} 
+                        onChange={e => setNumSteps(e.target.value)} 
+                    />
+                </div>
+                <div>
+                    <label className="text-xs text-gray-500">Average (Calculated)</label>
+                    <input 
+                        type="text" 
+                        readOnly 
+                        className="w-full border p-2 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        value={getCalculatedAverage()} 
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* BLOCK B: Advanced (nrig OR student_t) */}
+        {(volType === 'nrig' || volType === 'student_t') && (
+            <div className="space-y-4">
+                <div>
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                        Average Growth Rate (Mean)
+                        <Tooltip content="The central tendency of the growth distribution." />
+                    </label>
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        className="w-full border p-2 rounded text-sm" 
+                        value={growth} 
+                        onChange={e => setGrowth(e.target.value)} 
+                    />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs text-gray-500">Scale (Volatility)</label>
+                        <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                    </div>
+                    {volType === 'student_t' && (
+                        <div>
+                            <label className="text-xs text-gray-500">Degrees of Freedom</label>
+                            <input type="number" step="0.1" className="w-full border p-2 rounded text-sm" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
+                        </div>
+                    )}
+                    {volType === 'nrig' && (
+                        <>
+                            <div>
+                                <label className="text-xs text-gray-500">Alpha (Shape)</label>
+                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500">Beta (Skew)</label>
+                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        )}
+      </div>
+
+      <div className="flex gap-4">
+        {itemToEdit && (
+            <button 
+                type="button" 
+                onClick={onCancel} 
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1"
+            >
+                Cancel Edit
+            </button>
+        )}
+        <button 
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1"
+        >
+            {itemToEdit ? 'Update Stream' : 'Add Stream'}
+        </button>
+      </div>
     </form>
   );
 }

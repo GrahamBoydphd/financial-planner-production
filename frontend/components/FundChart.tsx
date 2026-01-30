@@ -49,7 +49,11 @@ export interface FanData {
   p100_solvent_count?: number[];
 
   // Metadata for P50 tooltip
-  p50_data?: { solvent_companies: number; total_companies: number }[];
+  p50_data?: { 
+    solvent_companies: number; 
+    total_companies: number;
+    cumulative_external_capital?: number;
+  }[];
 }
 
 interface Props {
@@ -98,6 +102,7 @@ export default function FundChart({
         case 'P10': return fanData.p10?.[index] ?? null;
         case 'P0': return fanData.p0?.[index] ?? null;
         case 'P50': return fanData.p50?.[index] ?? null;
+        case 'Cumulative Investment': return fanData.p50_data?.[index]?.cumulative_external_capital ?? 0;
         default: return null;
       }
     }
@@ -241,7 +246,22 @@ export default function FundChart({
       order: 5,
     });
 
-    // 8. Target Probability (Secondary Axis)
+    // 8. Cumulative Investment (New)
+    const investmentValues = fanData.p50_data?.map(d => d.cumulative_external_capital ?? 0);
+    if (investmentValues && investmentValues.length > 0) {
+      datasets.push({
+        label: 'Cumulative Investment',
+        data: processArray(investmentValues),
+        borderColor: '#EF4444', // Red-500
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.1,
+        fill: false,
+        order: 6, // Behind P50 (5), above Fan (10)
+      });
+    }
+
+    // 9. Target Probability (Secondary Axis)
     if (targetProbability && targetMultiple !== undefined) {
       datasets.push({
         label: `Likelihood of ${targetMultiple}X`,
