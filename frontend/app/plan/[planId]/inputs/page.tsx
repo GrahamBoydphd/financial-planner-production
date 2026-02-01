@@ -17,8 +17,9 @@ import DividendForm from '@/components/forms/DividendForm';
 import CreditForm from '@/components/forms/CreditForm';
 import ValuationForm from '@/components/forms/ValuationForm';
 import StaffingForm from '@/components/forms/StaffingForm';
+import EventList from '@/components/EventList';
 
-type TabType = 'operations' | 'capital' | 'settings';
+type TabType = 'operations' | 'capital' | 'settings' | 'events';
 
 export default function InputsPage({ params }: { params: { planId: string } }) {
   const { planId } = params;
@@ -219,6 +220,17 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
           >
             Treasury & Valuation
+          </button>
+
+          <button
+            onClick={() => setActiveTab('events')}
+            className={`${
+              activeTab === 'events'
+                ? 'border-amber-500 text-amber-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Swan Events
           </button>
         </nav>
       </div>
@@ -445,6 +457,28 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     <ValuationForm planId={planId} onSuccess={fetchData} />
                  </Card>
             </section>
+        </div>
+      )}
+
+      {/* --- TAB CONTENT: SWAN EVENTS --- */}
+      {activeTab === 'events' && (
+        <div className="animate-in fade-in duration-300">
+          <Card>
+             <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  Swan Events (Risk Scenarios)
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Define specific risk events (positive or negative) for {company?.company_name || 'this company'}.
+                </p>
+             </div>
+             <EventList 
+               fundId={null} 
+               companies={company ? [company] : []} 
+               funds={[]} 
+               companyId={company?.id}
+             />
+          </Card>
         </div>
       )}
     </Layout>

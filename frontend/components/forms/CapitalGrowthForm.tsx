@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
-import InfoTag from '@/components/ui/InfoTag';
+import VolatilityInputs from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -11,14 +10,14 @@ interface Props {
 }
 
 interface FormErrors {
-  mean?: string;
+  volMean?: string;
   volMin?: string;
   volMax?: string;
   volIntervals?: string;
-  alpha?: string;
-  beta?: string;
-  scale?: string;
-  freedom?: string;
+  volAlpha?: string;
+  volBeta?: string;
+  volScale?: string;
+  volFreedom?: string;
   general?: string;
 }
 
@@ -75,7 +74,7 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
 
     // Validation
     if (volType !== 'none') {
-        if (!mean) newErrors.mean = "Mean (Expected Monthly Return) is required.";
+        if (!mean) newErrors.volMean = "Mean (Expected Monthly Return) is required.";
     }
 
     if (volType === 'flat') {
@@ -87,12 +86,12 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             newErrors.volMin = "Min % must be less than Max %.";
         }
     } else if (volType === 'nrig') {
-        if (!alpha) newErrors.alpha = "Alpha is required.";
-        if (!beta) newErrors.beta = "Beta is required.";
-        if (!scale) newErrors.scale = "Scale is required.";
+        if (!alpha) newErrors.volAlpha = "Alpha is required.";
+        if (!beta) newErrors.volBeta = "Beta is required.";
+        if (!scale) newErrors.volScale = "Scale is required.";
     } else if (volType === 'student_t') {
-        if (!scale) newErrors.scale = "Scale is required.";
-        if (!freedom) newErrors.freedom = "Freedom is required.";
+        if (!scale) newErrors.volScale = "Scale is required.";
+        if (!freedom) newErrors.volFreedom = "Freedom is required.";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -129,11 +128,6 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
     }
   };
 
-  // Helper to find description
-  const getAlphaDesc = () => ALPHA_OPTIONS.find(o => o.value.toString() === alpha)?.description;
-  const getBetaDesc = () => BETA_OPTIONS.find(o => o.value.toString() === beta)?.description;
-  const getScaleDesc = () => SCALE_OPTIONS.find(o => o.value.toString() === scale)?.description;
-
   // Render Summary Card Content
   const renderActiveStrategy = () => {
     if (!savedConfig) return "Loading...";
@@ -159,217 +153,31 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
 
   return (
     <div className="space-y-3">
-        <div className="flex justify-between items-center">
-            <label className="text-xs text-gray-500 block">Investment Strategy (Risk Model)</label>
-             {volType !== 'none' && (
-                 <button type="button" onClick={() => setIsAdvanced(!isAdvanced)} className="text-xs text-indigo-600 underline">
-                     {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
-                 </button>
-             )}
-        </div>
-
-        <div>
-            <select className="w-full border p-2 rounded text-sm" value={volType} onChange={e => setVolType(e.target.value)}>
-                <option value="none" disabled hidden>-- Select Risk Model --</option>
-                <option value="flat">Simple volatility (min/max)</option>
-                <option value="nrig">Comprehensive volatility</option>
-                <option value="student_t">Student's t distribution</option>
-            </select>
-        </div>
-
-        {volType !== 'none' && (
-            <div className="bg-indigo-50 p-3 rounded text-sm space-y-3">
-                 
-                 {/* MEAN / MU - Common (Always Visible) */}
-                 <div>
-                    <label className="text-xs text-gray-500">Expected Monthly Return (Mean %)</label>
-                    <input 
-                        type="number" 
-                        step="0.01" 
-                        className={`w-full border p-1 ${errors.mean ? 'border-red-500' : ''}`} 
-                        value={mean} 
-                        onChange={e => setMean(e.target.value)} 
-                        placeholder="e.g. 0.5" 
-                    />
-                    {errors.mean && <p className="text-red-500 text-xs mt-1">{errors.mean}</p>}
-                 </div>
-
-                 {/* SIMPLE MODE DROPDOWNS (NRIG Only) */}
-                 {!isAdvanced && volType === 'nrig' && (
-                     <div className="space-y-3">
-                         <div>
-                             <div className="flex items-center mb-1">
-                                <label className="text-xs text-gray-500">Likelyhood of outliers (tail weight)</label>
-                                <InfoTag content="Controls likelihood of extreme events. High = predictable, Low = more outliers." />
-                             </div>
-                             <select 
-                                className={`w-full border p-1 rounded text-xs ${errors.alpha ? 'border-red-500' : ''}`} 
-                                value={alpha} 
-                                onChange={e => setAlpha(e.target.value)}
-                             >
-                                 <option value="">-- Select --</option>
-                                 {ALPHA_OPTIONS.map(o => (
-                                     <option key={o.value} value={o.value}>{o.label}</option>
-                                 ))}
-                             </select>
-                             {errors.alpha && <p className="text-red-500 text-xs mt-1">{errors.alpha}</p>}
-                             <p className="text-xs text-gray-400 italic mt-1">{getAlphaDesc()}</p>
-                         </div>
-
-                         <div>
-                             <div className="flex items-center mb-1">
-                                <label className="text-xs text-gray-500">Volatility imbalance (downside / upside tail is fatter)</label>
-                                <InfoTag content="Controls skewness. Balances risk towards upside or downside." />
-                             </div>
-                             <select 
-                                className={`w-full border p-1 rounded text-xs ${errors.beta ? 'border-red-500' : ''}`} 
-                                value={beta} 
-                                onChange={e => setBeta(e.target.value)}
-                             >
-                                 <option value="">-- Select --</option>
-                                 {BETA_OPTIONS.map(o => (
-                                     <option key={o.value} value={o.value}>{o.label}</option>
-                                 ))}
-                             </select>
-                             {errors.beta && <p className="text-red-500 text-xs mt-1">{errors.beta}</p>}
-                             <p className="text-xs text-gray-400 italic mt-1">{getBetaDesc()}</p>
-                         </div>
-
-                         <div>
-                             <div className="flex items-center mb-1">
-                                <label className="text-xs text-gray-500">Delta/Scale (Volatility)</label>
-                                <InfoTag content="Scales volatility. High = volatile, Low = stable." />
-                             </div>
-                             <select 
-                                className={`w-full border p-1 rounded text-xs ${errors.scale ? 'border-red-500' : ''}`} 
-                                value={scale} 
-                                onChange={e => setScale(e.target.value)}
-                             >
-                                 <option value="">-- Select --</option>
-                                 {SCALE_OPTIONS.map(o => (
-                                     <option key={o.value} value={o.value}>{o.label}</option>
-                                 ))}
-                             </select>
-                             {errors.scale && <p className="text-red-500 text-xs mt-1">{errors.scale}</p>}
-                             <p className="text-xs text-gray-400 italic mt-1">{getScaleDesc()}</p>
-                         </div>
-                     </div>
-                 )}
-
-                 {/* ADVANCED INPUTS */}
-                 {(isAdvanced || volType !== 'nrig') && (
-                     <>
-                        {/* FLAT PARAMETERS */}
-                        {volType === 'flat' && (
-                            <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label className="text-xs text-gray-400">Min %</label>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.volMin ? 'border-red-500' : ''}`} 
-                                        value={volMin} 
-                                        onChange={e => setVolMin(e.target.value)} 
-                                    />
-                                    {errors.volMin && <p className="text-red-500 text-xs">{errors.volMin}</p>}
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-400">Max %</label>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.volMax ? 'border-red-500' : ''}`} 
-                                        value={volMax} 
-                                        onChange={e => setVolMax(e.target.value)} 
-                                    />
-                                    {errors.volMax && <p className="text-red-500 text-xs">{errors.volMax}</p>}
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-400">Steps</label>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.volIntervals ? 'border-red-500' : ''}`} 
-                                        value={volIntervals} 
-                                        onChange={e => setVolIntervals(e.target.value)} 
-                                    />
-                                    {errors.volIntervals && <p className="text-red-500 text-xs">{errors.volIntervals}</p>}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* STUDENT-T PARAMETERS */}
-                        {volType === 'student_t' && (
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="text-xs text-gray-400">Scale (Vol)</label>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.scale ? 'border-red-500' : ''}`} 
-                                        value={scale} 
-                                        onChange={e => setScale(e.target.value)} 
-                                        placeholder="e.g. 1.0" 
-                                    />
-                                    {errors.scale && <p className="text-red-500 text-xs">{errors.scale}</p>}
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-400">Freedom (Deg)</label>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.freedom ? 'border-red-500' : ''}`} 
-                                        value={freedom} 
-                                        onChange={e => setFreedom(e.target.value)} 
-                                        placeholder="e.g. 5.0" 
-                                    />
-                                    {errors.freedom && <p className="text-red-500 text-xs">{errors.freedom}</p>}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* NRIG PARAMETERS (Advanced) */}
-                        {volType === 'nrig' && (
-                            <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                    <div className="flex items-center mb-1">
-                                        <label className="text-xs text-gray-400">Likelyhood of outliers (Alpha)</label>
-                                        <InfoTag content="Controls likelihood of extreme events. High = predictable, Low = more outliers." />
-                                    </div>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.alpha ? 'border-red-500' : ''}`} 
-                                        value={alpha} 
-                                        onChange={e => setAlpha(e.target.value)} 
-                                        placeholder="e.g. 1.0" 
-                                    />
-                                    {errors.alpha && <p className="text-red-500 text-xs">{errors.alpha}</p>}
-                                </div>
-                                <div>
-                                    <div className="flex items-center mb-1">
-                                        <label className="text-xs text-gray-400">Imbalance (Beta)</label>
-                                        <InfoTag content="Controls skewness. Balances risk towards upside or downside." />
-                                    </div>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.beta ? 'border-red-500' : ''}`} 
-                                        value={beta} 
-                                        onChange={e => setBeta(e.target.value)} 
-                                        placeholder="e.g. 0.0" 
-                                    />
-                                    {errors.beta && <p className="text-red-500 text-xs">{errors.beta}</p>}
-                                </div>
-                                <div>
-                                    <div className="flex items-center mb-1">
-                                        <label className="text-xs text-gray-400">Delta (Scale)</label>
-                                        <InfoTag content="Scales volatility. High = volatile, Low = stable." />
-                                    </div>
-                                    <input 
-                                        className={`w-full border p-1 ${errors.scale ? 'border-red-500' : ''}`} 
-                                        value={scale} 
-                                        onChange={e => setScale(e.target.value)} 
-                                        placeholder="e.g. 1.0" 
-                                    />
-                                    {errors.scale && <p className="text-red-500 text-xs">{errors.scale}</p>}
-                                </div>
-                            </div>
-                        )}
-                     </>
-                 )}
-
-                 <p className="text-xs text-gray-400">
-                    Calculated on positive cash balance at month end.
-                 </p>
-            </div>
-        )}
+        <VolatilityInputs
+            volType={volType}
+            setVolType={setVolType}
+            volMean={mean}
+            setVolMean={setMean}
+            volMin={volMin}
+            setVolMin={setVolMin}
+            volMax={volMax}
+            setVolMax={setVolMax}
+            volIntervals={volIntervals}
+            setVolIntervals={setVolIntervals}
+            volScale={scale}
+            setVolScale={setScale}
+            volFreedom={freedom}
+            setVolFreedom={setFreedom}
+            volAlpha={alpha}
+            setVolAlpha={setAlpha}
+            volBeta={beta}
+            setVolBeta={setBeta}
+            isAdvanced={isAdvanced}
+            setIsAdvanced={setIsAdvanced}
+            meanLabel='Expected Monthly Return (Mean %)'
+            alwaysShowMean={true}
+            errors={errors}
+        />
 
         {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
 
