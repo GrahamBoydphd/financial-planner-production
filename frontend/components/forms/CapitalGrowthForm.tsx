@@ -176,7 +176,6 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             setIsAdvanced={setIsAdvanced}
             meanLabel='Expected Monthly Return (Mean %)'
             alwaysShowMean={true}
-            errors={errors}
         />
 
         {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
