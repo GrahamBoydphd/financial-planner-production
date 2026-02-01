@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO events (\n            id, plan_id, fund_ids, company_ids, event_name, start_month, \n            event_category, impact_type, impact_value, duration_months, \n            likelihood_annual_pct, magnitude, direction, duration_category, \n            is_counter_cyclic, created_at\n        )\n        SELECT \n            gen_random_uuid(), \n            NULL, \n            ARRAY[$2]::uuid[], \n            ARRAY[$3]::uuid[], \n            event_name, start_month, \n            event_category, impact_type, impact_value, duration_months, \n            likelihood_annual_pct, magnitude, direction, duration_category, \n            is_counter_cyclic, NOW()\n        FROM events\n        WHERE $1 = ANY(company_ids) AND plan_id IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f6023b01988981e934f34cf39dd00bbf5fe91a76d4c17870ac1a9d7194b63d4b"
+}
