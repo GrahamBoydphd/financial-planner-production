@@ -160,211 +160,557 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: BUGFIX - Remove invalid prop from CapitalGrowthForm. ACTION: 
-1) UPDATE 'frontend/components/forms/CapitalGrowthForm.tsx':
-   - LOCATE the <VolatilityInputs /> component usage (around line 179).
-   - REMOVE the line: 'errors={errors}'.
-   - (The component does not accept this prop, so passing it is a type error).
+CONTEXT: Fix "Shallow Copy" bug in Fund Duplication and Template Cloning.
+1. Currently, "duplicate_fund_handler" and "clone_template_handler" copy Funds/Companies but ignore "events" table rows.
+2. We must ensure "Fund-Level Events" and "Company-Level Events" are copied.
+
+ACTION:
+1. Update "backend/src/handlers/lifecycle.rs":
+
+   A. Update "copy_company_internal":
+      - Add a step to copy events where "company_id = source_company_id AND plan_id IS NULL".
+      - Use "INSERT INTO events ... SELECT gen_random_uuid(), $1, $2, ..." to re-link them to "target_fund_id" and "new_company_id".
+      - Ensure all columns (impact_type, magnitude, etc.) are copied.
+
+   B. Update "duplicate_fund_handler":
+      - After inserting the new fund, add a step to copy events where "fund_id = fund_id AND company_id IS NULL".
+      - Link them to "new_fund_id".
+
+   C. Update "clone_template_handler":
+      - After inserting the new fund, add a step to copy events where "fund_id = template_id AND company_id IS NULL".
+      - Link them to "new_fund_id".
+
+CONSTRAINTS: Use "gen_random_uuid()" for new IDs. Ensure "is_counter_cyclic" and all impact fields are preserved.
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/components/forms/CapitalGrowthForm.tsx ---
-'use client';
+--- START FILE: backend/src/handlers/lifecycle.rs ---
+use axum::{
+    extract::{Path, State},
+    Json, Extension,
+};
+use sqlx::{PgPool, Postgres, Transaction};
+use uuid::Uuid;
+use chrono::Utc;
+use crate::models::{
+    Fund, Company, FinancialPlan, RevenueItem, ExpenseItem, 
+    CapitalInjection, DividendPolicy, CreditFacility, 
+    ValuationAssumption, Event, CapitalGrowthPolicy, StaffingRole,
+    Claims
+};
+use crate::errors::AppError;
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import VolatilityInputs from '@/components/forms/shared/VolatilityInputs';
+// --- Internal Helpers ---
 
-interface Props {
-  planId: string;
-  onSuccess: () => void;
-}
+async fn copy_plan_internal(
+    txn: &mut Transaction<'_, Postgres>,
+    source_plan_id: Uuid,
+    target_company_id: Uuid,
+    tenant_id: Uuid,
+    name_suffix: Option<String>,
+) -> Result<Uuid, AppError> {
+    let source_plan = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT * FROM financial_plans WHERE id = $1",
+        source_plan_id
+    )
+    .fetch_one(&mut **txn)
+    .await?;
 
-interface FormErrors {
-  volMean?: string;
-  volMin?: string;
-  volMax?: string;
-  volIntervals?: string;
-  volAlpha?: string;
-  volBeta?: string;
-  volScale?: string;
-  volFreedom?: string;
-  general?: string;
-}
+    let new_plan_id = Uuid::new_v4();
+    let suffix = name_suffix.as_deref().unwrap_or(" (Copy)");
+    let new_name = format!("{}{}", source_plan.plan_name, suffix);
 
-export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
-  const [volType, setVolType] = useState('none');
-  
-  // Flat / Student-T / NRIG Params
-  const [mean, setMean] = useState('');     // Mean / Mu / Growth Rate
-  const [volMin, setVolMin] = useState(''); // Min
-  const [volMax, setVolMax] = useState(''); // Max
-  const [volIntervals, setVolIntervals] = useState('');
-  
-  // Specific NRIG / Student-T Params
-  const [alpha, setAlpha] = useState('');
-  const [beta, setBeta] = useState('');
-  const [scale, setScale] = useState(''); // Delta / Scale
-  const [freedom, setFreedom] = useState('');
+    sqlx::query!(
+        r#"
+        INSERT INTO financial_plans (
+            id, company_id, plan_name, start_month, currency_code, 
+            created_at, updated_at, initial_cash, pooling_fraction, tenant_id, insolvency_threshold
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7, $8, $9)
+        "#,
+        new_plan_id,
+        target_company_id,
+        new_name,
+        source_plan.start_month,
+        source_plan.currency_code,
+        source_plan.initial_cash,
+        source_plan.pooling_fraction,
+        tenant_id,
+        source_plan.insolvency_threshold
+    )
+    .execute(&mut **txn)
+    .await?;
 
-  // UI State
-  const [isAdvanced, setIsAdvanced] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
-  
-  // Active Strategy (Saved in DB)
-  const [savedConfig, setSavedConfig] = useState<any>(null);
-
-  useEffect(() => {
-    let active = true;
-    api.getCapitalGrowth(planId).then(p => {
-      if (!active) return;
-      setSavedConfig(p); // Store initial fetched config as "Active"
-
-      const vType = (p.volatility_type || 'none').toLowerCase();
-      setVolType(vType);
-      
-      // Handle rename: growth_rate_percent takes precedence, fallback to vol_mean
-      const valMean = p.growth_rate_percent !== undefined ? p.growth_rate_percent.toString() : (p.vol_mean !== undefined ? p.vol_mean.toString() : "");
-      setMean(valMean);
-
-      setVolMin(p.vol_min !== undefined ? p.vol_min.toString() : '');
-      setVolMax(p.vol_max !== undefined ? p.vol_max.toString() : '');
-      setVolIntervals(p.vol_intervals !== undefined ? p.vol_intervals.toString() : '');
-      
-      setAlpha(p.vol_alpha !== undefined ? p.vol_alpha.toString() : '');
-      setBeta(p.vol_beta !== undefined ? p.vol_beta.toString() : '');
-      setScale(p.vol_scale !== undefined ? p.vol_scale.toString() : '');
-      setFreedom(p.vol_freedom !== undefined ? p.vol_freedom.toString() : '');
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [planId]);
-
-  const handleSave = async () => {
-    setErrors({});
-    const newErrors: FormErrors = {};
-
-    // Validation
-    if (volType !== 'none') {
-        if (!mean) newErrors.volMean = "Mean (Expected Monthly Return) is required.";
+    // Copy Revenue
+    let revenues = sqlx::query_as!(RevenueItem, "SELECT * FROM revenue_items WHERE plan_id = $1", source_plan_id)
+        .fetch_all(&mut **txn).await?;
+    for item in revenues {
+        sqlx::query!(
+            r#"INSERT INTO revenue_items (
+                id, plan_id, revenue_name, source, start_month, end_month, 
+                initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent,
+                volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,
+                vol_freedom, vol_alpha, vol_beta, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)"#,
+            Uuid::new_v4(), new_plan_id, item.revenue_name, item.source, item.start_month, item.end_month,
+            item.initial_amount, item.growth_rate_percent, item.frequency, item.cost_of_revenue_percent,
+            item.volatility_type, item.vol_min, item.vol_max, item.vol_intervals, item.vol_mean, item.vol_scale,
+            item.vol_freedom, item.vol_alpha, item.vol_beta, Utc::now()
+        ).execute(&mut **txn).await?;
     }
 
-    if (volType === 'flat') {
-        if (!volMin) newErrors.volMin = "Min % is required.";
-        if (!volMax) newErrors.volMax = "Max % is required.";
-        if (!volIntervals) newErrors.volIntervals = "Intervals are required.";
-        
-        if (volMin && volMax && Number(volMin) >= Number(volMax)) {
-            newErrors.volMin = "Min % must be less than Max %.";
-        }
-    } else if (volType === 'nrig') {
-        if (!alpha) newErrors.volAlpha = "Alpha is required.";
-        if (!beta) newErrors.volBeta = "Beta is required.";
-        if (!scale) newErrors.volScale = "Scale is required.";
-    } else if (volType === 'student_t') {
-        if (!scale) newErrors.volScale = "Scale is required.";
-        if (!freedom) newErrors.volFreedom = "Freedom is required.";
+    // Copy Expenses
+    let expenses = sqlx::query_as!(ExpenseItem, "SELECT * FROM expense_items WHERE plan_id = $1", source_plan_id)
+        .fetch_all(&mut **txn).await?;
+    for item in expenses {
+        sqlx::query!(
+            r#"INSERT INTO expense_items (
+                id, plan_id, expense_name, category, start_month, end_month,
+                initial_amount, growth_rate_percent, frequency, pct_of_revenue,
+                volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,
+                vol_freedom, vol_alpha, vol_beta, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)"#,
+            Uuid::new_v4(), new_plan_id, item.expense_name, item.category, item.start_month, item.end_month,
+            item.initial_amount, item.growth_rate_percent, item.frequency, item.pct_of_revenue,
+            item.volatility_type, item.vol_min, item.vol_max, item.vol_intervals, item.vol_mean, item.vol_scale,
+            item.vol_freedom, item.vol_alpha, item.vol_beta, Utc::now()
+        ).execute(&mut **txn).await?;
     }
 
-    if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
+    // Copy Staffing
+    let staffing = sqlx::query_as!(StaffingRole, "SELECT * FROM staffing_roles WHERE plan_id = $1", source_plan_id)
+        .fetch_all(&mut **txn).await?;
+    for item in staffing {
+        sqlx::query!(
+            r#"INSERT INTO staffing_roles (
+                id, plan_id, role_name, annual_salary, start_month, target_count,
+                hiring_plan, hiring_rate, annual_increase_percent, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
+            Uuid::new_v4(), new_plan_id, item.role_name, item.annual_salary, item.start_month, item.target_count,
+            item.hiring_plan, item.hiring_rate, item.annual_increase_percent, Utc::now()
+        ).execute(&mut **txn).await?;
     }
 
-    try {
-        const payload = {
-            plan_id: planId,
-            volatility_type: volType.toLowerCase() as any,
-            
-            // Common / Student T / NRIG
-            // RENAMED: vol_mean -> growth_rate_percent
-            growth_rate_percent: mean ? String(mean) : undefined,
-            
-            // Flat Only
-            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
-            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
-            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
-            
-            // NRIG Only
-            vol_alpha: volType === 'nrig' && alpha ? String(alpha) : undefined,
-            vol_beta: volType === 'nrig' && beta ? String(beta) : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? String(scale) : undefined, 
-            vol_freedom: volType === 'student_t' && freedom ? String(freedom) : undefined,
-        };
-
-        await api.upsertCapitalGrowth(payload);
-        setSavedConfig(payload); // Update active strategy
-        onSuccess();
-    } catch (err) {
-        setErrors({ general: "Failed to save configuration." });
+    // Copy Capital Injections
+    let injections = sqlx::query_as!(CapitalInjection, "SELECT * FROM capital_injections WHERE plan_id = $1", source_plan_id)
+        .fetch_all(&mut **txn).await?;
+    for item in injections {
+        sqlx::query!(
+            r#"INSERT INTO capital_injections (
+                id, plan_id, injection_name, amount, month, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6)"#,
+            Uuid::new_v4(), new_plan_id, item.injection_name, item.amount, item.month, Utc::now()
+        ).execute(&mut **txn).await?;
     }
-  };
 
-  // Render Summary Card Content
-  const renderActiveStrategy = () => {
-    if (!savedConfig) return "Loading...";
-    const type = (savedConfig.volatility_type || 'none').toLowerCase();
+    // Copy Events
+    let events = sqlx::query_as!(
+        Event,
+        r#"
+        SELECT 
+            id as "id!", 
+            plan_id, 
+            fund_ids, 
+            company_ids, 
+            event_name as "event_name!", 
+            start_month, 
+            event_category, 
+            impact_type, 
+            impact_value, 
+            duration_months, 
+            likelihood_annual_pct, 
+            magnitude, 
+            direction, 
+            duration_category, 
+            is_counter_cyclic, 
+            created_at as "created_at!"
+        FROM events 
+        WHERE plan_id = $1
+        "#,
+        source_plan_id
+    )
+    .fetch_all(&mut **txn)
+    .await?;
     
-    if (type === 'none') return "Standard (No Volatility)";
-
-    // Handle rename in display
-    const valMean = savedConfig.growth_rate_percent ?? savedConfig.vol_mean;
-    let details = `Mean: ${valMean}%`;
-    
-    if (type === 'flat') {
-        details += `, Range: ${savedConfig.vol_min}% to ${savedConfig.vol_max}%`;
-    } else if (type === 'student_t') {
-        details += `, Scale: ${savedConfig.vol_scale}, DoF: ${savedConfig.vol_freedom}`;
-    } else if (type === 'nrig') {
-        details += `, α: ${savedConfig.vol_alpha}, β: ${savedConfig.vol_beta}, δ: ${savedConfig.vol_scale}`;
+    for item in events {
+        sqlx::query!(
+            r#"INSERT INTO events (
+                id, plan_id, fund_ids, company_ids, event_name, start_month, 
+                event_category, impact_type, impact_value, duration_months, 
+                likelihood_annual_pct, magnitude, direction, duration_category, 
+                is_counter_cyclic, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
+            Uuid::new_v4(), new_plan_id, 
+            item.fund_ids.as_deref(), 
+            item.company_ids.as_deref(), 
+            item.event_name, item.start_month,
+            item.event_category, item.impact_type, item.impact_value, item.duration_months,
+            item.likelihood_annual_pct, item.magnitude, item.direction, item.duration_category, 
+            item.is_counter_cyclic, Utc::now()
+        ).execute(&mut **txn).await?;
     }
 
-    const typeLabel = type === 'student_t' ? 'Student-T' : type.toUpperCase();
-    return `Active Strategy: ${typeLabel} (${details})`;
-  };
+    // Copy Dividend Policy
+    let dividends = sqlx::query_as!(DividendPolicy, 
+        r#"SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!" 
+           FROM dividend_policies WHERE plan_id = $1"#, 
+        source_plan_id)
+        .fetch_optional(&mut **txn).await?;
+    if let Some(item) = dividends {
+        sqlx::query!(
+            r#"INSERT INTO dividend_policies (
+                id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
+            Uuid::new_v4(), new_plan_id, item.is_enabled, item.safety_threshold, item.payout_ratio, Utc::now(), item.tracking_enabled
+        ).execute(&mut **txn).await?;
+    }
 
-  return (
-    <div className="space-y-3">
-        <VolatilityInputs
-            volType={volType}
-            setVolType={setVolType}
-            volMean={mean}
-            setVolMean={setMean}
-            volMin={volMin}
-            setVolMin={setVolMin}
-            volMax={volMax}
-            setVolMax={setVolMax}
-            volIntervals={volIntervals}
-            setVolIntervals={setVolIntervals}
-            volScale={scale}
-            setVolScale={setScale}
-            volFreedom={freedom}
-            setVolFreedom={setFreedom}
-            volAlpha={alpha}
-            setVolAlpha={setAlpha}
-            volBeta={beta}
-            setVolBeta={setBeta}
-            isAdvanced={isAdvanced}
-            setIsAdvanced={setIsAdvanced}
-            meanLabel='Expected Monthly Return (Mean %)'
-            alwaysShowMean={true}
-            errors={errors}
-        />
+    // Copy Credit Facility
+    let credit = sqlx::query_as!(CreditFacility, "SELECT * FROM credit_facilities WHERE plan_id = $1", source_plan_id)
+        .fetch_optional(&mut **txn).await?;
+    if let Some(item) = credit {
+        sqlx::query!(
+            r#"INSERT INTO credit_facilities (
+                id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6)"#,
+            Uuid::new_v4(), new_plan_id, item.facility_limit, item.interest_rate, item.is_annual_rate, Utc::now()
+        ).execute(&mut **txn).await?;
+    }
 
-        {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
+    // Copy Valuation Assumption
+    let valuation = sqlx::query_as!(ValuationAssumption, "SELECT * FROM valuation_assumptions WHERE plan_id = $1", source_plan_id)
+        .fetch_optional(&mut **txn).await?;
+    if let Some(item) = valuation {
+        sqlx::query!(
+            r#"INSERT INTO valuation_assumptions (
+                id, plan_id, valuation_name, method, multiplier, date_applied, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
+            Uuid::new_v4(), new_plan_id, item.valuation_name, item.method, item.multiplier, item.date_applied, Utc::now()
+        ).execute(&mut **txn).await?;
+    }
 
-        {/* Summary Card */}
-        <div className="mt-4 p-3 bg-gray-100 rounded border text-xs">
-            <h4 className="font-bold text-gray-700 mb-1">Active Policy Summary</h4>
-            <div className="text-gray-600">
-                {renderActiveStrategy()}
-            </div>
-        </div>
+    // Copy Capital Growth Policy
+    let growth = sqlx::query_as!(CapitalGrowthPolicy, "SELECT * FROM capital_growth_policies WHERE plan_id = $1", source_plan_id)
+        .fetch_optional(&mut **txn).await?;
+    if let Some(item) = growth {
+        sqlx::query!(
+            r#"INSERT INTO capital_growth_policies (
+                id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,
+                vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"#,
+            Uuid::new_v4(), new_plan_id, item.volatility_type, item.vol_min, item.vol_max, item.vol_intervals, item.vol_mean, item.vol_scale,
+            item.vol_freedom, item.vol_alpha, item.vol_beta, Utc::now(), item.growth_rate_percent
+        ).execute(&mut **txn).await?;
+    }
 
-        <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1 rounded text-sm font-bold">Update Investment Policy</button>
-    </div>
-  );
+    Ok(new_plan_id)
 }
---- END FILE: frontend/components/forms/CapitalGrowthForm.tsx ---
+
+async fn copy_company_internal(
+    txn: &mut Transaction<'_, Postgres>,
+    source_company_id: Uuid,
+    target_fund_id: Uuid,
+    tenant_id: Uuid,
+    name_suffix: Option<String>,
+) -> Result<Uuid, AppError> {
+    let source_company = sqlx::query_as!(
+        Company,
+        "SELECT * FROM companies WHERE id = $1",
+        source_company_id
+    )
+    .fetch_one(&mut **txn)
+    .await?;
+
+    let new_company_id = Uuid::new_v4();
+    let suffix = name_suffix.as_deref().unwrap_or(" (Copy)");
+    let new_name = format!("{}{}", source_company.company_name, suffix);
+
+    sqlx::query!(
+        r#"
+        INSERT INTO companies (
+            id, fund_id, company_name, currency_code, created_at,
+            industry, business_model, technology, tenant_id
+        )
+        VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8)
+        "#,
+        new_company_id,
+        target_fund_id,
+        new_name,
+        source_company.currency_code,
+        source_company.industry,
+        source_company.business_model,
+        source_company.technology,
+        tenant_id
+    )
+    .execute(&mut **txn)
+    .await?;
+
+    let plans = sqlx::query!(
+        "SELECT id FROM financial_plans WHERE company_id = $1",
+        source_company_id
+    )
+    .fetch_all(&mut **txn)
+    .await?;
+
+    for plan_row in plans {
+        copy_plan_internal(txn, plan_row.id, new_company_id, tenant_id, name_suffix.clone()).await?;
+    }
+
+    Ok(new_company_id)
+}
+
+// --- Handlers ---
+
+pub async fn duplicate_plan_handler(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Path(plan_id): Path<Uuid>,
+) -> Result<Json<FinancialPlan>, AppError> {
+    let mut txn = pool.begin().await?;
+
+    let source_plan = sqlx::query!(
+        "SELECT company_id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
+        plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
+
+    let source_plan = match source_plan {
+        Some(p) => p,
+        None => return Err(AppError::NotFound("Plan not found".to_string())),
+    };
+
+    let new_id = copy_plan_internal(&mut txn, plan_id, source_plan.company_id, claims.tenant_id, None).await?;
+
+    txn.commit().await?;
+
+    let new_plan = sqlx::query_as!(
+        FinancialPlan,
+        "SELECT * FROM financial_plans WHERE id = $1",
+        new_id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(new_plan))
+}
+
+pub async fn duplicate_company_handler(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Path(company_id): Path<Uuid>,
+) -> Result<Json<Company>, AppError> {
+    let mut txn = pool.begin().await?;
+
+    let source_company = sqlx::query!(
+        "SELECT fund_id FROM companies WHERE id = $1 AND tenant_id = $2",
+        company_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
+
+    let source_company = match source_company {
+        Some(c) => c,
+        None => return Err(AppError::NotFound("Company not found".to_string())),
+    };
+
+    let new_id = copy_company_internal(&mut txn, company_id, source_company.fund_id, claims.tenant_id, None).await?;
+
+    txn.commit().await?;
+
+    let new_company = sqlx::query_as!(
+        Company,
+        "SELECT * FROM companies WHERE id = $1",
+        new_id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(new_company))
+}
+
+pub async fn duplicate_fund_handler(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Path(fund_id): Path<Uuid>,
+) -> Result<Json<Fund>, AppError> {
+    let mut txn = pool.begin().await?;
+
+    let source_fund = sqlx::query_as!(
+        Fund,
+        "SELECT * FROM funds WHERE id = $1 AND tenant_id = $2",
+        fund_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
+
+    let source_fund = match source_fund {
+        Some(f) => f,
+        None => return Err(AppError::NotFound("Fund not found".to_string())),
+    };
+
+    let new_fund_id = Uuid::new_v4();
+    let new_name = format!("{} (Copy)", source_fund.fund_name);
+
+    sqlx::query!(
+        r#"
+        INSERT INTO funds (id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template)
+        VALUES ($1, $2, $3, $4, NOW(), $5, $6)
+        "#,
+        new_fund_id,
+        claims.user_id,
+        new_name,
+        source_fund.currency_code,
+        claims.tenant_id,
+        false
+    )
+    .execute(&mut *txn)
+    .await?;
+
+    let companies = sqlx::query!(
+        "SELECT id FROM companies WHERE fund_id = $1",
+        fund_id
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+
+    let child_suffix = format!(" (copy in {})", new_name);
+
+    for comp in companies {
+        copy_company_internal(&mut txn, comp.id, new_fund_id, claims.tenant_id, Some(child_suffix.clone())).await?;
+    }
+
+    txn.commit().await?;
+
+    let new_fund = sqlx::query_as!(
+        Fund,
+        "SELECT * FROM funds WHERE id = $1",
+        new_fund_id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(new_fund))
+}
+
+#[derive(serde::Deserialize)]
+pub struct MoveCompanyRequest {
+    pub target_fund_id: Uuid,
+}
+
+pub async fn move_company_handler(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Path(company_id): Path<Uuid>,
+    Json(payload): Json<MoveCompanyRequest>,
+) -> Result<Json<Company>, AppError> {
+    let target_exists = sqlx::query!(
+        "SELECT id FROM funds WHERE id = $1 AND tenant_id = $2",
+        payload.target_fund_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    if target_exists.is_none() {
+        return Err(AppError::NotFound("Target fund not found".to_string()));
+    }
+
+    let updated = sqlx::query_as!(
+        Company,
+        "UPDATE companies SET fund_id = $1 WHERE id = $2 AND tenant_id = $3 RETURNING *",
+        payload.target_fund_id,
+        company_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    match updated {
+        Some(c) => Ok(Json(c)),
+        None => Err(AppError::NotFound("Company not found".to_string())),
+    }
+}
+
+pub async fn get_public_templates(
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<Fund>>, AppError> {
+    let templates = sqlx::query_as!(
+        Fund,
+        "SELECT * FROM funds WHERE is_public_template = true"
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(Json(templates))
+}
+
+pub async fn clone_template_handler(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Path(template_id): Path<Uuid>,
+) -> Result<Json<Fund>, AppError> {
+    let mut txn = pool.begin().await?;
+
+    let template = sqlx::query_as!(
+        Fund,
+        "SELECT * FROM funds WHERE id = $1 AND is_public_template = true",
+        template_id
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
+
+    let template = match template {
+        Some(t) => t,
+        None => return Err(AppError::NotFound("Template not found".to_string())),
+    };
+
+    let new_fund_id = Uuid::new_v4();
+    let new_name = format!("{} (Copy)", template.fund_name);
+
+    sqlx::query!(
+        r#"
+        INSERT INTO funds (id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template)
+        VALUES ($1, $2, $3, $4, NOW(), $5, $6)
+        "#,
+        new_fund_id,
+        claims.user_id,
+        new_name,
+        template.currency_code,
+        claims.tenant_id,
+        false
+    )
+    .execute(&mut *txn)
+    .await?;
+
+    let companies = sqlx::query!(
+        "SELECT id FROM companies WHERE fund_id = $1",
+        template_id
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+
+    for comp in companies {
+        copy_company_internal(&mut txn, comp.id, new_fund_id, claims.tenant_id, Some("".to_string())).await?;
+    }
+
+    txn.commit().await?;
+
+    let new_fund = sqlx::query_as!(
+        Fund,
+        "SELECT * FROM funds WHERE id = $1",
+        new_fund_id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(Json(new_fund))
+}
+--- END FILE: backend/src/handlers/lifecycle.rs ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 # Status: UNIVERSAL CONSTITUTION (Read by every agent)

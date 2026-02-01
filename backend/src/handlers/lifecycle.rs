@@ -270,6 +270,36 @@ async fn copy_company_internal(
         copy_plan_internal(txn, plan_row.id, new_company_id, tenant_id, name_suffix.clone()).await?;
     }
 
+    // Copy Company-Level Events
+    // We copy events where this company is targeted (in company_ids) and plan_id is NULL.
+    // We re-link them to the new company and the target fund.
+    sqlx::query!(
+        r#"
+        INSERT INTO events (
+            id, plan_id, fund_ids, company_ids, event_name, start_month, 
+            event_category, impact_type, impact_value, duration_months, 
+            likelihood_annual_pct, magnitude, direction, duration_category, 
+            is_counter_cyclic, created_at
+        )
+        SELECT 
+            gen_random_uuid(), 
+            NULL, 
+            ARRAY[$2]::uuid[], 
+            ARRAY[$3]::uuid[], 
+            event_name, start_month, 
+            event_category, impact_type, impact_value, duration_months, 
+            likelihood_annual_pct, magnitude, direction, duration_category, 
+            is_counter_cyclic, NOW()
+        FROM events
+        WHERE $1 = ANY(company_ids) AND plan_id IS NULL
+        "#,
+        source_company_id,
+        target_fund_id,
+        new_company_id
+    )
+    .execute(&mut **txn)
+    .await?;
+
     Ok(new_company_id)
 }
 
@@ -397,6 +427,34 @@ pub async fn duplicate_fund_handler(
         copy_company_internal(&mut txn, comp.id, new_fund_id, claims.tenant_id, Some(child_suffix.clone())).await?;
     }
 
+    // Copy Fund-Level Events
+    // Events where this fund is targeted, but no specific company or plan.
+    sqlx::query!(
+        r#"
+        INSERT INTO events (
+            id, plan_id, fund_ids, company_ids, event_name, start_month, 
+            event_category, impact_type, impact_value, duration_months, 
+            likelihood_annual_pct, magnitude, direction, duration_category, 
+            is_counter_cyclic, created_at
+        )
+        SELECT 
+            gen_random_uuid(), 
+            NULL, 
+            ARRAY[$2]::uuid[], 
+            NULL, 
+            event_name, start_month, 
+            event_category, impact_type, impact_value, duration_months, 
+            likelihood_annual_pct, magnitude, direction, duration_category, 
+            is_counter_cyclic, NOW()
+        FROM events
+        WHERE $1 = ANY(fund_ids) AND company_ids IS NULL AND plan_id IS NULL
+        "#,
+        fund_id,
+        new_fund_id
+    )
+    .execute(&mut *txn)
+    .await?;
+
     txn.commit().await?;
 
     let new_fund = sqlx::query_as!(
@@ -510,6 +568,33 @@ pub async fn clone_template_handler(
     for comp in companies {
         copy_company_internal(&mut txn, comp.id, new_fund_id, claims.tenant_id, Some("".to_string())).await?;
     }
+
+    // Copy Fund-Level Events (Template Events)
+    sqlx::query!(
+        r#"
+        INSERT INTO events (
+            id, plan_id, fund_ids, company_ids, event_name, start_month, 
+            event_category, impact_type, impact_value, duration_months, 
+            likelihood_annual_pct, magnitude, direction, duration_category, 
+            is_counter_cyclic, created_at
+        )
+        SELECT 
+            gen_random_uuid(), 
+            NULL, 
+            ARRAY[$2]::uuid[], 
+            NULL, 
+            event_name, start_month, 
+            event_category, impact_type, impact_value, duration_months, 
+            likelihood_annual_pct, magnitude, direction, duration_category, 
+            is_counter_cyclic, NOW()
+        FROM events
+        WHERE $1 = ANY(fund_ids) AND company_ids IS NULL AND plan_id IS NULL
+        "#,
+        template_id,
+        new_fund_id
+    )
+    .execute(&mut *txn)
+    .await?;
 
     txn.commit().await?;
 
