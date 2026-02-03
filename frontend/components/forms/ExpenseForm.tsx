@@ -24,7 +24,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [pctRevenue, setPctRevenue] = useState('');
 
   // Volatility State
-  const [volType, setVolType] = useState('');
+  const [volType, setVolType] = useState('none');
   const [volMin, setVolMin] = useState('');
   const [volMax, setVolMax] = useState('');
   const [numSteps, setNumSteps] = useState(''); // Changed from stepSize
@@ -49,8 +49,8 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       setFreq(itemToEdit.frequency);
       setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
 
-      // Map legacy 'none' or null to '' to force selection, or use existing
-      const vType = itemToEdit.volatility_type === 'none' ? '' : (itemToEdit.volatility_type || '');
+      // Map legacy 'none' or null to 'none'
+      const vType = (itemToEdit.volatility_type && itemToEdit.volatility_type !== 'none') ? itemToEdit.volatility_type : 'none';
       setVolType(vType);
 
       setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
@@ -81,7 +81,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     setEndMonth('');
     setFreq('monthly');
     setPctRevenue('');
-    setVolType('');
+    setVolType('none');
     setVolMin(''); setVolMax(''); setNumSteps('');
     setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
     setIsAdvanced(false);
