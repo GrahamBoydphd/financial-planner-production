@@ -141,6 +141,25 @@ pub async fn create_expense_item(
                 vt, valid_vol_types
             )));
         }
+
+        // NRIG Validation
+        if vt == "nrig" {
+            match (vol_alpha, vol_beta) {
+                (Some(alpha), Some(beta)) => {
+                    if (alpha * alpha) <= (beta * beta) {
+                        return Err(AppError::ValidationError(format!(
+                            "NRIG Error: Alpha ({}) must be greater than absolute Beta ({})",
+                            alpha, beta.abs()
+                        )));
+                    }
+                }
+                _ => {
+                    return Err(AppError::ValidationError(
+                        "NRIG volatility requires both Alpha and Beta parameters".to_string()
+                    ));
+                }
+            }
+        }
     }
 
     let item = sqlx::query_as!(
@@ -272,6 +291,25 @@ pub async fn update_expense_item(
                 "Invalid volatility_type: '{}'. Must be one of: {:?}", 
                 vt, valid_vol_types
             )));
+        }
+
+        // NRIG Validation
+        if vt == "nrig" {
+            match (vol_alpha, vol_beta) {
+                (Some(alpha), Some(beta)) => {
+                    if (alpha * alpha) <= (beta * beta) {
+                        return Err(AppError::ValidationError(format!(
+                            "NRIG Error: Alpha ({}) must be greater than absolute Beta ({})",
+                            alpha, beta.abs()
+                        )));
+                    }
+                }
+                _ => {
+                    return Err(AppError::ValidationError(
+                        "NRIG volatility requires both Alpha and Beta parameters".to_string()
+                    ));
+                }
+            }
         }
     }
 

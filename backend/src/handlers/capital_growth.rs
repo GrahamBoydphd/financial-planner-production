@@ -52,15 +52,34 @@ pub async fn upsert_capital_growth(
 
     // Parse decimals manually
     // growth_rate_percent is NOT NULL in DB, so default to 0 if missing
-    let growth_rate = parse_decimal(payload.growth_rate_percent)?.unwrap_or(Decimal::from(0));
+    let growth_rate = parse_decimal(payload.growth_rate_percent.clone())?.unwrap_or(Decimal::from(0));
     
-    let vol_min = parse_decimal(payload.vol_min)?;
-    let vol_max = parse_decimal(payload.vol_max)?;
-    let vol_mean = parse_decimal(payload.vol_mean)?;
-    let vol_scale = parse_decimal(payload.vol_scale)?;
-    let vol_freedom = parse_decimal(payload.vol_freedom)?;
-    let vol_alpha = parse_decimal(payload.vol_alpha)?;
-    let vol_beta = parse_decimal(payload.vol_beta)?;
+    let vol_min = parse_decimal(payload.vol_min.clone())?;
+    let vol_max = parse_decimal(payload.vol_max.clone())?;
+    let vol_mean = parse_decimal(payload.vol_mean.clone())?;
+    let vol_scale = parse_decimal(payload.vol_scale.clone())?;
+    let vol_freedom = parse_decimal(payload.vol_freedom.clone())?;
+    let vol_alpha = parse_decimal(payload.vol_alpha.clone())?;
+    let vol_beta = parse_decimal(payload.vol_beta.clone())?;
+
+    // NRIG Validation
+    if payload.volatility_type == "nrig" {
+        match (vol_alpha, vol_beta) {
+            (Some(alpha), Some(beta)) => {
+                if (alpha * alpha) <= (beta * beta) {
+                    return Err(AppError::ValidationError(format!(
+                        "NRIG Error: Alpha ({}) must be greater than absolute Beta ({})",
+                        alpha, beta.abs()
+                    )));
+                }
+            }
+            _ => {
+                return Err(AppError::ValidationError(
+                    "NRIG volatility requires both Alpha and Beta parameters".to_string()
+                ));
+            }
+        }
+    }
 
     let mut tx = pool.begin().await?;
 

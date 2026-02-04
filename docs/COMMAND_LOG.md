@@ -524,3 +524,9 @@ Enter 2. lines line by line.
 - If anyone else (or you, if you sign up as a different user) tries to do this, the DB will reject it.
     
 - This fund will now appear in the results of `GET /api/lifecycle/templates`.
+
+
+## CAT all of the files into one, with names, for a single upload.
+
+`find . -type f -name "*.sql" -not -path "./.sqlx/*" -exec sh -c 'echo "<file $1>"; cat "$1"; echo "</file>"' _ {} \; > all_schema.txt`
+

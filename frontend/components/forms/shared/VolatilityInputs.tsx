@@ -3,6 +3,112 @@
 import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
 import Tooltip from '@/components/ui/Tooltip';
 
+// --- Validation Helper ---
+export interface VolatilityValidationParams {
+  min?: string;
+  max?: string;
+  intervals?: string;
+  mean?: string;
+  alpha?: string;
+  beta?: string;
+  scale?: string;
+  freedom?: string;
+}
+
+export interface VolatilityPayloadResult {
+  volatility_type: string;
+  growth_rate_percent?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+}
+
+/**
+ * Centralized logic to prepare the volatility payload for the API.
+ * Handles the 'Flat' mode mean calculation and parameter mapping.
+ */
+export function getVolatilityPayload(volType: string, params: VolatilityValidationParams): VolatilityPayloadResult {
+  const payload: VolatilityPayloadResult = {
+      volatility_type: volType
+  };
+
+  const clean = (v?: string) => v && v.trim() !== '' ? v : undefined;
+
+  if (volType === 'flat') {
+      const min = parseFloat(params.min || '0');
+      const max = parseFloat(params.max || '0');
+      const steps = parseInt(params.intervals || '0');
+      
+      // Calculate derived mean for Flat mode
+      const rawAvg = (min + max) / 2;
+      const cleanAvg = Math.abs(rawAvg) >= 1 ? rawAvg.toFixed(2) : parseFloat(rawAvg.toPrecision(3)).toString();
+      
+      payload.growth_rate_percent = cleanAvg;
+      payload.vol_min = clean(params.min);
+      payload.vol_max = clean(params.max);
+      payload.vol_intervals = steps > 0 ? steps : undefined;
+  } else {
+      // For none, nrig, student_t, the user input mean is the growth rate
+      payload.growth_rate_percent = clean(params.mean);
+      
+      if (volType === 'nrig') {
+          payload.vol_mean = clean(params.mean);
+          payload.vol_alpha = clean(params.alpha);
+          
+          // Calculate safe beta based on ratio
+          const rawAlpha = parseFloat(params.alpha || '0');
+          const rawBetaRatio = parseFloat(params.beta || '0');
+          const safeBeta = rawAlpha * rawBetaRatio;
+          payload.vol_beta = safeBeta.toString();
+
+          payload.vol_scale = clean(params.scale);
+      } else if (volType === 'student_t') {
+          payload.vol_mean = clean(params.mean);
+          payload.vol_scale = clean(params.scale);
+          payload.vol_freedom = clean(params.freedom);
+      }
+  }
+  
+  return payload;
+}
+
+export function validateVolatilityParams(volType: string, params: VolatilityValidationParams): string[] {
+  const errors: string[] = [];
+
+  if (volType === 'flat') {
+    const min = parseFloat(params.min || '');
+    const max = parseFloat(params.max || '');
+    const steps = parseInt(params.intervals || '');
+
+    if (isNaN(min) || isNaN(max) || isNaN(steps)) {
+        errors.push("Min, Max, and Number of Steps are required for Flat volatility");
+    } else {
+        if (steps < 1) errors.push("Steps must be at least 1");
+        if (min >= max) errors.push("Min growth must be less than Max growth");
+    }
+  } else if (volType === 'nrig') {
+    if (!params.mean || isNaN(Number(params.mean))) {
+        errors.push("Average Growth Rate is required");
+    }
+    if (!params.alpha) errors.push("Alpha (Likelihood) is required");
+    if (!params.beta) errors.push("Beta (Skew) is required");
+    if (!params.scale) errors.push("Scale (Delta) is required");
+  } else if (volType === 'student_t') {
+    if (!params.mean || isNaN(Number(params.mean))) {
+        errors.push("Average Growth Rate is required");
+    }
+    if (!params.scale) errors.push("Scale is required");
+    if (!params.freedom) errors.push("Degrees of Freedom is required");
+  }
+
+  return errors;
+}
+
 interface VolatilityInputsProps {
   volType: string;
   setVolType: (val: string) => void;

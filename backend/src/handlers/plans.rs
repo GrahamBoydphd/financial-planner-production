@@ -11,6 +11,7 @@ use crate::errors::AppError;
 use crate::projection::SimulationResult;
 use crate::engine::generate_simulation;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use chrono::NaiveDate;
 use std::str::FromStr;
 
@@ -409,6 +410,46 @@ pub async fn get_plan_projection(
     .fetch_optional(&pool)
     .await.ok().flatten();
     
+    let mut errors = Vec::new();
+
+    for item in &revenue_items {
+        if item.volatility_type.as_deref() == Some("nrig") {
+            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
+            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
+            if alpha.powi(2) <= beta.powi(2) {
+                errors.push(format!("Revenue '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.revenue_name, alpha, beta));
+            }
+        }
+    }
+
+    for item in &expense_items {
+        if item.volatility_type.as_deref() == Some("nrig") {
+            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
+            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
+            if alpha.powi(2) <= beta.powi(2) {
+                errors.push(format!("Expense '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.expense_name, alpha, beta));
+            }
+        }
+    }
+
+    if let Some(ref cg) = capital_growth {
+        if cg.volatility_type.as_deref() == Some("nrig") {
+            let alpha = cg.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
+            let beta = cg.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
+            if alpha.powi(2) <= beta.powi(2) {
+                errors.push(format!("Capital Growth: NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", alpha, beta));
+            }
+        }
+    }
+
+    if !errors.is_empty() {
+        return Ok(Json(SimulationResult {
+            errors: Some(errors),
+            valuation_method: "error".to_string(),
+            ..Default::default()
+        }));
+    }
+
     // Run Simulation
     let initial_cash = params.initial_cash.unwrap_or(plan.initial_cash);
     let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";

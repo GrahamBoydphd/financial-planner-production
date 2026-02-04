@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api, ExpenseItem } from '@/lib/api';
 import Tooltip from '@/components/ui/Tooltip';
-import VolatilityInputs from '@/components/forms/shared/VolatilityInputs';
+import VolatilityInputs, { validateVolatilityParams, getVolatilityPayload } from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -98,34 +98,18 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
     if (!volType) newErrors.push("Volatility Model is required");
 
-    // Logic for Flat Mode
-    let finalGrowth = growth;
-    let finalIntervals: number | undefined = undefined;
-
-    if (volType === 'flat') {
-        const min = parseFloat(volMin);
-        const max = parseFloat(volMax);
-        const steps = parseInt(numSteps);
-        
-        if (isNaN(min) || isNaN(max) || isNaN(steps) || steps < 1) {
-            newErrors.push("Min, Max, and Number of Steps are required for Flat volatility");
-        } else {
-            if (min >= max) newErrors.push("Min growth must be less than Max growth");
-            
-            const rawAvg = (min + max) / 2;
-            // Clean Average Logic
-            const cleanAvg = Math.abs(rawAvg) >= 1 ? rawAvg.toFixed(2) : parseFloat(rawAvg.toPrecision(3)).toString();
-            
-            finalGrowth = cleanAvg;
-            finalIntervals = steps;
-        }
-    } else if (volType === 'nrig' || volType === 'student_t') {
-        // Use explicitly entered growth rate
-        if (!growth || isNaN(Number(growth))) {
-            newErrors.push("Average Growth Rate is required");
-        }
-        finalGrowth = growth;
-    }
+    // Centralized Volatility Validation
+    const volErrors = validateVolatilityParams(volType, {
+        min: volMin,
+        max: volMax,
+        intervals: numSteps,
+        mean: growth,
+        alpha: volAlpha,
+        beta: volBeta,
+        scale: volScale,
+        freedom: volFreedom
+    });
+    newErrors.push(...volErrors);
 
     if (newErrors.length > 0) {
         setErrors(newErrors);
@@ -133,28 +117,30 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     }
 
     try {
+        // Use centralized helper to construct volatility payload
+        const volPayload = getVolatilityPayload(volType, {
+            min: volMin,
+            max: volMax,
+            intervals: numSteps,
+            mean: growth,
+            alpha: volAlpha,
+            beta: volBeta,
+            scale: volScale,
+            freedom: volFreedom
+        });
+
         const payload = {
             plan_id: planId,
             expense_name: name,
             category,
             initial_amount: String(amount),
-            growth_rate_percent: String(finalGrowth),
             start_month: Number(startMonth),
             end_month: endMonth ? Number(endMonth) : undefined,
             frequency: freq,
             pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
 
-            volatility_type: volType as any,
-            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
-            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
-            vol_intervals: finalIntervals,
-            
-            // For advanced modes, growth is the mean
-            vol_mean: (volType === 'nrig' || volType === 'student_t') ? String(finalGrowth) : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && volScale ? String(volScale) : undefined,
-            vol_freedom: volType === 'student_t' && volFreedom ? String(volFreedom) : undefined,
-            vol_alpha: volType === 'nrig' && volAlpha ? String(volAlpha) : undefined,
-            vol_beta: volType === 'nrig' && volBeta ? String(volBeta) : undefined,
+            ...volPayload,
+            volatility_type: volPayload.volatility_type as any
         };
 
         if (itemToEdit) {

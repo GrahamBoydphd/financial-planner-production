@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import VolatilityInputs from '@/components/forms/shared/VolatilityInputs';
+import VolatilityInputs, { getVolatilityPayload, validateVolatilityParams } from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -70,54 +70,41 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
 
   const handleSave = async () => {
     setErrors({});
-    const newErrors: FormErrors = {};
 
-    // Validation
-    if (volType !== 'none') {
-        if (!mean) newErrors.volMean = "Mean (Expected Monthly Return) is required.";
-    }
+    // Use shared validation logic
+    const volErrors = validateVolatilityParams(volType, {
+        min: volMin,
+        max: volMax,
+        intervals: volIntervals,
+        mean: mean,
+        alpha: alpha,
+        beta: beta,
+        scale: scale,
+        freedom: freedom
+    });
 
-    if (volType === 'flat') {
-        if (!volMin) newErrors.volMin = "Min % is required.";
-        if (!volMax) newErrors.volMax = "Max % is required.";
-        if (!volIntervals) newErrors.volIntervals = "Intervals are required.";
-        
-        if (volMin && volMax && Number(volMin) >= Number(volMax)) {
-            newErrors.volMin = "Min % must be less than Max %.";
-        }
-    } else if (volType === 'nrig') {
-        if (!alpha) newErrors.volAlpha = "Alpha is required.";
-        if (!beta) newErrors.volBeta = "Beta is required.";
-        if (!scale) newErrors.volScale = "Scale is required.";
-    } else if (volType === 'student_t') {
-        if (!scale) newErrors.volScale = "Scale is required.";
-        if (!freedom) newErrors.volFreedom = "Freedom is required.";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
+    if (volErrors.length > 0) {
+        setErrors({ general: volErrors.join(" ") });
         return;
     }
 
     try {
+        // Use centralized helper to construct volatility payload
+        const volPayload = getVolatilityPayload(volType.toLowerCase(), {
+            min: volMin,
+            max: volMax,
+            intervals: volIntervals,
+            mean: mean,
+            alpha: alpha,
+            beta: beta,
+            scale: scale,
+            freedom: freedom
+        });
+
         const payload = {
             plan_id: planId,
-            volatility_type: volType.toLowerCase() as any,
-            
-            // Common / Student T / NRIG
-            // RENAMED: vol_mean -> growth_rate_percent
-            growth_rate_percent: mean ? String(mean) : undefined,
-            
-            // Flat Only
-            vol_min: volType === 'flat' && volMin ? String(volMin) : undefined,
-            vol_max: volType === 'flat' && volMax ? String(volMax) : undefined,
-            vol_intervals: volType === 'flat' && volIntervals ? Number(volIntervals) : undefined,
-            
-            // NRIG Only
-            vol_alpha: volType === 'nrig' && alpha ? String(alpha) : undefined,
-            vol_beta: volType === 'nrig' && beta ? String(beta) : undefined,
-            vol_scale: (volType === 'nrig' || volType === 'student_t') && scale ? String(scale) : undefined, 
-            vol_freedom: volType === 'student_t' && freedom ? String(freedom) : undefined,
+            ...volPayload,
+            volatility_type: volPayload.volatility_type as any
         };
 
         await api.upsertCapitalGrowth(payload);
@@ -175,7 +162,7 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             isAdvanced={isAdvanced}
             setIsAdvanced={setIsAdvanced}
             meanLabel='Expected Monthly Return (Mean %)'
-            alwaysShowMean={true}
+            alwaysShowMean={volType !== "flat"}
         />
 
         {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}

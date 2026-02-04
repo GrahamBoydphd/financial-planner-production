@@ -111,6 +111,7 @@ pub async fn run_fund_simulation(
     };
 
     let mut sim_states: Vec<SimState> = Vec::new();
+    let mut error_log: Vec<String> = Vec::new();
 
     // 3. Build SimState for each Company
     for company in companies {
@@ -163,10 +164,18 @@ pub async fn run_fund_simulation(
                 company.id, 
                 stop_insolvency,
                 include_init,
-                real_pooling_rate
+                real_pooling_rate,
+                &mut error_log
             ).await?;
             sim_states.push(state);
         }
+    }
+
+    if !error_log.is_empty() {
+        return Ok(Json(SimulationResult {
+            errors: Some(error_log),
+            ..Default::default()
+        }));
     }
 
     if sim_states.is_empty() {
@@ -224,6 +233,7 @@ async fn fetch_and_map_company_state(
     stop_insolvency: bool,
     include_init: bool,
     fund_pooling_rate: Decimal,
+    error_log: &mut Vec<String>,
 ) -> Result<SimState, AppError> {
     
     // Fetch Revenue
@@ -333,7 +343,7 @@ async fn fetch_and_map_company_state(
             e.likelihood_annual_pct, 
             e.magnitude, 
             e.direction, 
-            e.duration_category,
+            e.duration_category, 
             e.is_counter_cyclic,
             e.created_at as "created_at!"
         FROM events e
@@ -377,6 +387,44 @@ async fn fetch_and_map_company_state(
     )
     .fetch_optional(pool)
     .await?;
+
+    // --- NRIG Validation ---
+    for r in &revenue_items {
+        if let Some(vt) = &r.volatility_type {
+            if vt == "NRIG" {
+                let alpha = r.vol_alpha.unwrap_or(Decimal::ZERO);
+                let beta = r.vol_beta.unwrap_or(Decimal::ZERO);
+                if alpha * alpha <= beta * beta {
+                    error_log.push(format!("Company '{}': Revenue '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, r.revenue_name));
+                }
+            }
+        }
+    }
+
+    for e in &expense_items {
+        if let Some(vt) = &e.volatility_type {
+            if vt == "NRIG" {
+                let alpha = e.vol_alpha.unwrap_or(Decimal::ZERO);
+                let beta = e.vol_beta.unwrap_or(Decimal::ZERO);
+                if alpha * alpha <= beta * beta {
+                    error_log.push(format!("Company '{}': Expense '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, e.expense_name));
+                }
+            }
+        }
+    }
+
+    if let Some(g) = &capital_growth_policy {
+        if let Some(vt) = &g.volatility_type {
+            if vt == "NRIG" {
+                let alpha = g.vol_alpha.unwrap_or(Decimal::ZERO);
+                let beta = g.vol_beta.unwrap_or(Decimal::ZERO);
+                if alpha * alpha <= beta * beta {
+                    error_log.push(format!("Company '{}': Capital Growth Policy has invalid NRIG parameters (alpha^2 <= beta^2).", company_name));
+                }
+            }
+        }
+    }
+    // -----------------------
 
     // Map to Engine State
     Ok(map_to_sim_state(

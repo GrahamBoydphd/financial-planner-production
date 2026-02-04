@@ -481,6 +481,26 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
 
   if (!plan) return <Layout>Loading...</Layout>;
 
+  // --- ERROR BLOCK ---
+  if (projection?.errors && projection.errors.length > 0) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto mt-8 bg-red-50 border-l-4 border-red-500 p-6 rounded shadow-sm">
+           <h2 className="text-red-800 font-bold text-lg mb-2 flex items-center gap-2">
+             ⚠️ Simulation Failed
+           </h2>
+           <p className="text-red-700 mb-3">The financial model could not resolve the following issues:</p>
+           <ul className="list-disc pl-5 space-y-1 text-red-600 font-medium">
+              {projection.errors.map((e: string, i: number) => <li key={i}>{e}</li>)}
+           </ul>
+           <button onClick={() => window.location.reload()} className="mt-4 bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded text-sm font-bold transition-colors">
+              Reload & Try Again
+           </button>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <nav className='mb-6'>

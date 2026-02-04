@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MonthlyData {
     pub month_index: i32,
     pub date: String,
@@ -49,7 +49,7 @@ impl MonthlyData {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SimulationResult {
     pub labels: Vec<String>,
     pub valuation_method: String,
@@ -87,4 +87,6 @@ pub struct SimulationResult {
     pub p50_valuation: Option<Decimal>,
 
     pub average_event_count: Option<f64>,
+
+    pub errors: Option<Vec<String>>,
 }

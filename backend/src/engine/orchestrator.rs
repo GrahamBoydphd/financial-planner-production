@@ -368,6 +368,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             p50_valuation: None,
             all_paths: Some(fund_trajectories),
             average_event_count,
+            errors: None,
         }
     }
 }

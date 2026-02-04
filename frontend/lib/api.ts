@@ -262,6 +262,9 @@ export interface SimulationResult {
   p50_valuation?: string;
 
   average_event_count?: number;
+
+  // Error reporting
+  errors?: string[];
 }
 
 export interface Template {

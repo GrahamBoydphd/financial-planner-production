@@ -147,6 +147,10 @@ async fn copy_plan_internal(
     .await?;
     
     for item in events {
+        // Ensure the event is strictly linked to the target company.
+        // This prevents copied events from pointing to the old company or being null.
+        let new_company_ids = vec![target_company_id];
+
         sqlx::query!(
             r#"INSERT INTO events (
                 id, plan_id, fund_ids, company_ids, event_name, start_month, 
@@ -156,7 +160,7 @@ async fn copy_plan_internal(
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
             Uuid::new_v4(), new_plan_id, 
             item.fund_ids.as_deref(), 
-            item.company_ids.as_deref(), 
+            &new_company_ids, 
             item.event_name, item.start_month,
             item.event_category, item.impact_type, item.impact_value, item.duration_months,
             item.likelihood_annual_pct, item.magnitude, item.direction, item.duration_category, 
@@ -272,7 +276,7 @@ async fn copy_company_internal(
 
     // Copy Company-Level Events
     // We copy events where this company is targeted (in company_ids) and plan_id is NULL.
-    // We re-link them to the new company and the target fund.
+    // We re-link them to the new company. fund_ids MUST be NULL so they are not treated as Global/Fund events.
     sqlx::query!(
         r#"
         INSERT INTO events (
@@ -284,8 +288,8 @@ async fn copy_company_internal(
         SELECT 
             gen_random_uuid(), 
             NULL, 
+            CAST(NULL AS UUID[]), 
             ARRAY[$2]::uuid[], 
-            ARRAY[$3]::uuid[], 
             event_name, start_month, 
             event_category, impact_type, impact_value, duration_months, 
             likelihood_annual_pct, magnitude, direction, duration_category, 
@@ -294,7 +298,6 @@ async fn copy_company_internal(
         WHERE $1 = ANY(company_ids) AND plan_id IS NULL
         "#,
         source_company_id,
-        target_fund_id,
         new_company_id
     )
     .execute(&mut **txn)

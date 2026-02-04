@@ -8,11 +8,11 @@ export const ALPHA_OPTIONS = [
 ];
 
 export const BETA_OPTIONS = [
-  { label: "Downside tail is a lot fatter (Black swans)", value: -5.0, description: "More likely to crash/drop than to spike up." },
-  { label: "Downside tail is a little fatter", value: -2.0, description: "Slight negative skew." },
+  { label: "Downside tail is a lot fatter (Black swans)", value: -0.9, description: "More likely to crash/drop than to spike up." },
+  { label: "Downside tail is a little fatter", value: -0.4, description: "Slight negative skew." },
   { label: "Symmetric (Even Chance)", value: 0.0, description: "Upside and downside risks are equal." },
-  { label: "Upside tail is a little fatter", value: 2.0, description: "Slight positive skew." },
-  { label: "Upside tail is a lot fatter (White swans)", value: 5.0, description: "More likely to surprise on the upside than the downside." }
+  { label: "Upside tail is a little fatter", value: 0.4, description: "Slight positive skew." },
+  { label: "Upside tail is a lot fatter (White swans)", value: 0.9, description: "More likely to surprise on the upside than the downside." }
 ];
 
 export const SCALE_OPTIONS = [
