@@ -1,0 +1,180 @@
+   Compiling backend v0.1.0 (/home/work/3_Evolutesix/Research/Jules-BP/current/backend)
+warning: unused import: `rust_decimal::prelude::*`
+ --> src/projection.rs:3:5
+  |
+3 | use rust_decimal::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `FromPrimitive` and `ToPrimitive`
+ --> src/engine/domain.rs:5:29
+  |
+5 | use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+  |                             ^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `FromPrimitive`
+ --> src/engine/orchestrator.rs:7:29
+  |
+7 | use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+  |                             ^^^^^^^^^^^^^
+
+warning: unused import: `std::cmp::Ordering`
+ --> src/engine/orchestrator.rs:8:5
+  |
+8 | use std::cmp::Ordering;
+  |     ^^^^^^^^^^^^^^^^^^
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/revenue.rs:110:39
+    |
+110 |         let term = (1.0 - skew_factor.powi(2)).powf(1.5);
+    |                                       ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+ 90 |         let skew_factor: f32 = match skew.unwrap_or("symmetric") {
+    |                        +++++
+
+error[E0689]: can't call method `powf` on ambiguous numeric type `{float}`
+   --> src/handlers/revenue.rs:110:48
+    |
+110 |         let term = (1.0 - skew_factor.powi(2)).powf(1.5);
+    |                                                ^^^^
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/revenue.rs:111:29
+    |
+111 |         let delta_f = sigma.powi(2) * alpha_f * term;
+    |                             ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+101 |         let sigma: f32 = match width.unwrap_or("medium") {
+    |                  +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/revenue.rs:115:30
+    |
+115 |         let denom = (alpha_f.powi(2) - beta_f.powi(2)).sqrt();
+    |                              ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+ 82 |         let alpha_f: f32 = match fatness.unwrap_or("heavy") {
+    |                    +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/revenue.rs:115:47
+    |
+115 |         let denom = (alpha_f.powi(2) - beta_f.powi(2)).sqrt();
+    |                                               ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+ 98 |         let beta_f: f32 = alpha_f * skew_factor;
+    |                   +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/expenses.rs:109:39
+    |
+109 |         let term = (1.0 - skew_factor.powi(2)).powf(1.5);
+    |                                       ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+ 89 |         let skew_factor: f32 = match skew.unwrap_or("symmetric") {
+    |                        +++++
+
+error[E0689]: can't call method `powf` on ambiguous numeric type `{float}`
+   --> src/handlers/expenses.rs:109:48
+    |
+109 |         let term = (1.0 - skew_factor.powi(2)).powf(1.5);
+    |                                                ^^^^
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/expenses.rs:110:29
+    |
+110 |         let delta_f = sigma.powi(2) * alpha_f * term;
+    |                             ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+100 |         let sigma: f32 = match width.unwrap_or("medium") {
+    |                  +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/expenses.rs:114:30
+    |
+114 |         let denom = (alpha_f.powi(2) - beta_f.powi(2)).sqrt();
+    |                              ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+ 81 |         let alpha_f: f32 = match fatness.unwrap_or("heavy") {
+    |                    +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+   --> src/handlers/expenses.rs:114:47
+    |
+114 |         let denom = (alpha_f.powi(2) - beta_f.powi(2)).sqrt();
+    |                                               ^^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+ 97 |         let beta_f: f32 = alpha_f * skew_factor;
+    |                   +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> src/handlers/capital_growth.rs:86:39
+   |
+86 |         let term = (1.0 - skew_factor.powi(2)).powf(1.5);
+   |                                       ^^^^
+   |
+help: you must specify a type for this binding, like `f32`
+   |
+66 |         let skew_factor: f32 = match skew.unwrap_or("symmetric") {
+   |                        +++++
+
+error[E0689]: can't call method `powf` on ambiguous numeric type `{float}`
+  --> src/handlers/capital_growth.rs:86:48
+   |
+86 |         let term = (1.0 - skew_factor.powi(2)).powf(1.5);
+   |                                                ^^^^
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> src/handlers/capital_growth.rs:87:29
+   |
+87 |         let delta_f = sigma.powi(2) * alpha_f * term;
+   |                             ^^^^
+   |
+help: you must specify a type for this binding, like `f32`
+   |
+77 |         let sigma: f32 = match width.unwrap_or("medium") {
+   |                  +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> src/handlers/capital_growth.rs:91:30
+   |
+91 |         let denom = (alpha_f.powi(2) - beta_f.powi(2)).sqrt();
+   |                              ^^^^
+   |
+help: you must specify a type for this binding, like `f32`
+   |
+58 |         let alpha_f: f32 = match fatness.unwrap_or("heavy") {
+   |                    +++++
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> src/handlers/capital_growth.rs:91:47
+   |
+91 |         let denom = (alpha_f.powi(2) - beta_f.powi(2)).sqrt();
+   |                                               ^^^^
+   |
+help: you must specify a type for this binding, like `f32`
+   |
+74 |         let beta_f: f32 = alpha_f * skew_factor;
+   |                   +++++
+
+For more information about this error, try `rustc --explain E0689`.
+warning: `backend` (bin "backend") generated 4 warnings
+error: could not compile `backend` (bin "backend") due to 15 previous errors; 4 warnings emitted

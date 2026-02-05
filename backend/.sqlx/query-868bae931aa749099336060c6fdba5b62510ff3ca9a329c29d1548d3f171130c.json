@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id, plan_id, revenue_name, source, start_month, end_month, \n            initial_amount, growth_rate_percent, frequency, \n            cost_of_revenue_percent, volatility_type, \n            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, \n            vol_freedom, vol_alpha, vol_beta, created_at\n        FROM revenue_items\n        WHERE plan_id = $1\n        ",
+  "query": "\n        SELECT \n            id, plan_id, expense_name, category, start_month, end_month, \n            initial_amount, growth_rate_percent, frequency, \n            pct_of_revenue, volatility_type, \n            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, \n            vol_freedom, vol_alpha, vol_beta, \n            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,\n            created_at\n        FROM expense_items\n        WHERE plan_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -15,12 +15,12 @@
       },
       {
         "ordinal": 2,
-        "name": "revenue_name",
+        "name": "expense_name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "source",
+        "name": "category",
         "type_info": "Text"
       },
       {
@@ -50,7 +50,7 @@
       },
       {
         "ordinal": 9,
-        "name": "cost_of_revenue_percent",
+        "name": "pct_of_revenue",
         "type_info": "Numeric"
       },
       {
@@ -100,6 +100,36 @@
       },
       {
         "ordinal": 19,
+        "name": "target_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 20,
+        "name": "vol_mu",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 21,
+        "name": "vol_input_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "vol_fatness_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 23,
+        "name": "vol_skew_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 24,
+        "name": "vol_width_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -129,8 +159,14 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "e5dc5e01be0f95b027d410625213df216a0509a766346ce01c559630030e7490"
+  "hash": "868bae931aa749099336060c6fdba5b62510ff3ca9a329c29d1548d3f171130c"
 }

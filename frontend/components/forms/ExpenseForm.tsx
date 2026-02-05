@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api, ExpenseItem } from '@/lib/api';
 import Tooltip from '@/components/ui/Tooltip';
-import VolatilityInputs, { validateVolatilityParams, getVolatilityPayload } from '@/components/forms/shared/VolatilityInputs';
+import VolatilityInputs, { validateVolatilityParams, getVolatilityPayload, getVolatilityUIState } from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -25,15 +25,21 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
 
   // Volatility State
   const [volType, setVolType] = useState('none');
+  const [volMode, setVolMode] = useState<'simple' | 'advanced'>('simple');
+
+  // Advanced Params
   const [volMin, setVolMin] = useState('');
   const [volMax, setVolMax] = useState('');
-  const [numSteps, setNumSteps] = useState(''); // Changed from stepSize
+  const [numSteps, setNumSteps] = useState(''); 
   const [volScale, setVolScale] = useState('');
   const [volFreedom, setVolFreedom] = useState('');
   const [volAlpha, setVolAlpha] = useState('');
   const [volBeta, setVolBeta] = useState('');
 
-  const [isAdvanced, setIsAdvanced] = useState(false);
+  // Simple Params
+  const [volFatness, setVolFatness] = useState('');
+  const [volSkew, setVolSkew] = useState('');
+  const [volWidth, setVolWidth] = useState('');
 
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -49,24 +55,21 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       setFreq(itemToEdit.frequency);
       setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
 
-      // Map legacy 'none' or null to 'none'
-      const vType = (itemToEdit.volatility_type && itemToEdit.volatility_type !== 'none') ? itemToEdit.volatility_type : 'none';
-      setVolType(vType);
-
-      setVolMin(itemToEdit.vol_min ? itemToEdit.vol_min.toString() : '');
-      setVolMax(itemToEdit.vol_max ? itemToEdit.vol_max.toString() : '');
-      
-      // Direct map for numSteps
-      if (vType === 'flat' && itemToEdit.vol_intervals) {
-          setNumSteps(itemToEdit.vol_intervals.toString());
-      } else {
-          setNumSteps('');
-      }
-
-      setVolScale(itemToEdit.vol_scale ? itemToEdit.vol_scale.toString() : '');
-      setVolFreedom(itemToEdit.vol_freedom ? itemToEdit.vol_freedom.toString() : '');
-      setVolAlpha(itemToEdit.vol_alpha ? itemToEdit.vol_alpha.toString() : '');
-      setVolBeta(itemToEdit.vol_beta ? itemToEdit.vol_beta.toString() : '');
+      // Use centralized helper
+      const ui = getVolatilityUIState(itemToEdit);
+      setVolType(ui.volType);
+      setVolMode(ui.volMode);
+      setGrowth(ui.volMean);
+      setVolMin(ui.volMin);
+      setVolMax(ui.volMax);
+      setNumSteps(ui.volIntervals);
+      setVolScale(ui.volScale);
+      setVolFreedom(ui.volFreedom);
+      setVolAlpha(ui.volAlpha);
+      setVolBeta(ui.volBeta);
+      setVolFatness(ui.volFatness);
+      setVolSkew(ui.volSkew);
+      setVolWidth(ui.volWidth);
     } else {
       clearForm();
     }
@@ -76,15 +79,26 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     setName('');
     setCategory('opex');
     setAmount('');
-    setGrowth('0');
     setStartMonth('1');
     setEndMonth('');
     setFreq('monthly');
     setPctRevenue('');
-    setVolType('none');
-    setVolMin(''); setVolMax(''); setNumSteps('');
-    setVolScale(''); setVolFreedom(''); setVolAlpha(''); setVolBeta('');
-    setIsAdvanced(false);
+    
+    const defaults = getVolatilityUIState(null);
+    setVolType(defaults.volType);
+    setVolMode(defaults.volMode);
+    setGrowth(defaults.volMean);
+    setVolMin(defaults.volMin);
+    setVolMax(defaults.volMax);
+    setNumSteps(defaults.volIntervals);
+    setVolScale(defaults.volScale);
+    setVolFreedom(defaults.volFreedom);
+    setVolAlpha(defaults.volAlpha);
+    setVolBeta(defaults.volBeta);
+    setVolFatness(defaults.volFatness);
+    setVolSkew(defaults.volSkew);
+    setVolWidth(defaults.volWidth);
+
     setErrors([]);
   };
 
@@ -99,7 +113,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     if (!volType) newErrors.push("Volatility Model is required");
 
     // Centralized Volatility Validation
-    const volErrors = validateVolatilityParams(volType, {
+    const volErrors = validateVolatilityParams(volType, volMode, {
         min: volMin,
         max: volMax,
         intervals: numSteps,
@@ -107,7 +121,10 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         alpha: volAlpha,
         beta: volBeta,
         scale: volScale,
-        freedom: volFreedom
+        freedom: volFreedom,
+        fatness: volFatness,
+        skew: volSkew,
+        width: volWidth
     });
     newErrors.push(...volErrors);
 
@@ -126,8 +143,11 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
             alpha: volAlpha,
             beta: volBeta,
             scale: volScale,
-            freedom: volFreedom
-        });
+            freedom: volFreedom,
+            fatness: volFatness,
+            skew: volSkew,
+            width: volWidth
+        }, volMode);
 
         const payload = {
             plan_id: planId,
@@ -244,8 +264,14 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         setVolAlpha={setVolAlpha}
         volBeta={volBeta}
         setVolBeta={setVolBeta}
-        isAdvanced={isAdvanced}
-        setIsAdvanced={setIsAdvanced}
+        volMode={volMode}
+        setVolMode={setVolMode}
+        volFatness={volFatness}
+        setVolFatness={setVolFatness}
+        volSkew={volSkew}
+        setVolSkew={setVolSkew}
+        volWidth={volWidth}
+        setVolWidth={setVolWidth}
         meanLabel="Average Growth Rate (Mean)"
         alwaysShowMean={volType !== "flat"}
       />

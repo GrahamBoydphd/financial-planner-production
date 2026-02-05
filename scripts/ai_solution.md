@@ -1,1818 +1,460 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='backend/src/projection.rs'>
-use serde::{Deserialize, Serialize};
-use rust_decimal::Decimal;
-use rust_decimal::prelude::*;
+<file path='frontend/components/forms/shared/VolatilityInputs.tsx'>
+'use client';
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct MonthlyData {
-    pub month_index: i32,
-    pub date: String,
-    pub revenue: Decimal,
-    pub cogs: Decimal,
-    pub gross_profit: Decimal,
-    pub opex: Decimal,
-    pub interest_expense: Decimal,
-    pub net_income: Decimal,
-    pub treasury_gain: Decimal,
-    pub cash_balance: Decimal,
-    pub dividend_paid: Decimal,
-    pub cumulative_dividends: Decimal,
-    pub cumulative_external_capital: Decimal,
-    pub cumulative_pool_received: Decimal,
-    pub total_value: Decimal,
-    pub is_solvent: bool,
-    pub total_companies: i32,
-    pub solvent_companies: i32,
+import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
+import Tooltip from '@/components/ui/Tooltip';
+
+// --- Validation Helper ---
+export interface VolatilityValidationParams {
+  min?: string;
+  max?: string;
+  intervals?: string;
+  mean?: string;
+  alpha?: string;
+  beta?: string;
+  scale?: string;
+  freedom?: string;
+  fatness?: string;
+  skew?: string;
+  width?: string;
 }
 
-impl MonthlyData {
-    pub fn new_empty(month: i32) -> Self {
-        Self {
-            month_index: month,
-            date: format!("Month {}", month),
-            revenue: Decimal::ZERO,
-            cogs: Decimal::ZERO,
-            gross_profit: Decimal::ZERO,
-            opex: Decimal::ZERO,
-            interest_expense: Decimal::ZERO,
-            net_income: Decimal::ZERO,
-            treasury_gain: Decimal::ZERO,
-            cash_balance: Decimal::ZERO,
-            dividend_paid: Decimal::ZERO,
-            cumulative_dividends: Decimal::ZERO,
-            cumulative_external_capital: Decimal::ZERO,
-            cumulative_pool_received: Decimal::ZERO,
-            total_value: Decimal::ZERO,
-            is_solvent: true,
-            total_companies: 1,
-            solvent_companies: 1,
-        }
-    }
+export interface VolatilityPayloadResult {
+  volatility_type: string;
+  growth_rate_percent?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct SimulationResult {
-    pub labels: Vec<String>,
-    pub valuation_method: String,
-    pub deterministic_data: Vec<MonthlyData>,
-    pub single_run_data: Option<Vec<MonthlyData>>,
-    pub single_run_value: Option<Vec<Decimal>>,
-    
-    pub p0_value: Option<Vec<Decimal>>,
-    pub p10_value: Option<Vec<Decimal>>,
-    pub p25_value: Option<Vec<Decimal>>,
-    pub p50_value: Option<Vec<Decimal>>,
-    pub p75_value: Option<Vec<Decimal>>,
-    pub p90_value: Option<Vec<Decimal>>,
-    pub p100_value: Option<Vec<Decimal>>,
-
-    pub p0_solvent_count: Vec<i32>,
-    pub p10_solvent_count: Vec<i32>,
-    pub p25_solvent_count: Vec<i32>,
-    pub p50_solvent_count: Vec<i32>,
-    pub p75_solvent_count: Vec<i32>,
-    pub p90_solvent_count: Vec<i32>,
-    pub p100_solvent_count: Vec<i32>,
-    
-    pub all_paths: Option<Vec<Vec<MonthlyData>>>,
-    
-    pub p50_pool_cumulative: Option<Vec<Decimal>>,
-    pub p50_data: Option<Vec<MonthlyData>>,
-    pub survival_rate: Option<Vec<Decimal>>,
-    
-    pub deterministic_runway: Option<i32>,
-    pub deterministic_valuation: Decimal,
-    pub single_run_runway: Option<i32>,
-    pub single_run_valuation: Option<Decimal>,
-    pub p50_runway: Option<i32>,
-    pub p50_valuation: Option<Decimal>,
-
-    pub average_event_count: Option<f64>,
-
-    pub errors: Option<Vec<String>>,
-}
-</file>
-
-<file path='backend/src/engine/orchestrator.rs'>
-use crate::engine::domain::{Universe, SimState, Shock};
-use crate::engine::event_manager::EventManager;
-use crate::models::Event;
-use crate::projection::{SimulationResult, MonthlyData};
-use crate::distributions::VolatilityModel;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use std::cmp::Ordering;
-use std::marker::PhantomData;
-use uuid::Uuid;
-
-pub trait SimulationMode {}
-pub struct PortfolioMode;
-impl SimulationMode for PortfolioMode {}
-pub struct EnsembleMode;
-impl SimulationMode for EnsembleMode {}
-
-pub struct FundOrchestrator<Mode: SimulationMode> {
-    pub universes: Vec<Universe>,
-    pub deterministic_universe: Universe,
-    pub months: i32,
-    pub events: Vec<Event>,
-    pub event_manager: EventManager,
-    pub events_active: bool,
-    _marker: PhantomData<Mode>,
+export interface VolatilityUIState {
+  volType: string;
+  volMode: 'simple' | 'advanced';
+  volMean: string;
+  volMin: string;
+  volMax: string;
+  volIntervals: string;
+  volScale: string;
+  volFreedom: string;
+  volAlpha: string;
+  volBeta: string;
+  volFatness: string;
+  volSkew: string;
+  volWidth: string;
 }
 
-impl<Mode: SimulationMode> FundOrchestrator<Mode> {
-    pub fn new(iterations: usize, initial_states: Vec<SimState>, months: i32, stop_insolvency: bool, events_active: bool, events: Vec<Event>) -> Self {
-        // 1. Create Monte Carlo Universes
-        let mut universes = Vec::with_capacity(iterations);
-        for _ in 0..iterations {
-            universes.push(Universe::new(initial_states.clone()));
-        }
+/**
+ * Centralized helper to map API data to UI state for Volatility Inputs.
+ * Handles NRIG Beta Ratio recovery and Hybrid Mode loading.
+ */
+export function getVolatilityUIState(data: any): VolatilityUIState {
+  if (!data) {
+      return {
+          volType: 'none',
+          volMode: 'simple',
+          volMean: '',
+          volMin: '',
+          volMax: '',
+          volIntervals: '',
+          volScale: '',
+          volFreedom: '',
+          volAlpha: '',
+          volBeta: '',
+          volFatness: '',
+          volSkew: '',
+          volWidth: ''
+      };
+  }
 
-        // Apply stop_insolvency to MC universes AND Initialize Month 0
-        for u in universes.iter_mut() {
-            for c in u.companies.iter_mut() {
-                c.stop_on_insolvency = stop_insolvency;
-                c.initialize();
-            }
-        }
+  const volType = (data.volatility_type && data.volatility_type !== 'none') ? data.volatility_type : 'none';
+  
+  // Map vol_input_mode -> volMode (Priority: vol_input_mode > vol_mode > default)
+  const volMode = (data.vol_input_mode === 'simple' || data.vol_input_mode === 'advanced') 
+      ? data.vol_input_mode 
+      : ((data.vol_mode === 'simple' || data.vol_mode === 'advanced') ? data.vol_mode : 'simple');
 
-        // 2. Create Deterministic Universe (No Volatility)
-        let mut det_states = initial_states.clone();
-        for state in det_states.iter_mut() {
-            // Sanitize Revenue
-            for item in state.revenue_states.iter_mut() {
-                let mean = item.sampler.mean();
-                item.sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-            }
-            // Sanitize Expenses
-            for item in state.expense_states.iter_mut() {
-                let mean = item.sampler.mean();
-                item.sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-            }
-            // Sanitize Capital Growth Policy
-            if let Some(sampler) = &mut state.cap_growth_sampler {
-                let mean = sampler.mean();
-                sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-            }
-        }
-        
-        let mut deterministic_universe = Universe::new(det_states);
-        
-        // Apply stop_insolvency to Deterministic universe AND Initialize Month 0
-        for c in deterministic_universe.companies.iter_mut() {
-            c.stop_on_insolvency = stop_insolvency;
-            c.initialize();
-        }
+  const str = (v: any) => (v !== undefined && v !== null) ? String(v) : '';
 
-        Self { 
-            universes, 
-            deterministic_universe, 
-            months,
-            events,
-            event_manager: EventManager::new(),
-            events_active,
-            _marker: PhantomData 
-        }
-    }
+  // Mean mapping: target_mean -> growth_rate_percent -> vol_mean
+  const volMean = (data.target_mean !== undefined && data.target_mean !== null)
+      ? String(data.target_mean)
+      : (data.growth_rate_percent !== undefined && data.growth_rate_percent !== null)
+          ? String(data.growth_rate_percent)
+          : str(data.vol_mean);
 
-    /// Steps a universe forward by one month.
-    /// Returns the total "pool pot" collected from this universe (if any).
-    /// 
-    /// - `enable_horizontal_pooling`: If true, distributes the pot within the universe immediately.
-    /// - `apply_reaper`: If true, checks for insolvency and marks companies as dead if cash < 0.
-    /// - `shocks`: List of active shocks to apply to companies in this step.
-    fn step_universe(universe: &mut Universe, month_idx: i32, enable_horizontal_pooling: bool, apply_reaper: bool, shocks: &[Shock]) -> f64 {
-        let mut pool_pot = 0.0;
-        let mut solvent_count = 0;
+  const volMin = str(data.vol_min);
+  const volMax = str(data.vol_max);
+  const volIntervals = str(data.vol_intervals);
+  const volScale = str(data.vol_scale);
+  const volFreedom = str(data.vol_freedom);
+  const volAlpha = str(data.vol_alpha);
+  
+  let volBeta = str(data.vol_beta);
 
-        // TICK: Step all companies and collect pool contributions
-        for company in universe.companies.iter_mut() {
-            // Filter shocks relevant to this company
-            let company_shocks: Vec<Shock> = shocks.iter()
-                .filter(|s| s.target_company_id == Some(company.id) || s.target_company_id.is_none())
-                .cloned()
-                .collect();
+  // NRIG Beta Recovery: stored beta is (alpha * ratio). UI needs ratio.
+  if (volType === 'nrig' && volAlpha && Number(volAlpha) !== 0 && volBeta) {
+      const ratio = Number(volBeta) / Number(volAlpha);
+      volBeta = ratio.toFixed(1);
+  }
 
-            let (_, actual_contribution) = company.step(month_idx, &company_shocks);
+  // Simple Mode Keys
+  const volFatness = str(data.vol_fatness_level);
+  const volSkew = str(data.vol_skew_level);
+  const volWidth = str(data.vol_width_level);
 
-            if company.is_solvent {
-                solvent_count += 1;
-                pool_pot += actual_contribution;
-            }
-        }
-
-        // TOCK: Distribute pool to solvent companies (Horizontal Pooling)
-        if enable_horizontal_pooling {
-            if solvent_count > 0 && pool_pot > 0.0 {
-                let share = pool_pot / solvent_count as f64;
-
-                for company in universe.companies.iter_mut() {
-                    if company.is_solvent {
-                        // Update Company State
-                        company.current_cash += share;
-                        company.cum_pool_received += share;
-
-                        // Update History
-                        if let Some(last_entry) = company.history.last_mut() {
-                            last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
-                            last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
-                            last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
-                        }
-                    }
-                }
-            }
-            // Pot is consumed locally
-            pool_pot = 0.0; 
-        }
-
-        // REAPER: Check for insolvency after all cash movements
-        if apply_reaper {
-            Self::run_reaper(universe);
-        }
-
-        // Return the pot (only non-zero if enable_horizontal_pooling is false)
-        pool_pot
-    }
-
-    fn run_reaper(universe: &mut Universe) {
-        for company in universe.companies.iter_mut() {
-            // Calculate effective floor based on credit facility
-            let credit_limit = company.credit_facility.as_ref().map(|c| c.facility_limit).unwrap_or(0.0);
-            let effective_floor = company.insolvency_threshold - credit_limit;
-
-            if company.stop_on_insolvency && company.current_cash < effective_floor {
-                company.is_solvent = false;
-                if let Some(last) = company.history.last_mut() {
-                    last.is_solvent = false;
-                }
-            }
-        }
-    }
-
-    fn aggregate_universe_history(universe: &Universe, months: i32) -> Vec<MonthlyData> {
-        let mut universe_history = Vec::with_capacity((months + 1) as usize);
-        let total_fund_companies = universe.companies.len() as i32;
-        
-        for m in 0..=months {
-            let month_idx = m as usize;
-            
-            // Accumulators
-            let mut total_revenue = 0.0;
-            let mut total_opex = 0.0;
-            let mut total_net_income = 0.0;
-            let mut total_treasury = 0.0;
-            let mut total_cash = 0.0;
-            let mut total_value = 0.0;
-            let mut total_pool_received = 0.0;
-            let mut sum_investment = 0.0;
-            let mut solvent_companies = 0;
-
-            for company in &universe.companies {
-                // Safety: Ensure we don't panic if history is missing
-                if let Some(data) = company.history.get(month_idx) {
-                    total_revenue += data.revenue.to_f64().unwrap_or(0.0);
-                    total_opex += data.opex.to_f64().unwrap_or(0.0);
-                    total_net_income += data.net_income.to_f64().unwrap_or(0.0);
-                    total_treasury += data.treasury_gain.to_f64().unwrap_or(0.0);
-                    total_cash += data.cash_balance.to_f64().unwrap_or(0.0);
-                    total_value += data.total_value.to_f64().unwrap_or(0.0);
-                    total_pool_received += data.cumulative_pool_received.to_f64().unwrap_or(0.0);
-                    sum_investment += data.cumulative_external_capital.to_f64().unwrap_or(0.0);
-                    
-                    if data.is_solvent {
-                        solvent_companies += 1;
-                    }
-                }
-            }
-
-            // Construct MonthlyData for the Fund (Universe)
-            universe_history.push(MonthlyData {
-                month_index: m,
-                date: format!("Month {}", m),
-                revenue: Decimal::from_f64_retain(total_revenue).unwrap_or_default(),
-                cogs: Decimal::ZERO, 
-                gross_profit: Decimal::ZERO, 
-                opex: Decimal::from_f64_retain(total_opex).unwrap_or_default(),
-                interest_expense: Decimal::ZERO,
-                net_income: Decimal::from_f64_retain(total_net_income).unwrap_or_default(),
-                treasury_gain: Decimal::from_f64_retain(total_treasury).unwrap_or_default(),
-                cash_balance: Decimal::from_f64_retain(total_cash).unwrap_or_default(),
-                dividend_paid: Decimal::ZERO,
-                cumulative_dividends: Decimal::ZERO,
-                cumulative_external_capital: Decimal::from_f64_retain(sum_investment).unwrap_or_default(),
-                cumulative_pool_received: Decimal::from_f64_retain(total_pool_received).unwrap_or_default(),
-                total_value: Decimal::from_f64_retain(total_value).unwrap_or_default(),
-                is_solvent: solvent_companies > 0,
-                total_companies: total_fund_companies,
-                solvent_companies: solvent_companies,
-            });
-        }
-        universe_history
-    }
-
-    fn finalize_results(self, fund_trajectories: Vec<Vec<MonthlyData>>, deterministic_data: Vec<MonthlyData>, total_events_triggered: usize) -> SimulationResult {
-        let iterations = fund_trajectories.len();
-        
-        // Generate Labels
-        let mut labels = Vec::new();
-        for m in 0..=self.months {
-            labels.push(format!("Month {}", m));
-        }
-
-        // Statistical Aggregation
-        let cap = (self.months + 1) as usize;
-        let mut p0_vec = Vec::with_capacity(cap);
-        let mut p10_vec = Vec::with_capacity(cap);
-        let mut p25_vec = Vec::with_capacity(cap);
-        let mut p50_vec = Vec::with_capacity(cap);
-        let mut p75_vec = Vec::with_capacity(cap);
-        let mut p90_vec = Vec::with_capacity(cap);
-        let mut p100_vec = Vec::with_capacity(cap);
-
-        let mut p0_count = Vec::with_capacity(cap);
-        let mut p10_count = Vec::with_capacity(cap);
-        let mut p25_count = Vec::with_capacity(cap);
-        let mut p50_count = Vec::with_capacity(cap);
-        let mut p75_count = Vec::with_capacity(cap);
-        let mut p90_count = Vec::with_capacity(cap);
-        let mut p100_count = Vec::with_capacity(cap);
-
-        let mut survival_vec = Vec::with_capacity(cap);
-        let mut p50_data = Vec::with_capacity(cap);
-
-        if !fund_trajectories.is_empty() {
-            for m_idx in 0..cap {
-                let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
-                let mut solvent_universes = 0;
-
-                for run in &fund_trajectories {
-                    if let Some(data) = run.get(m_idx) {
-                        snapshots.push(data);
-                        
-                        if data.is_solvent {
-                            solvent_universes += 1;
-                        }
-                    }
-                }
-
-                // Sort snapshots by Cash Balance (instead of Total Value)
-                snapshots.sort_by(|a, b| a.cash_balance.cmp(&b.cash_balance));
-                let len = snapshots.len();
-
-                if len > 0 {
-                    let get_snapshot = |idx: usize| -> &MonthlyData {
-                        snapshots[idx]
-                    };
-
-                    let p0 = get_snapshot(0);
-                    let p10 = get_snapshot((len as f64 * 0.10) as usize);
-                    let p25 = get_snapshot((len as f64 * 0.25) as usize);
-                    let p50 = get_snapshot((len as f64 * 0.50) as usize);
-                    let p75 = get_snapshot((len as f64 * 0.75) as usize);
-                    let p90 = get_snapshot((len as f64 * 0.90) as usize);
-                    let p100 = get_snapshot(len - 1);
-
-                    // Push Values (Cash Balance)
-                    p0_vec.push(p0.cash_balance);
-                    p10_vec.push(p10.cash_balance);
-                    p25_vec.push(p25.cash_balance);
-                    p50_vec.push(p50.cash_balance);
-                    p75_vec.push(p75.cash_balance);
-                    p90_vec.push(p90.cash_balance);
-                    p100_vec.push(p100.cash_balance);
-
-                    // Push Solvent Counts
-                    p0_count.push(p0.solvent_companies);
-                    p10_count.push(p10.solvent_companies);
-                    p25_count.push(p25.solvent_companies);
-                    p50_count.push(p50.solvent_companies);
-                    p75_count.push(p75.solvent_companies);
-                    p90_count.push(p90.solvent_companies);
-                    p100_count.push(p100.solvent_companies);
-
-                    // P50 Data (Full Snapshot - Median Cash)
-                    p50_data.push(p50.clone());
-                }
-
-                let rate = if iterations > 0 {
-                    solvent_universes as f64 / iterations as f64
-                } else {
-                    0.0
-                };
-                survival_vec.push(Decimal::from_f64_retain(rate).unwrap_or_default());
-            }
-        }
-
-        // Calculate Single Run Data (Median Trajectory)
-        let mut single_run_data = None;
-        let mut single_run_value = None;
-
-        if !fund_trajectories.is_empty() {
-            // Sort indices based on the total_value of the last month
-            let mut indices: Vec<usize> = (0..fund_trajectories.len()).collect();
-            indices.sort_by(|&a, &b| {
-                let val_a = fund_trajectories[a].last().map(|m| m.total_value).unwrap_or(Decimal::ZERO);
-                let val_b = fund_trajectories[b].last().map(|m| m.total_value).unwrap_or(Decimal::ZERO);
-                val_a.cmp(&val_b)
-            });
-
-            // Pick the median trajectory
-            if !indices.is_empty() {
-                let median_idx = indices[indices.len() / 2];
-                let selected_run = &fund_trajectories[median_idx];
-
-                single_run_data = Some(selected_run.clone());
-                single_run_value = Some(selected_run.iter().map(|m| m.total_value).collect());
-            }
-        }
-
-        let average_event_count = if iterations > 0 {
-            Some(total_events_triggered as f64 / iterations as f64)
-        } else {
-            Some(0.0)
-        };
-
-        SimulationResult {
-            labels,
-            valuation_method: "fund_nav".to_string(),
-            deterministic_data,
-            single_run_data,
-            single_run_value,
-            p0_value: Some(p0_vec),
-            p10_value: Some(p10_vec),
-            p25_value: Some(p25_vec),
-            p50_value: Some(p50_vec),
-            p75_value: Some(p75_vec),
-            p90_value: Some(p90_vec),
-            p100_value: Some(p100_vec),
-            p0_solvent_count: p0_count,
-            p10_solvent_count: p10_count,
-            p25_solvent_count: p25_count,
-            p50_solvent_count: p50_count,
-            p75_solvent_count: p75_count,
-            p90_solvent_count: p90_count,
-            p100_solvent_count: p100_count,
-            p50_pool_cumulative: None,
-            p50_data: Some(p50_data),
-            survival_rate: Some(survival_vec),
-            deterministic_runway: None,
-            deterministic_valuation: Decimal::ZERO,
-            single_run_runway: None,
-            single_run_valuation: None,
-            p50_runway: None,
-            p50_valuation: None,
-            all_paths: Some(fund_trajectories),
-            average_event_count,
-            errors: None,
-        }
-    }
+  return {
+      volType,
+      volMode,
+      volMean,
+      volMin,
+      volMax,
+      volIntervals,
+      volScale,
+      volFreedom,
+      volAlpha,
+      volBeta,
+      volFatness,
+      volSkew,
+      volWidth
+  };
 }
 
-impl FundOrchestrator<PortfolioMode> {
-    pub fn run(mut self) -> SimulationResult {
-        let iterations = self.universes.len();
-        let mut total_events_triggered = 0;
-        
-        for month_idx in 1..=self.months {
-            // A. Step Monte Carlo Universes (Horizontal Pooling ON, Reaper ON)
-            for universe in self.universes.iter_mut() {
-                // 1. Generate stochastic shocks for this universe
-                let mut monthly_shocks = Vec::new();
-                for event in &self.events {
-                    // Skip deterministic events (handled elsewhere)
-                    if event.start_month.is_some() { continue; }
+/**
+ * Centralized logic to prepare the volatility payload for the API.
+ * Handles the 'Flat' mode mean calculation and parameter mapping.
+ */
+export function getVolatilityPayload(volType: string, params: VolatilityValidationParams, volMode: 'simple' | 'advanced' = 'simple'): VolatilityPayloadResult {
+  const payload: VolatilityPayloadResult = {
+      volatility_type: volType,
+      vol_input_mode: volMode,
+      vol_mode: volMode // Legacy support
+  };
 
-                    if self.events_active && self.event_manager.check_trigger(event) {
-                        total_events_triggered += 1;
-                        
-                        let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
-                        
-                        // Identify targets
-                        let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
-                            // Fund Scope: Target all companies
-                            universe.companies.iter().map(|c| c.id).collect()
-                        } else {
-                            // Company Scope: Target specific companies
-                            event.company_ids.clone().unwrap_or_default()
-                        };
+  const clean = (v?: string) => v && v.trim() !== '' ? v : undefined;
 
-                        if is_counter_cyclic {
-                            // Counter-Cyclic: Independent shocks per company
-                            for target_id in targets {
-                                let (value, duration) = self.event_manager.resolve_impact(event);
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        } else {
-                            // Standard: Correlated shock (Same impact for all)
-                            let (value, duration) = self.event_manager.resolve_impact(event);
-                            for target_id in targets {
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        }
-                    }
-                }
+  if (volType === 'flat') {
+      const min = parseFloat(params.min || '0');
+      const max = parseFloat(params.max || '0');
+      const steps = parseInt(params.intervals || '0');
+      
+      // Calculate derived mean for Flat mode
+      const rawAvg = (min + max) / 2;
+      const cleanAvg = Math.abs(rawAvg) >= 1 ? rawAvg.toFixed(2) : parseFloat(rawAvg.toPrecision(3)).toString();
+      
+      payload.growth_rate_percent = cleanAvg;
+      payload.target_mean = cleanAvg; // Required mapping
+      payload.vol_min = clean(params.min);
+      payload.vol_max = clean(params.max);
+      payload.vol_intervals = steps > 0 ? steps : undefined;
+  } else {
+      // For none, nrig, student_t, the user input mean is the growth rate
+      payload.growth_rate_percent = clean(params.mean);
+      payload.target_mean = clean(params.mean); // Required mapping
+      
+      if (volType === 'nrig') {
+          payload.vol_mean = clean(params.mean);
+          // vol_input_mode and vol_mode are now set at top level
 
-                // 2. Step universe with shocks
-                Self::step_universe(universe, month_idx, true, true, &monthly_shocks);
-            }
+          if (volMode === 'simple') {
+              payload.vol_fatness_level = clean(params.fatness);
+              payload.vol_skew_level = clean(params.skew);
+              payload.vol_width_level = clean(params.width);
+          } else {
+              // Advanced
+              payload.vol_alpha = clean(params.alpha);
+              
+              // Calculate safe beta based on ratio
+              const rawAlpha = parseFloat(params.alpha || '0');
+              const rawBetaRatio = parseFloat(params.beta || '0');
+              const safeBeta = rawAlpha * rawBetaRatio;
+              payload.vol_beta = safeBeta.toString();
 
-            // B. Step Deterministic Universe (Horizontal Pooling ON, Reaper ON)
-            // No stochastic shocks for deterministic run
-            Self::step_universe(&mut self.deterministic_universe, month_idx, true, true, &[]);
-        }
-
-        let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
-        let mut fund_trajectories = Vec::with_capacity(iterations);
-        for universe in self.universes.iter() {
-            fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
-        }
-
-        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered)
-    }
+              payload.vol_scale = clean(params.scale);
+          }
+      } else if (volType === 'student_t') {
+          payload.vol_mean = clean(params.mean);
+          payload.vol_scale = clean(params.scale);
+          payload.vol_freedom = clean(params.freedom);
+      }
+  }
+  
+  return payload;
 }
 
-impl FundOrchestrator<EnsembleMode> {
-    pub fn run(mut self) -> SimulationResult {
-        let iterations = self.universes.len();
-        let mut total_events_triggered = 0;
-        
-        for month_idx in 1..=self.months {
-            let mut total_pot = 0.0;
-            let mut solvent_universes_indices = Vec::new();
+export function validateVolatilityParams(volType: string, volMode: 'simple' | 'advanced', params: VolatilityValidationParams): string[] {
+  const errors: string[] = [];
 
-            // A. Step Monte Carlo Universes (Horizontal Pooling OFF, Reaper OFF)
-            for (i, universe) in self.universes.iter_mut().enumerate() {
-                // 1. Generate stochastic shocks for this universe
-                let mut monthly_shocks = Vec::new();
-                for event in &self.events {
-                    if event.start_month.is_some() { continue; }
+  if (volType === 'flat') {
+    const min = parseFloat(params.min || '');
+    const max = parseFloat(params.max || '');
+    const steps = parseInt(params.intervals || '');
 
-                    if self.events_active && self.event_manager.check_trigger(event) {
-                        total_events_triggered += 1;
-
-                        let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
-
-                        let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
-                            universe.companies.iter().map(|c| c.id).collect()
-                        } else {
-                            event.company_ids.clone().unwrap_or_default()
-                        };
-
-                        if is_counter_cyclic {
-                            // Counter-Cyclic: Independent shocks per company
-                            for target_id in targets {
-                                let (value, duration) = self.event_manager.resolve_impact(event);
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        } else {
-                            // Standard: Correlated shock
-                            let (value, duration) = self.event_manager.resolve_impact(event);
-                            for target_id in targets {
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        }
-                    }
-                }
-
-                // 2. Step universe with shocks
-                let pot = Self::step_universe(universe, month_idx, false, false, &monthly_shocks);
-                total_pot += pot;
-
-                // Check if universe is "alive" (has at least one solvent company)
-                if universe.companies.iter().any(|c| c.is_solvent) {
-                    solvent_universes_indices.push(i);
-                }
-            }
-
-            // B. Vertical Pooling Logic
-            let solvent_count = solvent_universes_indices.len();
-            if solvent_count > 0 && total_pot > 0.0 {
-                let share = total_pot / solvent_count as f64;
-
-                for idx in solvent_universes_indices {
-                    let universe = &mut self.universes[idx];
-                    
-                    // Distribute share to this universe's solvent companies
-                    let universe_solvent_companies = universe.companies.iter().filter(|c| c.is_solvent).count();
-                    
-                    if universe_solvent_companies > 0 {
-                        let company_share = share / universe_solvent_companies as f64;
-                        
-                        for company in universe.companies.iter_mut() {
-                            if company.is_solvent {
-                                company.current_cash += company_share;
-                                company.cum_pool_received += company_share;
-                                
-                                // Update History for this month
-                                if let Some(last_entry) = company.history.last_mut() {
-                                    last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
-                                    last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
-                                    last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // C. Run Reaper (Delayed Death)
-            for universe in self.universes.iter_mut() {
-                Self::run_reaper(universe);
-            }
-
-            // D. Step Deterministic Universe (Standard Mode)
-            Self::step_universe(&mut self.deterministic_universe, month_idx, true, true, &[]);
-        }
-
-        let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
-        let mut fund_trajectories = Vec::with_capacity(iterations);
-        for universe in self.universes.iter() {
-            fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
-        }
-
-        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered)
-    }
-}
-</file>
-
-<file path='backend/src/handlers/plans.rs'>
-use axum::{
-    extract::{Path, State, Query, Extension},
-    http::StatusCode,
-    Json,
-};
-use serde::{Deserialize};
-use sqlx::{Pool, Postgres};
-use uuid::Uuid;
-use crate::models::{FinancialPlan, Claims, CreatePlanRequest, UpdatePlanRequest};
-use crate::errors::AppError;
-use crate::projection::SimulationResult;
-use crate::engine::generate_simulation;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::ToPrimitive;
-use chrono::NaiveDate;
-use std::str::FromStr;
-
-#[derive(Deserialize)]
-pub struct GetProjectionQuery {
-    pub months: Option<i32>,
-    pub initial_cash: Option<Decimal>,
-    pub mode: Option<String>,
-    pub stop_insolvency: Option<bool>,
-    pub events_active: Option<bool>,
-}
-
-pub async fn create_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<CreatePlanRequest>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    // Length Validation
-    if payload.plan_name.len() > 255 {
-        return Err(AppError::ValidationError("Plan name exceeds 255 characters".to_string()));
-    }
-    if let Some(ref code) = payload.currency_code {
-        if code.len() > 3 {
-            return Err(AppError::ValidationError("Currency code must be 3 characters".to_string()));
-        }
-    }
-
-    let currency = payload.currency_code.unwrap_or_else(|| "USD".to_string());
-    
-    let insolvency_threshold = if let Some(s) = payload.insolvency_threshold {
-        Decimal::from_str(&s).map_err(|_| AppError::ValidationError("Invalid insolvency threshold".to_string()))?
+    if (isNaN(min) || isNaN(max) || isNaN(steps)) {
+        errors.push("Min, Max, and Number of Steps are required for Flat volatility");
     } else {
-        Decimal::from(100)
-    };
-
-    let plan = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id, insolvency_threshold) 
-        VALUES ($1, $2, $3, $4, $5, $6) 
-        RETURNING 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
-        "#,
-        payload.company_id,
-        payload.plan_name,
-        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
-        currency,
-        claims.tenant_id,
-        insolvency_threshold
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(plan))
-}
-
-pub async fn update_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<UpdatePlanRequest>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    // Length Validation
-    if let Some(ref name) = payload.plan_name {
-        if name.len() > 255 {
-            return Err(AppError::ValidationError("Plan name exceeds 255 characters".to_string()));
-        }
+        if (steps < 1) errors.push("Steps must be at least 1");
+        if (min >= max) errors.push("Min growth must be less than Max growth");
     }
-
-    let start_date = payload.start_month
-        .as_deref()
-        .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
-        .flatten();
-
-    let initial_cash = payload.initial_cash
-        .as_deref()
-        .map(|s| Decimal::from_str(s).ok())
-        .flatten();
-
-    let insolvency_threshold = payload.insolvency_threshold
-        .as_deref()
-        .map(|s| Decimal::from_str(s).ok())
-        .flatten();
-
-    let plan: Option<FinancialPlan> = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        UPDATE financial_plans 
-        SET plan_name = COALESCE($1, plan_name), 
-            start_month = COALESCE($2, start_month), 
-            pooling_fraction = COALESCE($3, pooling_fraction),
-            initial_cash = COALESCE($4, initial_cash),
-            insolvency_threshold = COALESCE($5, insolvency_threshold),
-            updated_at = NOW() 
-        WHERE id = $6 AND tenant_id = $7
-        RETURNING 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
-        "#,
-        payload.plan_name,
-        start_date,
-        payload.pooling_fraction,
-        initial_cash,
-        insolvency_threshold,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
-
-    Ok(Json(plan))
-}
-
-pub async fn get_all_plans(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-) -> Result<Json<Vec<FinancialPlan>>, AppError> {
-    let plans = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        SELECT 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
-        FROM financial_plans 
-        WHERE tenant_id = $1 
-        ORDER BY created_at DESC
-        "#,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    Ok(Json(plans))
-}
-
-pub async fn get_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    let plan: Option<FinancialPlan> = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        SELECT 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
-        FROM financial_plans 
-        WHERE id = $1 AND tenant_id = $2
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
-
-    Ok(Json(plan))
-}
-
-pub async fn delete_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, AppError> {
-    let result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
-        .execute(&pool)
-        .await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound("Plan not found".to_string()));
+  } else if (volType === 'nrig') {
+    if (!params.mean || isNaN(Number(params.mean))) {
+        errors.push("Average Growth Rate is required");
     }
-
-    Ok(StatusCode::NO_CONTENT)
-}
-
-// --- PROJECTION LOGIC ---
-
-pub async fn get_plan_projection(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-    Query(params): Query<GetProjectionQuery>,
-) -> Result<Json<SimulationResult>, AppError> {
     
-    // DoS Protection: Check months limit
-    let months = params.months.unwrap_or(60);
-    if months > 1200 {
-        return Err(AppError::ValidationError("Simulation limited to 100 years (1200 months)".into()));
-    }
-
-    // Fetch Plan Info
-    let plan: Option<FinancialPlan> = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        SELECT 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
-        FROM financial_plans 
-        WHERE id = $1 AND tenant_id = $2
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
-
-    // Fetch Inputs with strict tenant isolation in subqueries
-    let revenue_items: Vec<crate::models::RevenueItem> = sqlx::query_as!(
-        crate::models::RevenueItem,
-        r#"
-        SELECT 
-            id as "id!", plan_id as "plan_id!", revenue_name as "revenue_name!", source as "source!", 
-            start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", cost_of_revenue_percent, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            created_at as "created_at!"
-        FROM revenue_items 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY start_month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let expense_items: Vec<crate::models::ExpenseItem> = sqlx::query_as!(
-        crate::models::ExpenseItem,
-        r#"
-        SELECT 
-            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
-            start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", pct_of_revenue, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            created_at as "created_at!"
-        FROM expense_items 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY start_month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    // Map new 'events' table to 'Event' struct
-    // UPDATED: Fetch events linked to Plan OR Company OR Fund
-    let events: Vec<crate::models::Event> = sqlx::query_as!(
-        crate::models::Event,
-        r#"
-        SELECT 
-            e.id as "id!", 
-            e.plan_id, 
-            e.fund_ids, 
-            e.company_ids,
-            e.event_name as "event_name!", 
-            e.start_month, 
-            e.event_category, 
-            e.impact_type, 
-            e.impact_value, 
-            e.duration_months, 
-            e.likelihood_annual_pct, 
-            e.magnitude, 
-            e.direction, 
-            e.duration_category,
-            e.is_counter_cyclic,
-            e.created_at as "created_at!" 
-        FROM events e
-        JOIN financial_plans p ON p.id = $1
-        JOIN companies c ON c.id = p.company_id
-        WHERE (e.plan_id = $1 OR c.id = ANY(e.company_ids) OR c.fund_id = ANY(e.fund_ids))
-        AND p.tenant_id = $2
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let capital_injections: Vec<crate::models::CapitalInjection> = sqlx::query_as!(
-        crate::models::CapitalInjection,
-        r#"
-        SELECT id, plan_id, injection_name, amount, month, created_at 
-        FROM capital_injections 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
-        crate::models::DividendPolicy,
-        r#"
-        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!"
-        FROM dividend_policies 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await.ok().flatten();
-
-    let credit_facility: Option<crate::models::CreditFacility> = sqlx::query_as!(
-        crate::models::CreditFacility,
-        r#"
-        SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at 
-        FROM credit_facilities 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await.ok().flatten();
-
-    let valuation_assumptions: Vec<crate::models::ValuationAssumption> = sqlx::query_as!(
-        crate::models::ValuationAssumption,
-        r#"
-        SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at 
-        FROM valuation_assumptions 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY date_applied DESC LIMIT 1
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let staffing_roles: Vec<crate::models::StaffingRole> = sqlx::query_as!(
-        crate::models::StaffingRole,
-        r#"
-        SELECT 
-            id as "id!", plan_id as "plan_id!", role_name as "role_name!", 
-            annual_salary as "annual_salary!", start_month as "start_month!", 
-            target_count as "target_count!", hiring_plan as "hiring_plan!", 
-            hiring_rate, annual_increase_percent as "annual_increase_percent!", 
-            created_at as "created_at!"
-        FROM staffing_roles 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY start_month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
-        crate::models::CapitalGrowthPolicy,
-        r#"
-        SELECT 
-            id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            created_at as "created_at!", growth_rate_percent as "growth_rate_percent!" 
-        FROM capital_growth_policies 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await.ok().flatten();
-    
-    let mut errors = Vec::new();
-
-    for item in &revenue_items {
-        if item.volatility_type.as_deref() == Some("nrig") {
-            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Revenue '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.revenue_name, alpha, beta));
-            }
-        }
-    }
-
-    for item in &expense_items {
-        if item.volatility_type.as_deref() == Some("nrig") {
-            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Expense '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.expense_name, alpha, beta));
-            }
-        }
-    }
-
-    if let Some(ref cg) = capital_growth {
-        if cg.volatility_type.as_deref() == Some("nrig") {
-            let alpha = cg.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = cg.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Capital Growth: NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", alpha, beta));
-            }
-        }
-    }
-
-    if !errors.is_empty() {
-        return Ok(Json(SimulationResult {
-            errors: Some(errors),
-            valuation_method: "error".to_string(),
-            ..Default::default()
-        }));
-    }
-
-    // Run Simulation
-    let initial_cash = params.initial_cash.unwrap_or(plan.initial_cash);
-    let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
-    let stop_insolvency = params.stop_insolvency.unwrap_or(false);
-    let events_active = params.events_active.unwrap_or(true);
-
-    let result = generate_simulation(
-        plan.company_id,
-        plan.plan_name.clone(),
-        plan.currency_code.clone(),
-        months,
-        initial_cash,
-        revenue_items,
-        expense_items,
-        staffing_roles,
-        events,
-        capital_injections,
-        credit_facility,
-        dividend_policy,
-        valuation_assumptions,
-        capital_growth,
-        use_monte_carlo,
-        stop_insolvency,
-        events_active,
-        plan.pooling_fraction,
-        plan.insolvency_threshold
-    );
-
-    Ok(Json(result))
-}
-</file>
-
-<file path='backend/src/handlers/fund_simulation.rs'>
-use axum::{
-    extract::{Path, State, Extension, Query},
-    Json,
-    debug_handler,
-};
-use sqlx::{Pool, Postgres};
-use uuid::Uuid;
-use rust_decimal::prelude::ToPrimitive;
-use rust_decimal::Decimal;
-use std::str::FromStr;
-use serde::Deserialize;
-use std::collections::HashMap;
-use crate::{
-    models,
-    engine::{
-        domain::{self, SimState, GrowthSampler, ItemState},
-        orchestrator::{FundOrchestrator, PortfolioMode},
-    },
-    projection::SimulationResult, // STRICT IMPORT: Use the projection struct
-    errors::AppError,
-    distributions,
-};
-
-#[derive(Deserialize)]
-pub struct SimParams {
-    pub fund_plan_id: Option<Uuid>,
-    pub months: Option<i32>,
-    pub stop_insolvency: Option<bool>,
-    pub include_initial_capital: Option<bool>,
-    pub fund_pooling_fraction: Option<String>,
-    pub events_active: Option<bool>,
-}
-
-#[debug_handler]
-pub async fn run_fund_simulation(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<models::Claims>,
-    Path(fund_id): Path<Uuid>,
-    Query(params): Query<SimParams>,
-) -> Result<Json<SimulationResult>, AppError> {
-    // 1. Fetch Fund
-    let _fund = sqlx::query_as!(
-        models::Fund,
-        r#"
-        SELECT 
-            id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template
-        FROM funds
-        WHERE id = $1 AND tenant_id = $2
-        "#,
-        fund_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?
-    .ok_or_else(|| AppError::NotFound(format!("Fund not found: {}", fund_id)))?;
-
-    // 2. Fetch Companies
-    let companies = sqlx::query_as!(
-        models::Company,
-        r#"
-        SELECT 
-            id, fund_id, company_name, currency_code, created_at, 
-            industry, business_model, technology, tenant_id
-        FROM companies
-        WHERE fund_id = $1 AND tenant_id = $2
-        "#,
-        fund_id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    // Capture company IDs for event filtering later
-    let company_ids: Vec<Uuid> = companies.iter().map(|c| c.id).collect();
-
-    // NEW: Handle Fund Plan Selection
-    let mut selected_plans_map: HashMap<String, Uuid> = HashMap::new();
-
-    if let Some(fp_id) = params.fund_plan_id {
-        let record = sqlx::query!(
-            r#"
-            SELECT selected_plans
-            FROM fund_plans
-            WHERE id = $1 AND tenant_id = $2
-            "#,
-            fp_id,
-            claims.tenant_id
-        )
-        .fetch_optional(&pool)
-        .await?
-        .ok_or_else(|| AppError::NotFound(format!("Fund Plan not found: {}", fp_id)))?;
-
-        let json_val = record.selected_plans;
-        if let Ok(map) = serde_json::from_value::<HashMap<String, Uuid>>(json_val) {
-            selected_plans_map = map;
-        }
-    }
-
-    // Extract simulation parameters early to pass to SimState builder
-    let stop_insolvency = params.stop_insolvency.unwrap_or(true);
-    let include_init = params.include_initial_capital.unwrap_or(false);
-    let events_active = params.events_active.unwrap_or(true);
-
-    // Parse fund_pooling_fraction (Global Real Pooling Rate)
-    // Standard: Input is percentage (e.g. "100.0"), Factor is input/100 (e.g. "1.0")
-    let (_input_percent, real_pooling_rate) = if let Some(ref s) = params.fund_pooling_fraction {
-        let val = Decimal::from_str(s).unwrap_or(Decimal::ZERO);
-        (val, val / Decimal::from(100))
+    if (volMode === 'simple') {
+        if (!params.fatness) errors.push("Likelihood (Fatness) is required");
+        if (!params.skew) errors.push("Skew (Imbalance) is required");
+        if (!params.width) errors.push("Volatility (Width) is required");
     } else {
-        (Decimal::ZERO, Decimal::ZERO)
-    };
-
-    let mut sim_states: Vec<SimState> = Vec::new();
-    let mut error_log: Vec<String> = Vec::new();
-
-    // 3. Build SimState for each Company
-    for company in companies {
-        // Determine if we have a specific plan override
-        let specific_plan_id = selected_plans_map.get(&company.id.to_string()).copied();
-
-        let plan = if let Some(plan_id) = specific_plan_id {
-            // Fetch specific plan
-            sqlx::query_as!(
-                models::FinancialPlan,
-                r#"
-                SELECT 
-                    id, company_id, plan_name, start_month, currency_code, 
-                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
-                    insolvency_threshold
-                FROM financial_plans
-                WHERE id = $1 AND tenant_id = $2
-                "#,
-                plan_id,
-                claims.tenant_id
-            )
-            .fetch_optional(&pool)
-            .await?
-        } else {
-            // Fetch latest plan (Default)
-            sqlx::query_as!(
-                models::FinancialPlan,
-                r#"
-                SELECT 
-                    id, company_id, plan_name, start_month, currency_code, 
-                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
-                    insolvency_threshold
-                FROM financial_plans
-                WHERE company_id = $1 AND tenant_id = $2
-                ORDER BY created_at DESC
-                LIMIT 1
-                "#,
-                company.id,
-                claims.tenant_id
-            )
-            .fetch_optional(&pool)
-            .await?
-        };
-
-        if let Some(plan) = plan {
-            let state = fetch_and_map_company_state(
-                &pool, 
-                plan, 
-                company.company_name, 
-                company.id, 
-                stop_insolvency,
-                include_init,
-                real_pooling_rate,
-                &mut error_log
-            ).await?;
-            sim_states.push(state);
-        }
+        if (!params.alpha) errors.push("Alpha (Likelihood) is required");
+        if (!params.beta) errors.push("Beta (Skew) is required");
+        if (!params.scale) errors.push("Scale (Delta) is required");
     }
-
-    if !error_log.is_empty() {
-        return Ok(Json(SimulationResult {
-            errors: Some(error_log),
-            ..Default::default()
-        }));
+  } else if (volType === 'student_t') {
+    if (!params.mean || isNaN(Number(params.mean))) {
+        errors.push("Average Growth Rate is required");
     }
+    if (!params.scale) errors.push("Scale is required");
+    if (!params.freedom) errors.push("Degrees of Freedom is required");
+  }
 
-    if sim_states.is_empty() {
-        return Err(AppError::ValidationError("No valid financial plans found for companies in this fund.".to_string()));
-    }
-
-    // 4. Run Simulation
-    let months = params.months.unwrap_or(60).clamp(1, 1200);
-    // stop_insolvency is already defined above
-
-    // Fetch Stochastic Events (Probabilistic events with no fixed start_month)
-    let stochastic_events = sqlx::query_as!(
-        models::Event,
-        r#"
-        SELECT 
-            id as "id!", 
-            plan_id, 
-            fund_ids, 
-            company_ids,
-            event_name as "event_name!", 
-            start_month, 
-            event_category, 
-            impact_type, 
-            impact_value, 
-            duration_months, 
-            likelihood_annual_pct, 
-            magnitude, 
-            direction, 
-            duration_category,
-            is_counter_cyclic,
-            created_at as "created_at!"
-        FROM events
-        WHERE ($1 = ANY(fund_ids) OR company_ids && $2)
-          AND start_month IS NULL
-        "#,
-        fund_id,
-        &company_ids
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    // Initialize FundOrchestrator with 1000 iterations (Portfolio Mode for Fund Simulation)
-    let orchestrator = FundOrchestrator::<PortfolioMode>::new(1000, sim_states, months, stop_insolvency, events_active, stochastic_events);
-    let result = orchestrator.run();
-
-    Ok(Json(result))
+  return errors;
 }
 
-/// Helper to fetch all related data for a plan and map it to the Engine's SimState.
-async fn fetch_and_map_company_state(
-    pool: &Pool<Postgres>,
-    plan: models::FinancialPlan,
-    company_name: String,
-    company_id: Uuid,
-    stop_insolvency: bool,
-    include_init: bool,
-    fund_pooling_rate: Decimal,
-    error_log: &mut Vec<String>,
-) -> Result<SimState, AppError> {
-    
-    // Fetch Revenue
-    let revenue_items = sqlx::query_as!(
-        models::RevenueItem,
-        r#"
-        SELECT 
-            id, plan_id, revenue_name, source, start_month, end_month, 
-            initial_amount, growth_rate_percent, frequency, 
-            cost_of_revenue_percent, volatility_type, 
-            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, 
-            vol_freedom, vol_alpha, vol_beta, created_at
-        FROM revenue_items
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_all(pool)
-    .await?;
+interface VolatilityInputsProps {
+  volType: string;
+  setVolType: (val: string) => void;
+  
+  // Parameters
+  volMean: string;
+  setVolMean: (val: string) => void;
+  volMin: string;
+  setVolMin: (val: string) => void;
+  volMax: string;
+  setVolMax: (val: string) => void;
+  volIntervals: string;
+  setVolIntervals: (val: string) => void;
+  volScale: string;
+  setVolScale: (val: string) => void;
+  volFreedom: string;
+  setVolFreedom: (val: string) => void;
+  volAlpha: string;
+  setVolAlpha: (val: string) => void;
+  volBeta: string;
+  setVolBeta: (val: string) => void;
 
-    // Fetch Expenses
-    let expense_items = sqlx::query_as!(
-        models::ExpenseItem,
-        r#"
-        SELECT 
-            id, plan_id, expense_name, category, start_month, end_month, 
-            initial_amount, growth_rate_percent, frequency, 
-            pct_of_revenue, volatility_type, 
-            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, 
-            vol_freedom, vol_alpha, vol_beta, created_at
-        FROM expense_items
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_all(pool)
-    .await?;
+  // Hybrid Mode Props
+  volMode: 'simple' | 'advanced';
+  setVolMode: (val: 'simple' | 'advanced') => void;
+  volFatness: string;
+  setVolFatness: (val: string) => void;
+  volSkew: string;
+  setVolSkew: (val: string) => void;
+  volWidth: string;
+  setVolWidth: (val: string) => void;
 
-    // Fetch Capital Injections
-    let capital_injections = sqlx::query_as!(
-        models::CapitalInjection,
-        r#"
-        SELECT id, plan_id, injection_name, amount, month, created_at
-        FROM capital_injections
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_all(pool)
-    .await?;
-
-    // Fetch Dividend Policy
-    let dividend_policy = sqlx::query_as!(
-        models::DividendPolicy,
-        r#"
-        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!"
-        FROM dividend_policies
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    // Fetch Credit Facility
-    let credit_facility = sqlx::query_as!(
-        models::CreditFacility,
-        r#"
-        SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at
-        FROM credit_facilities
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    // Fetch Valuation Assumption
-    let valuation_assumption = sqlx::query_as!(
-        models::ValuationAssumption,
-        r#"
-        SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at
-        FROM valuation_assumptions
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    // Fetch Events (Renamed from Shocks)
-    // UPDATED: Fetch events linked to Plan OR Company OR Fund
-    let events = sqlx::query_as!(
-        models::Event,
-        r#"
-        SELECT 
-            e.id as "id!", 
-            e.plan_id, 
-            e.fund_ids, 
-            e.company_ids,
-            e.event_name as "event_name!", 
-            e.start_month, 
-            e.event_category, 
-            e.impact_type, 
-            e.impact_value, 
-            e.duration_months, 
-            e.likelihood_annual_pct, 
-            e.magnitude, 
-            e.direction, 
-            e.duration_category, 
-            e.is_counter_cyclic,
-            e.created_at as "created_at!"
-        FROM events e
-        JOIN financial_plans p ON p.id = $1
-        JOIN companies c ON c.id = p.company_id
-        WHERE (e.plan_id = $1 OR c.id = ANY(e.company_ids) OR c.fund_id = ANY(e.fund_ids))
-        AND e.start_month IS NOT NULL
-        "#,
-        plan.id
-    )
-    .fetch_all(pool)
-    .await?;
-
-    // Fetch Staffing
-    let staffing_roles = sqlx::query_as!(
-        models::StaffingRole,
-        r#"
-        SELECT 
-            id, plan_id, role_name, annual_salary, start_month, 
-            target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at
-        FROM staffing_roles
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_all(pool)
-    .await?;
-
-    // Fetch Capital Growth Policy
-    let capital_growth_policy = sqlx::query_as!(
-        models::CapitalGrowthPolicy,
-        r#"
-        SELECT 
-            id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, 
-            vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            created_at, growth_rate_percent
-        FROM capital_growth_policies
-        WHERE plan_id = $1
-        "#,
-        plan.id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    // --- NRIG Validation ---
-    for r in &revenue_items {
-        if let Some(vt) = &r.volatility_type {
-            if vt == "NRIG" {
-                let alpha = r.vol_alpha.unwrap_or(Decimal::ZERO);
-                let beta = r.vol_beta.unwrap_or(Decimal::ZERO);
-                if alpha * alpha <= beta * beta {
-                    error_log.push(format!("Company '{}': Revenue '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, r.revenue_name));
-                }
-            }
-        }
-    }
-
-    for e in &expense_items {
-        if let Some(vt) = &e.volatility_type {
-            if vt == "NRIG" {
-                let alpha = e.vol_alpha.unwrap_or(Decimal::ZERO);
-                let beta = e.vol_beta.unwrap_or(Decimal::ZERO);
-                if alpha * alpha <= beta * beta {
-                    error_log.push(format!("Company '{}': Expense '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, e.expense_name));
-                }
-            }
-        }
-    }
-
-    if let Some(g) = &capital_growth_policy {
-        if let Some(vt) = &g.volatility_type {
-            if vt == "NRIG" {
-                let alpha = g.vol_alpha.unwrap_or(Decimal::ZERO);
-                let beta = g.vol_beta.unwrap_or(Decimal::ZERO);
-                if alpha * alpha <= beta * beta {
-                    error_log.push(format!("Company '{}': Capital Growth Policy has invalid NRIG parameters (alpha^2 <= beta^2).", company_name));
-                }
-            }
-        }
-    }
-    // -----------------------
-
-    // Map to Engine State
-    Ok(map_to_sim_state(
-        company_id,
-        plan,
-        company_name,
-        revenue_items,
-        expense_items,
-        capital_injections,
-        dividend_policy,
-        credit_facility,
-        valuation_assumption,
-        events,
-        staffing_roles,
-        capital_growth_policy,
-        stop_insolvency,
-        include_init,
-        fund_pooling_rate
-    ))
+  // Optional Overrides
+  meanLabel?: string;
+  alwaysShowMean?: boolean;
 }
 
-/// Pure function to map DB models to Engine Domain models.
-fn map_to_sim_state(
-    company_id: Uuid,
-    plan: models::FinancialPlan,
-    company_name: String,
-    revenue_items: Vec<models::RevenueItem>,
-    expense_items: Vec<models::ExpenseItem>,
-    capital_injections: Vec<models::CapitalInjection>,
-    dividend_policy: Option<models::DividendPolicy>,
-    credit_facility: Option<models::CreditFacility>,
-    valuation_assumption: Option<models::ValuationAssumption>,
-    events: Vec<models::Event>,
-    staffing_roles: Vec<models::StaffingRole>,
-    capital_growth_policy: Option<models::CapitalGrowthPolicy>,
-    stop_insolvency: bool,
-    include_init: bool,
-    pooling_rate_override: Decimal,
-) -> SimState {
-    
-    let mut revenue_states = Vec::with_capacity(revenue_items.len());
-    let engine_revenues: Vec<domain::Revenue> = revenue_items.into_iter().map(|r| {
-        // Create sampler for this item
-        let sampler = create_sampler_from_db(
-            r.volatility_type,
-            r.vol_mean,
-            r.vol_scale,
-            r.vol_min,
-            r.vol_max,
-            r.vol_intervals,
-            r.vol_freedom,
-            r.vol_alpha,
-            r.vol_beta
-        );
-        
-        // Initialize state with sampler
-        revenue_states.push(ItemState {
-            current_value: r.initial_amount.to_f64().unwrap_or(0.0),
-            is_active: false,
-            sampler,
-        });
+export default function VolatilityInputs({
+  volType, setVolType,
+  volMean, setVolMean,
+  volMin, setVolMin,
+  volMax, setVolMax,
+  volIntervals, setVolIntervals,
+  volScale, setVolScale,
+  volFreedom, setVolFreedom,
+  volAlpha, setVolAlpha,
+  volBeta, setVolBeta,
+  volMode, setVolMode,
+  volFatness, setVolFatness,
+  volSkew, setVolSkew,
+  volWidth, setVolWidth,
+  meanLabel,
+  alwaysShowMean
+}: VolatilityInputsProps) {
 
-        domain::Revenue {
-            name: r.revenue_name,
-            start_month: r.start_month,
-            end_month: r.end_month,
-            initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: r.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
-            frequency: r.frequency,
-            cost_of_revenue: r.cost_of_revenue_percent.map(|d| d.to_f64().unwrap_or(0.0) / 100.0).unwrap_or(0.0),
-        }
-    }).collect();
+  const isAdvanced = volMode === 'advanced';
 
-    let mut expense_states = Vec::with_capacity(expense_items.len());
-    let engine_expenses: Vec<domain::Expense> = expense_items.into_iter().map(|e| {
-        let sampler = create_sampler_from_db(
-            e.volatility_type,
-            e.vol_mean,
-            e.vol_scale,
-            e.vol_min,
-            e.vol_max,
-            e.vol_intervals,
-            e.vol_freedom,
-            e.vol_alpha,
-            e.vol_beta
-        );
+  // Helper to find description
+  const getAlphaDesc = () => ALPHA_OPTIONS.find(o => o.value === volFatness)?.description;
+  const getBetaDesc = () => BETA_OPTIONS.find(o => o.value === volSkew)?.description;
+  const getScaleDesc = () => SCALE_OPTIONS.find(o => o.value === volWidth)?.description;
 
-        expense_states.push(ItemState {
-            current_value: e.initial_amount.to_f64().unwrap_or(0.0),
-            is_active: false,
-            sampler,
-        });
+  return (
+    <div className="border-t pt-2 mt-2">
+      <div className="flex justify-between items-center mb-1">
+           <label className="text-xs font-bold text-gray-700">Uncertainty / Risk Model</label>
+           {volType === 'nrig' && (
+               <button 
+                  type="button" 
+                  onClick={() => setVolMode(isAdvanced ? 'simple' : 'advanced')} 
+                  className="text-xs text-blue-600 underline"
+               >
+                   {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
+               </button>
+           )}
+      </div>
+      <div className="space-y-2">
+          <div>
+              <label className="text-xs text-gray-500">Model Type</label>
+              <select className="w-full border p-1 rounded text-xs" value={volType} onChange={e => setVolType(e.target.value)}>
+                  <option value="none" disabled hidden>-- Select Risk Model --</option>
+                  <option value="flat">Simple volatility (min/max)</option>
+                  <option value="nrig">Comprehensive volatility</option>
+                  <option value="student_t">Student's t distribution</option>
+              </select>
+          </div>
+          
+          {volType !== 'none' && (
+            <div className="bg-gray-100 p-2 rounded">
+               
+               {/* SIMPLE MODE DROPDOWNS (NRIG Only) */}
+               {!isAdvanced && volType === 'nrig' && (
+                   <div className="space-y-3">
+                       <div className="text-xs text-gray-600 italic mb-2">
+                          Tier 1: Configure the shape of uncertainty.
+                       </div>
+                       <div>
+                           <label className="text-xs text-gray-500 flex items-center gap-1">
+                              Likelyhood of outliers (tail weight)
+                              <Tooltip content="Controls how often extreme events (white and black swans) occur." />
+                           </label>
+                           <select className="w-full border p-1 rounded text-xs" value={volFatness} onChange={e => setVolFatness(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {ALPHA_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label} </option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getAlphaDesc()}</p>
+                       </div>
 
-        domain::Expense {
-            name: e.expense_name,
-            category: e.category,
-            start_month: e.start_month,
-            end_month: e.end_month,
-            initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: e.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
-            frequency: e.frequency,
-            pct_of_revenue: e.pct_of_revenue.map(|d| d.to_f64().unwrap_or(0.0) / 100.0),
-        }
-    }).collect();
+                       <div>
+                           <label className="text-xs text-gray-500 flex items-center gap-1">
+                              Volatility imbalance (downside / upside)
+                              <Tooltip content="Skewness: Are surprises more likely to be positive or negative?" />
+                           </label>
+                           <select className="w-full border p-1 rounded text-xs" value={volSkew} onChange={e => setVolSkew(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {BETA_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label}</option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getBetaDesc()}</p>
+                       </div>
 
-    let engine_injections: Vec<domain::CapitalInjection> = capital_injections.into_iter().map(|c| {
-        domain::CapitalInjection {
-            name: c.injection_name,
-            amount: c.amount.to_f64().unwrap_or(0.0),
-            month: c.month,
-        }
-    }).collect();
+                       <div>
+                           <label className="text-xs text-gray-500 block">Delta/Scale (Volatility)</label>
+                           <select className="w-full border p-1 rounded text-xs" value={volWidth} onChange={e => setVolWidth(e.target.value)}>
+                               <option value="">-- Select --</option>
+                               {SCALE_OPTIONS.map(o => (
+                                   <option key={o.value} value={o.value}>{o.label}</option>
+                               ))}
+                           </select>
+                           <p className="text-xs text-gray-400 italic mt-1">{getScaleDesc()}</p>
+                       </div>
+                   </div>
+               )}
 
-    let engine_dividend = dividend_policy.map(|d| domain::DividendPolicy {
-        is_enabled: d.is_enabled,
-        safety_threshold: d.safety_threshold.to_f64().unwrap_or(0.0),
-        payout_ratio: d.payout_ratio.to_f64().unwrap_or(0.0),
-    });
+               {/* ADVANCED INPUTS OR OTHER MODELS */}
+               {/* Hidden if in Simple NRIG mode, unless we need to show the Mean (Capital Growth) */}
+               <div className={`grid grid-cols-3 gap-2 items-end ${(!isAdvanced && volType === 'nrig' && !alwaysShowMean) ? 'hidden' : ''}`}>
+                   
+                   {/* Common Mean */}
+                   {(isAdvanced || alwaysShowMean) && (
+                     <div className="col-span-3">
+                         <label className="text-xs text-gray-400">{meanLabel || "Mean / Drift (Optional Override)"}</label>
+                         <input 
+                            type="number" 
+                            step="any"
+                            placeholder="Default = Growth Rate" 
+                            className="w-full border p-1 text-xs" 
+                            value={volMean} 
+                            onChange={e => setVolMean(e.target.value)} 
+                         />
+                     </div>
+                   )}
 
-    let engine_credit = credit_facility.map(|c| domain::CreditFacility {
-        facility_limit: c.facility_limit.to_f64().unwrap_or(0.0),
-        interest_rate: c.interest_rate.to_f64().unwrap_or(0.0) / 100.0,
-        is_annual_rate: c.is_annual_rate,
-    });
+                   {/* Flat Params */}
+                   {volType === 'flat' && (
+                      <>
+                          <div className="col-span-3 flex items-center gap-2 mb-1 mt-2">
+                              <span className="text-xs font-bold text-gray-500">Range Settings</span>
+                              <Tooltip content="Define a hard minimum and maximum percentage deviation." />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Min %</label>
+                              <input className="w-full border p-1 text-xs" value={volMin} onChange={e => setVolMin(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Max %</label>
+                              <input className="w-full border p-1 text-xs" value={volMax} onChange={e => setVolMax(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Steps</label>
+                              <input className="w-full border p-1 text-xs" value={volIntervals} onChange={e => setVolIntervals(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Average (Calculated)</label>
+                              <input 
+                                  className="w-full border p-1 text-xs bg-gray-100 text-gray-500 cursor-not-allowed" 
+                                  readOnly
+                                  value={((parseFloat(volMin||'0') + parseFloat(volMax||'0')) / 2).toFixed(2) + " %"} 
+                              />
+                          </div>
+                      </>
+                   )}
 
-    let engine_valuation = valuation_assumption.map(|v| domain::ValuationAssumption {
-        name: v.valuation_name,
-        method: v.method,
-        multiplier: v.multiplier.to_f64().unwrap_or(0.0),
-        date_applied: v.date_applied,
-    });
+                   {/* Student-T Params */}
+                   {volType === 'student_t' && (
+                      <>
+                          <div>
+                              <label className="text-xs text-gray-400">Scale (Vol)</label>
+                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Freedom (Deg)</label>
+                              <input className="w-full border p-1 text-xs" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
+                          </div>
+                      </>
+                   )}
 
-    // Map Events to Shocks, filtering out incomplete definitions
-    let engine_shocks: Vec<domain::Shock> = events.into_iter().filter_map(|s| {
-        if let (Some(month), Some(imp_type), Some(imp_val)) = (s.start_month, s.impact_type, s.impact_value) {
-            Some(domain::Shock {
-                name: s.event_name,
-                month: month,
-                impact_type: imp_type,
-                impact_value: imp_val.to_f64().unwrap_or(0.0),
-                duration_months: s.duration_months,
-                target_company_id: None, // Deterministic shocks apply to self
-            })
-        } else {
-            None
-        }
-    }).collect();
-
-    let engine_staffing: Vec<domain::Staffing> = staffing_roles.into_iter().map(|s| {
-        domain::Staffing {
-            name: s.role_name,
-            annual_salary: s.annual_salary.to_f64().unwrap_or(0.0),
-            start_month: s.start_month,
-            target_count: s.target_count,
-            hiring_plan: s.hiring_plan,
-            hiring_rate: s.hiring_rate,
-            annual_increase: s.annual_increase_percent.to_f64().unwrap_or(0.0) / 100.0,
-        }
-    }).collect();
-
-    let mut cap_growth_sampler = None;
-    let engine_growth = capital_growth_policy.map(|g| {
-        cap_growth_sampler = Some(create_sampler_from_db(
-            g.volatility_type,
-            g.vol_mean,
-            g.vol_scale,
-            g.vol_min,
-            g.vol_max,
-            g.vol_intervals,
-            g.vol_mean, // Note: Using mean as freedom placeholder if needed, but create_sampler handles it
-            g.vol_alpha,
-            g.vol_beta
-        ));
-        
-        domain::CapitalGrowthPolicy {
-            growth_rate: g.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
-        }
-    });
-
-    let initial_cash = plan.initial_cash.to_f64().unwrap_or(0.0);
-    let starting_investment = if include_init { initial_cash } else { 0.0 };
-
-    SimState {
-        id: company_id,
-        company_name,
-        currency: plan.currency_code,
-        pooling_fraction: pooling_rate_override.to_f64().unwrap_or(0.0),
-        current_cash: plan.initial_cash.to_f64().unwrap_or(0.0),
-        insolvency_threshold: plan.insolvency_threshold.to_f64().unwrap_or(100.0),
-        is_solvent: true,
-        stop_on_insolvency: stop_insolvency,
-        cum_external_cap: starting_investment,
-        cum_dividends: 0.0,
-        cum_pool_received: 0.0,
-        cap_growth_sampler,
-        
-        revenues: engine_revenues,
-        expenses: engine_expenses,
-        injections: engine_injections,
-        dividend_policy: engine_dividend,
-        credit_facility: engine_credit,
-        valuation: engine_valuation,
-        shocks: engine_shocks,
-        staffing: engine_staffing,
-        capital_growth: engine_growth,
-        
-        revenue_states,
-        expense_states,
-        history: Vec::new(),
-    }
-}
-
-// Helper to bridge DB Decimals to Engine GrowthSampler
-fn create_sampler_from_db(
-    vol_type: Option<String>,
-    mean: Option<rust_decimal::Decimal>,
-    scale: Option<rust_decimal::Decimal>,
-    min: Option<rust_decimal::Decimal>,
-    max: Option<rust_decimal::Decimal>,
-    intervals: Option<i32>,
-    freedom: Option<rust_decimal::Decimal>,
-    alpha: Option<rust_decimal::Decimal>,
-    beta: Option<rust_decimal::Decimal>,
-) -> GrowthSampler {
-    distributions::create_sampler(
-        vol_type.as_deref(),
-        mean.and_then(|d| d.to_f64()),
-        scale.and_then(|d| d.to_f64()),
-        min.and_then(|d| d.to_f64()),
-        max.and_then(|d| d.to_f64()),
-        intervals,
-        freedom.and_then(|d| d.to_f64()),
-        alpha.and_then(|d| d.to_f64()),
-        beta.and_then(|d| d.to_f64()),
-    )
+                   {/* NRIG Params (Advanced) */}
+                   {volType === 'nrig' && isAdvanced && (
+                      <>
+                          <div>
+                              <label className="text-xs text-gray-400">Likelyhood (Alpha)</label>
+                              <input className="w-full border p-1 text-xs" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Skew (Imbalance, Beta)</label>
+                              <input className="w-full border p-1 text-xs" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400">Scale (Delta)</label>
+                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
+                          </div>
+                      </>
+                   )}
+               </div>
+            </div>
+          )}
+      </div>
+    </div>
+  );
 }
 </file>
 

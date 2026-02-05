@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO revenue_items (\n            plan_id, revenue_name, source, start_month, end_month, initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent,\n            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)\n        RETURNING \n            id as \"id!\", plan_id as \"plan_id!\", revenue_name as \"revenue_name!\", source as \"source!\", \n            start_month as \"start_month!\", end_month, \n            initial_amount as \"initial_amount!\", growth_rate_percent as \"growth_rate_percent!\", \n            frequency as \"frequency!\", cost_of_revenue_percent, \n            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, \n            created_at as \"created_at!\"\n        ",
+  "query": "\n        UPDATE expense_items SET\n            expense_name = $1, category = $2, start_month = $3, end_month = $4,\n            initial_amount = $5, growth_rate_percent = $6, frequency = $7, pct_of_revenue = $8,\n            volatility_type = $9, vol_min = $10, vol_max = $11, vol_intervals = $12,\n            vol_mean = $13, vol_scale = $14, vol_freedom = $15, vol_alpha = $16, vol_beta = $17,\n            target_mean = $18, vol_mu = $19, vol_input_mode = $20, vol_fatness_level = $21, vol_skew_level = $22, vol_width_level = $23\n        WHERE id = $24\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $25)\n        RETURNING \n            id as \"id!\", plan_id as \"plan_id!\", expense_name as \"expense_name!\", category as \"category!\", \n            start_month as \"start_month!\", end_month, \n            initial_amount as \"initial_amount!\", growth_rate_percent as \"growth_rate_percent!\", \n            frequency as \"frequency!\", pct_of_revenue, \n            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, \n            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,\n            created_at as \"created_at!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -15,12 +15,12 @@
       },
       {
         "ordinal": 2,
-        "name": "revenue_name!",
+        "name": "expense_name!",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "source!",
+        "name": "category!",
         "type_info": "Text"
       },
       {
@@ -50,7 +50,7 @@
       },
       {
         "ordinal": 9,
-        "name": "cost_of_revenue_percent",
+        "name": "pct_of_revenue",
         "type_info": "Numeric"
       },
       {
@@ -100,30 +100,67 @@
       },
       {
         "ordinal": 19,
+        "name": "target_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 20,
+        "name": "vol_mu",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 21,
+        "name": "vol_input_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "vol_fatness_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 23,
+        "name": "vol_skew_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 24,
+        "name": "vol_width_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
         "name": "created_at!",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Numeric",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
         "Uuid",
-        "Text",
-        "Text",
-        "Int4",
-        "Int4",
-        "Numeric",
-        "Numeric",
-        "Text",
-        "Numeric",
-        "Text",
-        "Numeric",
-        "Numeric",
-        "Int4",
-        "Numeric",
-        "Numeric",
-        "Numeric",
-        "Numeric",
-        "Numeric"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -146,8 +183,14 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "9f1c15123aa2e4b46b4a55d58d10d9ebc3a7fa3134d056d2761349f8a858e24d"
+  "hash": "80df0e16441786f2acd9aa70a1ecb848c38144692594b0ef157a1bf2c1be8f58"
 }

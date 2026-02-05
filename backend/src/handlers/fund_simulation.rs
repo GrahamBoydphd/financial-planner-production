@@ -245,7 +245,9 @@ async fn fetch_and_map_company_state(
             initial_amount, growth_rate_percent, frequency, 
             cost_of_revenue_percent, volatility_type, 
             vol_min, vol_max, vol_intervals, vol_mean, vol_scale, 
-            vol_freedom, vol_alpha, vol_beta, created_at
+            vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
+            created_at
         FROM revenue_items
         WHERE plan_id = $1
         "#,
@@ -263,7 +265,9 @@ async fn fetch_and_map_company_state(
             initial_amount, growth_rate_percent, frequency, 
             pct_of_revenue, volatility_type, 
             vol_min, vol_max, vol_intervals, vol_mean, vol_scale, 
-            vol_freedom, vol_alpha, vol_beta, created_at
+            vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
+            created_at
         FROM expense_items
         WHERE plan_id = $1
         "#,
@@ -333,7 +337,7 @@ async fn fetch_and_map_company_state(
             e.id as "id!", 
             e.plan_id, 
             e.fund_ids, 
-            e.company_ids,
+            e.company_ids, 
             e.event_name as "event_name!", 
             e.start_month, 
             e.event_category, 
@@ -379,6 +383,7 @@ async fn fetch_and_map_company_state(
         SELECT 
             id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, 
             vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at, growth_rate_percent
         FROM capital_growth_policies
         WHERE plan_id = $1

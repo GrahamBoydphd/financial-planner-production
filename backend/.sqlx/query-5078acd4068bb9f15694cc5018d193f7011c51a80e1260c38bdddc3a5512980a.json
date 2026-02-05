@@ -67,6 +67,36 @@
         "ordinal": 12,
         "name": "growth_rate_percent",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "target_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "vol_mu",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "vol_input_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "vol_fatness_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "vol_skew_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "vol_width_level",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -87,7 +117,13 @@
       true,
       true,
       true,
-      false
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
     ]
   },
   "hash": "5078acd4068bb9f15694cc5018d193f7011c51a80e1260c38bdddc3a5512980a"

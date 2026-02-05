@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import VolatilityInputs, { getVolatilityPayload, validateVolatilityParams } from '@/components/forms/shared/VolatilityInputs';
+import VolatilityInputs, { getVolatilityPayload, validateVolatilityParams, getVolatilityUIState } from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -23,6 +23,7 @@ interface FormErrors {
 
 export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
   const [volType, setVolType] = useState('none');
+  const [volMode, setVolMode] = useState<'simple' | 'advanced'>('simple');
   
   // Flat / Student-T / NRIG Params
   const [mean, setMean] = useState('');     // Mean / Mu / Growth Rate
@@ -36,8 +37,11 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
   const [scale, setScale] = useState(''); // Delta / Scale
   const [freedom, setFreedom] = useState('');
 
-  // UI State
-  const [isAdvanced, setIsAdvanced] = useState(false);
+  // Simple Params
+  const [volFatness, setVolFatness] = useState('');
+  const [volSkew, setVolSkew] = useState('');
+  const [volWidth, setVolWidth] = useState('');
+
   const [errors, setErrors] = useState<FormErrors>({});
   
   // Active Strategy (Saved in DB)
@@ -49,21 +53,20 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
       if (!active) return;
       setSavedConfig(p); // Store initial fetched config as "Active"
 
-      const vType = (p.volatility_type || 'none').toLowerCase();
-      setVolType(vType);
-      
-      // Handle rename: growth_rate_percent takes precedence, fallback to vol_mean
-      const valMean = p.growth_rate_percent !== undefined ? p.growth_rate_percent.toString() : (p.vol_mean !== undefined ? p.vol_mean.toString() : "");
-      setMean(valMean);
-
-      setVolMin(p.vol_min !== undefined ? p.vol_min.toString() : '');
-      setVolMax(p.vol_max !== undefined ? p.vol_max.toString() : '');
-      setVolIntervals(p.vol_intervals !== undefined ? p.vol_intervals.toString() : '');
-      
-      setAlpha(p.vol_alpha !== undefined ? p.vol_alpha.toString() : '');
-      setBeta(p.vol_beta !== undefined ? p.vol_beta.toString() : '');
-      setScale(p.vol_scale !== undefined ? p.vol_scale.toString() : '');
-      setFreedom(p.vol_freedom !== undefined ? p.vol_freedom.toString() : '');
+      const ui = getVolatilityUIState(p);
+      setVolType(ui.volType);
+      setVolMode(ui.volMode);
+      setMean(ui.volMean);
+      setVolMin(ui.volMin);
+      setVolMax(ui.volMax);
+      setVolIntervals(ui.volIntervals);
+      setScale(ui.volScale);
+      setFreedom(ui.volFreedom);
+      setAlpha(ui.volAlpha);
+      setBeta(ui.volBeta);
+      setVolFatness(ui.volFatness);
+      setVolSkew(ui.volSkew);
+      setVolWidth(ui.volWidth);
     }).catch(() => {});
     return () => { active = false; };
   }, [planId]);
@@ -72,7 +75,7 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
     setErrors({});
 
     // Use shared validation logic
-    const volErrors = validateVolatilityParams(volType, {
+    const volErrors = validateVolatilityParams(volType, volMode, {
         min: volMin,
         max: volMax,
         intervals: volIntervals,
@@ -80,7 +83,10 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
         alpha: alpha,
         beta: beta,
         scale: scale,
-        freedom: freedom
+        freedom: freedom,
+        fatness: volFatness,
+        skew: volSkew,
+        width: volWidth
     });
 
     if (volErrors.length > 0) {
@@ -98,8 +104,11 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             alpha: alpha,
             beta: beta,
             scale: scale,
-            freedom: freedom
-        });
+            freedom: freedom,
+            fatness: volFatness,
+            skew: volSkew,
+            width: volWidth
+        }, volMode);
 
         const payload = {
             plan_id: planId,
@@ -126,12 +135,19 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
     const valMean = savedConfig.growth_rate_percent ?? savedConfig.vol_mean;
     let details = `Mean: ${valMean}%`;
     
+    // Check for vol_input_mode (new) or vol_mode (legacy/fallback)
+    const mode = savedConfig.vol_input_mode || savedConfig.vol_mode;
+    
     if (type === 'flat') {
         details += `, Range: ${savedConfig.vol_min}% to ${savedConfig.vol_max}%`;
     } else if (type === 'student_t') {
         details += `, Scale: ${savedConfig.vol_scale}, DoF: ${savedConfig.vol_freedom}`;
     } else if (type === 'nrig') {
-        details += `, α: ${savedConfig.vol_alpha}, β: ${savedConfig.vol_beta}, δ: ${savedConfig.vol_scale}`;
+        if (mode === 'simple') {
+            details += `, Fatness: ${savedConfig.vol_fatness_level}, Skew: ${savedConfig.vol_skew_level}, Width: ${savedConfig.vol_width_level}`;
+        } else {
+            details += `, α: ${savedConfig.vol_alpha}, β: ${savedConfig.vol_beta}, δ: ${savedConfig.vol_scale}`;
+        }
     }
 
     const typeLabel = type === 'student_t' ? 'Student-T' : type.toUpperCase();
@@ -159,8 +175,14 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             setVolAlpha={setAlpha}
             volBeta={beta}
             setVolBeta={setBeta}
-            isAdvanced={isAdvanced}
-            setIsAdvanced={setIsAdvanced}
+            volMode={volMode}
+            setVolMode={setVolMode}
+            volFatness={volFatness}
+            setVolFatness={setVolFatness}
+            volSkew={volSkew}
+            setVolSkew={setVolSkew}
+            volWidth={volWidth}
+            setVolWidth={setVolWidth}
             meanLabel='Expected Monthly Return (Mean %)'
             alwaysShowMean={volType !== "flat"}
         />

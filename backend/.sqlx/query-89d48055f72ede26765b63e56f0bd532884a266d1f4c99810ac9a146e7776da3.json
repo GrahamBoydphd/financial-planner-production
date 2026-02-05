@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, \n            created_at as \"created_at!\", growth_rate_percent as \"growth_rate_percent!\" \n        FROM capital_growth_policies \n        WHERE plan_id = $1\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ",
+  "query": "\n        SELECT \n            id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, \n            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,\n            created_at as \"created_at!\", growth_rate_percent as \"growth_rate_percent!\" \n        FROM capital_growth_policies \n        WHERE plan_id = $1\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ",
   "describe": {
     "columns": [
       {
@@ -60,11 +60,41 @@
       },
       {
         "ordinal": 11,
+        "name": "target_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "vol_mu",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "vol_input_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "vol_fatness_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "vol_skew_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "vol_width_level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 18,
         "name": "growth_rate_percent!",
         "type_info": "Numeric"
       }
@@ -88,8 +118,14 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "caf2afbfed30b6a01c8d8cb481e7fceae98ec8a46c14fa738e6b7286ddfb3219"
+  "hash": "89d48055f72ede26765b63e56f0bd532884a266d1f4c99810ac9a146e7776da3"
 }

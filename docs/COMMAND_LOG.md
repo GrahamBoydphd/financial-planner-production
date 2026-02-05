@@ -22,19 +22,19 @@
 # Deployment workflow V2
 ### 🛠️ The Deployment Command Registry
 
-|**Category**|**Command**|**Purpose**|
-|---|---|---|
-|**Git & Code**|`git pull origin feature/user-layer-v2`|Syncs server code with your laptop's "Source of Truth."|
-|**The "Nuclear" Option**|`docker compose -f docker-compose.prod.yml down -v`|**Wipes everything.** Stops containers and deletes the DB volume.|
-|**Build & Launch**|`docker compose -f docker-compose.prod.yml up -d`|Builds/Starts containers in the background (detached mode).|
-|**Build & Launch**|`docker compose -f docker-compose.prod.yml build frontend`|Forces a fresh compilation of the Next.js frontend code.|
-|**Environment**|`docker compose -f docker-compose.prod.yml up -d --force-recreate backend`|Forces the backend to "inhale" new `.env` changes.|
-|**Migrations**|`set -a && source .env && set +a`|Loads `.env` variables into the current terminal session.|
-|**Migrations**|`docker run --rm --network app_default -v "$(pwd)/backend/migrations:/migrations" -e DATABASE_URL="..." rust:latest bash -c "..."`|The "Toolbox" command to run migrations from outside the slim container.|
-|**Verification**|`docker compose -f docker-compose.prod.yml exec db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "\dt"`|Lists all database tables to verify migrations worked.|
-|**Verification**|`docker compose -f docker-compose.prod.yml exec backend env \| grep JWT`|Confirms the security "Pipe" is delivering the `JWT_SECRET`.|
-|**Monitoring**|`docker compose -f docker-compose.prod.yml logs -f backend`|Streams live logs (useful for debugging registration/login).|
-|**System Health**|`docker stats`|Monitors CPU/RAM/Network usage of all running containers.|
+| **Category**             | **Command**                                                                                                                        | **Purpose**                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Git & Code**           | `git pull origin feature/user-layer-v2`                                                                                            | Syncs server code with your laptop's "Source of Truth."                  |
+| **The "Nuclear" Option** | `docker compose -f docker-compose.prod.yml down -v`                                                                                | **Wipes everything.** Stops containers and deletes the DB volume.        |
+| **Build & Launch**       | `docker compose -f docker-compose.prod.yml up -d`                                                                                  | Builds/Starts containers in the background (detached mode).              |
+| **Build & Launch**       | `docker compose -f docker-compose.prod.yml build frontend`                                                                         | Forces a fresh compilation of the Next.js frontend code.                 |
+| **Environment**          | `docker compose -f docker-compose.prod.yml up -d --force-recreate backend`                                                         | Forces the backend to "inhale" new `.env` changes.                       |
+| **Migrations**           | `set -a && source .env && set +a`                                                                                                  | Loads `.env` variables into the current terminal session.                |
+| **Migrations**           | `docker run --rm --network app_default -v "$(pwd)/backend/migrations:/migrations" -e DATABASE_URL="..." rust:latest bash -c "..."` | The "Toolbox" command to run migrations from outside the slim container. |
+| **Verification**         | `docker compose -f docker-compose.prod.yml exec db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "\dt"`                            | Lists all database tables to verify migrations worked.                   |
+| **Verification**         | `docker compose -f docker-compose.prod.yml exec backend env \| grep JWT`                                                           | Confirms the security "Pipe" is delivering the `JWT_SECRET`.             |
+| **Monitoring**           | `docker compose -f docker-compose.prod.yml logs -f backend`                                                                        | Streams live logs (useful for debugging registration/login).             |
+| **System Health**        | `docker stats`                                                                                                                     | Monitors CPU/RAM/Network usage of all running containers.                |
 
 ---
 

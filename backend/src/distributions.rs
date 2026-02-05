@@ -45,7 +45,15 @@ impl GrowthSampler {
             VolatilityModel::None { fixed_rate } => fixed_rate,
             VolatilityModel::Flat { average, .. } => average,
             VolatilityModel::StudentsT { mean, .. } => mean,
-            VolatilityModel::NRIG { mu, .. } => mu,
+            VolatilityModel::NRIG { alpha, beta, delta, mu } => {
+                let gamma_sq = alpha.powi(2) - beta.powi(2);
+                if gamma_sq <= 0.0 { 
+                    mu 
+                } else {
+                    let gamma = gamma_sq.sqrt();
+                    mu + delta * (beta / gamma)
+                }
+            },
         }
     }
 

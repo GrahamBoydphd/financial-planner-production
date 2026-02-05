@@ -249,6 +249,7 @@ pub async fn get_plan_projection(
             initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
             frequency as "frequency!", cost_of_revenue_percent, 
             volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
         FROM revenue_items 
         WHERE plan_id = $1 
@@ -270,6 +271,7 @@ pub async fn get_plan_projection(
             initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
             frequency as "frequency!", pct_of_revenue, 
             volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
         FROM expense_items 
         WHERE plan_id = $1 
@@ -399,6 +401,7 @@ pub async fn get_plan_projection(
         r#"
         SELECT 
             id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!", growth_rate_percent as "growth_rate_percent!" 
         FROM capital_growth_policies 
         WHERE plan_id = $1

@@ -98,12 +98,19 @@ pub struct RevenueItem {
     pub vol_min: Option<Decimal>,
     pub vol_max: Option<Decimal>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
+    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
     pub vol_scale: Option<Decimal>,
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
     pub created_at: DateTime<Utc>,
+    // New Distribution Architecture Fields
+    pub target_mean: Option<Decimal>,
+    pub vol_mu: Option<Decimal>,
+    pub vol_input_mode: Option<String>,
+    pub vol_fatness_level: Option<String>,
+    pub vol_skew_level: Option<String>,
+    pub vol_width_level: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -122,12 +129,19 @@ pub struct ExpenseItem {
     pub vol_min: Option<Decimal>,
     pub vol_max: Option<Decimal>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
+    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
     pub vol_scale: Option<Decimal>,
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
     pub created_at: DateTime<Utc>,
+    // New Distribution Architecture Fields
+    pub target_mean: Option<Decimal>,
+    pub vol_mu: Option<Decimal>,
+    pub vol_input_mode: Option<String>,
+    pub vol_fatness_level: Option<String>,
+    pub vol_skew_level: Option<String>,
+    pub vol_width_level: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -213,13 +227,20 @@ pub struct CapitalGrowthPolicy {
     pub vol_min: Option<Decimal>,
     pub vol_max: Option<Decimal>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
+    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
     pub vol_scale: Option<Decimal>,
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
     pub created_at: Option<DateTime<Utc>>,
     pub growth_rate_percent: Decimal,
+    // New Distribution Architecture Fields
+    pub target_mean: Option<Decimal>,
+    pub vol_mu: Option<Decimal>,
+    pub vol_input_mode: Option<String>,
+    pub vol_fatness_level: Option<String>,
+    pub vol_skew_level: Option<String>,
+    pub vol_width_level: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

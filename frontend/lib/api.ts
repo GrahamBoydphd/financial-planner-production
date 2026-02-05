@@ -108,6 +108,12 @@ export interface RevenueItem {
   frequency: string;
   cost_of_revenue_percent?: string;
   volatility_type?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
   vol_min?: string;
   vol_max?: string;
   vol_intervals?: number;
@@ -130,6 +136,12 @@ export interface ExpenseItem {
   frequency: string;
   pct_of_revenue?: string;
   volatility_type?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
   vol_min?: string;
   vol_max?: string;
   vol_intervals?: number;
@@ -145,6 +157,12 @@ export interface CapitalGrowthPolicy {
   plan_id: string;
   volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
   growth_rate_percent?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
   vol_min?: string;
   vol_max?: string;
   vol_intervals?: number;
