@@ -163,7 +163,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             
             // Accumulators
             let mut total_revenue = 0.0;
+            let mut total_cogs = 0.0;
+            let mut total_gross_profit = 0.0;
             let mut total_opex = 0.0;
+            let mut total_interest = 0.0;
             let mut total_net_income = 0.0;
             let mut total_treasury = 0.0;
             let mut total_cash = 0.0;
@@ -176,7 +179,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                 // Safety: Ensure we don't panic if history is missing
                 if let Some(data) = company.history.get(month_idx) {
                     total_revenue += data.revenue.to_f64().unwrap_or(0.0);
+                    total_cogs += data.cogs.to_f64().unwrap_or(0.0);
+                    total_gross_profit += data.gross_profit.to_f64().unwrap_or(0.0);
                     total_opex += data.opex.to_f64().unwrap_or(0.0);
+                    total_interest += data.interest_expense.to_f64().unwrap_or(0.0);
                     total_net_income += data.net_income.to_f64().unwrap_or(0.0);
                     total_treasury += data.treasury_gain.to_f64().unwrap_or(0.0);
                     total_cash += data.cash_balance.to_f64().unwrap_or(0.0);
@@ -195,10 +201,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                 month_index: m,
                 date: format!("Month {}", m),
                 revenue: Decimal::from_f64_retain(total_revenue).unwrap_or_default(),
-                cogs: Decimal::ZERO, 
-                gross_profit: Decimal::ZERO, 
+                cogs: Decimal::from_f64_retain(total_cogs).unwrap_or_default(),
+                gross_profit: Decimal::from_f64_retain(total_gross_profit).unwrap_or_default(),
                 opex: Decimal::from_f64_retain(total_opex).unwrap_or_default(),
-                interest_expense: Decimal::ZERO,
+                interest_expense: Decimal::from_f64_retain(total_interest).unwrap_or_default(),
                 net_income: Decimal::from_f64_retain(total_net_income).unwrap_or_default(),
                 treasury_gain: Decimal::from_f64_retain(total_treasury).unwrap_or_default(),
                 cash_balance: Decimal::from_f64_retain(total_cash).unwrap_or_default(),

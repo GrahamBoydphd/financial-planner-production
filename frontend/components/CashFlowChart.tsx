@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -75,6 +76,25 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   } else if (mode === 'single' && data.single_run_data) {
       sourceData = data.single_run_data;
   }
+
+  // --- FORENSIC LOGGING ---
+  useEffect(() => {
+    if (!sourceData || sourceData.length === 0) return;
+
+    // Find first month where cash < 0 (insolvency)
+    const insolvencyIndex = sourceData.findIndex(d => Number(d.cash_balance) < 0);
+
+    if (insolvencyIndex !== -1) {
+      console.log('--- FORENSIC DATA LOG ---');
+      console.log(`Insolvency detected at Month ${insolvencyIndex}`);
+      
+      const start = Math.max(0, insolvencyIndex - 6);
+      const end = insolvencyIndex + 1;
+      
+      console.log('Raw Data (Previous 6 Months):', sourceData.slice(start, end));
+      console.log('Check the "cogs" field in these objects.');
+    }
+  }, [sourceData]);
 
   // --- 1. The "Red Line" (Cumulative Investment) ---
   // Always from deterministic_data if available
@@ -532,6 +552,20 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
                 return 'Covered (Credit): ' + fmt(value);
             }
             // ---------------------------------
+
+            // --- NEW: Monthly Costs Breakdown ---
+            if (labelStr === 'Monthly Costs') {
+                const item = sourceData[context.dataIndex];
+                if (item) {
+                    return [
+                        'Total Costs: ' + fmt(value),
+                        '  OpEx: ' + fmt(Number(item.opex || 0)),
+                        '  COGS: ' + fmt(Number(item.cogs || 0)),
+                        '  Interest: ' + fmt(Number(item.interest_expense || 0))
+                    ];
+                }
+            }
+            // ------------------------------------
 
             // Handle Survival Rate %
             if (context.dataset.yAxisID === 'y1') {
