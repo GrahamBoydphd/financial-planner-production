@@ -101,7 +101,8 @@ fn calculate_nrig_params(
             "very_low" => 1.0,
             "low" => 3.2,
             "medium" => 10.0,
-            "high" => 32.0,
+            "high" => 20.0,
+            "very_high" => 32.0,
             _ => 10.0,
         };
         

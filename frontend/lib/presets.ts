@@ -20,5 +20,6 @@ export const SCALE_OPTIONS = [
   { label: "Very Low Volatility (Stable)", value: "very_low", description: "Prices/Values move slower than normal." },
   { label: "Low Volatility", value: "low", description: "Standard low market volatility." },
   { label: "Medium Volatility", value: "medium", description: "Standard high market volatility." },
-  { label: "High Volatility", value: "high", description: "Large swings." }
+  { label: "High Volatility", value: "high", description: "Large swings." },
+  { label: "Very High Volatility", value: "very_high", description: "Extreme volatility and large jumps." }
 ];
