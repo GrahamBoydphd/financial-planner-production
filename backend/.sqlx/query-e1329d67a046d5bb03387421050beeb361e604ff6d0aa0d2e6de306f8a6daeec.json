@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            insolvency_threshold = COALESCE($5, insolvency_threshold),\n            updated_at = NOW() \n        WHERE id = $6 AND tenant_id = $7\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\",\n            soft_limit_active as \"soft_limit_active!\", soft_limit_threshold as \"soft_limit_threshold!\", soft_limit_fraction as \"soft_limit_fraction!\"\n        ",
+  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            insolvency_threshold = COALESCE($5, insolvency_threshold),\n            soft_limit_active = COALESCE($6, soft_limit_active),\n            soft_limit_threshold = COALESCE($7, soft_limit_threshold),\n            soft_limit_fraction = COALESCE($8, soft_limit_fraction),\n            updated_at = NOW() \n        WHERE id = $9 AND tenant_id = $10\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\",\n            soft_limit_active as \"soft_limit_active!\", soft_limit_threshold as \"soft_limit_threshold!\", soft_limit_fraction as \"soft_limit_fraction!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -86,6 +86,9 @@
         "Numeric",
         "Numeric",
         "Numeric",
+        "Bool",
+        "Numeric",
+        "Numeric",
         "Uuid",
         "Uuid"
       ]
@@ -108,5 +111,5 @@
       false
     ]
   },
-  "hash": "517908cd1ca411a84be95ac102e23d1515bafc78098114f94e65ee7bade5b754"
+  "hash": "e1329d67a046d5bb03387421050beeb361e604ff6d0aa0d2e6de306f8a6daeec"
 }
