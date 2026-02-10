@@ -131,6 +131,11 @@ pub struct SimState {
     pub cum_pool_received: f64,
     pub cap_growth_sampler: Option<GrowthSampler>,
     
+    // Soft Limit (Friction Tax)
+    pub soft_limit_active: bool,
+    pub soft_limit_threshold: f64,
+    pub soft_limit_fraction: f64,
+
     pub revenues: Vec<Revenue>,
     pub expenses: Vec<Expense>,
     pub staffing: Vec<Staffing>,
@@ -404,6 +409,13 @@ impl SimState {
         if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
             contribution = poolable_gain * self.pooling_fraction;
             self.current_cash -= contribution;
+        }
+
+        // LOGIC D: Soft Upper Limit (Friction Tax)
+        if self.soft_limit_active && self.current_cash > self.soft_limit_threshold {
+            let excess = self.current_cash - self.soft_limit_threshold;
+            let tax = excess * self.soft_limit_fraction;
+            self.current_cash -= tax;
         }
 
         let net_income = total_profit;

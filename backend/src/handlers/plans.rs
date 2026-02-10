@@ -57,7 +57,8 @@ pub async fn create_plan(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
+            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
         "#,
         payload.company_id,
         payload.plan_name,
@@ -116,7 +117,8 @@ pub async fn update_plan(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
+            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
         "#,
         payload.plan_name,
         start_date,
@@ -146,7 +148,8 @@ pub async fn get_all_plans(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
+            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
         FROM financial_plans 
         WHERE tenant_id = $1 
         ORDER BY created_at DESC
@@ -172,7 +175,8 @@ pub async fn get_plan(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
+            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
         FROM financial_plans 
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -227,7 +231,8 @@ pub async fn get_plan_projection(
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!"
+            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
+            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
         FROM financial_plans 
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -478,7 +483,10 @@ pub async fn get_plan_projection(
         stop_insolvency,
         events_active,
         plan.pooling_fraction,
-        plan.insolvency_threshold
+        plan.insolvency_threshold,
+        plan.soft_limit_active,
+        plan.soft_limit_threshold,
+        plan.soft_limit_fraction
     );
 
     Ok(Json(result))

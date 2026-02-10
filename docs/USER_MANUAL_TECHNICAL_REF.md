@@ -325,3 +325,42 @@ When you look at the Fund Simulation (e.g., the "Fund NAV" chart):
 | **Current Cash**    | `cash_balance`                | Bank Balance (Positive) or Overdraft (Negative). |
 | **Debt Load**       | _Derived from above_          | `abs(min(0, cash_balance))`                      |
 | **Total Exposure**  | `total_exposure`              | `cumulative_external_capital` + `                |
+
+
+# Upper absorbing boundary.
+This is a **crucially important** addition.
+
+Your intuition is perfectly aligned with **Econophysics** and **Agent-Based Modeling** best practices. In purely mathematical simulations (Geometric Brownian Motion), there is no friction. In the real world, friction increases with scale:
+
+1. **Diminishing Returns:** Doubling a $100B company is harder than doubling a $1M company.
+    
+2. **Resource Constraints:** The market for your product isn't infinite (GDP cap).
+    
+3. **Regulatory/Social Friction:** Antitrust, strikes, higher taxes, organizational entropy.
+    
+
+Without this **"Soft Absorbing Barrier"** on the right tail (Success), your Mean (Average) will always diverge from your Median (Typical Experience) because one "Galactic Empire" company will skew the entire fund's value to infinity. This tax restores **stationarity** to the system.
+
+### The Implementation Plan
+
+I will add a **"Success Tax"** logic to the end of the monthly step.
+
+1. **Inputs:**
+    
+    - `soft_limit_active` (Bool): Is the tax on?
+        
+    - `soft_limit_threshold` (Float): The cash pile size where trouble starts (e.g., $100M).
+        
+    - `soft_limit_tax_rate` (Float): The % of _excess_ cash seized per month (e.g., 5% of everything above $100M).
+        
+2. **The Logic:**
+    
+    - Calculated **after** Revenue, Expenses, and Pooling.
+        
+    - `Excess = Max(0, Cash - Threshold)`
+        
+    - `Tax = Excess * TaxRate`
+        
+    - `Cash = Cash - Tax`
+        
+    - The money is **destroyed** (removed from the Universe), not redistributed.

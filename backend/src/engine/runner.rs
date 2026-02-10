@@ -57,6 +57,10 @@ pub fn generate_simulation(
     events_active: bool,
     pooling_fraction: Decimal,
     insolvency_threshold: Decimal,
+    // New Soft Limit Parameters
+    soft_limit_active: bool,
+    soft_limit_threshold: Decimal,
+    soft_limit_fraction: Decimal,
 ) -> SimulationResult {
     
     // 1. Map Revenue Items
@@ -228,6 +232,12 @@ pub fn generate_simulation(
         cum_dividends: 0.0,
         cum_pool_received: 0.0,
         cap_growth_sampler,
+        
+        // Soft Limit (Friction Tax)
+        soft_limit_active,
+        soft_limit_threshold: soft_limit_threshold.to_f64().unwrap_or(0.0),
+        soft_limit_fraction: soft_limit_fraction.to_f64().unwrap_or(0.0),
+
         revenues: engine_revenues,
         expenses: engine_expenses,
         staffing: engine_staffing,

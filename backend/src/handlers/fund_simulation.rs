@@ -43,7 +43,8 @@ pub async fn run_fund_simulation(
         models::Fund,
         r#"
         SELECT 
-            id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template
+            id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template,
+            default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction
         FROM funds
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -126,7 +127,8 @@ pub async fn run_fund_simulation(
                 SELECT 
                     id, company_id, plan_name, start_month, currency_code, 
                     created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
-                    insolvency_threshold
+                    insolvency_threshold,
+                    soft_limit_active, soft_limit_threshold, soft_limit_fraction
                 FROM financial_plans
                 WHERE id = $1 AND tenant_id = $2
                 "#,
@@ -143,7 +145,8 @@ pub async fn run_fund_simulation(
                 SELECT 
                     id, company_id, plan_name, start_month, currency_code, 
                     created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
-                    insolvency_threshold
+                    insolvency_threshold,
+                    soft_limit_active, soft_limit_threshold, soft_limit_fraction
                 FROM financial_plans
                 WHERE company_id = $1 AND tenant_id = $2
                 ORDER BY created_at DESC
@@ -626,6 +629,10 @@ fn map_to_sim_state(
         cum_pool_received: 0.0,
         cap_growth_sampler,
         
+        soft_limit_active: plan.soft_limit_active,
+        soft_limit_threshold: plan.soft_limit_threshold.to_f64().unwrap_or(10000000000.0),
+        soft_limit_fraction: plan.soft_limit_fraction.to_f64().unwrap_or(0.70),
+
         revenues: engine_revenues,
         expenses: engine_expenses,
         injections: engine_injections,

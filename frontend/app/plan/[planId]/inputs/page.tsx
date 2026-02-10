@@ -18,6 +18,7 @@ import CreditForm from '@/components/forms/CreditForm';
 import ValuationForm from '@/components/forms/ValuationForm';
 import StaffingForm from '@/components/forms/StaffingForm';
 import EventList from '@/components/EventList';
+import SuccessTaxForm from '@/components/forms/SuccessTaxForm';
 
 type TabType = 'operations' | 'capital' | 'settings' | 'events';
 
@@ -448,8 +449,8 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                  </Card>
             </section>
 
-             {/* VALUATION */}
-             <section>
+             {/* VALUATION & SUCCESS TAX */}
+             <section className="space-y-6">
                  <Card>
                     <h2 className="text-xl font-bold mb-4 text-purple-600">Valuation Settings</h2>
                     <p className="text-sm text-gray-500 mb-6">
@@ -457,6 +458,9 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     </p>
                     <ValuationForm planId={planId} onSuccess={fetchData} />
                  </Card>
+
+                 {/* SUCCESS TAX FORM */}
+                 {plan && <SuccessTaxForm plan={plan} onSuccess={fetchData} />}
             </section>
         </div>
       )}

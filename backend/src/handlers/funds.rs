@@ -22,7 +22,7 @@ pub async fn create_fund(
 
     let fund = sqlx::query_as!(
         Fund,
-        "INSERT INTO funds (user_id, fund_name, currency_code, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template",
+        "INSERT INTO funds (user_id, fund_name, currency_code, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction",
         user_id,
         payload.fund_name,
         currency,
@@ -40,7 +40,7 @@ pub async fn get_funds(
 ) -> Result<Json<Vec<Fund>>, AppError> {
     let funds = sqlx::query_as!(
         Fund,
-        "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
+        "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
         claims.tenant_id
     )
     .fetch_all(&pool)
@@ -56,7 +56,7 @@ pub async fn get_fund(
 ) -> Result<Json<Fund>, AppError> {
     let fund = sqlx::query_as!(
         Fund,
-        "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template FROM funds WHERE id = $1 AND tenant_id = $2",
+        "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
     )
@@ -79,7 +79,7 @@ pub async fn update_fund(
         "UPDATE funds 
          SET fund_name = $1, currency_code = $2 
          WHERE id = $3 AND tenant_id = $4 
-         RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template",
+         RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction",
         payload.fund_name,
         payload.currency_code,
         id,

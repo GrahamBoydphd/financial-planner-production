@@ -36,6 +36,13 @@ pub struct Fund {
     pub created_at: DateTime<Utc>,
     pub tenant_id: Uuid,
     pub is_public_template: Option<bool>,
+    // New Soft Limit Defaults
+    #[serde(default)]
+    pub default_soft_limit_active: bool,
+    #[serde(default)]
+    pub default_soft_limit_threshold: Decimal,
+    #[serde(default)]
+    pub default_soft_limit_fraction: Decimal,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -80,6 +87,13 @@ pub struct FinancialPlan {
     pub tenant_id: Uuid,
     pub last_p50_net_value: Option<Decimal>,
     pub insolvency_threshold: Decimal,
+    // New Soft Limit Settings
+    #[serde(default)]
+    pub soft_limit_active: bool,
+    #[serde(default)]
+    pub soft_limit_threshold: Decimal,
+    #[serde(default)]
+    pub soft_limit_fraction: Decimal,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
