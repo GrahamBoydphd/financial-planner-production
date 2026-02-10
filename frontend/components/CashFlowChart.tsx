@@ -477,7 +477,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
               pointRadius: 0,
               tension: 0.1,
               pointStyle: 'line',
-              fill: 'origin',
+              fill: false,
               order: 7, 
           });
       }

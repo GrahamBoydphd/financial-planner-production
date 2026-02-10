@@ -185,7 +185,8 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
 
         if (!allPaths.length) return 0;
         
-        const investment = Number(monthData.cumulative_external_capital);
+        // UPDATED: Use total_exposure (Equity + Debt) as the basis for the multiple
+        const investment = Number(monthData.total_exposure || monthData.cumulative_external_capital || 0);
         const target = investment * targetMultiple;
         
         let count = 0;
@@ -252,6 +253,31 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
         globalMax: Math.max(...values)
     };
   }, [deterministicValues, deterministicInvestment, singlePathValues, singlePathInvestment, fanData]);
+
+  // 6. Dynamic Table Data & Pool Values
+  const activeTableData = useMemo(() => {
+      if (viewMode === 'standard') return detRows;
+      if (viewMode === 'monte_carlo') return p50Data;
+      if (viewMode === 'single') {
+          const raw = allPathsRaw?.[pathIndex];
+          return Array.isArray(raw) ? raw : [];
+      }
+      return [];
+  }, [viewMode, detRows, p50Data, allPathsRaw, pathIndex]);
+
+  const poolValues = useMemo(() => {
+      return activeTableData.map((d: any) => {
+          if (typeof d !== 'object' || d === null) return 0;
+          // CHANGED: Show Total Contribution (Volume) instead of Net Flow
+          return Number(d.pool_contribution || 0);
+      });
+  }, [activeTableData]);
+
+  const getTableTitle = () => {
+      if (viewMode === 'standard') return "Deterministic Monthly Data";
+      if (viewMode === 'single') return `Path ${pathIndex + 1} Monthly Data`;
+      return "Aggregate Fund Flows (P50 Median)";
+  };
 
   if (loading) return <Layout>Loading...</Layout>;
   if (!fund) return <Layout>Fund not found</Layout>;
@@ -494,6 +520,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                       labels={chartLabels}
                                       values={singlePathValues}
                                       investmentValues={singlePathInvestment}
+                                      poolValues={poolValues}
                                       currencySymbol={currency}
                                       isLog={isLogScale}
                                       targetProbability={likelihoodData}
@@ -548,6 +575,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                             labels={chartLabels}
                                             values={deterministicValues}
                                             investmentValues={deterministicInvestment}
+                                            poolValues={poolValues}
                                             currencySymbol={currency}
                                             isLog={isLogScale}
                                             minY={globalMin}
@@ -576,6 +604,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                             labels={chartLabels}
                                             fanData={fanData}
                                             investmentValues={deterministicInvestment}
+                                            poolValues={poolValues}
                                             targetProbability={likelihoodData}
                                             targetMultiple={targetMultiple}
                                             currencySymbol={currency}
@@ -625,13 +654,13 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
 
             {/* NEW TABLE SECTION */}
             <Card className="overflow-x-auto max-h-96 mt-6 border-t-4 border-gray-600">
-                <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">Aggregate Fund Flows (P50 Median)</h3>
+                <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">{getTableTitle()}</h3>
                 <table className="min-w-full text-xs text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
                     <tr>
                         <th className="px-4 py-3">Month</th>
-                        <th className="px-4 py-3">Net Income (P50)</th>
-                        <th className="px-4 py-3">Cash (P50)</th>
+                        <th className="px-4 py-3">Net Income</th>
+                        <th className="px-4 py-3">Cash</th>
                         <th className="px-4 py-3 text-red-600">Total Pool Contrib.</th>
                         <th className="px-4 py-3 text-green-600">Total Pool Recv.</th>
                         <th className="px-4 py-3">Contributors</th>
@@ -639,11 +668,11 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                     </tr>
                     </thead>
                     <tbody>
-                    {p50Data.map((row: any) => (
-                        <tr key={row.month_index} className="border-b hover:bg-gray-50 bg-white">
-                            <td className="px-4 py-2 font-medium">{row.month_index}</td>
+                    {activeTableData.map((row: any, idx: number) => (
+                        <tr key={row.month_index ?? idx} className="border-b hover:bg-gray-50 bg-white">
+                            <td className="px-4 py-2 font-medium">{row.month_index ?? idx}</td>
                             <td className="px-4 py-2">{fmt(row.net_income)}</td>
-                            <td className="px-4 py-2 font-bold">{fmt(row.cash_balance)}</td>
+                            <td className="px-4 py-2 font-bold">{fmt(row.cash_balance ?? row.total_value)}</td>
                             <td className="px-4 py-2 text-red-600">{row.pool_contribution ? fmt(row.pool_contribution) : '-'}</td>
                             <td className="px-4 py-2 text-green-600">{row.pool_received ? fmt(row.pool_received) : '-'}</td>
                             <td className="px-4 py-2">{row.contributing_companies ?? '-'}</td>
@@ -663,6 +692,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
   );
 }
 </file>
+
 <file path='frontend/components/FundChart.tsx'>
 'use client';
 
@@ -728,6 +758,7 @@ interface Props {
   labels: string[];
   values?: number[]; // For standard/single mode
   investmentValues?: number[]; // For standard/single mode (and fallback for MC)
+  poolValues?: number[]; // NEW: Net Pool Flow
   fanData?: FanData; // For monte_carlo mode
   targetProbability?: number[]; // Secondary axis (was survivalRate)
   targetMultiple?: number; // For label
@@ -742,6 +773,7 @@ export default function FundChart({
   labels,
   values,
   investmentValues,
+  poolValues,
   fanData,
   targetProbability,
   targetMultiple,
@@ -789,6 +821,10 @@ export default function FundChart({
           return investmentValues?.[index] ?? null;
       }
       return values[index] ?? null;
+    }
+    // Handle Pool Values Raw
+    if (datasetLabel === 'Total Pool Contribution' && poolValues) {
+        return poolValues[index] ?? null;
     }
     return null;
   };
@@ -993,6 +1029,21 @@ export default function FundChart({
     }
   }
 
+  // --- 3. Net Pool Flow (Universal) ---
+  if (poolValues && poolValues.length > 0) {
+      datasets.push({
+          label: 'Total Pool Contribution',
+          data: processArray(poolValues),
+          borderColor: 'rgb(168, 85, 247)', // Purple-500
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: false,
+          pointStyle: 'line',
+          order: 30, // Distinct order
+      });
+  }
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -1102,8 +1153,13 @@ export default function FundChart({
               return `${label}: ${Number(context.parsed.y).toFixed(1)}%`;
             }
 
+            // Custom tooltip for Pool Volume
+            if (label === 'Total Pool Contribution') {
+                label = 'Pool Volume';
+            }
+
             // Handle Financial Values (use getRaw to show real value, not clamped)
-            const rawVal = getRaw(label, context.dataIndex);
+            const rawVal = getRaw(context.dataset.label || '', context.dataIndex);
             const displayVal = rawVal !== null ? rawVal : context.parsed.y;
             const formattedVal = `${currencySymbol}${Number(displayVal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
             

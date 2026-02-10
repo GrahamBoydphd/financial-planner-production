@@ -62,6 +62,7 @@ interface Props {
   labels: string[];
   values?: number[]; // For standard/single mode
   investmentValues?: number[]; // For standard/single mode (and fallback for MC)
+  poolValues?: number[]; // NEW: Net Pool Flow
   fanData?: FanData; // For monte_carlo mode
   targetProbability?: number[]; // Secondary axis (was survivalRate)
   targetMultiple?: number; // For label
@@ -76,6 +77,7 @@ export default function FundChart({
   labels,
   values,
   investmentValues,
+  poolValues,
   fanData,
   targetProbability,
   targetMultiple,
@@ -123,6 +125,10 @@ export default function FundChart({
           return investmentValues?.[index] ?? null;
       }
       return values[index] ?? null;
+    }
+    // Handle Pool Values Raw
+    if (datasetLabel === 'Total Pool Contribution' && poolValues) {
+        return poolValues[index] ?? null;
     }
     return null;
   };
@@ -327,6 +333,21 @@ export default function FundChart({
     }
   }
 
+  // --- 3. Net Pool Flow (Universal) ---
+  if (poolValues && poolValues.length > 0) {
+      datasets.push({
+          label: 'Total Pool Contribution',
+          data: processArray(poolValues),
+          borderColor: 'rgb(168, 85, 247)', // Purple-500
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: false,
+          pointStyle: 'line',
+          order: 30, // Distinct order
+      });
+  }
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -436,8 +457,13 @@ export default function FundChart({
               return `${label}: ${Number(context.parsed.y).toFixed(1)}%`;
             }
 
+            // Custom tooltip for Pool Volume
+            if (label === 'Total Pool Contribution') {
+                label = 'Pool Volume';
+            }
+
             // Handle Financial Values (use getRaw to show real value, not clamped)
-            const rawVal = getRaw(label, context.dataIndex);
+            const rawVal = getRaw(context.dataset.label || '', context.dataIndex);
             const displayVal = rawVal !== null ? rawVal : context.parsed.y;
             const formattedVal = `${currencySymbol}${Number(displayVal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
             
