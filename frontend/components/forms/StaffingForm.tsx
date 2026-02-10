@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Plus, Edit2, Save, X, Users, DollarSign, Calendar, TrendingUp, Briefcase } from "lucide-react"
+import { Plus, Edit2, Save, X, Users, Calendar, TrendingUp, Briefcase } from "lucide-react"
 import { StaffingRole } from "@/lib/api"
 import Card from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
@@ -11,6 +11,7 @@ import DeleteButton from "@/components/ui/DeleteButton"
 interface StaffingFormProps {
   planId: string
   initialRoles: StaffingRole[]
+  currency: string
   onSave: (role: Omit<StaffingRole, "id" | "plan_id"> & { id?: string }) => Promise<void>
   onDelete: (roleId: string) => Promise<void>
 }
@@ -27,17 +28,7 @@ interface StaffingRoleFormState {
   annual_increase: string
 }
 
-// Helper to format currency
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-export default function StaffingForm({ planId, initialRoles, onSave, onDelete }: StaffingFormProps) {
+export default function StaffingForm({ planId, initialRoles, currency, onSave, onDelete }: StaffingFormProps) {
   const [roles, setRoles] = useState<StaffingRole[]>(initialRoles)
   const [isEditing, setIsEditing] = useState(false)
   
@@ -52,6 +43,37 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
   useEffect(() => {
     setRoles(initialRoles)
   }, [initialRoles])
+
+  // Helper to format currency based on prop
+  const formatCurrency = (value: number) => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch (e) {
+      // Fallback if currency code is invalid
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    }
+  }
+
+  // Get currency symbol for input prefix
+  const getCurrencySymbol = () => {
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).formatToParts(0).find(part => part.type === 'currency')?.value || "$";
+    } catch {
+      return "$";
+    }
+  }
+  
+  const currencySymbol = getCurrencySymbol();
 
   const handleAddNew = () => {
     setCurrentRole({
@@ -230,7 +252,9 @@ export default function StaffingForm({ planId, initialRoles, onSave, onDelete }:
                   <Tooltip content="Base annual salary per person in this role." />
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <span className="absolute left-3 top-2.5 text-gray-500 text-sm font-semibold select-none">
+                    {currencySymbol}
+                  </span>
                   <input
                     id="annual_salary"
                     type="number"

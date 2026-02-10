@@ -179,7 +179,7 @@ Improve the clean version with better guidance to the user.
 - [x] FE to Add to the company data table a column for treasury management gains / losses. 
 - [x] Bi directional event and Counter cyclic events.
 - [x] Register demo user. 
-- [ ] Make full companies demo on server. 
+- [x] Make full companies demo on server. 
 - [x] Make video. 
 - [ ] Upgrade help page.
 - [x] Add copy event to companies page.
@@ -187,10 +187,11 @@ Improve the clean version with better guidance to the user.
 	- [ ] **Big refactor** This code runs deep inside the simulation loop (`sample()` function) which returns a simple `f64`. It cannot easily return an `Result<Error>` to the user without rewriting the entire engine signature (a massive, risky change).
 	- [ ] **The Fortress Standard:** We must not allow invalid state to execute. If the user asks for `-2` intervals, the simulation _should_ likely fail or warn, not just guess.
 - [ ] Later change the P0 and P100 lines on each plot to P2 and P98, eliminating the two 1 in 500 extremes on each end. Or maybe not, since I cut off the big ones anyway? Or maybe yes, to simply not create gambler's hope. 
+- [x] Change plotted pool to monthly pool, not accumulated. 
 - [x] Later add a feedback tab that connects to google forms. 
 - [x] Duplicate a plan in a company on the company page; Duplicate a whole company in a fund on the dashboard page and the structure page; move a company from one fund to another on the dashboard and on the structure page;  duplicate a whole fund on both the Structure page and the Fund page .  When a company is Duplicated, all plans are Duplicated with it. When a fund is Duplicated, all companies and their plans are duplicated.
 - [x] Have a user called demo_admin that runs the "Demo Fund" of the "Demo Tenant" and manages the demo fund and demo companies. Either 1) All users can see the demo fund, see the results, but cannot edit it. And they can copy the demo into their own trial and then edit that. Or alternately 2) if it's better for security, a copy is copied in on registration as their personal "demo fund and companies". 1. is preferred because then they can always restore the demo fund, and if we improve it they can copy the improved version. Please advise though on the security implications.
-- [ ] Change $ sign in staffing to currency symbol.
+- [x] Change $ sign in staffing to currency symbol.
 - [ ] I want to add new functionality to both the company charts and the fund charts. On the Monte Carlo simulation runs, I want to add a card that shows the performance improvement when the ergodic correction is switched on. This should give a number for the P50 end value that shows how much bigger the total value of the fund is, is the fund is, is at the...
 - [ ] Improve the information and description and FAQ. 
 	- [ ] "The Frankenstein Median" : The "Zombie Resurrection" (2 → 1 → 2) happens because the engine currently calculates the P50 **Cross-Sectionally** (month-by-month): 

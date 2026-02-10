@@ -1,578 +1,1133 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='backend/src/engine/orchestrator.rs'>
-use crate::engine::domain::{Universe, SimState, Shock};
-use crate::engine::event_manager::EventManager;
-use crate::models::Event;
-use crate::projection::{SimulationResult, MonthlyData};
-use crate::distributions::VolatilityModel;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use std::cmp::Ordering;
-use std::marker::PhantomData;
-use uuid::Uuid;
+<file path='frontend/app/fund/[fundId]/results/page.tsx'>
+'use client';
 
-pub trait SimulationMode {}
-pub struct PortfolioMode;
-impl SimulationMode for PortfolioMode {}
-pub struct EnsembleMode;
-impl SimulationMode for EnsembleMode {}
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import { api, Fund, SimulationResult } from '@/lib/api';
+import FundChart, { FanData } from '@/components/FundChart';
+import FundKPICards from '@/components/display/FundKPICards';
 
-pub struct FundOrchestrator<Mode: SimulationMode> {
-    pub universes: Vec<Universe>,
-    pub deterministic_universe: Universe,
-    pub months: i32,
-    pub events: Vec<Event>,
-    pub event_manager: EventManager,
-    pub events_active: bool,
-    _marker: PhantomData<Mode>,
+const YEAR_OPTIONS = [1, 2, 3, 5, 10, 20, 50, 100];
+
+type ViewMode = 'standard' | 'single' | 'monte_carlo';
+
+// Helper to extract FanData from SimulationResult
+const extractFanData = (sim: SimulationResult): FanData => {
+  const parse = (arr?: (number | string)[]) => arr?.map(v => Number(v));
+
+  return {
+    p0: parse(sim.p0_value),
+    p5: parse(sim.p5_value),
+    p10: parse(sim.p10_value),
+    p25: parse(sim.p25_value),
+    p50: parse(sim.p50_value),
+    p75: parse(sim.p75_value),
+    p90: parse(sim.p90_value),
+    p95: parse(sim.p95_value),
+    p100: parse(sim.p100_value),
+    
+    // Solvency Wiring
+    p0_solvent_count: parse(sim.p0_solvent_count),
+    p10_solvent_count: parse(sim.p10_solvent_count),
+    p25_solvent_count: parse(sim.p25_solvent_count),
+    p50_solvent_count: parse(sim.p50_solvent_count),
+    p75_solvent_count: parse(sim.p75_solvent_count),
+    p90_solvent_count: parse(sim.p90_solvent_count),
+    p100_solvent_count: parse(sim.p100_solvent_count),
+    p50_data: sim.p50_data,
+  } as any;
+};
+
+export default function FundResultsPage({ params }: { params: { fundId: string } }) {
+  const { fundId } = params;
+  const searchParams = useSearchParams();
+  const fundPlanId = searchParams.get('fund_plan_id');
+  
+  // Data State
+  const [fund, setFund] = useState<Fund | null>(null);
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [simLoading, setSimLoading] = useState(false);
+
+  // Control State
+  const [isLogScale, setIsLogScale] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('standard');
+  const [poolingFraction, setPoolingFraction] = useState<number>(0);
+  const [years, setYears] = useState<number>(5);
+  const [stopInsolvency, setStopInsolvency] = useState<boolean>(true);
+  const [eventsActive, setEventsActive] = useState<boolean>(true);
+  
+  // Investor Track State
+  const [targetMultiple, setTargetMultiple] = useState<number>(3.0);
+  const [includeInitialCapital, setIncludeInitialCapital] = useState<boolean>(false);
+  
+  // Path Exploration State
+  const [pathIndex, setPathIndex] = useState<number>(0);
+
+  // 1. Initial Load (Fund Metadata)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const f = await api.getFund(fundId);
+        setFund(f);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [fundId]);
+
+  // 2. Simulation Load
+  const loadSim = useCallback(async () => {
+    if (!fund) return;
+    
+    try {
+      setSimLoading(true);
+      
+      const months = years * 12;
+      const simParams = {
+          fund_plan_id: fundPlanId || undefined,
+          months: months,
+          fund_pooling_fraction: poolingFraction.toFixed(1),
+          stop_insolvency: stopInsolvency,
+          include_initial_capital: includeInitialCapital,
+          events_active: eventsActive,
+      };
+
+      // Single API call for all data
+      const res = await api.getFundSimulation(fundId, simParams);
+      setSimulation(res);
+      setPathIndex(0); // Reset path index on new simulation
+
+    } catch (e) {
+      console.error("Simulation failed", e);
+    } finally {
+      setSimLoading(false);
+    }
+  }, [fund, fundId, fundPlanId, poolingFraction, years, stopInsolvency, includeInitialCapital, eventsActive]);
+
+  // Trigger simulation on dependency change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+        loadSim();
+    }, 600);
+    return () => clearTimeout(timeoutId);
+  }, [loadSim]);
+
+  // --- DATA PREPARATION ---
+
+  // 1. Deterministic Data (Standard Mode)
+  const detRows = simulation?.deterministic_data || [];
+  
+  // Check for empty data
+  if (simulation && detRows.length === 0) {
+      console.warn('No Deterministic Data Available');
+  }
+
+  const deterministicValues = detRows.map((d: any) => Number(d.total_value || 0));
+  // NEW: Deterministic Investment (Exposure)
+  const deterministicInvestment = detRows.map((d: any) => Number(d.total_exposure || d.cumulative_external_capital || 0));
+
+  // 2. Single Path Data (Volatile Mode)
+  const allPathsRaw = simulation?.all_paths;
+  
+  // Memoize Values
+  const allPaths = useMemo(() => 
+    Array.isArray(allPathsRaw) 
+      ? allPathsRaw.map((p: any[]) => p.map((v: any) => {
+          // FIX: Handle object structure from backend (Fortress Standard)
+          if (typeof v === 'object' && v !== null) {
+              return Number(v.total_value);
+          }
+          return Number(v);
+      })) 
+      : [], 
+  [allPathsRaw]);
+
+  // NEW: Memoize Investment/Exposure Paths
+  const allPathsInvestment = useMemo(() => 
+    Array.isArray(allPathsRaw) 
+      ? allPathsRaw.map((p: any[]) => p.map((v: any, idx: number) => {
+          if (typeof v === 'object' && v !== null) {
+              return Number(v.total_exposure || v.cumulative_external_capital || 0);
+          }
+          // Fallback to deterministic if scalar (legacy support)
+          return deterministicInvestment[idx] || 0;
+      })) 
+      : [], 
+  [allPathsRaw, deterministicInvestment]);
+    
+  const singlePathValues = allPaths.length > 0 && allPaths[pathIndex] ? allPaths[pathIndex] : [];
+  const singlePathInvestment = allPathsInvestment.length > 0 && allPathsInvestment[pathIndex] ? allPathsInvestment[pathIndex] : [];
+  
+  // Prepare current path values for KPI Cards
+  const currentPathValues = viewMode === 'single' && singlePathValues.length > 0 ? {
+      netValue: singlePathValues[singlePathValues.length - 1],
+  } : undefined;
+
+  // 3. Investor Track Math (Likelihood & DPI)
+  const p50Data = simulation?.p50_data || [];
+  
+  const { likelihoodData, dpiData } = useMemo(() => {
+    if (!simulation || !p50Data.length) return { likelihoodData: [], dpiData: [] };
+
+    // Calculate Likelihood Array (Probability > Target Multiple)
+    const likelihood = p50Data.map((monthData, idx) => {
+        // FIX: Force Month 0 to 0% to avoid "100% success" artifact when investment is 0
+        if (idx === 0) return 0;
+
+        if (!allPaths.length) return 0;
+        
+        const investment = Number(monthData.cumulative_external_capital);
+        const target = investment * targetMultiple;
+        
+        let count = 0;
+        for (const path of allPaths) {
+            const val = Number(path[idx]);
+            if (val >= target) count++;
+        }
+        return count / allPaths.length;
+    });
+
+    // Calculate DPI Array (Distributed to Paid-In)
+    const dpi = p50Data.map(d => {
+        const dist = Number(d.cumulative_dividends);
+        const inv = Number(d.cumulative_external_capital);
+        return inv > 0 ? dist / inv : 0;
+    });
+
+    return { likelihoodData: likelihood, dpiData: dpi };
+
+  }, [simulation, p50Data, allPaths, targetMultiple]);
+
+  const handlePrevPath = () => {
+      setPathIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextPath = () => {
+      const maxPaths = allPaths.length || 1000;
+      setPathIndex(prev => Math.min(maxPaths - 1, prev + 1));
+  };
+
+  // 4. Monte Carlo Data (Fan Mode)
+  const fanData = simulation ? extractFanData(simulation) : undefined;
+
+  // 5. Global Scale Calculation (Unified Min/Max)
+  const { globalMin, globalMax } = useMemo(() => {
+    const values: number[] = [];
+    
+    const push = (arr?: any[]) => {
+        if (!arr) return;
+        arr.forEach(v => {
+            const n = Number(v);
+            if (!isNaN(n)) values.push(n);
+        });
+    };
+
+    // Deterministic
+    push(deterministicValues);
+    push(deterministicInvestment);
+
+    // Single Path (Current)
+    push(singlePathValues);
+    push(singlePathInvestment);
+
+    // Fan Data (Envelope)
+    if (fanData) {
+        push(fanData.p0);
+        push(fanData.p100);
+    }
+
+    if (values.length === 0) return { globalMin: 0, globalMax: 100 };
+
+    return {
+        globalMin: Math.min(...values),
+        globalMax: Math.max(...values)
+    };
+  }, [deterministicValues, deterministicInvestment, singlePathValues, singlePathInvestment, fanData]);
+
+  if (loading) return <Layout>Loading...</Layout>;
+  if (!fund) return <Layout>Fund not found</Layout>;
+
+  // --- ERROR BLOCK ---
+  if (simulation?.errors && simulation.errors.length > 0) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto mt-8 bg-red-50 border-l-4 border-red-500 p-6 rounded shadow-sm">
+           <h2 className="text-red-800 font-bold text-lg mb-2 flex items-center gap-2">
+             ⚠️ Simulation Failed
+           </h2>
+           <p className="text-red-700 mb-3">The financial model could not resolve the following issues:</p>
+           <ul className="list-disc pl-5 space-y-1 text-red-600 font-medium">
+              {simulation.errors.map((e, i) => <li key={i}>{e}</li>)}
+           </ul>
+           <button onClick={() => window.location.reload()} className="mt-4 bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded text-sm font-bold transition-colors">
+              Reload & Try Again
+           </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const currency = fund.currency_code || '$';
+
+  // Helper
+  const fmt = (n: any) => 
+    `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+  // HARDENED: Unified Labels
+  const chartLabels = simulation?.labels || [];
+
+  // Determine visibility
+  const showStandard = viewMode === 'standard' && simulation;
+  const showMonteCarlo = viewMode === 'monte_carlo' && simulation;
+  const hasData = !!simulation;
+
+  // Active Data for KPIs
+  const activeData = simulation;
+  const isSingleMode = viewMode === 'single';
+
+  // Final Values for Cards
+  const lastLikelihood = likelihoodData.length > 0 ? likelihoodData[likelihoodData.length - 1] : 0;
+  const lastDpi = dpiData.length > 0 ? dpiData[dpiData.length - 1] : 0;
+
+  return (
+    <Layout>
+      <nav className='mb-6 flex justify-between items-center'>
+        <Link href={`/fund/${fundId}/inputs`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Back to Configuration
+        </Link>
+      </nav>
+
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-gray-900">{fund.fund_name} <span className="text-gray-400 font-normal">Projections</span></h1>
+            <p className="text-gray-500 text-sm">Aggregated Portfolio Performance</p>
+        </div>
+        
+        {/* CONTROLS BAR */}
+        <div className="flex flex-wrap items-center gap-4 bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+              
+              {/* Mode Selector */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-500 uppercase">Simulation Mode</label>
+                <select 
+                  className="border rounded p-1.5 text-sm font-bold text-blue-800 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                >
+                  <option value="standard">Standard (Deterministic)</option>
+                  <option value="single">Single Path (Volatile)</option>
+                  <option value="monte_carlo">Monte Carlo (Fan)</option>
+                </select>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Years Selector */}
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs font-semibold text-gray-500 uppercase">Duration</label>
+                 <select 
+                    value={years} 
+                    onChange={(e) => setYears(Number(e.target.value))}
+                    className="border rounded p-1.5 text-sm font-bold text-blue-800 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none min-w-[100px]"
+                 >
+                    {YEAR_OPTIONS.map(y => (
+                        <option key={y} value={y}>{y} Years</option>
+                    ))}
+                 </select>
+              </div>
+
+              {/* Pooling Slider (Visible for single and monte_carlo) */}
+              {viewMode !== 'standard' && (
+                <>
+                    <div className="w-px h-8 bg-gray-300 mx-1"></div>
+                    <div className="flex flex-col gap-1 w-40 animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className="flex justify-between">
+                            <label className="text-xs font-semibold text-gray-500 uppercase">ERGODICITY CORRECTION</label>
+                            <span className="text-xs font-bold text-indigo-600">{poolingFraction}%</span>
+                            </div>
+                            <input 
+                            type="range" min="0" max="100" step="5"
+                            value={poolingFraction} onChange={(e) => setPoolingFraction(parseInt(e.target.value))}
+                            className="h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            />
+                    </div>
+                </>
+              )}
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Target Multiple Input */}
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs font-semibold text-gray-500 uppercase">Target Multiple</label>
+                 <div className="flex items-center gap-1">
+                    <input 
+                        type="number" 
+                        min="1.0" 
+                        step="0.1"
+                        value={targetMultiple}
+                        onChange={(e) => setTargetMultiple(Number(e.target.value))}
+                        className="w-16 border rounded p-1.5 text-sm font-bold text-purple-800 bg-purple-50 focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                    <span className="text-sm font-bold text-gray-400">x</span>
+                 </div>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Toggles */}
+              <div className="flex flex-col gap-2 px-2">
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="logScale" 
+                    checked={isLogScale} onChange={(e) => setIsLogScale(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="logScale" className="text-xs font-medium cursor-pointer text-gray-700">Log Scale</label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="includeCapital" 
+                    checked={includeInitialCapital} onChange={(e) => setIncludeInitialCapital(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="includeCapital" className="text-xs font-medium cursor-pointer text-gray-700">Incl. Capital</label>
+                </div>
+                {/* NEW CHECKBOX */}
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="eventsActive" 
+                    checked={eventsActive} onChange={(e) => setEventsActive(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    />
+                    <label htmlFor="eventsActive" className="text-xs font-medium cursor-pointer text-purple-700">Events Active</label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="stopInsolvency" 
+                    checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
+                    className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
+                    />
+                    <label htmlFor="stopInsolvency" className="text-xs font-medium cursor-pointer text-red-700">Stop if Insolvent</label>
+                </div>
+              </div>
+
+        </div>
+      </div>
+
+      {simLoading ? (
+          <div className="h-96 flex flex-col items-center justify-center bg-gray-50 border rounded-lg animate-pulse text-gray-400 font-medium gap-2">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
+              <span>Running Simulation...</span>
+          </div>
+      ) : hasData ? (
+          <>
+            {isSingleMode ? (
+                // SINGLE MODE LAYOUT
+                <div className="flex flex-col gap-6 mb-12 animate-in fade-in duration-500">
+                    
+                    {/* Charts Row */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          <Card className="border-t-4 border-gray-400 h-full">
+                              <div className="flex justify-between items-center mb-4">
+                                  <div>
+                                      <h2 className="text-lg font-bold text-gray-800">Deterministic Baseline</h2>
+                                      <p className="text-xs text-gray-500 mt-1">Zero volatility projection.</p>
+                                  </div>
+                              </div>
+                              <div className="h-[500px]">
+                                  <FundChart 
+                                      mode="standard"
+                                      labels={chartLabels}
+                                      values={deterministicValues}
+                                      investmentValues={deterministicInvestment}
+                                      currencySymbol={currency}
+                                      isLog={isLogScale}
+                                      minY={globalMin}
+                                      maxY={globalMax}
+                                  />
+                              </div>
+                          </Card>
+
+                          <Card className="border-t-4 border-indigo-500 h-full">
+                              <div className="flex justify-between items-center mb-4">
+                                  <div>
+                                      <div className="flex items-center gap-2">
+                                          <h2 className="text-lg font-bold text-gray-800">Volatile Reality</h2>
+                                          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Stochastic</span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">Single stochastic trajectory</p>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-1 bg-gray-100 rounded p-1 border border-gray-200">
+                                      <button 
+                                          onClick={handlePrevPath}
+                                          disabled={pathIndex <= 0}
+                                          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                      >
+                                          ←
+                                      </button>
+                                      <span className="text-xs font-mono font-bold text-gray-700 px-2 min-w-[80px] text-center">
+                                          Path {pathIndex + 1} / {allPaths.length || 1000}
+                                      </span>
+                                      <button 
+                                          onClick={handleNextPath}
+                                          disabled={!simulation || pathIndex >= (allPaths.length || 1000) - 1}
+                                          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                      >
+                                          →
+                                      </button>
+                                  </div>
+                              </div>
+                              <div className="h-[500px]">
+                                  <FundChart 
+                                      mode="single"
+                                      labels={chartLabels}
+                                      values={singlePathValues}
+                                      investmentValues={singlePathInvestment}
+                                      currencySymbol={currency}
+                                      isLog={isLogScale}
+                                      targetProbability={likelihoodData}
+                                      targetMultiple={targetMultiple}
+                                      minY={globalMin}
+                                      maxY={globalMax}
+                                  />
+                              </div>
+                          </Card>
+                    </div>
+
+                    {/* KPI Row */}
+                    <div className="w-full">
+                        {activeData && (
+                            <>
+                                <Card className='mb-4 border-l-4 border-purple-500 p-4'>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
+                                    <div className='text-xs text-gray-400'>Events per lifetime</div>
+                                </Card>
+                                <FundKPICards 
+                                    data={activeData} 
+                                    currency={currency} 
+                                    mode="single"
+                                    currentPathValues={currentPathValues}
+                                    isRow={true}
+                                    targetMultiple={targetMultiple}
+                                    dpiValue={lastDpi}
+                                    likelihoodValue={lastLikelihood}
+                                />
+                            </>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                // SIDEBAR LAYOUT (Standard & Monte Carlo)
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12 animate-in fade-in duration-500">
+                    
+                    {/* LEFT COLUMN: CHART (3/4 width) */}
+                    <div className="lg:col-span-3 space-y-6">
+                        {showStandard && (
+                            <Card className="border-t-4 border-gray-400 h-full">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-800">Deterministic Projection</h2>
+                                            <p className="text-xs text-gray-500 mt-1">Standard linear projection without volatility.</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-[500px]">
+                                        <FundChart 
+                                            mode="standard"
+                                            labels={chartLabels}
+                                            values={deterministicValues}
+                                            investmentValues={deterministicInvestment}
+                                            currencySymbol={currency}
+                                            isLog={isLogScale}
+                                            minY={globalMin}
+                                            maxY={globalMax}
+                                        />
+                                    </div>
+                            </Card>
+                        )}
+
+                        {showMonteCarlo && (
+                            <Card className="border-t-4 border-indigo-500 h-full">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-800">
+                                                Probabilistic Envelope (P0-P100)
+                                            </h2>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Showing the full range of possible outcomes across 1,000 iterations.
+                                            </p>
+                                        </div>
+                                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">Target Probability Overlay Active</span>
+                                    </div>
+                                    <div className="h-[500px]">
+                                        <FundChart 
+                                            mode="monte_carlo"
+                                            labels={chartLabels}
+                                            fanData={fanData}
+                                            investmentValues={deterministicInvestment}
+                                            targetProbability={likelihoodData}
+                                            targetMultiple={targetMultiple}
+                                            currencySymbol={currency}
+                                            isLog={isLogScale}
+                                            minY={globalMin}
+                                            maxY={globalMax}
+                                        />
+                                    </div>
+                            </Card>
+                        )}
+                        
+                        {/* Info Text */}
+                        <div className="flex justify-center">
+                            <span className="text-xl font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100 block text-center">
+                                Total Fund Value = Sum(Company Cash + Dividends Paid)<br />
+                                We do everything on a cash basis, not accrual, so that the impact of insolvency is visible.
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: KPIs (1/4 width) */}
+                    <div className="lg:col-span-1 flex flex-col gap-4">
+                        {activeData && (
+                            <div className="sticky top-6">
+                                <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">Key Metrics</h3>
+                                <Card className='mb-4 border-l-4 border-purple-500 p-4'>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
+                                    <div className='text-xs text-gray-400'>Events per lifetime</div>
+                                </Card>
+                                <FundKPICards 
+                                    data={activeData} 
+                                    currency={currency} 
+                                    mode={viewMode === 'standard' ? 'standard' : 'monte_carlo'}
+                                    currentPathValues={currentPathValues}
+                                    isRow={false}
+                                    targetMultiple={targetMultiple}
+                                    dpiValue={lastDpi}
+                                    likelihoodValue={lastLikelihood}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+            )}
+
+            {/* NEW TABLE SECTION */}
+            <Card className="overflow-x-auto max-h-96 mt-6 border-t-4 border-gray-600">
+                <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">Aggregate Fund Flows (P50 Median)</h3>
+                <table className="min-w-full text-xs text-left text-gray-500">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                    <tr>
+                        <th className="px-4 py-3">Month</th>
+                        <th className="px-4 py-3">Net Income (P50)</th>
+                        <th className="px-4 py-3">Cash (P50)</th>
+                        <th className="px-4 py-3 text-red-600">Total Pool Contrib.</th>
+                        <th className="px-4 py-3 text-green-600">Total Pool Recv.</th>
+                        <th className="px-4 py-3">Contributors</th>
+                        <th className="px-4 py-3">Solvent Cos</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {p50Data.map((row: any) => (
+                        <tr key={row.month_index} className="border-b hover:bg-gray-50 bg-white">
+                            <td className="px-4 py-2 font-medium">{row.month_index}</td>
+                            <td className="px-4 py-2">{fmt(row.net_income)}</td>
+                            <td className="px-4 py-2 font-bold">{fmt(row.cash_balance)}</td>
+                            <td className="px-4 py-2 text-red-600">{row.pool_contribution ? fmt(row.pool_contribution) : '-'}</td>
+                            <td className="px-4 py-2 text-green-600">{row.pool_received ? fmt(row.pool_received) : '-'}</td>
+                            <td className="px-4 py-2">{row.contributing_companies ?? '-'}</td>
+                            <td className="px-4 py-2">{row.solvent_companies ?? '-'}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </Card>
+          </>
+      ) : (
+          <div className="h-64 bg-gray-50 border border-dashed rounded-lg flex items-center justify-center text-gray-400 mb-12">
+              No simulation data available. Check your configuration.
+          </div>
+      )}
+    </Layout>
+  );
+}
+</file>
+<file path='frontend/components/FundChart.tsx'>
+'use client';
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  LogarithmicScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  TooltipItem,
+  LegendItem
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  LogarithmicScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+export interface FanData {
+  p0?: number[];
+  p5?: number[];
+  p10?: number[];
+  p25?: number[];
+  p50?: number[];
+  p75?: number[];
+  p90?: number[];
+  p95?: number[];
+  p100?: number[];
+  
+  // Solvency Data
+  p0_solvent_count?: number[];
+  p10_solvent_count?: number[];
+  p25_solvent_count?: number[];
+  p50_solvent_count?: number[];
+  p75_solvent_count?: number[];
+  p90_solvent_count?: number[];
+  p100_solvent_count?: number[];
+
+  // Metadata for P50 tooltip
+  p50_data?: { 
+    solvent_companies: number; 
+    total_companies: number;
+    cumulative_external_capital?: number;
+    total_exposure?: number;
+  }[];
 }
 
-impl<Mode: SimulationMode> FundOrchestrator<Mode> {
-    pub fn new(iterations: usize, initial_states: Vec<SimState>, months: i32, stop_insolvency: bool, events_active: bool, events: Vec<Event>) -> Self {
-        // 1. Create Monte Carlo Universes
-        let mut universes = Vec::with_capacity(iterations);
-        for _ in 0..iterations {
-            universes.push(Universe::new(initial_states.clone()));
-        }
+interface Props {
+  mode: 'standard' | 'single' | 'monte_carlo';
+  labels: string[];
+  values?: number[]; // For standard/single mode
+  investmentValues?: number[]; // For standard/single mode (and fallback for MC)
+  fanData?: FanData; // For monte_carlo mode
+  targetProbability?: number[]; // Secondary axis (was survivalRate)
+  targetMultiple?: number; // For label
+  currencySymbol?: string;
+  isLog?: boolean;
+  minY?: number;
+  maxY?: number;
+}
 
-        // Apply stop_insolvency to MC universes AND Initialize Month 0
-        for u in universes.iter_mut() {
-            for c in u.companies.iter_mut() {
-                c.stop_on_insolvency = stop_insolvency;
-                c.initialize();
-            }
-        }
+export default function FundChart({
+  mode,
+  labels,
+  values,
+  investmentValues,
+  fanData,
+  targetProbability,
+  targetMultiple,
+  currencySymbol = '$',
+  isLog = false,
+  minY,
+  maxY,
+}: Props) {
+  const LOG_FLOOR = 100;
 
-        // 2. Create Deterministic Universe (No Volatility)
-        let mut det_states = initial_states.clone();
-        for state in det_states.iter_mut() {
-            // Sanitize Revenue
-            for item in state.revenue_states.iter_mut() {
-                let mean = item.sampler.mean();
-                item.sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-            }
-            // Sanitize Expenses
-            for item in state.expense_states.iter_mut() {
-                let mean = item.sampler.mean();
-                item.sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-            }
-            // Sanitize Capital Growth Policy
-            if let Some(sampler) = &mut state.cap_growth_sampler {
-                let mean = sampler.mean();
-                sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-            }
-        }
-        
-        let mut deterministic_universe = Universe::new(det_states);
-        
-        // Apply stop_insolvency to Deterministic universe AND Initialize Month 0
-        for c in deterministic_universe.companies.iter_mut() {
-            c.stop_on_insolvency = stop_insolvency;
-            c.initialize();
-        }
+  // --- Helpers ---
+  const clamp = (val: number | undefined | null): number | null => {
+    if (val === undefined || val === null) return null;
+    if (!isLog) return val;
+    return val < LOG_FLOOR ? LOG_FLOOR : val;
+  };
 
-        Self { 
-            universes, 
-            deterministic_universe, 
-            months,
-            events,
-            event_manager: EventManager::new(),
-            events_active,
-            _marker: PhantomData 
-        }
+  const processArray = (arr: number[] | undefined) => {
+    if (!arr) return [];
+    return arr.map(clamp);
+  };
+
+  // Helper to retrieve raw values for tooltips
+  const getRaw = (datasetLabel: string, index: number): number | null => {
+    if (mode === 'monte_carlo' && fanData) {
+      // Map new labels to data
+      if (datasetLabel.includes('Max')) return fanData.p100?.[index] ?? null;
+      if (datasetLabel.includes('Top 10%')) return fanData.p90?.[index] ?? null;
+      if (datasetLabel.includes('Upper 15%')) return fanData.p75?.[index] ?? null;
+      if (datasetLabel.includes('Typical 50%')) return fanData.p25?.[index] ?? null;
+      if (datasetLabel.includes('Lower 15%')) return fanData.p10?.[index] ?? null;
+      if (datasetLabel.includes('Bottom 10%')) return fanData.p0?.[index] ?? null;
+      if (datasetLabel.includes('Median')) return fanData.p50?.[index] ?? null;
+      
+      if (datasetLabel === 'Cumulative Investment + Debt') {
+            return fanData.p50_data?.[index]?.total_exposure 
+                ?? fanData.p50_data?.[index]?.cumulative_external_capital 
+                ?? investmentValues?.[index] 
+                ?? 0;
+      }
+      return null;
+    }
+    if ((mode === 'standard' || mode === 'single') && values) {
+      if (datasetLabel === 'Cumulative Investment + Debt') {
+          return investmentValues?.[index] ?? null;
+      }
+      return values[index] ?? null;
+    }
+    return null;
+  };
+
+  // --- Calculate Axis Limits ---
+  let yAxisMin = 0;
+  let yAxisMax = 100;
+
+  if (maxY !== undefined) {
+      yAxisMax = maxY > 0 ? maxY * 1.2 : 100;
+      // Snap logic
+      if (yAxisMax > 0) {
+          const magnitude = Math.pow(10, Math.floor(Math.log10(yAxisMax)));
+          const niceStep = magnitude / 2;
+          yAxisMax = Math.ceil(yAxisMax / niceStep) * niceStep;
+      }
+  } else {
+      // Fallback if no global max provided
+      let dataMax = 0;
+      if (mode === 'monte_carlo' && fanData?.p100) {
+        dataMax = Math.max(...fanData.p100);
+      } else if (values) {
+        dataMax = Math.max(...values);
+      }
+      yAxisMax = dataMax > 0 ? dataMax * 1.2 : 100;
+  }
+
+  if (minY !== undefined) {
+      if (isLog) {
+          yAxisMin = LOG_FLOOR;
+      } else {
+          // If min is negative, add padding
+          if (minY < 0) {
+              yAxisMin = minY * 1.1;
+          } else {
+              yAxisMin = 0; // Default to 0 baseline
+          }
+      }
+  }
+
+  const datasets: any[] = [];
+
+  // --- 1. Standard / Single Mode ---
+  if ((mode === 'standard' || mode === 'single') && values) {
+    datasets.push({
+      label: 'Total Fund Value',
+      data: processArray(values),
+      borderColor: 'rgb(37, 99, 235)', // Blue-600
+      backgroundColor: 'rgba(37, 99, 235, 0.1)',
+      borderWidth: 3,
+      pointRadius: 0,
+      tension: 0.1,
+      pointStyle: 'line',
+      fill: false,
+    });
+
+    // Investment Line for Standard/Single
+    if (investmentValues && investmentValues.length > 0) {
+        datasets.push({
+            label: 'Cumulative Investment + Debt',
+            data: processArray(investmentValues),
+            borderColor: '#EF4444', // Red-500
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.1,
+            pointStyle: 'line',
+            fill: false,
+        });
+    }
+  }
+
+  // --- 2. Monte Carlo Mode (5-Zone Fan) ---
+  if (mode === 'monte_carlo' && fanData) {
+    
+    // 1. Max (Top Edge)
+    datasets.push({
+      label: 'Max (Top Edge)',
+      data: processArray(fanData.p100),
+      solvencyData: fanData.p100_solvent_count,
+      borderColor: 'transparent',
+      pointRadius: 0,
+      fill: false,
+      order: 50,
+    });
+
+    // 2. Top 10% (P90-Max)
+    datasets.push({
+      label: 'Top 10% (P90-Max)',
+      data: processArray(fanData.p90),
+      solvencyData: fanData.p90_solvent_count,
+      borderColor: 'transparent',
+      backgroundColor: 'rgba(30, 58, 138, 0.6)', // Blue-900ish
+      pointRadius: 0,
+      pointStyle: 'rect',
+      fill: '-1', // Fills to previous dataset (P100)
+      order: 51,
+    });
+
+    // 3. Upper 15% (P75-P90)
+    datasets.push({
+      label: 'Upper 15% (P75-P90)',
+      data: processArray(fanData.p75),
+      solvencyData: fanData.p75_solvent_count,
+      borderColor: 'transparent',
+      backgroundColor: 'rgba(37, 99, 235, 0.4)', // Blue-600ish
+      pointRadius: 0,
+      pointStyle: 'rect',
+      fill: '-1',
+      order: 52,
+    });
+
+    // 4. Typical 50% (P25-P75)
+    datasets.push({
+      label: 'Typical 50% (P25-P75)',
+      data: processArray(fanData.p25),
+      solvencyData: fanData.p25_solvent_count,
+      borderColor: 'transparent',
+      backgroundColor: 'rgba(147, 197, 253, 0.4)', // Blue-300ish
+      pointRadius: 0,
+      pointStyle: 'rect',
+      fill: '-1',
+      order: 53,
+    });
+
+    // 5. Lower 15% (P10-P25)
+    datasets.push({
+      label: 'Lower 15% (P10-P25)',
+      data: processArray(fanData.p10),
+      solvencyData: fanData.p10_solvent_count,
+      borderColor: 'transparent',
+      backgroundColor: 'rgba(37, 99, 235, 0.4)', // Blue-600ish
+      pointRadius: 0,
+      pointStyle: 'rect',
+      fill: '-1',
+      order: 54,
+    });
+
+    // 6. Bottom 10% (Min-P10)
+    datasets.push({
+      label: 'Bottom 10% (Min-P10)',
+      data: processArray(fanData.p0),
+      solvencyData: fanData.p0_solvent_count,
+      borderColor: 'transparent',
+      backgroundColor: 'rgba(30, 58, 138, 0.6)', // Blue-900ish
+      pointRadius: 0,
+      pointStyle: 'rect',
+      fill: '-1',
+      order: 55,
+    });
+
+    // 7. Median (P50)
+    datasets.push({
+      label: 'Median Value (P50)',
+      data: processArray(fanData.p50),
+      solvencyData: fanData.p50_solvent_count || fanData.p50_data?.map(d => d.solvent_companies),
+      borderColor: 'rgb(37, 99, 235)', // Blue-600 (Matched CashFlowChart)
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.1,
+      fill: false,
+      pointStyle: 'line',
+      order: 40,
+    });
+
+    // 8. Cumulative Investment + Debt (Updated)
+    let mcInvestmentData: number[] = [];
+    if (fanData.p50_data) {
+        mcInvestmentData = fanData.p50_data.map(d => Number(d.total_exposure ?? d.cumulative_external_capital ?? 0));
+    } else if (investmentValues) {
+        mcInvestmentData = investmentValues;
     }
 
-    /// Steps a universe forward by one month.
-    /// Returns the total "pool pot" collected from this universe (if any).
-    /// 
-    /// - `enable_horizontal_pooling`: If true, distributes the pot within the universe immediately.
-    /// - `apply_reaper`: If true, checks for insolvency and marks companies as dead if cash < 0.
-    /// - `shocks`: List of active shocks to apply to companies in this step.
-    fn step_universe(universe: &mut Universe, month_idx: i32, enable_horizontal_pooling: bool, apply_reaper: bool, shocks: &[Shock]) -> f64 {
-        let mut pool_pot = 0.0;
-        let mut solvent_count = 0;
-
-        // TICK: Step all companies and collect pool contributions
-        for company in universe.companies.iter_mut() {
-            // Filter shocks relevant to this company
-            let company_shocks: Vec<Shock> = shocks.iter()
-                .filter(|s| s.target_company_id == Some(company.id) || s.target_company_id.is_none())
-                .cloned()
-                .collect();
-
-            let (_, actual_contribution) = company.step(month_idx, &company_shocks);
-
-            if company.is_solvent {
-                solvent_count += 1;
-                pool_pot += actual_contribution;
-            }
-        }
-
-        // TOCK: Distribute pool to solvent companies (Horizontal Pooling)
-        if enable_horizontal_pooling {
-            if solvent_count > 0 && pool_pot > 0.0 {
-                let share = pool_pot / solvent_count as f64;
-
-                for company in universe.companies.iter_mut() {
-                    if company.is_solvent {
-                        // Update Company State
-                        company.current_cash += share;
-                        company.cum_pool_received += share;
-
-                        // Update History
-                        if let Some(last_entry) = company.history.last_mut() {
-                            last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
-                            last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
-                            last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
-                        }
-                    }
-                }
-            }
-            // Pot is consumed locally
-            pool_pot = 0.0; 
-        }
-
-        // REAPER: Check for insolvency after all cash movements
-        if apply_reaper {
-            Self::run_reaper(universe);
-        }
-
-        // Return the pot (only non-zero if enable_horizontal_pooling is false)
-        pool_pot
+    if (mcInvestmentData.length > 0) {
+      datasets.push({
+        label: 'Cumulative Investment + Debt',
+        data: processArray(mcInvestmentData),
+        borderColor: '#EF4444', // Red-500
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.1,
+        fill: false,
+        pointStyle: 'line',
+        order: 41, 
+      });
     }
 
-    fn run_reaper(universe: &mut Universe) {
-        for company in universe.companies.iter_mut() {
-            // Calculate effective floor based on credit facility
-            let credit_limit = company.credit_facility.as_ref().map(|c| c.facility_limit).unwrap_or(0.0);
-            let effective_floor = company.insolvency_threshold - credit_limit;
-
-            if company.stop_on_insolvency && company.current_cash < effective_floor {
-                company.is_solvent = false;
-                if let Some(last) = company.history.last_mut() {
-                    last.is_solvent = false;
-                }
-            }
-        }
+    // 9. Target Probability (Secondary Axis)
+    if (targetProbability && targetMultiple !== undefined) {
+      datasets.push({
+        label: `Likelihood of ${targetMultiple}X`,
+        data: targetProbability.map(p => p * 100), // Map to 0-100 scale
+        borderColor: 'rgb(75, 85, 99)', // Gray-600 (Dashed)
+        borderWidth: 2,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        tension: 0.1,
+        fill: false,
+        yAxisID: 'y1',
+        pointStyle: 'line',
+        order: 1,
+      });
     }
+  }
 
-    fn aggregate_universe_history(universe: &Universe, months: i32) -> Vec<MonthlyData> {
-        let mut universe_history = Vec::with_capacity((months + 1) as usize);
-        let total_fund_companies = universe.companies.len() as i32;
-        
-        for m in 0..=months {
-            let month_idx = m as usize;
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index' as const,
+      intersect: false,
+    },
+    scales: {
+      x2: {
+        position: 'top' as const,
+        grid: {
+          drawTicks: false,
+          drawOnChartArea: false,
+        },
+        ticks: {
+          display: false,
+        },
+      },
+      y: {
+        type: isLog ? 'logarithmic' as const : 'linear' as const,
+        display: true,
+        position: 'left' as const,
+        title: {
+          display: true,
+          text: `Fund Value (${currencySymbol})`,
+        },
+        min: yAxisMin,
+        max: yAxisMax, 
+        ticks: {
+          callback: (value: any) => {
+            return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+          },
+        },
+        afterBuildTicks: (axis: any) => {
+          if (!isLog) return;
+          
+          const min = axis.min;
+          const max = axis.max;
+          if (min <= 0 || max <= 0) return;
+
+          const logMin = Math.log10(min);
+          const logMax = Math.log10(max);
+          const range = logMax - logMin;
+
+          axis.ticks = axis.ticks.filter((t: any) => {
+            const val = t.value;
+            if (val <= 0) return false;
+
+            const log10 = Math.log10(val);
+            const power = Math.floor(log10);
+            const base = Math.pow(10, power);
+            const significand = Math.round(val / base);
+
+            if (range > 5) {
+              // Only powers of 10 (significand 1)
+              return significand === 1;
+            } else {
+              // Powers of 10 (1) or half-steps (5)
+              return significand === 1 || significand === 5;
+            }
+          });
+        }
+      },
+      y1: {
+        type: 'linear' as const,
+        display: mode === 'monte_carlo' && !!targetProbability,
+        position: 'right' as const,
+        title: {
+          display: true,
+          text: 'Likelihood of hitting the target multiplier',
+        },
+        min: 0,
+        max: 100, // Force 0-100
+        grid: {
+          drawOnChartArea: false,
+        },
+        ticks: {
+          callback: (value: any) => {
+            return value + '%';
+          },
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: true,
+        labels: {
+          usePointStyle: true,
+          filter: function (item: LegendItem) {
+            // Hide helper datasets like Top Edge
+            return !item.text.includes('Top Edge');
+          },
+        },
+      },
+      tooltip: {
+        itemSort: function (a: TooltipItem<any>, b: TooltipItem<any>) {
+          // Sort by value descending
+          return b.parsed.y - a.parsed.y;
+        },
+        callbacks: {
+          label: function (context: TooltipItem<any>) {
+            let label = context.dataset.label || '';
             
-            // Accumulators
-            let mut total_revenue = 0.0;
-            let mut total_cogs = 0.0;
-            let mut total_gross_profit = 0.0;
-            let mut total_opex = 0.0;
-            let mut total_interest = 0.0;
-            let mut total_net_income = 0.0;
-            let mut total_treasury = 0.0;
-            let mut total_cash = 0.0;
-            let mut total_value = 0.0;
-            let mut total_pool_received = 0.0;
-            let mut sum_investment = 0.0;
-            let mut solvent_companies = 0;
-
-            for company in &universe.companies {
-                // Safety: Ensure we don't panic if history is missing
-                if let Some(data) = company.history.get(month_idx) {
-                    total_revenue += data.revenue.to_f64().unwrap_or(0.0);
-                    total_cogs += data.cogs.to_f64().unwrap_or(0.0);
-                    total_gross_profit += data.gross_profit.to_f64().unwrap_or(0.0);
-                    total_opex += data.opex.to_f64().unwrap_or(0.0);
-                    total_interest += data.interest_expense.to_f64().unwrap_or(0.0);
-                    total_net_income += data.net_income.to_f64().unwrap_or(0.0);
-                    total_treasury += data.treasury_gain.to_f64().unwrap_or(0.0);
-                    total_cash += data.cash_balance.to_f64().unwrap_or(0.0);
-                    total_value += data.total_value.to_f64().unwrap_or(0.0);
-                    total_pool_received += data.cumulative_pool_received.to_f64().unwrap_or(0.0);
-                    sum_investment += data.cumulative_external_capital.to_f64().unwrap_or(0.0);
-                    
-                    if data.is_solvent {
-                        solvent_companies += 1;
-                    }
-                }
+            // Handle Target Probability
+            if (context.dataset.yAxisID === 'y1') {
+              // Data is already 0-100
+              return `${label}: ${Number(context.parsed.y).toFixed(1)}%`;
             }
 
-            // Construct MonthlyData for the Fund (Universe)
-            universe_history.push(MonthlyData {
-                month_index: m,
-                date: format!("Month {}", m),
-                revenue: Decimal::from_f64_retain(total_revenue).unwrap_or_default(),
-                cogs: Decimal::from_f64_retain(total_cogs).unwrap_or_default(),
-                gross_profit: Decimal::from_f64_retain(total_gross_profit).unwrap_or_default(),
-                opex: Decimal::from_f64_retain(total_opex).unwrap_or_default(),
-                interest_expense: Decimal::from_f64_retain(total_interest).unwrap_or_default(),
-                net_income: Decimal::from_f64_retain(total_net_income).unwrap_or_default(),
-                treasury_gain: Decimal::from_f64_retain(total_treasury).unwrap_or_default(),
-                cash_balance: Decimal::from_f64_retain(total_cash).unwrap_or_default(),
-                dividend_paid: Decimal::ZERO,
-                cumulative_dividends: Decimal::ZERO,
-                cumulative_external_capital: Decimal::from_f64_retain(sum_investment).unwrap_or_default(),
-                cumulative_pool_received: Decimal::from_f64_retain(total_pool_received).unwrap_or_default(),
-                total_value: Decimal::from_f64_retain(total_value).unwrap_or_default(),
-                is_solvent: solvent_companies > 0,
-                total_companies: total_fund_companies,
-                solvent_companies: solvent_companies,
-            });
-        }
-        universe_history
-    }
+            // Handle Financial Values (use getRaw to show real value, not clamped)
+            const rawVal = getRaw(label, context.dataIndex);
+            const displayVal = rawVal !== null ? rawVal : context.parsed.y;
+            const formattedVal = `${currencySymbol}${Number(displayVal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            
+            // Solvency Logic
+            const dataset = context.dataset as any;
+            if (dataset.solvencyData) {
+              const numerator = dataset.solvencyData[context.dataIndex] ?? 0;
+              const denominator = fanData?.p50_data?.[context.dataIndex]?.total_companies;
+              
+              if (denominator === undefined) {
+                return `${label}: ${formattedVal}`;
+              }
 
-    fn finalize_results(self, fund_trajectories: Vec<Vec<MonthlyData>>, deterministic_data: Vec<MonthlyData>, total_events_triggered: usize) -> SimulationResult {
-        let iterations = fund_trajectories.len();
-        
-        // Generate Labels
-        let mut labels = Vec::new();
-        for m in 0..=self.months {
-            labels.push(format!("Month {}", m));
-        }
-
-        // Statistical Aggregation
-        let cap = (self.months + 1) as usize;
-        let mut p0_vec = Vec::with_capacity(cap);
-        let mut p10_vec = Vec::with_capacity(cap);
-        let mut p25_vec = Vec::with_capacity(cap);
-        let mut p50_vec = Vec::with_capacity(cap);
-        let mut p75_vec = Vec::with_capacity(cap);
-        let mut p90_vec = Vec::with_capacity(cap);
-        let mut p100_vec = Vec::with_capacity(cap);
-
-        let mut p0_count = Vec::with_capacity(cap);
-        let mut p10_count = Vec::with_capacity(cap);
-        let mut p25_count = Vec::with_capacity(cap);
-        let mut p50_count = Vec::with_capacity(cap);
-        let mut p75_count = Vec::with_capacity(cap);
-        let mut p90_count = Vec::with_capacity(cap);
-        let mut p100_count = Vec::with_capacity(cap);
-
-        let mut survival_vec = Vec::with_capacity(cap);
-        let mut p50_data = Vec::with_capacity(cap);
-
-        if !fund_trajectories.is_empty() {
-            for m_idx in 0..cap {
-                let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
-                let mut solvent_universes = 0;
-
-                for run in &fund_trajectories {
-                    if let Some(data) = run.get(m_idx) {
-                        snapshots.push(data);
-                        
-                        if data.is_solvent {
-                            solvent_universes += 1;
-                        }
-                    }
-                }
-
-                // Sort snapshots by Cash Balance (instead of Total Value)
-                snapshots.sort_by(|a, b| a.cash_balance.cmp(&b.cash_balance));
-                let len = snapshots.len();
-
-                if len > 0 {
-                    let get_snapshot = |idx: usize| -> &MonthlyData {
-                        snapshots[idx]
-                    };
-
-                    let p0 = get_snapshot(0);
-                    let p10 = get_snapshot((len as f64 * 0.10) as usize);
-                    let p25 = get_snapshot((len as f64 * 0.25) as usize);
-                    let p50 = get_snapshot((len as f64 * 0.50) as usize);
-                    let p75 = get_snapshot((len as f64 * 0.75) as usize);
-                    let p90 = get_snapshot((len as f64 * 0.90) as usize);
-                    let p100 = get_snapshot(len - 1);
-
-                    // Push Values (Cash Balance)
-                    p0_vec.push(p0.cash_balance);
-                    p10_vec.push(p10.cash_balance);
-                    p25_vec.push(p25.cash_balance);
-                    p50_vec.push(p50.cash_balance);
-                    p75_vec.push(p75.cash_balance);
-                    p90_vec.push(p90.cash_balance);
-                    p100_vec.push(p100.cash_balance);
-
-                    // Push Solvent Counts
-                    p0_count.push(p0.solvent_companies);
-                    p10_count.push(p10.solvent_companies);
-                    p25_count.push(p25.solvent_companies);
-                    p50_count.push(p50.solvent_companies);
-                    p75_count.push(p75.solvent_companies);
-                    p90_count.push(p90.solvent_companies);
-                    p100_count.push(p100.solvent_companies);
-
-                    // P50 Data (Full Snapshot - Median Cash)
-                    p50_data.push(p50.clone());
-                }
-
-                let rate = if iterations > 0 {
-                    solvent_universes as f64 / iterations as f64
-                } else {
-                    0.0
-                };
-                survival_vec.push(Decimal::from_f64_retain(rate).unwrap_or_default());
-            }
-        }
-
-        // Calculate Single Run Data (Median Trajectory)
-        let mut single_run_data = None;
-        let mut single_run_value = None;
-
-        if !fund_trajectories.is_empty() {
-            // Sort indices based on the total_value of the last month
-            let mut indices: Vec<usize> = (0..fund_trajectories.len()).collect();
-            indices.sort_by(|&a, &b| {
-                let val_a = fund_trajectories[a].last().map(|m| m.total_value).unwrap_or(Decimal::ZERO);
-                let val_b = fund_trajectories[b].last().map(|m| m.total_value).unwrap_or(Decimal::ZERO);
-                val_a.cmp(&val_b)
-            });
-
-            // Pick the median trajectory
-            if !indices.is_empty() {
-                let median_idx = indices[indices.len() / 2];
-                let selected_run = &fund_trajectories[median_idx];
-
-                single_run_data = Some(selected_run.clone());
-                single_run_value = Some(selected_run.iter().map(|m| m.total_value).collect());
-            }
-        }
-
-        let average_event_count = if iterations > 0 {
-            Some(total_events_triggered as f64 / iterations as f64)
-        } else {
-            Some(0.0)
-        };
-
-        SimulationResult {
-            labels,
-            valuation_method: "fund_nav".to_string(),
-            deterministic_data,
-            single_run_data,
-            single_run_value,
-            p0_value: Some(p0_vec),
-            p10_value: Some(p10_vec),
-            p25_value: Some(p25_vec),
-            p50_value: Some(p50_vec),
-            p75_value: Some(p75_vec),
-            p90_value: Some(p90_vec),
-            p100_value: Some(p100_vec),
-            p0_solvent_count: p0_count,
-            p10_solvent_count: p10_count,
-            p25_solvent_count: p25_count,
-            p50_solvent_count: p50_count,
-            p75_solvent_count: p75_count,
-            p90_solvent_count: p90_count,
-            p100_solvent_count: p100_count,
-            p50_pool_cumulative: None,
-            p50_data: Some(p50_data),
-            survival_rate: Some(survival_vec),
-            deterministic_runway: None,
-            deterministic_valuation: Decimal::ZERO,
-            single_run_runway: None,
-            single_run_valuation: None,
-            p50_runway: None,
-            p50_valuation: None,
-            all_paths: Some(fund_trajectories),
-            average_event_count,
-            errors: None,
-        }
-    }
-}
-
-impl FundOrchestrator<PortfolioMode> {
-    pub fn run(mut self) -> SimulationResult {
-        let iterations = self.universes.len();
-        let mut total_events_triggered = 0;
-        
-        for month_idx in 1..=self.months {
-            // A. Step Monte Carlo Universes (Horizontal Pooling ON, Reaper ON)
-            for universe in self.universes.iter_mut() {
-                // 1. Generate stochastic shocks for this universe
-                let mut monthly_shocks = Vec::new();
-                for event in &self.events {
-                    // Skip deterministic events (handled elsewhere)
-                    if event.start_month.is_some() { continue; }
-
-                    if self.events_active && self.event_manager.check_trigger(event) {
-                        total_events_triggered += 1;
-                        
-                        let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
-                        
-                        // Identify targets
-                        let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
-                            // Fund Scope: Target all companies
-                            universe.companies.iter().map(|c| c.id).collect()
-                        } else {
-                            // Company Scope: Target specific companies
-                            event.company_ids.clone().unwrap_or_default()
-                        };
-
-                        if is_counter_cyclic {
-                            // Counter-Cyclic: Independent shocks per company
-                            for target_id in targets {
-                                let (value, duration) = self.event_manager.resolve_impact(event);
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        } else {
-                            // Standard: Correlated shock (Same impact for all)
-                            let (value, duration) = self.event_manager.resolve_impact(event);
-                            for target_id in targets {
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        }
-                    }
-                }
-
-                // 2. Step universe with shocks
-                Self::step_universe(universe, month_idx, true, true, &monthly_shocks);
+              return `${label}: ${formattedVal} | Solvent Companies: ${numerator}/${denominator}`;
             }
 
-            // B. Step Deterministic Universe (Horizontal Pooling ON, Reaper ON)
-            // No stochastic shocks for deterministic run
-            Self::step_universe(&mut self.deterministic_universe, month_idx, true, true, &[]);
-        }
+            return `${label}: ${formattedVal}`;
+          },
+        },
+      },
+    },
+  };
 
-        let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
-        let mut fund_trajectories = Vec::with_capacity(iterations);
-        for universe in self.universes.iter() {
-            fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
-        }
-
-        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered)
-    }
-}
-
-impl FundOrchestrator<EnsembleMode> {
-    pub fn run(mut self) -> SimulationResult {
-        let iterations = self.universes.len();
-        let mut total_events_triggered = 0;
-        
-        for month_idx in 1..=self.months {
-            let mut total_pot = 0.0;
-            let mut solvent_universes_indices = Vec::new();
-
-            // A. Step Monte Carlo Universes (Horizontal Pooling OFF, Reaper OFF)
-            for (i, universe) in self.universes.iter_mut().enumerate() {
-                // 1. Generate stochastic shocks for this universe
-                let mut monthly_shocks = Vec::new();
-                for event in &self.events {
-                    if event.start_month.is_some() { continue; }
-
-                    if self.events_active && self.event_manager.check_trigger(event) {
-                        total_events_triggered += 1;
-
-                        let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
-
-                        let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
-                            universe.companies.iter().map(|c| c.id).collect()
-                        } else {
-                            event.company_ids.clone().unwrap_or_default()
-                        };
-
-                        if is_counter_cyclic {
-                            // Counter-Cyclic: Independent shocks per company
-                            for target_id in targets {
-                                let (value, duration) = self.event_manager.resolve_impact(event);
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        } else {
-                            // Standard: Correlated shock
-                            let (value, duration) = self.event_manager.resolve_impact(event);
-                            for target_id in targets {
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        }
-                    }
-                }
-
-                // 2. Step universe with shocks
-                let pot = Self::step_universe(universe, month_idx, false, false, &monthly_shocks);
-                total_pot += pot;
-
-                // Check if universe is "alive" (has at least one solvent company)
-                if universe.companies.iter().any(|c| c.is_solvent) {
-                    solvent_universes_indices.push(i);
-                }
-            }
-
-            // B. Vertical Pooling Logic
-            let solvent_count = solvent_universes_indices.len();
-            if solvent_count > 0 && total_pot > 0.0 {
-                let share = total_pot / solvent_count as f64;
-
-                for idx in solvent_universes_indices {
-                    let universe = &mut self.universes[idx];
-                    
-                    // Distribute share to this universe's solvent companies
-                    let universe_solvent_companies = universe.companies.iter().filter(|c| c.is_solvent).count();
-                    
-                    if universe_solvent_companies > 0 {
-                        let company_share = share / universe_solvent_companies as f64;
-                        
-                        for company in universe.companies.iter_mut() {
-                            if company.is_solvent {
-                                company.current_cash += company_share;
-                                company.cum_pool_received += company_share;
-                                
-                                // Update History for this month
-                                if let Some(last_entry) = company.history.last_mut() {
-                                    last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
-                                    last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
-                                    last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // C. Run Reaper (Delayed Death)
-            for universe in self.universes.iter_mut() {
-                Self::run_reaper(universe);
-            }
-
-            // D. Step Deterministic Universe (Standard Mode)
-            Self::step_universe(&mut self.deterministic_universe, month_idx, true, true, &[]);
-        }
-
-        let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
-        let mut fund_trajectories = Vec::with_capacity(iterations);
-        for universe in self.universes.iter() {
-            fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
-        }
-
-        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered)
-    }
+  return <Line data={{ labels, datasets }} options={options} />;
 }
 </file>
 

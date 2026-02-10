@@ -259,3 +259,69 @@ This is the "Scorecard" metric. It tells you the total economic value of the pat
 $$\text{Net Value} = \text{Cash on Hand}_t + \text{Cum Dividends}_t$$
 
 - **Why this matters:** This is the metric that allows you to compare a "Growth Company" (High Cash, Low Dividends) fairly against a "Cash Cow" (Low Cash, High Dividends).
+
+# Fix the fund simulation re pooling.
+
+These are excellent refinements. You are effectively shifting the simulation from a **Limited Liability (Venture Capital)** model to a **Full Recourse (Venture Debt / Solvency)** model.
+
+Your intuition on the "Sudden 100k Benefit" is precisely correct. In statistical mechanics terms, the "absorbing barrier" at 0 (insolvency) was destroying information (the magnitude of the failure). By removing that barrier and keeping the negative values, you preserve the **full distribution of outcomes**, which is the only way to honestly measure Volatility Drag.
+
+### 1. Reflection on "Positive Delta" Pooling
+
+The logic `max(0, current) - max(0, previous)` is the perfect "High Water Mark" implementation for this context.
+
+- **Scenario A (Deep Hole):** Cash moves from -100k $\to$ -50k.
+    
+    - Pool Base: $0 - 0 = 0$. (No tax. Company uses 100% of profit to heal).
+        
+- **Scenario B (Breach):** Cash moves from -20k $\to$ +10k.
+    
+    - Pool Base: $10k - 0 = 10k$. (Tax applies only to the surplus).
+        
+- **Scenario C (Growth):** Cash moves from +10k $\to$ +50k.
+    
+    - Pool Base: $50k - 10k = 40k$. (Standard tax on growth).
+        
+
+This ensures the pool acts as a "Success Tax" rather than a "Recovery Tax."
+
+### 2. Reflection on "Persistent Debt"
+
+Treating the negative cash balance as "Venture Debt" on the Fund's books solves the "Masking" problem.
+
+- **Previously:** A company failing at -$1M vanished (Cost to Fund = Initial Investment).
+    
+- **Now:** A company failing at -$1M stays at -$1M (Cost to Fund = Initial Investment + $1M Debt).
+    
+- **Result:** The "Non-Pooled" portfolio will look **much worse** (lower mean, fatter left tail). The "Pooled" portfolio will likely outperform it more significantly because pooling prevents companies from reaching that -$1M depth in the first place.
+
+The `MonthlyData` JSON structure is identical for both a Single Company and the entire Fund. The backend uses the exact same data contract for both levels, but the numbers inside represent different things depending on which chart you are looking at.
+
+### 1. At the Single Company Level
+
+When you look at a single company's line (e.g., in the "Single Run" or "Deterministic" view for one company):
+
+- **`cumulative_external_capital`**: The actual cash injected into **this specific company**.
+    
+- **`cash_balance`**: This company's bank balance (positive) or debt (negative).
+    
+- **`total_exposure`**: The capital injected into this company **plus** the absolute value of **this company's specific debt**.
+    
+
+### 2. At the Fund Level (Aggregated)
+
+When you look at the Fund Simulation (e.g., the "Fund NAV" chart):
+
+- **`cumulative_external_capital`**: The sum of **all** injections into **all** companies (Total LP Capital Deployed).
+    
+- **`cash_balance`**: The sum of **all** companies' cash balances (Winners' Cash - Losers' Debt).
+    
+- **`total_exposure`**: The sum of **all** companies' exposures (Total LP Capital + Total Venture Debt across the portfolio).
+### Summary of the Data Contract
+
+| **Your Concept**    | **JSON Field**                | **Calculation Logic**                            |
+| ------------------- | ----------------------------- | ------------------------------------------------ |
+| **Equity Invested** | `cumulative_external_capital` | Sum of injections.                               |
+| **Current Cash**    | `cash_balance`                | Bank Balance (Positive) or Overdraft (Negative). |
+| **Debt Load**       | _Derived from above_          | `abs(min(0, cash_balance))`                      |
+| **Total Exposure**  | `total_exposure`              | `cumulative_external_capital` + `                |

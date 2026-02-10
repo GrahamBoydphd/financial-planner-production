@@ -157,6 +157,9 @@ impl SimState {
             }
         }
 
+        let debt = self.current_cash.min(0.0).abs();
+        let exposure = self.cum_external_cap + debt;
+
         // 2. Record Month 0 History
         self.history.push(MonthlyData {
             month_index: 0,
@@ -177,17 +180,26 @@ impl SimState {
             total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
             total_companies: 1,
             solvent_companies: 1,
+            pool_contribution: Decimal::ZERO,
+            pool_received: Decimal::ZERO,
+            contributing_companies: 0,
+            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
         });
     }
 
     pub fn force_insolvency_state(&mut self) {
         self.is_solvent = false;
-        self.current_cash = 0.0;
+        // Removed: self.current_cash = 0.0; 
+        // We preserve the debt (negative cash) for Venture Debt visibility.
     }
 
     pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
+        // LOGIC A: Handle Insolvency
         if !self.is_solvent {
-            // Push "Erasure" (Zero) state
+            let debt = self.current_cash.min(0.0).abs();
+            let exposure = self.cum_external_cap + debt;
+
+            // Push "Erasure" (Zero) state but keep debt visible
             self.history.push(MonthlyData {
                 month_index: month,
                 date: format!("Month {}", month),
@@ -197,19 +209,28 @@ impl SimState {
                 gross_profit: Decimal::ZERO,
                 net_income: Decimal::ZERO,
                 treasury_gain: Decimal::ZERO,
-                cash_balance: Decimal::ZERO,
+                // Use actual negative cash
+                cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
                 is_solvent: false,
                 interest_expense: Decimal::ZERO,
                 dividend_paid: Decimal::ZERO,
                 cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
                 cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
                 cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-                total_value: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+                // Total value reflects debt
+                total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
                 total_companies: 1,
                 solvent_companies: 0,
+                pool_contribution: Decimal::ZERO,
+                pool_received: Decimal::ZERO,
+                contributing_companies: 0,
+                total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
             });
             return (0.0, 0.0);
         }
+
+        // LOGIC B: Calculate Pooling Base (Start of active step)
+        let previous_cash_floored = self.current_cash.max(0.0);
 
         // Merge External Shocks (Persist them in state)
         self.shocks.extend_from_slice(external_shocks);
@@ -372,18 +393,23 @@ impl SimState {
         }
         self.current_cash += investment_gain;
 
-        // 9. Pooling Contribution
-        let total_profit = operating_profit + investment_gain;
-        let mut contribution = 0.0;
+        // LOGIC C: Apply Pooling
+        // 9. Pooling Contribution (Refined)
+        let total_profit = operating_profit + investment_gain; // Kept for net_income reporting
         
-        if self.pooling_fraction > 0.0 && total_profit > 0.0 {
-            contribution = total_profit * self.pooling_fraction;
-            // Deduct pool contribution immediately
+        let current_cash_floored = self.current_cash.max(0.0);
+        let poolable_gain = current_cash_floored - previous_cash_floored;
+        
+        let mut contribution = 0.0;
+        if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
+            contribution = poolable_gain * self.pooling_fraction;
             self.current_cash -= contribution;
         }
 
         let net_income = total_profit;
 
+        let debt = self.current_cash.min(0.0).abs();
+        let exposure = self.cum_external_cap + debt;
 
         // Record History
         self.history.push(MonthlyData {
@@ -405,6 +431,10 @@ impl SimState {
             total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
             total_companies: 1,
             solvent_companies: if self.is_solvent { 1 } else { 0 },
+            pool_contribution: Decimal::from_f64_retain(contribution).unwrap_or_default(),
+            pool_received: Decimal::ZERO, // Will be updated by orchestrator if pooling happens
+            contributing_companies: if contribution > 0.0 { 1 } else { 0 },
+            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
         });
 
         (net_income, contribution)

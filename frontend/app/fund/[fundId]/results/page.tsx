@@ -130,9 +130,13 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
   }
 
   const deterministicValues = detRows.map((d: any) => Number(d.total_value || 0));
+  // NEW: Deterministic Investment (Exposure)
+  const deterministicInvestment = detRows.map((d: any) => Number(d.total_exposure || d.cumulative_external_capital || 0));
 
   // 2. Single Path Data (Volatile Mode)
   const allPathsRaw = simulation?.all_paths;
+  
+  // Memoize Values
   const allPaths = useMemo(() => 
     Array.isArray(allPathsRaw) 
       ? allPathsRaw.map((p: any[]) => p.map((v: any) => {
@@ -144,8 +148,22 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
       })) 
       : [], 
   [allPathsRaw]);
+
+  // NEW: Memoize Investment/Exposure Paths
+  const allPathsInvestment = useMemo(() => 
+    Array.isArray(allPathsRaw) 
+      ? allPathsRaw.map((p: any[]) => p.map((v: any, idx: number) => {
+          if (typeof v === 'object' && v !== null) {
+              return Number(v.total_exposure || v.cumulative_external_capital || 0);
+          }
+          // Fallback to deterministic if scalar (legacy support)
+          return deterministicInvestment[idx] || 0;
+      })) 
+      : [], 
+  [allPathsRaw, deterministicInvestment]);
     
   const singlePathValues = allPaths.length > 0 && allPaths[pathIndex] ? allPaths[pathIndex] : [];
+  const singlePathInvestment = allPathsInvestment.length > 0 && allPathsInvestment[pathIndex] ? allPathsInvestment[pathIndex] : [];
   
   // Prepare current path values for KPI Cards
   const currentPathValues = viewMode === 'single' && singlePathValues.length > 0 ? {
@@ -167,11 +185,6 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
         
         const investment = Number(monthData.cumulative_external_capital);
         const target = investment * targetMultiple;
-        
-        // If investment is 0, technically target is 0. 
-        // If value >= 0, it's a hit. But usually we care about when investment > 0.
-        // If investment is 0, let's assume probability is 0 or 1 depending on value?
-        // Let's stick to the formula: Count paths >= target.
         
         let count = 0;
         for (const path of allPaths) {
@@ -201,6 +214,43 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
       setPathIndex(prev => Math.min(maxPaths - 1, prev + 1));
   };
 
+  // 4. Monte Carlo Data (Fan Mode)
+  const fanData = simulation ? extractFanData(simulation) : undefined;
+
+  // 5. Global Scale Calculation (Unified Min/Max)
+  const { globalMin, globalMax } = useMemo(() => {
+    const values: number[] = [];
+    
+    const push = (arr?: any[]) => {
+        if (!arr) return;
+        arr.forEach(v => {
+            const n = Number(v);
+            if (!isNaN(n)) values.push(n);
+        });
+    };
+
+    // Deterministic
+    push(deterministicValues);
+    push(deterministicInvestment);
+
+    // Single Path (Current)
+    push(singlePathValues);
+    push(singlePathInvestment);
+
+    // Fan Data (Envelope)
+    if (fanData) {
+        push(fanData.p0);
+        push(fanData.p100);
+    }
+
+    if (values.length === 0) return { globalMin: 0, globalMax: 100 };
+
+    return {
+        globalMin: Math.min(...values),
+        globalMax: Math.max(...values)
+    };
+  }, [deterministicValues, deterministicInvestment, singlePathValues, singlePathInvestment, fanData]);
+
   if (loading) return <Layout>Loading...</Layout>;
   if (!fund) return <Layout>Fund not found</Layout>;
 
@@ -226,11 +276,12 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
 
   const currency = fund.currency_code || '$';
 
+  // Helper
+  const fmt = (n: any) => 
+    `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
   // HARDENED: Unified Labels
   const chartLabels = simulation?.labels || [];
-
-  // 4. Monte Carlo Data (Fan Mode)
-  const fanData = simulation ? extractFanData(simulation) : undefined;
 
   // Determine visibility
   const showStandard = viewMode === 'standard' && simulation;
@@ -396,8 +447,11 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                       mode="standard"
                                       labels={chartLabels}
                                       values={deterministicValues}
+                                      investmentValues={deterministicInvestment}
                                       currencySymbol={currency}
                                       isLog={isLogScale}
+                                      minY={globalMin}
+                                      maxY={globalMax}
                                   />
                               </div>
                           </Card>
@@ -437,10 +491,13 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                       mode="single"
                                       labels={chartLabels}
                                       values={singlePathValues}
+                                      investmentValues={singlePathInvestment}
                                       currencySymbol={currency}
                                       isLog={isLogScale}
                                       targetProbability={likelihoodData}
                                       targetMultiple={targetMultiple}
+                                      minY={globalMin}
+                                      maxY={globalMax}
                                   />
                               </div>
                           </Card>
@@ -488,8 +545,11 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                             mode="standard"
                                             labels={chartLabels}
                                             values={deterministicValues}
+                                            investmentValues={deterministicInvestment}
                                             currencySymbol={currency}
                                             isLog={isLogScale}
+                                            minY={globalMin}
+                                            maxY={globalMax}
                                         />
                                     </div>
                             </Card>
@@ -513,10 +573,13 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                             mode="monte_carlo"
                                             labels={chartLabels}
                                             fanData={fanData}
+                                            investmentValues={deterministicInvestment}
                                             targetProbability={likelihoodData}
                                             targetMultiple={targetMultiple}
                                             currencySymbol={currency}
                                             isLog={isLogScale}
+                                            minY={globalMin}
+                                            maxY={globalMax}
                                         />
                                     </div>
                             </Card>
@@ -557,6 +620,37 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
 
                 </div>
             )}
+
+            {/* NEW TABLE SECTION */}
+            <Card className="overflow-x-auto max-h-96 mt-6 border-t-4 border-gray-600">
+                <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">Aggregate Fund Flows (P50 Median)</h3>
+                <table className="min-w-full text-xs text-left text-gray-500">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                    <tr>
+                        <th className="px-4 py-3">Month</th>
+                        <th className="px-4 py-3">Net Income (P50)</th>
+                        <th className="px-4 py-3">Cash (P50)</th>
+                        <th className="px-4 py-3 text-red-600">Total Pool Contrib.</th>
+                        <th className="px-4 py-3 text-green-600">Total Pool Recv.</th>
+                        <th className="px-4 py-3">Contributors</th>
+                        <th className="px-4 py-3">Solvent Cos</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {p50Data.map((row: any) => (
+                        <tr key={row.month_index} className="border-b hover:bg-gray-50 bg-white">
+                            <td className="px-4 py-2 font-medium">{row.month_index}</td>
+                            <td className="px-4 py-2">{fmt(row.net_income)}</td>
+                            <td className="px-4 py-2 font-bold">{fmt(row.cash_balance)}</td>
+                            <td className="px-4 py-2 text-red-600">{row.pool_contribution ? fmt(row.pool_contribution) : '-'}</td>
+                            <td className="px-4 py-2 text-green-600">{row.pool_received ? fmt(row.pool_received) : '-'}</td>
+                            <td className="px-4 py-2">{row.contributing_companies ?? '-'}</td>
+                            <td className="px-4 py-2">{row.solvent_companies ?? '-'}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </Card>
           </>
       ) : (
           <div className="h-64 bg-gray-50 border border-dashed rounded-lg flex items-center justify-center text-gray-400 mb-12">

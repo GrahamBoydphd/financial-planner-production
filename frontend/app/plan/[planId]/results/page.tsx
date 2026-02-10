@@ -475,7 +475,10 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
            total_value: m.total_value,
            dividend_paid: m.dividend_paid,
            treasury_gain: m.treasury_gain,
-           is_solvent: m.is_solvent
+           is_solvent: m.is_solvent,
+           // NEW FIELDS
+           pool_contribution: m.pool_contribution,
+           pool_received: m.pool_received
        };
   }) : [];
 
@@ -856,6 +859,44 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     <tr>
                         <td colSpan={10} className="px-4 py-8 text-center text-gray-400 italic">
                             Data Unavailable for this mode.
+                        </td>
+                    </tr>
+                )}
+              </tbody>
+            </table>
+          </Card>
+
+          {/* NEW POOLING TABLE */}
+          <Card className="overflow-x-auto max-h-96 mt-6">
+            <h3 className="text-lg font-bold text-indigo-700 mb-4 px-4 pt-4">Pooling Cash Flows (Monthly)</h3>
+            <table className="min-w-full text-xs text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-indigo-50 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3">Month</th>
+                  <th className="px-4 py-3">Net Income</th>
+                  <th className="px-4 py-3">Cash Balance</th>
+                  <th className="px-4 py-3 text-red-600">Pool Paid In</th>
+                  <th className="px-4 py-3 text-green-600">Pool Received</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableData.length > 0 ? (
+                    tableData.map((row: any) => {
+                      const isRowInsolvent = !row.is_solvent;
+                      return (
+                      <tr key={row.month_index} className={`border-b ${isRowInsolvent ? 'bg-gray-50 text-gray-400' : 'hover:bg-gray-50 bg-white'}`}>
+                        <td className="px-4 py-2 font-medium">{row.month_index}</td>
+                        <td className={`px-4 py-2 ${isRowInsolvent ? '' : (row.net_income < 0 ? 'text-red-500' : 'text-green-600')}`}>{fmt(row.net_income)}</td>
+                        <td className={`px-4 py-2 font-bold ${isRowInsolvent ? '' : (row.cash_balance < 0 ? 'text-red-600' : 'text-gray-900')}`}>{fmt(row.cash_balance)}</td>
+                        <td className="px-4 py-2 text-red-600">{row.pool_contribution ? fmt(row.pool_contribution) : '-'}</td>
+                        <td className="px-4 py-2 text-green-600">{row.pool_received ? fmt(row.pool_received) : '-'}</td>
+                      </tr>
+                      );
+                    })
+                ) : (
+                    <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic">
+                            Data Unavailable.
                         </td>
                     </tr>
                 )}

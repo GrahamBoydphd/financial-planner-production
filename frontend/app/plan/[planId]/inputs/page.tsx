@@ -366,6 +366,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                 <StaffingForm 
                     planId={planId} 
                     initialRoles={staffingRoles}
+                    currency={plan?.currency_code || "USD"}
                     onSave={handleSaveRole}
                     onDelete={handleDeleteRole}
                 />

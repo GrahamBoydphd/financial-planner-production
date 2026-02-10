@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -60,11 +59,86 @@ interface Props {
 export default function CashFlowChart({ data, singleRunData, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
   const linearFloor = creditLimit > 0 ? -(creditLimit * 1.5) : 0;
   
+  // --- 0. CALCULATE GLOBAL MIN/MAX (Unified Scale) ---
+  let globalMin = 0;
+  let globalMax = 0;
+  const allValues: number[] = [];
+
+  const addVal = (v: any) => {
+    const n = Number(v);
+    if (!isNaN(n)) allValues.push(n);
+  };
+
+  // Helper to extract net pool
+  const getNetPool = (d: any) => Number(d.pool_received || 0) - Number(d.pool_contribution || 0);
+
+  // Scan Deterministic Data
+  if (data.deterministic_data) {
+    data.deterministic_data.forEach(d => {
+      addVal(d.total_value);
+      addVal(d.cash_balance);
+      addVal(d.total_exposure);
+      addVal(d.cumulative_external_capital);
+      addVal(getNetPool(d));
+    });
+  }
+
+  // Scan Single Run Data (from prop or data object)
+  const singleSource = singleRunData || data.single_run_data;
+  if (singleSource) {
+    singleSource.forEach(d => {
+      addVal(d.total_value);
+      addVal(d.cash_balance);
+      addVal(getNetPool(d));
+    });
+  }
+
+  // Scan Monte Carlo Data (P100/P0 cover the full range)
+  if (data.p100_value) data.p100_value.forEach(addVal);
+  if (data.p0_value) data.p0_value.forEach(addVal);
+  
+  // Fallback scan for P90/P10 if P100/P0 missing
+  if (data.p90_value) data.p90_value.forEach(addVal);
+  if (data.p10_value) data.p10_value.forEach(addVal);
+
+  // Scan P50 Data for Net Pool (since P100/P0 might not cover it)
+  if (data.p50_data) {
+    data.p50_data.forEach(d => addVal(getNetPool(d)));
+  }
+
+  if (allValues.length > 0) {
+    globalMin = Math.min(...allValues);
+    globalMax = Math.max(...allValues);
+  }
+
+  // Determine Y-Axis Min
+  // If linear, we respect the credit limit floor, but expand if data goes lower (Fantasy Debt)
+  let yAxisMin = linearFloor;
+  if (!isLog) {
+    if (globalMin < linearFloor) {
+      yAxisMin = globalMin * 1.1; // Add 10% padding below lowest data point
+    }
+  } else {
+    yAxisMin = 100; // Log scale floor
+  }
+
+  // Determine Y-Axis Max
+  // Add padding (e.g. 20%)
+  let yAxisMax = globalMax > 0 ? globalMax * 1.2 : 100;
+  
+  // Snap to grid logic for Max
+  if (yAxisMax > 0) {
+    const magnitude = Math.pow(10, Math.floor(Math.log10(yAxisMax)));
+    const niceStep = magnitude / 2; 
+    yAxisMax = Math.ceil(yAxisMax / niceStep) * niceStep;
+  }
+
+  // --- END GLOBAL SCALE CALCULATION ---
+
   const labels = data.labels;
   const datasets: any[] = [];
 
-  // --- 0. DETERMINE SOURCE DATA ---
-  // FIX: Strict source selection, default to empty
+  // --- 1. DETERMINE SOURCE DATA FOR RENDERING ---
   let sourceData: MonthlyData[] = [];
   
   if (mode === 'standard') {
@@ -77,35 +151,16 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
       sourceData = data.single_run_data;
   }
 
-  // --- FORENSIC LOGGING ---
-  useEffect(() => {
-    if (!sourceData || sourceData.length === 0) return;
-
-    // Find first month where cash < 0 (insolvency)
-    const insolvencyIndex = sourceData.findIndex(d => Number(d.cash_balance) < 0);
-
-    if (insolvencyIndex !== -1) {
-      console.log('--- FORENSIC DATA LOG ---');
-      console.log(`Insolvency detected at Month ${insolvencyIndex}`);
-      
-      const start = Math.max(0, insolvencyIndex - 6);
-      const end = insolvencyIndex + 1;
-      
-      console.log('Raw Data (Previous 6 Months):', sourceData.slice(start, end));
-      console.log('Check the "cogs" field in these objects.');
-    }
-  }, [sourceData]);
-
-  // --- 1. The "Red Line" (Cumulative Investment) ---
-  // Always from deterministic_data if available
-  if (data.deterministic_data && data.deterministic_data.length > 0) {
-      const rawInvestmentData = data.deterministic_data.map(d => Number(d.cumulative_external_capital));
+  // --- 2. The "Red Line" (Cumulative Investment + Debt) ---
+  // UPDATED: Use sourceData so it reflects the current scenario (Single/Monte Carlo/Standard)
+  if (sourceData.length > 0) {
+      const rawInvestmentData = sourceData.map(d => Number(d.total_exposure || d.cumulative_external_capital || 0));
       const investmentData = rawInvestmentData.map(val => {
           return (isLog && val <= 100) ? 100 : val;
       });
 
       datasets.push({
-        label: 'Cumulative Investment',
+        label: 'Cumulative Investment + Debt',
         data: investmentData,
         rawValues: rawInvestmentData,
         borderColor: 'rgb(220, 38, 38)', // Red-600
@@ -118,7 +173,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
       });
   }
 
-  // --- 2. Deterministic / Single Run Mode ---
+  // --- 3. Deterministic / Single Run Mode ---
   // Only render if sourceData is present
   if (sourceData.length > 0 && (mode === 'standard' || mode === 'single')) {
     
@@ -257,7 +312,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
   }
 
-  // --- 3. Monte Carlo Mode ---
+  // --- 4. Monte Carlo Mode ---
   // Check for p50_data (preferred) or p50_value (legacy)
   if (mode === 'monte_carlo' && (data.p50_data || data.p50_value)) {
     
@@ -394,47 +449,38 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     }
   }
 
-  // --- 4. Accumulated Pool (Shared Logic) ---
-  // We check sourceData (which is now populated with median run in MC mode)
+  // --- 5. Net Pool Flow (Monthly) ---
+  // Replaces Accumulated Pool
   if (sourceData.length > 0) {
-      const rawPoolData = sourceData.map(d => Number(d.cumulative_pool_received || 0));
+      const rawPoolData = sourceData.map(d => {
+          // Calculate Net Pool = Received - Contribution
+          const received = Number((d as any).pool_received || 0);
+          const contribution = Number((d as any).pool_contribution || 0);
+          return received - contribution;
+      });
+
       const poolData = rawPoolData.map(val => {
           return (isLog && val <= 100) ? 100 : val;
       });
       
       // Only render if there is non-zero data
-      const hasPool = poolData.some(v => v > (isLog ? 101 : 1));
+      const hasPool = rawPoolData.some(v => Math.abs(v) > 1);
 
       if (hasPool) {
           datasets.push({
-              label: 'Accumulated Pool',
+              label: 'Net Pool Flow (Monthly)',
               data: poolData,
               rawValues: rawPoolData,
-              borderColor: 'rgb(245, 158, 11)', // Amber-500
-              borderDash: [5, 5], // Dotted
+              borderColor: 'rgb(168, 85, 247)', // Purple-500
+              backgroundColor: 'rgba(168, 85, 247, 0.2)', // Light purple fill
               borderWidth: 2,
               pointRadius: 0,
               tension: 0.1,
               pointStyle: 'line',
-              fill: false,
-              order: 7, // Layer above revenue/costs but below main lines
+              fill: 'origin',
+              order: 7, 
           });
       }
-  }
-
-  // --- SCALING LOGIC: "Snap-to-Grid" Cap ---
-  let yAxisMax: number | undefined = undefined;
-  if (mode === 'monte_carlo' && data.p90_value) {
-    const maxP90 = Math.max(...data.p90_value.map(v => Number(v)));
-    
-    if (maxP90 > 0) {
-      // INCREASE PADDING (Original was 2.0, adding 50% more -> 3.0)
-      const rawTarget = maxP90 * 3.0;
-      
-      const magnitude = Math.pow(10, Math.floor(Math.log10(rawTarget)));
-      const niceStep = magnitude / 2; 
-      yAxisMax = Math.round(rawTarget / niceStep) * niceStep;
-    }
   }
 
   const chartData = { labels, datasets };
@@ -465,7 +511,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
           display: true, 
           text: `Cash Balance (${currencySymbol})${isLog ? ' - Log Scale' : ''}` 
         },
-        min: isLog ? 100 : linearFloor,
+        min: yAxisMin,
         max: yAxisMax,
         ticks: {
           callback: (value: any) => {
@@ -566,6 +612,12 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
                 }
             }
             // ------------------------------------
+
+            // --- NEW: Net Pool Flow ---
+            if (labelStr === 'Net Pool Flow (Monthly)') {
+                return 'Net Pool: ' + (value >= 0 ? '+' : '') + fmt(value);
+            }
+            // --------------------------
 
             // Handle Survival Rate %
             if (context.dataset.yAxisID === 'y1') {

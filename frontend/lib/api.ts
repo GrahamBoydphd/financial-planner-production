@@ -238,6 +238,11 @@ export interface MonthlyData {
   solvent_companies?: number;
   total_companies?: number;
   treasury_gain?: string;
+  // Pooling Flows
+  pool_contribution?: string;
+  pool_received?: string;
+  contributing_companies?: number;
+  total_exposure?: string;
 }
 
 export interface SimulationResult {

@@ -122,6 +122,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                             last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
                             last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
                             last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
+                            last_entry.pool_received = Decimal::from_f64_retain(share).unwrap_or_default();
                         }
                     }
                 }
@@ -174,6 +175,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             let mut total_pool_received = 0.0;
             let mut sum_investment = 0.0;
             let mut solvent_companies = 0;
+            
+            let mut total_pool_contribution = 0.0;
+            let mut total_pool_received_month = 0.0;
+            let mut total_contributing_companies = 0;
+            let mut total_exposure_sum = 0.0;
 
             for company in &universe.companies {
                 // Safety: Ensure we don't panic if history is missing
@@ -189,6 +195,11 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                     total_value += data.total_value.to_f64().unwrap_or(0.0);
                     total_pool_received += data.cumulative_pool_received.to_f64().unwrap_or(0.0);
                     sum_investment += data.cumulative_external_capital.to_f64().unwrap_or(0.0);
+                    
+                    total_pool_contribution += data.pool_contribution.to_f64().unwrap_or(0.0);
+                    total_pool_received_month += data.pool_received.to_f64().unwrap_or(0.0);
+                    total_contributing_companies += data.contributing_companies;
+                    total_exposure_sum += data.total_exposure.to_f64().unwrap_or(0.0);
                     
                     if data.is_solvent {
                         solvent_companies += 1;
@@ -216,6 +227,10 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                 is_solvent: solvent_companies > 0,
                 total_companies: total_fund_companies,
                 solvent_companies: solvent_companies,
+                pool_contribution: Decimal::from_f64_retain(total_pool_contribution).unwrap_or_default(),
+                pool_received: Decimal::from_f64_retain(total_pool_received_month).unwrap_or_default(),
+                contributing_companies: total_contributing_companies,
+                total_exposure: Decimal::from_f64_retain(total_exposure_sum).unwrap_or_default(),
             });
         }
         universe_history
@@ -547,6 +562,7 @@ impl FundOrchestrator<EnsembleMode> {
                                     last_entry.cash_balance = Decimal::from_f64_retain(company.current_cash).unwrap_or_default();
                                     last_entry.cumulative_pool_received = Decimal::from_f64_retain(company.cum_pool_received).unwrap_or_default();
                                     last_entry.total_value = last_entry.cash_balance + last_entry.cumulative_dividends;
+                                    last_entry.pool_received = Decimal::from_f64_retain(company_share).unwrap_or_default();
                                 }
                             }
                         }

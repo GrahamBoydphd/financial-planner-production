@@ -22,6 +22,10 @@ pub struct MonthlyData {
     pub is_solvent: bool,
     pub total_companies: i32,
     pub solvent_companies: i32,
+    pub pool_contribution: Decimal,
+    pub pool_received: Decimal,
+    pub contributing_companies: i32,
+    pub total_exposure: Decimal,
 }
 
 impl MonthlyData {
@@ -45,6 +49,10 @@ impl MonthlyData {
             is_solvent: true,
             total_companies: 1,
             solvent_companies: 1,
+            pool_contribution: Decimal::ZERO,
+            pool_received: Decimal::ZERO,
+            contributing_companies: 0,
+            total_exposure: Decimal::ZERO,
         }
     }
 }
