@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
+  "query": "\n        SELECT \n            id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template,\n            default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction\n        FROM funds\n        WHERE id = $1 AND tenant_id = $2\n        ",
   "describe": {
     "columns": [
       {
@@ -37,10 +37,26 @@
         "ordinal": 6,
         "name": "is_public_template",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "default_soft_limit_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "default_soft_limit_threshold",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "default_soft_limit_fraction",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -51,8 +67,11 @@
       false,
       false,
       false,
+      false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "e9119b5b1282d02f7383fa9f7759960a41f31ba10a3b33be35988364a8535fb1"
+  "hash": "0b6619997c933e3985561e24b1912ff0d9333d880e74bcef6dba26c3e51fb06b"
 }

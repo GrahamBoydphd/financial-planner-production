@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\"\n        FROM financial_plans \n        WHERE tenant_id = $1 \n        ORDER BY created_at DESC\n        ",
+  "query": "\n        SELECT \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\",\n            soft_limit_active as \"soft_limit_active!\", soft_limit_threshold as \"soft_limit_threshold!\", soft_limit_fraction as \"soft_limit_fraction!\"\n        FROM financial_plans \n        WHERE tenant_id = $1 \n        ORDER BY created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -62,6 +62,21 @@
         "ordinal": 11,
         "name": "insolvency_threshold!",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "soft_limit_active!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "soft_limit_threshold!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "soft_limit_fraction!",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -81,8 +96,11 @@
       false,
       false,
       true,
+      false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "3cbb5c750aa31a35d2b2f3cb40c787ec1a9a5f7f9364c317cad2d2d7f4535feb"
+  "hash": "1633cebcc5c68c53c145bdf4d7ab9fbcd8d632e7287c069c33725db3cce963ec"
 }
