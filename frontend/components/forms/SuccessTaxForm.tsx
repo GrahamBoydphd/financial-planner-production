@@ -10,14 +10,15 @@ interface SuccessTaxFormProps {
 }
 
 export default function SuccessTaxForm({ plan, onSuccess }: SuccessTaxFormProps) {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(true);
   const [threshold, setThreshold] = useState('100,000,000');
   const [fraction, setFraction] = useState('5'); // Display as 0-100
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (plan) {
-      setActive(plan.soft_limit_active || false);
+      // Default to true if undefined/null, otherwise respect the value
+      setActive(plan.soft_limit_active ?? true);
       
       // Format threshold with commas
       const rawThreshold = plan.soft_limit_threshold || '100000000';
@@ -28,6 +29,16 @@ export default function SuccessTaxForm({ plan, onSuccess }: SuccessTaxFormProps)
       setFraction((rawFraction * 100).toString());
     }
   }, [plan]);
+
+  const handleActiveChange = (newValue: boolean) => {
+    if (!newValue) {
+      if (window.confirm("Disabling this leads to physically unrealistic behaviours")) {
+        setActive(false);
+      }
+    } else {
+      setActive(true);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -43,7 +54,7 @@ export default function SuccessTaxForm({ plan, onSuccess }: SuccessTaxFormProps)
         soft_limit_fraction: cleanFraction
       });
       onSuccess();
-      alert('Success Tax settings saved.');
+      alert('Friction settings saved.');
     } catch (err) {
       console.error(err);
       alert('Failed to save settings.');
@@ -59,7 +70,7 @@ export default function SuccessTaxForm({ plan, onSuccess }: SuccessTaxFormProps)
         threshold={threshold}
         fraction={fraction}
         currencyCode={plan.currency_code}
-        onChangeActive={setActive}
+        onChangeActive={handleActiveChange}
         onChangeThreshold={setThreshold}
         onChangeFraction={setFraction}
       />

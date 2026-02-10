@@ -101,6 +101,16 @@ pub async fn update_plan(
         .map(|s| Decimal::from_str(s).ok())
         .flatten();
 
+    let soft_limit_threshold = payload.soft_limit_threshold
+        .as_deref()
+        .map(|s| Decimal::from_str(s).ok())
+        .flatten();
+
+    let soft_limit_fraction = payload.soft_limit_fraction
+        .as_deref()
+        .map(|s| Decimal::from_str(s).ok())
+        .flatten();
+
     let plan: Option<FinancialPlan> = sqlx::query_as!(
         FinancialPlan,
         r#"
@@ -110,8 +120,11 @@ pub async fn update_plan(
             pooling_fraction = COALESCE($3, pooling_fraction),
             initial_cash = COALESCE($4, initial_cash),
             insolvency_threshold = COALESCE($5, insolvency_threshold),
+            soft_limit_active = COALESCE($6, soft_limit_active),
+            soft_limit_threshold = COALESCE($7, soft_limit_threshold),
+            soft_limit_fraction = COALESCE($8, soft_limit_fraction),
             updated_at = NOW() 
-        WHERE id = $6 AND tenant_id = $7
+        WHERE id = $9 AND tenant_id = $10
         RETURNING 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
             plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
@@ -125,6 +138,9 @@ pub async fn update_plan(
         payload.pooling_fraction,
         initial_cash,
         insolvency_threshold,
+        payload.soft_limit_active,
+        soft_limit_threshold,
+        soft_limit_fraction,
         id,
         claims.tenant_id
     )

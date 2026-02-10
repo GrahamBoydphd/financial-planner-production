@@ -373,6 +373,10 @@ pub struct UpdatePlanRequest {
     pub pooling_fraction: Option<Decimal>,
     pub initial_cash: Option<String>,
     pub insolvency_threshold: Option<String>,
+    // New fields for Soft Limit
+    pub soft_limit_active: Option<bool>,
+    pub soft_limit_threshold: Option<String>,
+    pub soft_limit_fraction: Option<String>,
 }
 
 // --- Event Requests ---

@@ -14,7 +14,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
   const [currency, setCurrency] = useState('EUR');
   
   // Econophysics / Success Tax
-  const [softLimitActive, setSoftLimitActive] = useState(false);
+  const [softLimitActive, setSoftLimitActive] = useState(true);
   const [softLimitThreshold, setSoftLimitThreshold] = useState('100,000,000'); // Default 100M formatted
   const [softLimitFraction, setSoftLimitFraction] = useState('70'); // Default 70%
 
@@ -22,7 +22,8 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
     if (initialData) {
       setName(initialData.fund_name);
       setCurrency(initialData.currency_code || 'EUR');
-      setSoftLimitActive(initialData.soft_limit_active || false);
+      // Default to true if undefined/null
+      setSoftLimitActive(initialData.soft_limit_active ?? true);
       
       // Format threshold
       const rawThreshold = initialData.soft_limit_threshold || '100000000';
@@ -34,11 +35,21 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
     } else {
       setName('');
       setCurrency('EUR');
-      setSoftLimitActive(false);
+      setSoftLimitActive(true);
       setSoftLimitThreshold('100,000,000');
       setSoftLimitFraction('70');
     }
   }, [initialData]);
+
+  const handleSoftLimitActiveChange = (newValue: boolean) => {
+    if (!newValue) {
+      if (window.confirm("Disabling this leads to physically unrealistic behaviours")) {
+        setSoftLimitActive(false);
+      }
+    } else {
+      setSoftLimitActive(true);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +80,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
       if (!initialData) {
         setName('');
         setCurrency('EUR');
-        setSoftLimitActive(false);
+        setSoftLimitActive(true);
         setSoftLimitThreshold('100,000,000');
         setSoftLimitFraction('70');
       }
@@ -117,7 +128,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
           threshold={softLimitThreshold}
           fraction={softLimitFraction}
           currencyCode={currency}
-          onChangeActive={setSoftLimitActive}
+          onChangeActive={handleSoftLimitActiveChange}
           onChangeThreshold={setSoftLimitThreshold}
           onChangeFraction={setSoftLimitFraction}
         />
