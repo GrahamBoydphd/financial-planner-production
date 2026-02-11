@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO capital_growth_policies (\n                id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,\n                vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent,\n                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Timestamptz",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "89801aba21509d5ba4e7ce5deb7dc8476b1c026d722afbf6984384075cb39d45"
+}
