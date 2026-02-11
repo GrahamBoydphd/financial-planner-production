@@ -203,6 +203,8 @@ Improve the clean version with better guidance to the user.
 - [ ] Add to the Authorisation the different registration levels, but blanked out.
 - [ ] Add a route to Open Collective to support completion of the project, including early payment for full tokens.
 - [ ] tomorrow on events: FE: One more fine-tuning. The events card is between the New Fund card and the List of existing funds. Better to put the list above the events, below the Fund card. And now that the funds are in the Events as a tick box list, no need for the "manage swan events" action icon in the funds list; the events card is always there.
+- [ ] **Sensitivity Analysis** (e.g., testing `pooling_fraction` at 0%, 10%, 20%, and 30% to find the mathematical "sweet spot"), and add in a competitive / complacency component that rises as the pooling rate and lifetime of the company rises.
+- [ ] Add 
 ---
 1. **Insolvency = Zero (or Negative):** In `domain.rs`, once a company is flagged insolvent, its `cash_balance` is forced to `0.0` for all future months. Even in the exact month it dies, it likely has a negative or low cash balance.
     
