@@ -131,7 +131,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
 
   const deterministicValues = detRows.map((d: any) => Number(d.total_value || 0));
   // NEW: Deterministic Investment (Exposure)
-  const deterministicInvestment = detRows.map((d: any) => Number(d.total_exposure || d.cumulative_external_capital || 0));
+  const deterministicInvestment = detRows.map((d: any) => Number(d.total_exposure || 0));
 
   // 2. Single Path Data (Volatile Mode)
   const allPathsRaw = simulation?.all_paths;
@@ -154,7 +154,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
     Array.isArray(allPathsRaw) 
       ? allPathsRaw.map((p: any[]) => p.map((v: any, idx: number) => {
           if (typeof v === 'object' && v !== null) {
-              return Number(v.total_exposure || v.cumulative_external_capital || 0);
+              return Number(v.total_exposure || 0);
           }
           // Fallback to deterministic if scalar (legacy support)
           return deterministicInvestment[idx] || 0;
@@ -177,20 +177,21 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
     if (!simulation || !p50Data.length) return { likelihoodData: [], dpiData: [] };
 
     // Calculate Likelihood Array (Probability > Target Multiple)
-    const likelihood = p50Data.map((monthData, idx) => {
-        // FIX: Force Month 0 to 0% to avoid "100% success" artifact when investment is 0
-        if (idx === 0) return 0;
-
+    const likelihood = p50Data.map((_, idx) => {
+        if (idx === 0) return 0; // Prevent 100% success artifact at month 0
+        
         if (!allPaths.length) return 0;
-        
-        // UPDATED: Use total_exposure (Equity + Debt) as the basis for the multiple
-        const investment = Number(monthData.total_exposure || monthData.cumulative_external_capital || 0);
-        const target = investment * targetMultiple;
-        
+
         let count = 0;
-        for (const path of allPaths) {
-            const val = Number(path[idx]);
-            if (val >= target) count++;
+        for (let pathIdx = 0; pathIdx < allPaths.length; pathIdx++) {
+            const val = Number(allPaths[pathIdx][idx]);
+            const pathInvestment = Number(allPathsInvestment[pathIdx]?.[idx] || 0);
+            const target = pathInvestment * targetMultiple;
+            
+            // Only count as success if there is actual exposure AND value beats target
+            if (pathInvestment > 0 && val >= target) {
+                count++;
+            }
         }
         return count / allPaths.length;
     });
@@ -204,14 +205,14 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
 
     return { likelihoodData: likelihood, dpiData: dpi };
 
-  }, [simulation, p50Data, allPaths, targetMultiple]);
+  }, [simulation, p50Data, allPaths, allPathsInvestment, targetMultiple]);
 
   const handlePrevPath = () => {
       setPathIndex(prev => Math.max(0, prev - 1));
   };
 
   const handleNextPath = () => {
-      const maxPaths = allPaths.length || 1000;
+      const maxPaths = allPaths.length || 999;
       setPathIndex(prev => Math.min(maxPaths - 1, prev + 1));
   };
 
@@ -501,11 +502,11 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                           ←
                                       </button>
                                       <span className="text-xs font-mono font-bold text-gray-700 px-2 min-w-[80px] text-center">
-                                          Path {pathIndex + 1} / {allPaths.length || 1000}
+                                          Path {pathIndex + 1} / {allPaths.length || 999}
                                       </span>
                                       <button 
                                           onClick={handleNextPath}
-                                          disabled={!simulation || pathIndex >= (allPaths.length || 1000) - 1}
+                                          disabled={!simulation || pathIndex >= (allPaths.length || 999) - 1}
                                           className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                                       >
                                           →
@@ -591,7 +592,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
                                                 Probabilistic Envelope (P0-P100)
                                             </h2>
                                             <p className="text-xs text-gray-500 mt-1">
-                                                Showing the full range of possible outcomes across 1,000 iterations.
+                                                Showing the full range of possible outcomes across 999 iterations.
                                             </p>
                                         </div>
                                         <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">Target Probability Overlay Active</span>

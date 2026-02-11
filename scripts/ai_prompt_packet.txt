@@ -160,946 +160,798 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Fix "Soft Limit" Settings not saving.
-PROBLEM: The "update_plan" handler ignores "soft_limit" fields, causing simulations to run with defaults (10B / 70%) instead of user inputs (1B / 100%).
-GOAL: Update the SQL UPDATE statement to write these fields.
+CONTEXT: ALIGNMENT - Update Fund Endpoint Naming Conventions to match Backend Contract.
+The Backend Architect specified that Fund endpoints (/api/funds) use 'default_soft_limit_active', 'default_soft_limit_threshold', and 'default_soft_limit_fraction'. Single Company/Plan endpoints remain unchanged.
+We must update 'api.ts' to send/receive these keys, and update 'FundForm.tsx' to read these keys when populating initial data.
 
 ACTION:
-1. Update "backend/src/handlers/plans.rs":
-   - In the "update_plan" function (and "UpdatePlanRequest" struct if needed, though likely dynamic):
-   - Update the SQL query "UPDATE financial_plans SET ..." to include:
-     - soft_limit_active = COALESCE($X, soft_limit_active),
-     - soft_limit_threshold = COALESCE($Y, soft_limit_threshold),
-     - soft_limit_fraction = COALESCE($Z, soft_limit_fraction)
-   - Ensure the "UpdatePlanRequest" struct has these "Option<...>" fields so the JSON decoder picks them up.
+1) UPDATE 'frontend/lib/api.ts' (or wherever 'api.ts' is located):
+   - LOCATE the 'interface Fund'.
+   - RENAME the 3 soft_limit properties to include the 'default_' prefix:
+     ```typescript
+     default_soft_limit_active?: boolean;
+     default_soft_limit_threshold?: string;
+     default_soft_limit_fraction?: string;
+     ```
+   - LOCATE the 'createFund' function.
+   - RENAME the parameters and payload keys to use the 'default_' prefix:
+     ```typescript
+     createFund: async (fund_name: string, currency_code: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+       (await apiClient.post<Fund>('/api/funds', { 
+         fund_name, 
+         currency_code,
+         default_soft_limit_active,
+         default_soft_limit_threshold,
+         default_soft_limit_fraction,
+         tenant_id: getTenantId() 
+       })).data,
+     ```
+   - LOCATE the 'updateFund' function.
+   - RENAME the parameters and payload keys similarly:
+     ```typescript
+     updateFund: async (id: string, fund_name: string, currency_code: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+       (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction })).data,
+     ```
 
-CONSTRAINTS: Check if the struct "UpdatePlanRequest" in "models.rs" or "handlers/plans.rs" needs the fields added first.
+2) UPDATE 'frontend/components/forms/FundForm.tsx':
+   - LOCATE the 'useEffect' block that populates state from 'initialData'.
+   - CHANGE the mapping to read from the new 'default_' properties:
+     ```typescript
+     // Explicitly update Econophysics state
+     setSoftLimitActive(initialData.default_soft_limit_active ?? true);
+     
+     setSoftLimitThreshold(
+       initialData.default_soft_limit_threshold 
+         ? Number(initialData.default_soft_limit_threshold).toLocaleString() 
+         : '100,000,000'
+     );
+     
+     setSoftLimitFraction(
+       initialData.default_soft_limit_fraction 
+         ? (Number(initialData.default_soft_limit_fraction) * 100).toString() 
+         : '70'
+     );
+     ```
+   - Do NOT change 'handleSubmit' since it just passes the local state variables into 'api.updateFund' in the exact same positional order.
+   - Do NOT change 'EconophysicsInputs.tsx'.
+
 </task_instruction>
 
 <source_code>
---- START FILE: backend/src/handlers/plans.rs ---
-use axum::{
-    extract::{Path, State, Query, Extension},
-    http::StatusCode,
-    Json,
+--- START FILE: frontend/lib/api.ts ---
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// --- HELPER: GET TENANT ID ---
+const getTenantId = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('tenant_id');
+  }
+  return null;
 };
-use serde::{Deserialize};
-use sqlx::{Pool, Postgres};
-use uuid::Uuid;
-use crate::models::{FinancialPlan, Claims, CreatePlanRequest, UpdatePlanRequest};
-use crate::errors::AppError;
-use crate::projection::SimulationResult;
-use crate::engine::generate_simulation;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::ToPrimitive;
-use chrono::NaiveDate;
-use std::str::FromStr;
 
-#[derive(Deserialize)]
-pub struct GetProjectionQuery {
-    pub months: Option<i32>,
-    pub initial_cash: Option<Decimal>,
-    pub mode: Option<String>,
-    pub stop_insolvency: Option<bool>,
-    pub events_active: Option<bool>,
+// --- INTERCEPTOR (CRITICAL FOR AUTH) ---
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('tenant_id'); // Clear tenant on 401
+    }
+    return Promise.reject(error);
+  }
+);
+
+// --- INTERFACES ---
+
+export interface AuthResponse {
+  token: string;
+  user_id: string;
+  username: string;
+  tenant_id: string;
 }
 
-pub async fn create_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<CreatePlanRequest>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    // Length Validation
-    if payload.plan_name.len() > 255 {
-        return Err(AppError::ValidationError("Plan name exceeds 255 characters".to_string()));
-    }
-    if let Some(ref code) = payload.currency_code {
-        if code.len() > 3 {
-            return Err(AppError::ValidationError("Currency code must be 3 characters".to_string()));
-        }
-    }
+export interface Fund {
+  id: string;
+  fund_name: string;
+  currency_code?: string;
+  created_at: string;
+  soft_limit_active?: boolean;
+  soft_limit_threshold?: string;
+  soft_limit_fraction?: string;
+}
 
-    let currency = payload.currency_code.unwrap_or_else(|| "USD".to_string());
+export interface FundPlan {
+  id: string;
+  fund_id: string;
+  plan_name: string;
+  selected_plans: Record<string, string>; 
+  created_at?: string;
+}
+
+export interface Company {
+  id: string;
+  fund_id: string;
+  company_name: string;
+  currency_code: string;
+  industry?: string;
+  business_model?: string;
+  technology?: string;
+  created_at: string;
+}
+
+export interface FinancialPlan {
+  id: string;
+  company_id: string;
+  plan_name: string;
+  currency_code: string;
+  start_month: string;
+  initial_cash: string;
+  pooling_fraction: string;
+  insolvency_threshold?: string;
+  soft_limit_active?: boolean;
+  soft_limit_threshold?: string;
+  soft_limit_fraction?: string;
+}
+
+export interface UpdatePlanRequest {
+  plan_name?: string;
+  start_month?: string;
+  initial_cash?: string;
+  pooling_fraction?: string;
+  insolvency_threshold?: string;
+  soft_limit_active?: boolean;
+  soft_limit_threshold?: string;
+  soft_limit_fraction?: string;
+}
+
+export interface RevenueItem {
+  id: string;
+  plan_id: string;
+  revenue_name: string;
+  source: string;
+  initial_amount: string;
+  growth_rate_percent: string;
+  start_month: number;
+  end_month?: number;
+  frequency: string;
+  cost_of_revenue_percent?: string;
+  volatility_type?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface ExpenseItem {
+  id: string;
+  plan_id: string;
+  expense_name: string;
+  category: string;
+  initial_amount: string;
+  growth_rate_percent: string;
+  start_month: number;
+  end_month?: number;
+  frequency: string;
+  pct_of_revenue?: string;
+  volatility_type?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface CapitalGrowthPolicy {
+  id: string;
+  plan_id: string;
+  volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
+  growth_rate_percent?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface CapitalInjection {
+  id: string;
+  plan_id: string;
+  injection_name: string;
+  amount: string;
+  month: number;
+}
+
+export interface DividendPolicy {
+  id: string;
+  plan_id: string;
+  is_enabled: boolean;
+  safety_threshold: string;
+  payout_ratio: string;
+}
+
+export interface CreditFacility {
+  id: string;
+  plan_id: string;
+  facility_limit: string;
+  interest_rate: string;
+  is_annual_rate: boolean;
+}
+
+export interface ValuationAssumption {
+  id: string;
+  plan_id: string;
+  valuation_name: string;
+  method: 'revenue' | 'ebitda';
+  multiplier: string;
+  date_applied: string;
+}
+
+export interface StaffingRole {
+  id: string;
+  plan_id: string;
+  role_name: string;
+  annual_salary: string;
+  start_month: number;
+  target_count: number; 
+  hiring_plan: 'fixed_count' | 'monthly_rate'; 
+  hiring_rate?: string; 
+  annual_increase_percent: string;
+}
+
+export interface MonthlyData {
+  month_index: number;
+  date: string;
+  revenue: string;
+  cogs: string;
+  gross_profit: string;
+  opex: string;
+  interest_expense: string;
+  net_income: string;
+  cash_balance: string;
+  dividend_paid: string;
+  cumulative_dividends: string;
+  cumulative_external_capital: string;
+  cumulative_pool_received: string; 
+  current_debt: string;
+  total_value: string;
+  is_solvent: boolean;
+  solvent_companies?: number;
+  total_companies?: number;
+  treasury_gain?: string;
+  // Pooling Flows
+  pool_contribution?: string;
+  pool_received?: string;
+  contributing_companies?: number;
+  total_exposure?: string;
+}
+
+export interface SimulationResult {
+  labels: string[];
+  valuation_method: string;
+  deterministic_data: MonthlyData[];
+  single_run_data?: MonthlyData[];
+  single_run_value?: string[];
+
+  p0_value?: string[];
+  p5_value?: string[];
+  p10_value?: string[];
+  p25_value?: string[];
+  p50_value?: string[];
+  p75_value?: string[];
+  p90_value?: string[];
+  p95_value?: string[];
+  p100_value?: string[];
+
+  // Solvency Counts (Optional)
+  p0_solvent_count?: number[];
+  p10_solvent_count?: number[];
+  p25_solvent_count?: number[];
+  p50_solvent_count?: number[];
+  p75_solvent_count?: number[];
+  p90_solvent_count?: number[];
+  p100_solvent_count?: number[];
+
+  all_paths?: MonthlyData[][];
+
+  p50_pool_cumulative?: string[]; 
+  p50_data: MonthlyData[];
+  survival_rate: number[];
+
+  deterministic_runway?: number;
+  deterministic_valuation: string;
+  single_run_runway?: number;
+  single_run_valuation?: string;
+  p50_runway?: number;
+  p50_valuation?: string;
+
+  average_event_count?: number;
+
+  // Error reporting
+  errors?: string[];
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  industry: string;
+  complexity: string;
+}
+
+export interface SwanEvent {
+  id: string;
+  event_name: string;
+  event_type: string;
+  scope: 'global' | 'local';
+  target_ids: string[];
+  fund_ids?: string[];
+  company_ids?: string[];
+  occurrence_probability: string;
+  magnitude: string;
+  direction: string;
+  duration: string;
+  is_counter_cyclic?: boolean;
+}
+
+// --- API METHODS ---
+
+export const api = {
+  // AUTH
+  login: async (username: string, password: string) => {
+    const payload = { username, password };
+    const response = await apiClient.post<AuthResponse>('/api/auth/login', payload);
+    // Save Tenant ID immediately upon login
+    if (typeof window !== 'undefined' && response.data.tenant_id) {
+      localStorage.setItem('tenant_id', response.data.tenant_id);
+    }
+    return response.data;
+  },
+  
+  register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
+    const payload = { username, email, password, full_name, company_name };
+    await apiClient.post('/api/auth/register', payload);
+  },
+
+  // FUNDS
+  getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
+  getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
+  
+  createFund: async (fund_name: string, currency_code: string, soft_limit_active?: boolean, soft_limit_threshold?: string, soft_limit_fraction?: string) => 
+    (await apiClient.post<Fund>('/api/funds', { 
+      fund_name, 
+      currency_code,
+      soft_limit_active,
+      soft_limit_threshold,
+      soft_limit_fraction,
+      tenant_id: getTenantId() 
+    })).data,
     
-    let insolvency_threshold = if let Some(s) = payload.insolvency_threshold {
-        Decimal::from_str(&s).map_err(|_| AppError::ValidationError("Invalid insolvency threshold".to_string()))?
+  updateFund: async (id: string, fund_name: string, currency_code: string, soft_limit_active?: boolean, soft_limit_threshold?: string, soft_limit_fraction?: string) => 
+    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, soft_limit_active, soft_limit_threshold, soft_limit_fraction })).data,
+  deleteFund: async (id: string) => {
+    await apiClient.delete(`/api/funds/${id}`);
+  },
+
+  // FUND PLANS (V4)
+  getFundPlans: async (fundId: string) => (await apiClient.get<FundPlan[]>(`/api/funds/${fundId}/plans`)).data,
+  
+  createFundPlan: async (data: { fund_id: string, plan_name: string, selected_plans: Record<string, string> }) =>
+    (await apiClient.post<FundPlan>(`/api/funds/${data.fund_id}/plans`, {
+      ...data,
+      tenant_id: getTenantId()
+    })).data,
+    
+  updateFundPlan: async (id: string, data: { plan_name: string, selected_plans: Record<string, string> }) =>
+    (await apiClient.put<FundPlan>(`/api/funds/plans/${id}`, data)).data,
+    
+  deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)),
+
+  // FUND SIMULATION
+  getFundSimulation: async (fundId: string, params?: { 
+    fund_plan_id?: string, 
+    fund_pooling_fraction?: string, 
+    months?: number, 
+    stop_insolvency?: boolean,
+    include_initial_capital?: boolean,
+    events_active?: boolean
+  }) => 
+    (await apiClient.get<SimulationResult>(`/api/funds/${fundId}/simulation`, { params })).data,
+
+  // COMPANIES
+  getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
+  getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
+  
+  createCompany: async (company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.post<Company>('/api/companies', { 
+      company_name, 
+      fund_id, 
+      currency_code, 
+      industry, 
+      business_model, 
+      technology,
+      tenant_id: getTenantId()
+    })).data,
+    
+  updateCompany: async (id: string, company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.put<Company>(`/api/companies/${id}`, { company_name, fund_id, currency_code, industry, business_model, technology })).data,
+  deleteCompany: async (id: string) => {
+    await apiClient.delete(`/api/companies/${id}`);
+  },  
+
+  // PLANS
+  getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
+  getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
+  
+  createPlan: async (company_id: string, plan_name: string, start_month: string, currency_code: string) => {
+    return (await apiClient.post<FinancialPlan>('/api/plans', { 
+      company_id, 
+      plan_name, 
+      start_month, 
+      currency_code,
+      tenant_id: getTenantId()
+    })).data;
+  },
+  
+  updatePlan: async (id: string, updates: UpdatePlanRequest) => 
+    (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
+  
+  deletePlan: async (id: string) => {
+    await apiClient.delete(`/api/plans/${id}`);
+  },
+
+  getProjection: async (planId: string, params?: { 
+    mode?: string, 
+    months?: number, 
+    stop_insolvency?: boolean, 
+    initial_cash?: number, 
+    insolvency_threshold?: string,
+    events_active?: boolean
+  }) => 
+    (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
+
+  // REVENUE
+  getRevenueItems: async (planId: string) => (await apiClient.get<RevenueItem[]>(`/api/plans/${planId}/revenue`)).data,
+  createRevenueItem: async (item: Omit<RevenueItem, 'id'>) => (await apiClient.post<RevenueItem>('/api/revenue', item)).data,
+  updateRevenueItem: async (id: string, item: Partial<RevenueItem>) => (await apiClient.put<RevenueItem>(`/api/revenue/${id}`, item)).data,
+  deleteRevenueItem: async (id: string) => (await apiClient.delete(`/api/revenue/${id}`)),
+
+  // EXPENSES
+  getExpenseItems: async (planId: string) => 
+    (await apiClient.get<ExpenseItem[]>(`/api/plans/${planId}/expenses`)).data,
+  createExpenseItem: async (item: Omit<ExpenseItem, 'id'>) => (await apiClient.post<ExpenseItem>('/api/expenses', item)).data,
+  updateExpenseItem: async (id: string, item: Partial<ExpenseItem>) => (await apiClient.put<ExpenseItem>(`/api/expenses/${id}`, item)).data,
+  deleteExpenseItem: async (id: string) => (await apiClient.delete(`/api/expenses/${id}`)),
+
+  // STAFFING
+  getStaffingRoles: async (planId: string) => (await apiClient.get<StaffingRole[]>(`/api/plans/${planId}/staffing`)).data,
+  createStaffingRole: async (role: Omit<StaffingRole, 'id'>) => (await apiClient.post<StaffingRole>('/api/staffing', role)).data,
+  updateStaffingRole: async (role: Omit<StaffingRole, 'plan_id'> & { plan_id?: string }) => (await apiClient.put<StaffingRole>(`/api/staffing/${role.id}`, role)).data,
+  deleteStaffingRole: async (id: string) => (await apiClient.delete(`/api/staffing/${id}`)).data,
+
+  // CAPITAL GROWTH (Treasury)
+  getCapitalGrowth: async (planId: string) => (await apiClient.get<CapitalGrowthPolicy>(`/api/plans/${planId}/capital-growth`)).data,
+  upsertCapitalGrowth: async (item: Omit<CapitalGrowthPolicy, 'id'>) => 
+    (await apiClient.post<CapitalGrowthPolicy>('/api/capital-growth', item)).data,
+
+  // CAPITAL INJECTIONS
+  getCapitalInjections: async (planId: string) => 
+    (await apiClient.get<CapitalInjection[]>(`/api/plans/${planId}/capital`)).data,
+  createCapitalInjection: async (item: Omit<CapitalInjection, 'id'>) => 
+    (await apiClient.post<CapitalInjection>('/api/capital', item)).data,
+  deleteCapitalInjection: async (id: string) => 
+    (await apiClient.delete(`/api/capital/${id}`)),
+
+  // DIVIDENDS
+  getDividends: async (planId: string): Promise<DividendPolicy> => {
+    try {
+      const response = await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return {
+          id: '',
+          plan_id: planId,
+          is_enabled: false,
+          safety_threshold: '0',
+          payout_ratio: '0',
+        };
+      }
+      throw error;
+    }
+  },
+  upsertDividends: async (item: Omit<DividendPolicy, 'id'>) => 
+    (await apiClient.post<DividendPolicy>('/api/dividends', item)).data,
+
+  // CREDIT
+  getCredit: async (planId: string): Promise<CreditFacility> => {
+    try {
+      const response = await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return {
+          id: '',
+          plan_id: planId,
+          facility_limit: '0',
+          interest_rate: '0',
+          is_annual_rate: true,
+        };
+      }
+      throw error;
+    }
+  },
+  upsertCredit: async (item: Omit<CreditFacility, 'id'>) => 
+    (await apiClient.post<CreditFacility>('/api/credit', item)).data,
+
+  // VALUATION
+  getValuation: async (planId: string) => 
+    (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
+  createValuation: async (item: { plan_id: string, valuation_name: string, method: string, multiplier: string, date_applied: string }) => 
+    (await apiClient.post('/api/valuation', item)).data,
+
+  // LIFECYCLE
+  duplicateFund: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/funds/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  duplicateCompany: async (id: string) => (await apiClient.post<Company>(`/api/lifecycle/companies/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  duplicatePlan: async (id: string) => (await apiClient.post<FinancialPlan>(`/api/lifecycle/plans/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  moveCompany: async (id: string, target_fund_id: string) => 
+    (await apiClient.put<Company>(`/api/lifecycle/companies/${id}/move`, { target_fund_id }, { timeout: 60000 })).data,
+
+  // TEMPLATES
+  getTemplates: async () => (await apiClient.get<Template[]>('/api/lifecycle/templates', { timeout: 60000 })).data,
+  importTemplate: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/templates/${id}/clone`, {}, { timeout: 60000 })).data,
+
+  // SWAN EVENTS (Formerly Shocks)
+  getEvents: async (targetIds: string[]) => {
+    const params = new URLSearchParams();
+    if (targetIds.length) {
+      params.append('target_ids', targetIds.join(','));
+    }
+    // Use any[] to allow mapping from alternative backend field names
+    const response = await apiClient.get<any[]>('/api/events', { params });
+    
+    return response.data.map((item) => {
+      // Normalization Logic
+      let scope = item.scope;
+      if (!scope) {
+        if (item.fund_ids && item.fund_ids.length > 0) scope = 'global';
+        else if (item.company_ids && item.company_ids.length > 0) scope = 'local';
+        else scope = 'global'; // Default fallback
+      }
+
+      // Ensure target_ids is populated
+      const target_ids = item.target_ids || [...(item.fund_ids || []), ...(item.company_ids || [])];
+
+      return {
+        ...item,
+        scope,
+        target_ids,
+        // Map backend fields to frontend fields
+        occurrence_probability: item.occurrence_probability || item.likelihood_annual_pct || '0',
+        event_type: item.event_type || item.event_category || 'revenue_hit',
+        magnitude: item.magnitude,
+        direction: item.direction,
+        duration: item.duration || item.duration_category,
+        is_counter_cyclic: item.is_counter_cyclic
+      };
+    }) as SwanEvent[];
+  },
+  
+  createEvent: async (event: Omit<SwanEvent, 'id'>) => (await apiClient.post<SwanEvent>('/api/events', event)).data,
+  
+  updateEvent: async (id: string, event: Partial<SwanEvent>) => (await apiClient.put<SwanEvent>(`/api/events/${id}`, event)).data,
+  
+  deleteEvent: async (id: string) => (await apiClient.delete(`/api/events/${id}`)),
+};
+--- END FILE: frontend/lib/api.ts ---
+
+--- START FILE: frontend/components/forms/FundForm.tsx ---
+import { useState, useEffect } from 'react';
+import { api, Fund } from '@/lib/api';
+import Button from '@/components/ui/Button';
+import { EconophysicsInputs } from '@/components/forms/shared/EconophysicsInputs';
+
+interface FundFormProps {
+  onSuccess?: () => void;
+  initialData?: Fund | null;
+  onCancel?: () => void;
+}
+
+export default function FundForm({ onSuccess, initialData, onCancel }: FundFormProps) {
+  const [name, setName] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  
+  // Econophysics / Success Tax
+  const [softLimitActive, setSoftLimitActive] = useState(true);
+  const [softLimitThreshold, setSoftLimitThreshold] = useState('100,000,000'); // Default 100M formatted
+  const [softLimitFraction, setSoftLimitFraction] = useState('70'); // Default 70%
+
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.fund_name);
+      setCurrency(initialData.currency_code || 'EUR');
+      
+      // Explicitly update Econophysics state
+      setSoftLimitActive(initialData.soft_limit_active ?? true);
+      
+      setSoftLimitThreshold(
+        initialData.soft_limit_threshold 
+          ? Number(initialData.soft_limit_threshold).toLocaleString() 
+          : '100,000,000'
+      );
+      
+      setSoftLimitFraction(
+        initialData.soft_limit_fraction 
+          ? (Number(initialData.soft_limit_fraction) * 100).toString() 
+          : '70'
+      );
     } else {
-        Decimal::from(100)
-    };
-
-    let plan = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id, insolvency_threshold) 
-        VALUES ($1, $2, $3, $4, $5, $6) 
-        RETURNING 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
-            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
-        "#,
-        payload.company_id,
-        payload.plan_name,
-        chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
-        currency,
-        claims.tenant_id,
-        insolvency_threshold
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(plan))
-}
-
-pub async fn update_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<UpdatePlanRequest>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    // Length Validation
-    if let Some(ref name) = payload.plan_name {
-        if name.len() > 255 {
-            return Err(AppError::ValidationError("Plan name exceeds 255 characters".to_string()));
-        }
+      setName('');
+      setCurrency('EUR');
+      setSoftLimitActive(true);
+      setSoftLimitThreshold('100,000,000');
+      setSoftLimitFraction('70');
     }
+  }, [initialData]);
 
-    let start_date = payload.start_month
-        .as_deref()
-        .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
-        .flatten();
-
-    let initial_cash = payload.initial_cash
-        .as_deref()
-        .map(|s| Decimal::from_str(s).ok())
-        .flatten();
-
-    let insolvency_threshold = payload.insolvency_threshold
-        .as_deref()
-        .map(|s| Decimal::from_str(s).ok())
-        .flatten();
-
-    let soft_limit_threshold = payload.soft_limit_threshold
-        .as_deref()
-        .map(|s| Decimal::from_str(s).ok())
-        .flatten();
-
-    let soft_limit_fraction = payload.soft_limit_fraction
-        .as_deref()
-        .map(|s| Decimal::from_str(s).ok())
-        .flatten();
-
-    let plan: Option<FinancialPlan> = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        UPDATE financial_plans 
-        SET plan_name = COALESCE($1, plan_name), 
-            start_month = COALESCE($2, start_month), 
-            pooling_fraction = COALESCE($3, pooling_fraction),
-            initial_cash = COALESCE($4, initial_cash),
-            insolvency_threshold = COALESCE($5, insolvency_threshold),
-            soft_limit_active = COALESCE($6, soft_limit_active),
-            soft_limit_threshold = COALESCE($7, soft_limit_threshold),
-            soft_limit_fraction = COALESCE($8, soft_limit_fraction),
-            updated_at = NOW() 
-        WHERE id = $9 AND tenant_id = $10
-        RETURNING 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
-            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
-        "#,
-        payload.plan_name,
-        start_date,
-        payload.pooling_fraction,
-        initial_cash,
-        insolvency_threshold,
-        payload.soft_limit_active,
-        soft_limit_threshold,
-        soft_limit_fraction,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
-
-    Ok(Json(plan))
-}
-
-pub async fn get_all_plans(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-) -> Result<Json<Vec<FinancialPlan>>, AppError> {
-    let plans = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        SELECT 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
-            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
-        FROM financial_plans 
-        WHERE tenant_id = $1 
-        ORDER BY created_at DESC
-        "#,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    Ok(Json(plans))
-}
-
-pub async fn get_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    let plan: Option<FinancialPlan> = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        SELECT 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
-            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
-        FROM financial_plans 
-        WHERE id = $1 AND tenant_id = $2
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
-
-    Ok(Json(plan))
-}
-
-pub async fn delete_plan(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, AppError> {
-    let result: sqlx::postgres::PgQueryResult = sqlx::query!("DELETE FROM financial_plans WHERE id = $1 AND tenant_id = $2", id, claims.tenant_id)
-        .execute(&pool)
-        .await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound("Plan not found".to_string()));
+  const handleSoftLimitActiveChange = (newValue: boolean) => {
+    if (!newValue) {
+      if (window.confirm("Disabling this leads to physically unrealistic behaviours")) {
+        setSoftLimitActive(false);
+      }
+    } else {
+      setSoftLimitActive(true);
     }
+  };
 
-    Ok(StatusCode::NO_CONTENT)
-}
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Prepare data for API
+      const cleanThreshold = softLimitThreshold.replace(/,/g, '');
+      const cleanFraction = (Number(softLimitFraction) / 100).toString();
 
-// --- PROJECTION LOGIC ---
-
-pub async fn get_plan_projection(
-    State(pool): State<Pool<Postgres>>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<Uuid>,
-    Query(params): Query<GetProjectionQuery>,
-) -> Result<Json<SimulationResult>, AppError> {
-    
-    // DoS Protection: Check months limit
-    let months = params.months.unwrap_or(60);
-    if months > 1200 {
-        return Err(AppError::ValidationError("Simulation limited to 100 years (1200 months)".into()));
+      if (initialData) {
+        await api.updateFund(
+          initialData.id, 
+          name, 
+          currency,
+          softLimitActive,
+          cleanThreshold,
+          cleanFraction
+        );
+      } else {
+        await api.createFund(
+          name, 
+          currency,
+          softLimitActive,
+          cleanThreshold,
+          cleanFraction
+        );
+      }
+      
+      if (!initialData) {
+        setName('');
+        setCurrency('EUR');
+        setSoftLimitActive(true);
+        setSoftLimitThreshold('100,000,000');
+        setSoftLimitFraction('70');
+      }
+      onSuccess?.();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.error || 'Failed to save fund');
     }
+  };
 
-    // Fetch Plan Info
-    let plan: Option<FinancialPlan> = sqlx::query_as!(
-        FinancialPlan,
-        r#"
-        SELECT 
-            id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
-            initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
-            created_at as "created_at!", updated_at as "updated_at!",
-            last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
-            soft_limit_active as "soft_limit_active!", soft_limit_threshold as "soft_limit_threshold!", soft_limit_fraction as "soft_limit_fraction!"
-        FROM financial_plans 
-        WHERE id = $1 AND tenant_id = $2
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Fund Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="e.g. My VC Fund I"
+            required
+          />
+        </div>
 
-    let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
+        <div>
+          <label className="block text-sm font-medium mb-1">Currency</label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            disabled
+            className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
+          >
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </div>
+      </div>
 
-    // Fetch Inputs with strict tenant isolation in subqueries
-    let revenue_items: Vec<crate::models::RevenueItem> = sqlx::query_as!(
-        crate::models::RevenueItem,
-        r#"
-        SELECT 
-            id as "id!", plan_id as "plan_id!", revenue_name as "revenue_name!", source as "source!", 
-            start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", cost_of_revenue_percent, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
-            created_at as "created_at!"
-        FROM revenue_items 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY start_month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
+      {/* Econophysics & Friction Section */}
+      <div className="border-t pt-4 mt-4">
+        <EconophysicsInputs
+          active={softLimitActive}
+          threshold={softLimitThreshold}
+          fraction={softLimitFraction}
+          currencyCode={currency}
+          onChangeActive={handleSoftLimitActiveChange}
+          onChangeThreshold={setSoftLimitThreshold}
+          onChangeFraction={setSoftLimitFraction}
+        />
+      </div>
 
-    let expense_items: Vec<crate::models::ExpenseItem> = sqlx::query_as!(
-        crate::models::ExpenseItem,
-        r#"
-        SELECT 
-            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
-            start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", pct_of_revenue, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
-            created_at as "created_at!"
-        FROM expense_items 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY start_month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    // Map new 'events' table to 'Event' struct
-    // UPDATED: Fetch events linked to Plan OR Company OR Fund
-    let events: Vec<crate::models::Event> = sqlx::query_as!(
-        crate::models::Event,
-        r#"
-        SELECT 
-            e.id as "id!", 
-            e.plan_id, 
-            e.fund_ids, 
-            e.company_ids,
-            e.event_name as "event_name!", 
-            e.start_month, 
-            e.event_category, 
-            e.impact_type, 
-            e.impact_value, 
-            e.duration_months, 
-            e.likelihood_annual_pct, 
-            e.magnitude, 
-            e.direction, 
-            e.duration_category,
-            e.is_counter_cyclic,
-            e.created_at as "created_at!" 
-        FROM events e
-        JOIN financial_plans p ON p.id = $1
-        JOIN companies c ON c.id = p.company_id
-        WHERE (e.plan_id = $1 OR c.id = ANY(e.company_ids) OR c.fund_id = ANY(e.fund_ids))
-        AND p.tenant_id = $2
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let capital_injections: Vec<crate::models::CapitalInjection> = sqlx::query_as!(
-        crate::models::CapitalInjection,
-        r#"
-        SELECT id, plan_id, injection_name, amount, month, created_at 
-        FROM capital_injections 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let dividend_policy: Option<crate::models::DividendPolicy> = sqlx::query_as!(
-        crate::models::DividendPolicy,
-        r#"
-        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!"
-        FROM dividend_policies 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await.ok().flatten();
-
-    let credit_facility: Option<crate::models::CreditFacility> = sqlx::query_as!(
-        crate::models::CreditFacility,
-        r#"
-        SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at 
-        FROM credit_facilities 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await.ok().flatten();
-
-    let valuation_assumptions: Vec<crate::models::ValuationAssumption> = sqlx::query_as!(
-        crate::models::ValuationAssumption,
-        r#"
-        SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at 
-        FROM valuation_assumptions 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY date_applied DESC LIMIT 1
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let staffing_roles: Vec<crate::models::StaffingRole> = sqlx::query_as!(
-        crate::models::StaffingRole,
-        r#"
-        SELECT 
-            id as "id!", plan_id as "plan_id!", role_name as "role_name!", 
-            annual_salary as "annual_salary!", start_month as "start_month!", 
-            target_count as "target_count!", hiring_plan as "hiring_plan!", 
-            hiring_rate, annual_increase_percent as "annual_increase_percent!", 
-            created_at as "created_at!"
-        FROM staffing_roles 
-        WHERE plan_id = $1 
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        ORDER BY start_month ASC
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    let capital_growth: Option<crate::models::CapitalGrowthPolicy> = sqlx::query_as!(
-        crate::models::CapitalGrowthPolicy,
-        r#"
-        SELECT 
-            id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
-            created_at as "created_at!", growth_rate_percent as "growth_rate_percent!" 
-        FROM capital_growth_policies 
-        WHERE plan_id = $1
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
-        "#,
-        id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await.ok().flatten();
-    
-    let mut errors = Vec::new();
-
-    for item in &revenue_items {
-        if item.volatility_type.as_deref() == Some("nrig") {
-            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Revenue '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.revenue_name, alpha, beta));
-            }
-        }
-    }
-
-    for item in &expense_items {
-        if item.volatility_type.as_deref() == Some("nrig") {
-            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Expense '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.expense_name, alpha, beta));
-            }
-        }
-    }
-
-    if let Some(ref cg) = capital_growth {
-        if cg.volatility_type.as_deref() == Some("nrig") {
-            let alpha = cg.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = cg.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Capital Growth: NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", alpha, beta));
-            }
-        }
-    }
-
-    if !errors.is_empty() {
-        return Ok(Json(SimulationResult {
-            errors: Some(errors),
-            valuation_method: "error".to_string(),
-            ..Default::default()
-        }));
-    }
-
-    // Run Simulation
-    let initial_cash = params.initial_cash.unwrap_or(plan.initial_cash);
-    let use_monte_carlo = params.mode.unwrap_or("single".to_string()) == "monte_carlo";
-    let stop_insolvency = params.stop_insolvency.unwrap_or(false);
-    let events_active = params.events_active.unwrap_or(true);
-
-    let result = generate_simulation(
-        plan.company_id,
-        plan.plan_name.clone(),
-        plan.currency_code.clone(),
-        months,
-        initial_cash,
-        revenue_items,
-        expense_items,
-        staffing_roles,
-        events,
-        capital_injections,
-        credit_facility,
-        dividend_policy,
-        valuation_assumptions,
-        capital_growth,
-        use_monte_carlo,
-        stop_insolvency,
-        events_active,
-        plan.pooling_fraction,
-        plan.insolvency_threshold,
-        plan.soft_limit_active,
-        plan.soft_limit_threshold,
-        plan.soft_limit_fraction
-    );
-
-    Ok(Json(result))
+      <div className="flex gap-2 pt-2">
+        <Button type="submit">{initialData ? 'Update Fund' : 'Create Fund'}</Button>
+        {initialData && (
+          <button 
+            type="button" 
+            onClick={onCancel}
+            className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </form>
+  );
 }
---- END FILE: backend/src/handlers/plans.rs ---
-
---- START FILE: backend/src/models.rs ---
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use uuid::Uuid;
-use chrono::{NaiveDate, DateTime, Utc};
-use rust_decimal::Decimal;
-
-// --- Phase 0: Multi-Tenancy & Auth ---
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Tenant {
-    pub id: Uuid,
-    pub name: String,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct User {
-    pub id: Uuid,
-    pub username: String,
-    pub email: Option<String>,
-    #[serde(skip_serializing)]
-    pub password_hash: String,
-    pub full_name: String,
-    pub tenant_id: Uuid,
-    pub created_at: DateTime<Utc>,
-}
-
-// --- Phase 3: Portfolio Structure ---
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Fund {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub fund_name: String, // Renamed from name
-    pub currency_code: String,
-    pub created_at: DateTime<Utc>,
-    pub tenant_id: Uuid,
-    pub is_public_template: Option<bool>,
-    // New Soft Limit Defaults
-    #[serde(default)]
-    pub default_soft_limit_active: bool,
-    #[serde(default)]
-    pub default_soft_limit_threshold: Decimal,
-    #[serde(default)]
-    pub default_soft_limit_fraction: Decimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Company {
-    pub id: Uuid,
-    pub fund_id: Uuid,
-    // tenant_id removed from here to fix duplicate field error
-    pub company_name: String, // Renamed from name
-    pub currency_code: String,
-    pub created_at: DateTime<Utc>,
-    pub industry: Option<String>,
-    pub business_model: Option<String>,
-    pub technology: Option<String>,
-    pub tenant_id: Uuid,
-}
-
-// Add New Struct for Exchange Rates
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ExchangeRate {
-    pub id: Uuid,
-    pub from_currency: String,
-    pub to_currency: String,
-    pub rate: Decimal,
-    pub rate_month: NaiveDate,
-    pub created_at: DateTime<Utc>,
-    pub tenant_id: Uuid,
-}
-
-// --- Phase 1 & 2: Financial Models ---
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct FinancialPlan {
-    pub id: Uuid,
-    pub company_id: Uuid,
-    pub plan_name: String, // Renamed from name
-    pub start_month: NaiveDate,
-    pub currency_code: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub initial_cash: Decimal,
-    pub pooling_fraction: Decimal, 
-    pub tenant_id: Uuid,
-    pub last_p50_net_value: Option<Decimal>,
-    pub insolvency_threshold: Decimal,
-    // New Soft Limit Settings
-    #[serde(default)]
-    pub soft_limit_active: bool,
-    #[serde(default)]
-    pub soft_limit_threshold: Decimal,
-    #[serde(default)]
-    pub soft_limit_fraction: Decimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct RevenueItem {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub revenue_name: String, // Renamed from name
-    pub source: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: Decimal,
-    pub growth_rate_percent: Decimal,
-    pub frequency: String,
-    pub cost_of_revenue_percent: Option<Decimal>,
-    pub volatility_type: Option<String>,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
-    pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
-    pub created_at: DateTime<Utc>,
-    // New Distribution Architecture Fields
-    pub target_mean: Option<Decimal>,
-    pub vol_mu: Option<Decimal>,
-    pub vol_input_mode: Option<String>,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ExpenseItem {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub expense_name: String, // Renamed from name
-    pub category: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: Decimal,
-    pub growth_rate_percent: Decimal,
-    pub frequency: String,
-    pub pct_of_revenue: Option<Decimal>,
-    pub volatility_type: Option<String>,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
-    pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
-    pub created_at: DateTime<Utc>,
-    // New Distribution Architecture Fields
-    pub target_mean: Option<Decimal>,
-    pub vol_mu: Option<Decimal>,
-    pub vol_input_mode: Option<String>,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CapitalInjection {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub injection_name: String, // Renamed from name
-    pub amount: Decimal,
-    pub month: i32,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct DividendPolicy {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub is_enabled: bool,
-    pub safety_threshold: Decimal,
-    pub payout_ratio: Decimal,
-    pub created_at: DateTime<Utc>,
-    pub tracking_enabled: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CreditFacility {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub facility_limit: Decimal,
-    pub interest_rate: Decimal,
-    pub is_annual_rate: bool,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ValuationAssumption {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub valuation_name: String,
-    pub method: String,
-    pub multiplier: Decimal,
-    pub date_applied: Option<NaiveDate>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Event {
-    pub id: Uuid,
-    pub plan_id: Option<Uuid>,
-    pub fund_ids: Option<Vec<Uuid>>, // Changed to Array
-    pub company_ids: Option<Vec<Uuid>>, // Changed to Array
-    pub event_name: String, // Renamed from shock_name
-    pub start_month: Option<i32>, // Renamed from shock_month, Relaxed
-    pub event_category: Option<String>,
-    pub impact_type: Option<String>, // Relaxed
-    pub impact_value: Option<Decimal>, // Relaxed
-    pub duration_months: Option<i32>,
-    pub likelihood_annual_pct: Option<Decimal>,
-    pub magnitude: Option<String>,
-    pub direction: Option<String>,
-    pub duration_category: Option<String>,
-    pub is_counter_cyclic: Option<bool>,
-    pub created_at: DateTime<Utc>,
-}
-
-// Legacy struct for backward compatibility with projection engine
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct EventShock {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub shock_name: String,
-    pub shock_month: i32,
-    pub impact_type: String,
-    pub impact_value: Decimal,
-    pub duration_months: Option<i32>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CapitalGrowthPolicy {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub volatility_type: Option<String>,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
-    pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub growth_rate_percent: Decimal,
-    // New Distribution Architecture Fields
-    pub target_mean: Option<Decimal>,
-    pub vol_mu: Option<Decimal>,
-    pub vol_input_mode: Option<String>,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateFundRequest {
-    pub fund_name: String,
-    pub currency_code: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct UpdateFundRequest {
-    pub fund_name: String,
-    pub currency_code: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateCompanyRequest {
-    pub fund_id: Uuid,
-    pub tenant_id: Uuid,
-    pub company_name: String,
-    pub business_model: Option<String>,
-    pub industry: Option<String>,
-    pub technology: Option<String>,
-    pub currency_code: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct UpdateCompanyRequest {
-    pub company_name: String,
-    pub business_model: Option<String>,
-    pub industry: Option<String>,
-    pub technology: Option<String>,
-    pub currency_code: String,
-}
-
-// --- Point 9: Staffing & Payroll ---
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
-pub struct StaffingRole {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub role_name: String,
-    pub annual_salary: Decimal,
-    pub start_month: i32,
-    pub target_count: i32, 
-    pub hiring_plan: String, 
-    pub hiring_rate: Option<i32>, 
-    pub annual_increase_percent: Decimal,
-    pub created_at: DateTime<Utc>,
-}
-
-// --- Auth DTOs ---
-
-#[derive(Deserialize, Debug)]
-pub struct RegisterRequest {
-    pub username: String,
-    pub password: String,
-    pub full_name: String,
-    pub email: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct LoginRequest {
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Serialize, Debug)]
-pub struct AuthResponse {
-    pub token: String,
-    pub user_id: Uuid,
-    pub username: String,
-    pub tenant_id: Uuid,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
-    pub sub: String,
-    pub user_id: Uuid,
-    pub tenant_id: Uuid,
-    pub exp: usize,
-}
-
-// --- Fund Plans ---
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct FundPlan {
-    pub id: Uuid,
-    pub fund_id: Uuid,
-    pub tenant_id: Uuid,
-    pub plan_name: String,
-    pub selected_plans: serde_json::Value, // Maps to JSONB
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateFundPlanRequest {
-    pub plan_name: String,
-    pub selected_plans: serde_json::Value,
-}
-
-// --- Plan Requests ---
-
-#[derive(Deserialize)]
-pub struct CreatePlanRequest {
-    pub company_id: Uuid,
-    pub plan_name: String,
-    pub start_month: String, // YYYY-MM-01
-    pub currency_code: Option<String>,
-    pub insolvency_threshold: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct UpdatePlanRequest {
-    pub plan_name: Option<String>,
-    pub start_month: Option<String>,
-    pub pooling_fraction: Option<Decimal>,
-    pub initial_cash: Option<String>,
-    pub insolvency_threshold: Option<String>,
-    // New fields for Soft Limit
-    pub soft_limit_active: Option<bool>,
-    pub soft_limit_threshold: Option<String>,
-    pub soft_limit_fraction: Option<String>,
-}
-
-// --- Event Requests ---
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum EventPayload {
-    Fixed {
-        start_month: i32,
-        impact_value: String,
-        duration_months: Option<i32>,
-    },
-    Stochastic {
-        occurrence_probability: String,
-        magnitude: String,
-        direction: String,
-        duration: String, // Maps to duration_category
-        is_counter_cyclic: Option<bool>,
-    },
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateEventRequest {
-    pub scope: String, // "global", "local", "plan"
-    pub target_ids: Vec<Uuid>, // Changed to Array
-    pub event_name: String,
-    pub event_type: String, // Renamed from shock_type
-    #[serde(flatten)]
-    pub data: EventPayload,
-}
---- END FILE: backend/src/models.rs ---
+--- END FILE: frontend/components/forms/FundForm.tsx ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 # Status: UNIVERSAL CONSTITUTION (Read by every agent)

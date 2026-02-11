@@ -28,6 +28,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     const lastData = projection.deterministic_data?.[projection.deterministic_data.length - 1] || {};
+    const lastP50 = projection.p50_data?.[projection.p50_data.length - 1] || {};
     
     let totalVal = lastData.total_value;
     let valuation = projection.deterministic_valuation;
@@ -72,11 +73,13 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
             runwayVal = 0;
         }
     } else if (simMode === 'monte_carlo') {
-        totalVal = projection.p50_value?.[projection.p50_value.length - 1] || 0;
-        valuation = projection.p50_valuation;
-        subtitle = 'Median (P50)';
+        // Strict Pathwise (P50) logic
+        const p50Cash = Number(lastP50.cash_balance || 0);
+        totalVal = p50Cash + Number(lastP50.cumulative_dividends || 0);
         
-        // --- CHANGED LOGIC START ---
+        valuation = projection.p50_valuation;
+        subtitle = 'Pathwise (P50)';
+        
         // Use survival_rate to find first month < 0.5
         const survivalRates = projection.survival_rate || [];
         const dropIndex = survivalRates.findIndex((r: any) => Number(r) < 0.5);
@@ -87,9 +90,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
              insolvencyMonth = -1;
         }
 
-        const lastP50 = projection.p50_data?.[projection.p50_data.length - 1] || {};
         runwayVal = calculateRunway(Number(lastP50.cash_balance), Number(lastP50.net_income));
-        // --- CHANGED LOGIC END ---
         
     } else {
         // Standard
@@ -103,7 +104,9 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
     const survivalRate = projection.survival_rate?.[projection.survival_rate.length - 1] ?? 0;
     const finalSurvival = survivalRate * 100;
     
-    const p50Cash = projection.p50_data?.[projection.p50_data.length - 1]?.cash_balance ?? 0;
+    // Strict Pathwise (P50) logic
+    const p50Cash = Number(lastP50.cash_balance || 0);
+    
     const detCash = projection.deterministic_data?.[projection.deterministic_data.length - 1]?.cash_balance ?? 0;
     const cashDelta = Number(p50Cash) - Number(detCash);
 
@@ -546,7 +549,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 >
                   <option value="standard">Standard (Average)</option>
                   <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Likely real-world outcomes (1000 Runs)</option>
+                  <option value="monte_carlo">Likely real-world outcomes (999 Runs)</option>
                 </select>
               </div>
 

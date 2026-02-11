@@ -56,9 +56,9 @@ export interface Fund {
   fund_name: string;
   currency_code?: string;
   created_at: string;
-  soft_limit_active?: boolean;
-  soft_limit_threshold?: string;
-  soft_limit_fraction?: string;
+  default_soft_limit_active?: boolean;
+  default_soft_limit_threshold?: string;
+  default_soft_limit_fraction?: string;
 }
 
 export interface FundPlan {
@@ -345,18 +345,18 @@ export const api = {
   getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
   getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
   
-  createFund: async (fund_name: string, currency_code: string, soft_limit_active?: boolean, soft_limit_threshold?: string, soft_limit_fraction?: string) => 
+  createFund: async (fund_name: string, currency_code: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
     (await apiClient.post<Fund>('/api/funds', { 
       fund_name, 
       currency_code,
-      soft_limit_active,
-      soft_limit_threshold,
-      soft_limit_fraction,
+      default_soft_limit_active,
+      default_soft_limit_threshold,
+      default_soft_limit_fraction,
       tenant_id: getTenantId() 
     })).data,
     
-  updateFund: async (id: string, fund_name: string, currency_code: string, soft_limit_active?: boolean, soft_limit_threshold?: string, soft_limit_fraction?: string) => 
-    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, soft_limit_active, soft_limit_threshold, soft_limit_fraction })).data,
+  updateFund: async (id: string, fund_name: string, currency_code: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction })).data,
   deleteFund: async (id: string) => {
     await apiClient.delete(`/api/funds/${id}`);
   },

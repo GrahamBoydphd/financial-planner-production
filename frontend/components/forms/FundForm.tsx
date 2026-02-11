@@ -22,16 +22,21 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
     if (initialData) {
       setName(initialData.fund_name);
       setCurrency(initialData.currency_code || 'EUR');
-      // Default to true if undefined/null
-      setSoftLimitActive(initialData.soft_limit_active ?? true);
       
-      // Format threshold
-      const rawThreshold = initialData.soft_limit_threshold || '100000000';
-      setSoftLimitThreshold(Number(rawThreshold).toLocaleString());
+      // Explicitly update Econophysics state
+      setSoftLimitActive(initialData.default_soft_limit_active ?? true);
       
-      // Format fraction (0.0-1.0 -> 0-100)
-      const rawFraction = parseFloat(initialData.soft_limit_fraction || '0.7');
-      setSoftLimitFraction((rawFraction * 100).toString());
+      setSoftLimitThreshold(
+        initialData.default_soft_limit_threshold 
+          ? Number(initialData.default_soft_limit_threshold).toLocaleString() 
+          : '100,000,000'
+      );
+      
+      setSoftLimitFraction(
+        initialData.default_soft_limit_fraction 
+          ? (Number(initialData.default_soft_limit_fraction) * 100).toString() 
+          : '70'
+      );
     } else {
       setName('');
       setCurrency('EUR');
@@ -56,7 +61,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
     try {
       // Prepare data for API
       const cleanThreshold = softLimitThreshold.replace(/,/g, '');
-      const cleanFraction = (parseFloat(softLimitFraction) / 100).toString();
+      const cleanFraction = (Number(softLimitFraction) / 100).toString();
 
       if (initialData) {
         await api.updateFund(

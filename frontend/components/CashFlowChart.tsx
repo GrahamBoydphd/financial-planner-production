@@ -318,12 +318,10 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     
     // Extract P50 values for clamping calculations
     let p50Vals: number[] = [];
-    if (data.p50_data) {
-        // Map from pathwise data (Cash Balance for Cash-Only Logic)
-        p50Vals = data.p50_data.map(d => Number(d.cash_balance));
-    } else if (data.p50_value) {
-        // Legacy fallback
+    if (data.p50_value) {
         p50Vals = data.p50_value.map(v => Number(v));
+    } else if (data.p50_data) {
+        p50Vals = data.p50_data.map(d => Number(d.cash_balance));
     }
 
     // CALCULATE CLAMPING FLOORS
@@ -349,7 +347,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
 
     // LAYER 1: P100 (Max)
     datasets.push({
-      label: 'Max (Top Edge)',
+      label: 'Max (Top Edge). P100 is',
       data: clamp(data.p100_value),
       rawValues: getRaw(data.p100_value),
       borderColor: 'transparent',
@@ -359,7 +357,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
     // LAYER 2: P90
     datasets.push({
-      label: 'Top 10% (P90-Max)',
+      label: 'Top 10% (P90-Max). P90 is',
       data: clamp(data.p90_value),
       rawValues: getRaw(data.p90_value),
       borderColor: 'transparent',
@@ -371,7 +369,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
     // LAYER 3: P75
     datasets.push({
-      label: 'Upper 15% (P75-P90)',
+      label: 'Upper 15% (P75-P90). P75 is',
       data: clamp(data.p75_value),
       rawValues: getRaw(data.p75_value),
       borderColor: 'transparent',
@@ -383,7 +381,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
     // LAYER 4: P25
     datasets.push({
-      label: 'Typical 50% (P25-P75)',
+      label: 'Typical 50% (P25-P75). P25 is',
       data: clamp(data.p25_value),
       rawValues: getRaw(data.p25_value),
       borderColor: 'transparent',
@@ -395,7 +393,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
     // LAYER 5: P10
     datasets.push({
-      label: 'Lower 15% (P10-P25)',
+      label: 'Lower 15% (P10-P25). P10 is',
       data: clamp(data.p10_value),
       rawValues: getRaw(data.p10_value),
       borderColor: 'transparent',
@@ -407,7 +405,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
     // LAYER 6: P0
     datasets.push({
-      label: 'Bottom 10% (Min-P10)',
+      label: 'Bottom 10% (Min-P10). P0 is',
       data: clamp(data.p0_value),
       rawValues: getRaw(data.p0_value),
       borderColor: 'transparent',
@@ -580,7 +578,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
         callbacks: {
           label: function(context: any) {
             const labelStr = context.dataset.label || '';
-            if (labelStr.includes('Top Edge')) return null;
+//            if (labelStr.includes('Top Edge')) return null;
             
             let value = context.parsed.y;
             if (context.dataset.rawValues && context.dataset.rawValues[context.dataIndex] !== undefined) {

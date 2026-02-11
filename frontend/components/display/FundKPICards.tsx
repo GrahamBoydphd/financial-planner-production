@@ -47,7 +47,7 @@ export default function FundKPICards({
     // P50 Data
     if (data.p50_data && data.p50_data.length > 0) {
         netValue = getLast(data.p50_data, 'total_value');
-        labelSuffix = '(P50)';
+        labelSuffix = '(Pathwise P50)';
     }
   } else if (mode === 'single') {
     // Single Run Data (Volatile)

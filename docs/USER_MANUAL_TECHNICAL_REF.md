@@ -364,3 +364,39 @@ I will add a **"Success Tax"** logic to the end of the monthly step.
     - `Cash = Cash - Tax`
         
     - The money is **destroyed** (removed from the Universe), not redistributed.
+
+# Resolving the P50 Discrepancy & New Data Contract
+
+You are entirely correct in your diagnosis: mixing cross-sectional arrays with pathwise objects creates mismatches if the sorting metric isn't strictly unified.
+
+To fix this, the Rust backend has just been updated to a **Context-Aware Sorting Architecture**. The backend now knows whether it is simulating a Single Company or a Full Fund, and it changes its mathematical sorting rules accordingly so your charts and cards will always match perfectly.
+
+Here is the exact math the backend is now executing, and what you need to display:
+
+**1. When viewing a SINGLE COMPANY (Ensemble Mode)**
+
+- **The Math:** A company’s survival relies purely on liquidity. Therefore, the backend sorts all 999 paths strictly by `cash_balance` for both the cross-sectional graph AND the final pathwise `p50_data` selection.
+    
+- **The Chart (`pX_value`):** These arrays now contain cross-sectional **Cash Balances**.
+    
+- **The P50 Card:** You should display `p50_data[last].cash_balance`.
+    
+- **The Result:** The final point on the P50 chart pop-up will mathematically equal the P50 Cash Card exactly.
+    
+
+**2. When viewing a FUND (Portfolio Mode)**
+
+- **The Math:** A Fund’s success is judged by its Net Asset Value (which includes cash + dividends extracted from the companies). Therefore, the backend sorts all 999 universes strictly by `total_value` for both the graph and the `p50_data` path.
+    
+- **The Chart (`pX_value`):** These arrays now contain cross-sectional **Total Values** (NAV).
+    
+- **The P50 Card:** _Action Required for UI:_ You must display `p50_data[last].total_value` on the card for Funds (not cash balance!).
+    
+- **The Result:** The final point on the P50 chart pop-up will exactly match the P50 Total Value Card.
+    
+
+**Summary for the UI:** Because the backend now dynamically changes the data inside `p50_value` based on the context, **your KPI cards must dynamically change which field they read from `p50_data`** to match the graph:
+
+- Single Company View = Read `cash_balance`.
+    
+- Fund View = Read `total_value`.

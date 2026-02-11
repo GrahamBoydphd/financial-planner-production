@@ -236,7 +236,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         universe_history
     }
 
-    fn finalize_results(self, fund_trajectories: Vec<Vec<MonthlyData>>, deterministic_data: Vec<MonthlyData>, total_events_triggered: usize) -> SimulationResult {
+    fn finalize_results(self, fund_trajectories: Vec<Vec<MonthlyData>>, deterministic_data: Vec<MonthlyData>, total_events_triggered: usize, sort_by_total_value: bool) -> SimulationResult {
         let iterations = fund_trajectories.len();
         
         // Generate Labels
@@ -264,8 +264,8 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         let mut p100_count = Vec::with_capacity(cap);
 
         let mut survival_vec = Vec::with_capacity(cap);
-        let mut p50_data = Vec::with_capacity(cap);
 
+        // LOGIC A: Cross-Sectional Graph Arrays
         if !fund_trajectories.is_empty() {
             for m_idx in 0..cap {
                 let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
@@ -281,33 +281,43 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                     }
                 }
 
-                // Sort snapshots by Cash Balance (instead of Total Value)
-                snapshots.sort_by(|a, b| a.cash_balance.cmp(&b.cash_balance));
+                // Sort snapshots by Target Metric (Cash Balance or Total Value)
+                snapshots.sort_by(|a, b| if sort_by_total_value {
+                    a.total_value.cmp(&b.total_value)
+                } else {
+                    a.cash_balance.cmp(&b.cash_balance)
+                });
+                
                 let len = snapshots.len();
 
                 if len > 0 {
-                    let get_snapshot = |idx: usize| -> &MonthlyData {
-                        snapshots[idx]
+                    // Helper to pick exact index
+                    let get_idx = |pct: f64| -> usize {
+                        let idx = (len as f64 * pct).floor() as usize;
+                        if idx >= len { len - 1 } else { idx }
                     };
 
-                    let p0 = get_snapshot(0);
-                    let p10 = get_snapshot((len as f64 * 0.10) as usize);
-                    let p25 = get_snapshot((len as f64 * 0.25) as usize);
-                    let p50 = get_snapshot((len as f64 * 0.50) as usize);
-                    let p75 = get_snapshot((len as f64 * 0.75) as usize);
-                    let p90 = get_snapshot((len as f64 * 0.90) as usize);
-                    let p100 = get_snapshot(len - 1);
+                    let p0 = snapshots[0];
+                    let p10 = snapshots[get_idx(0.10)];
+                    let p25 = snapshots[get_idx(0.25)];
+                    let p50 = snapshots[get_idx(0.50)];
+                    let p75 = snapshots[get_idx(0.75)];
+                    let p90 = snapshots[get_idx(0.90)];
+                    let p100 = snapshots[len - 1];
 
-                    // Push Values (Cash Balance)
-                    p0_vec.push(p0.cash_balance);
-                    p10_vec.push(p10.cash_balance);
-                    p25_vec.push(p25.cash_balance);
-                    p50_vec.push(p50.cash_balance);
-                    p75_vec.push(p75.cash_balance);
-                    p90_vec.push(p90.cash_balance);
-                    p100_vec.push(p100.cash_balance);
+                    // Helper to extract value based on sort mode
+                    let get_val = |d: &MonthlyData| if sort_by_total_value { d.total_value } else { d.cash_balance };
 
-                    // Push Solvent Counts
+                    // Push Values
+                    p0_vec.push(get_val(p0));
+                    p10_vec.push(get_val(p10));
+                    p25_vec.push(get_val(p25));
+                    p50_vec.push(get_val(p50));
+                    p75_vec.push(get_val(p75));
+                    p90_vec.push(get_val(p90));
+                    p100_vec.push(get_val(p100));
+
+                    // Push Solvent Counts (Associated with the P-tile)
                     p0_count.push(p0.solvent_companies);
                     p10_count.push(p10.solvent_companies);
                     p25_count.push(p25.solvent_companies);
@@ -315,9 +325,6 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
                     p75_count.push(p75.solvent_companies);
                     p90_count.push(p90.solvent_companies);
                     p100_count.push(p100.solvent_companies);
-
-                    // P50 Data (Full Snapshot - Median Cash)
-                    p50_data.push(p50.clone());
                 }
 
                 let rate = if iterations > 0 {
@@ -329,26 +336,31 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             }
         }
 
-        // Calculate Single Run Data (Median Trajectory)
+        // LOGIC B: Pathwise Data Object (p50_data)
+        // Find the median run based on the FINAL month's Metric
+        let mut p50_data_path = Vec::new();
         let mut single_run_data = None;
         let mut single_run_value = None;
 
         if !fund_trajectories.is_empty() {
-            // Sort indices based on the total_value of the last month
-            let mut indices: Vec<usize> = (0..fund_trajectories.len()).collect();
-            indices.sort_by(|&a, &b| {
-                let val_a = fund_trajectories[a].last().map(|m| m.total_value).unwrap_or(Decimal::ZERO);
-                let val_b = fund_trajectories[b].last().map(|m| m.total_value).unwrap_or(Decimal::ZERO);
-                val_a.cmp(&val_b)
-            });
+            // Create a list of (index, final_val)
+            let mut final_values: Vec<(usize, Decimal)> = fund_trajectories.iter().enumerate().map(|(i, run)| {
+                let final_val = run.last().map(|m| if sort_by_total_value { m.total_value } else { m.cash_balance }).unwrap_or(Decimal::ZERO);
+                (i, final_val)
+            }).collect();
 
-            // Pick the median trajectory
-            if !indices.is_empty() {
-                let median_idx = indices[indices.len() / 2];
-                let selected_run = &fund_trajectories[median_idx];
+            // Sort by final value
+            final_values.sort_by(|a, b| a.1.cmp(&b.1));
 
-                single_run_data = Some(selected_run.clone());
-                single_run_value = Some(selected_run.iter().map(|m| m.total_value).collect());
+            // Pick median index
+            let median_pos = (final_values.len() as f64 * 0.50).floor() as usize;
+            let median_idx = final_values.get(median_pos).map(|x| x.0).unwrap_or(0);
+
+            // Clone that path
+            if let Some(run) = fund_trajectories.get(median_idx) {
+                p50_data_path = run.clone();
+                single_run_data = Some(run.clone());
+                single_run_value = Some(run.iter().map(|m| m.total_value).collect());
             }
         }
 
@@ -379,7 +391,7 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             p90_solvent_count: p90_count,
             p100_solvent_count: p100_count,
             p50_pool_cumulative: None,
-            p50_data: Some(p50_data),
+            p50_data: Some(p50_data_path),
             survival_rate: Some(survival_vec),
             deterministic_runway: None,
             deterministic_valuation: Decimal::ZERO,
@@ -467,7 +479,8 @@ impl FundOrchestrator<PortfolioMode> {
             fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
         }
 
-        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered)
+        // PortfolioMode -> Sort by Total Value (true)
+        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered, true)
     }
 }
 
@@ -585,6 +598,7 @@ impl FundOrchestrator<EnsembleMode> {
             fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
         }
 
-        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered)
+        // EnsembleMode -> Sort by Cash Balance (false)
+        self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered, false)
     }
 }

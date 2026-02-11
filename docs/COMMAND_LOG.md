@@ -1,5 +1,7 @@
 # Command Log & Maintenance
 
+`tree -I 'node_modules|.next|target|.sqlx|.git|*.log|*.bak|*.p.woff2|*.pack*|*.hot-update.*|__pycache__|.stfolder|.stversions|.obsidian|.trash' -L 3 > a_tree.txt`
+
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 

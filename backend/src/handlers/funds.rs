@@ -9,6 +9,8 @@ use crate::errors::AppError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use serde_json::json;
+use rust_decimal::Decimal;
+use std::str::FromStr;
 
 pub async fn create_fund(
     State(pool): State<Pool<Postgres>>,
@@ -74,14 +76,37 @@ pub async fn update_fund(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateFundRequest>,
 ) -> Result<Json<Fund>, AppError> {
+    
+    let threshold = if let Some(ref s) = payload.default_soft_limit_threshold {
+        Some(Decimal::from_str(s).map_err(|_| AppError::ValidationError("Invalid soft limit threshold format".to_string()))?)
+    } else {
+        None
+    };
+
+    let fraction = if let Some(ref s) = payload.default_soft_limit_fraction {
+        Some(Decimal::from_str(s).map_err(|_| AppError::ValidationError("Invalid soft limit fraction format".to_string()))?)
+    } else {
+        None
+    };
+
     let fund = sqlx::query_as!(
         Fund,
-        "UPDATE funds 
-         SET fund_name = $1, currency_code = $2 
-         WHERE id = $3 AND tenant_id = $4 
-         RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction",
+        r#"
+        UPDATE funds 
+        SET 
+            fund_name = $1, 
+            currency_code = $2,
+            default_soft_limit_active = COALESCE($3, default_soft_limit_active),
+            default_soft_limit_threshold = COALESCE($4, default_soft_limit_threshold),
+            default_soft_limit_fraction = COALESCE($5, default_soft_limit_fraction)
+        WHERE id = $6 AND tenant_id = $7 
+        RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction
+        "#,
         payload.fund_name,
         payload.currency_code,
+        payload.default_soft_limit_active,
+        threshold,
+        fraction,
         id,
         claims.tenant_id
     )
@@ -89,6 +114,27 @@ pub async fn update_fund(
     .await?;
 
     let fund = fund.ok_or(AppError::NotFound("Fund not found or unauthorized".to_string()))?;
+
+    // Cascade settings to all companies/plans in this fund
+    sqlx::query!(
+        r#"
+        UPDATE financial_plans fp 
+        SET soft_limit_active = $1, 
+            soft_limit_threshold = $2, 
+            soft_limit_fraction = $3 
+        FROM companies c 
+        WHERE fp.company_id = c.id 
+          AND c.fund_id = $4 
+          AND c.tenant_id = $5
+        "#,
+        fund.default_soft_limit_active,
+        fund.default_soft_limit_threshold,
+        fund.default_soft_limit_fraction,
+        id,
+        claims.tenant_id
+    )
+    .execute(&pool)
+    .await?;
 
     Ok(Json(fund))
 }

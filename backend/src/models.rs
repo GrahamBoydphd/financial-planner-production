@@ -267,6 +267,9 @@ pub struct CreateFundRequest {
 pub struct UpdateFundRequest {
     pub fund_name: String,
     pub currency_code: String,
+    pub default_soft_limit_active: Option<bool>,
+    pub default_soft_limit_threshold: Option<String>,
+    pub default_soft_limit_fraction: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

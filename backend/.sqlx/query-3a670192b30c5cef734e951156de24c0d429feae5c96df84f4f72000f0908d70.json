@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE financial_plans fp \n        SET soft_limit_active = $1, \n            soft_limit_threshold = $2, \n            soft_limit_fraction = $3 \n        FROM companies c \n        WHERE fp.company_id = c.id \n          AND c.fund_id = $4 \n          AND c.tenant_id = $5\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Numeric",
+        "Numeric",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3a670192b30c5cef734e951156de24c0d429feae5c96df84f4f72000f0908d70"
+}

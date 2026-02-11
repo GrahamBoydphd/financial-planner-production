@@ -1,0 +1,178 @@
+.
+├── a_tree.txt
+├── backend
+│   ├── Cargo.lock
+│   ├── Cargo.toml
+│   ├── Dockerfile
+│   ├── migrations
+│   │   ├── 20251207202039_initial_schema.sql
+│   │   ├── 20251207204450_financial_data_models.sql
+│   │   ├── 20251212144500_add_multi_company_model.sql
+│   │   ├── 20251213150000_update_expense_logic.sql
+│   │   ├── 20251213170000_add_volatility_params.sql
+│   │   ├── 20251213180000_add_nrig_fields.sql
+│   │   ├── 20251214180000_add_v2_features.sql
+│   │   ├── 20251218081052_add_cascade_delete.sql
+│   │   ├── 20251219140000_add_staffing_roles.sql
+│   │   ├── 20251220100000_upgrade_staffing_schema.sql
+│   │   ├── 20260103144940_add_pooling_fraction.sql
+│   │   ├── 20260109104134_init_auth_tables.sql
+│   │   ├── 20260109114841_enforce_tenant_not_null.sql
+│   │   ├── 20260110131527_ensure_cascade_deletes.sql
+│   │   ├── 20260110154428_add_initial_cash_to_plans.sql
+│   │   ├── 20260113083505_standardize_capital_growth.sql
+│   │   ├── 20260113095020_standardize_staffing_naming.sql
+│   │   ├── 20260116081601_standardize_valuation_naming.sql
+│   │   ├── 20260116092316_sync_fortress_names.sql
+│   │   ├── 20260116093903_final_fortress_sync.sql
+│   │   ├── 20260116094310_ensure_audit_columns.sql
+│   │   ├── 20260116095602_fortress_repair_and_sync.sql
+│   │   ├── 20260116113044_hardened_net_value_audit.sql
+│   │   ├── 20260116163008_multi_currency_support.sql
+│   │   ├── 20260117180606_rename_to_scoped_names.sql
+│   │   ├── 20260118073929_rename_event_shocks.sql
+│   │   ├── 20260121065332_create_fund_plans.sql
+│   │   ├── 20260121075842_add_tenant_to_fund_plans.sql
+│   │   ├── 20260124083638_lifecycle_and_demo_guard.sql
+│   │   ├── 20260125084951_add_insolvency_threshold.sql
+│   │   ├── 20260126171152_semantic_shocks.sql
+│   │   ├── 20260127050735_refine_events_schema.sql
+│   │   ├── 20260127064506_multi_target_events.sql
+│   │   ├── 20260128131914_add_counter_cyclic.sql
+│   │   ├── 20260205164849_harden_dist_params.sql
+│   │   ├── 20260210144654_add_soft_limit_friction.sql
+│   │   └── all_schema.txt
+│   ├── src
+│   │   ├── distributions.rs
+│   │   ├── engine
+│   │   ├── errors.rs
+│   │   ├── handlers
+│   │   ├── main.rs
+│   │   ├── middleware.rs
+│   │   ├── models.rs
+│   │   └── projection.rs
+│   └── tree.txt
+├── docker-compose.prod.yml
+├── docker-compose.yml
+├── docs
+│   ├── ARCHITECT_BE.md
+│   ├── ARCHITECT_FE.md
+│   ├── ARCHITECTURAL_CONTEXT_CLI.md
+│   ├── ARCHITECTURAL_CONTEXT_PRODUCTION.md
+│   ├── Architectural_Reference_the_fortress_standard_260116.md
+│   ├── Architectural_Reference_V3_Freeze_for_V4.md
+│   ├── Architectural_Reference_V4_Updates_for_Freeze_for_V5.md
+│   ├── audit_baseline.md
+│   ├── Audit Checklist for Code Architects.md
+│   ├── audit_MVP_freeze_auth-check.md
+│   ├── AUDIT_REPORT_Jules_260116_Pre_Currency.md
+│   ├── Audit_Scan_Repair_List.md
+│   ├── autopsy_userlayer1.md
+│   ├── Backend to Frontend handover packets.md
+│   ├── BE_Execution_Tracking.md
+│   ├── COMMAND_LOG.md
+│   ├── Context_History.md
+│   ├── Distribution_Theory.md
+│   ├── FE_Prompts.md
+│   ├── Handoffs_BE_API_STANDARDS_V3_260116.md
+│   ├── Handoffs_BE.md
+│   ├── Handoffs_Deployment+Historical.md
+│   ├── Handoffs_FE.md
+│   ├── Julia Feedback actions.md
+│   ├── PRODUCTION_LEARNINGS_V1.md
+│   ├── Progess.md
+│   ├── ROADMAP.md
+│   ├── STRATEGIST.md
+│   ├── Tools_Manifest.md
+│   ├── Toplevel_Plan_to_the_full_Ergodic_Simulation.md
+│   └── USER_MANUAL_TECHNICAL_REF.md
+├── frontend
+│   ├── app
+│   │   ├── company
+│   │   ├── fund
+│   │   ├── globals.css
+│   │   ├── help
+│   │   ├── improve
+│   │   ├── layout.tsx
+│   │   ├── login
+│   │   ├── page.tsx
+│   │   ├── plan
+│   │   ├── register
+│   │   └── structure
+│   ├── components
+│   │   ├── CashFlowChart.tsx
+│   │   ├── display
+│   │   ├── EventList.tsx
+│   │   ├── forms
+│   │   ├── FundChart.tsx
+│   │   ├── Layout.tsx
+│   │   ├── modals
+│   │   ├── Navbar.tsx
+│   │   ├── TemplateCard.tsx
+│   │   └── ui
+│   ├── context
+│   │   └── AuthContext.tsx
+│   ├── Dockerfile
+│   ├── lib
+│   │   ├── api.ts
+│   │   ├── api.ts.fund
+│   │   ├── currency.ts
+│   │   └── presets.ts
+│   ├── next.config.js
+│   ├── next-env.d.ts
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── logo.png
+│   ├── tailwind.config.ts
+│   ├── tree.txt
+│   ├── tsconfig.json
+│   └── tsconfig.tsbuildinfo
+├── migrations
+├── project_structure_auth.txt
+├── scripts
+│   ├── ai_prompt_packet.txt
+│   ├── ai_solution.md
+│   ├── apply.py
+│   ├── audit_fallbacks.sh
+│   ├── audit_scan.sh
+│   ├── backups
+│   │   ├── apply.py
+│   │   ├── ARCHITECTURAL_CONTEXT.md
+│   │   ├── ARCHITECTURAL_CONTEXT_PRODUCTION.md
+│   │   ├── builder.py
+│   │   ├── clean-slate.sh
+│   │   ├── COMMAND_LOG.md
+│   │   ├── deploy.sh
+│   │   ├── Dockerfile
+│   │   ├── do_task.sh
+│   │   ├── fix-XX.sh
+│   │   ├── pack_context.sh
+│   │   ├── PRODUCTION_LEARNINGS_V1.md
+│   │   ├── transplant.sh
+│   │   ├── trigger-update.sh
+│   │   └── try_build.sh
+│   ├── builder.py
+│   ├── clean-slate.sh
+│   ├── cleanup.sh
+│   ├── current_frontend_state.sh
+│   ├── deploy.sh
+│   ├── Dockerfile
+│   ├── do_task_alt.sh
+│   ├── do_task_old.sh
+│   ├── do_task.sh
+│   ├── fix-XX.sh
+│   ├── harvest_docs.sh
+│   ├── harvester.py
+│   ├── harvest_packet.txt
+│   ├── pack_context.sh
+│   ├── test_v4.sh
+│   ├── transplant.sh
+│   ├── trigger-update.sh
+│   ├── try_build.sh
+│   ├── update_docs.sh
+│   └── verify_auth.sh
+└── tree.txt
+
+28 directories, 148 files
