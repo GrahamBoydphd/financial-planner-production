@@ -74,7 +74,8 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
 
   // Scan Deterministic Data
   if (data.deterministic_data) {
-    data.deterministic_data.forEach(d => {
+    // Skip Month 0 (Initial State) for scaling
+    data.deterministic_data.slice(1).forEach(d => {
       addVal(d.total_value);
       addVal(d.cash_balance);
       addVal(d.total_exposure);
@@ -86,7 +87,8 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   // Scan Single Run Data (from prop or data object)
   const singleSource = singleRunData || data.single_run_data;
   if (singleSource) {
-    singleSource.forEach(d => {
+    // Skip Month 0
+    singleSource.slice(1).forEach(d => {
       addVal(d.total_value);
       addVal(d.cash_balance);
       addVal(getNetPool(d));
@@ -94,16 +96,19 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   }
 
   // Scan Monte Carlo Data (P100/P0 cover the full range)
-  if (data.p100_value) data.p100_value.forEach(addVal);
-  if (data.p0_value) data.p0_value.forEach(addVal);
+  // Skip Month 0
+  if (data.p100_value) data.p100_value.slice(1).forEach(addVal);
+  if (data.p0_value) data.p0_value.slice(1).forEach(addVal);
   
   // Fallback scan for P90/P10 if P100/P0 missing
-  if (data.p90_value) data.p90_value.forEach(addVal);
-  if (data.p10_value) data.p10_value.forEach(addVal);
+  // Skip Month 0
+  if (data.p90_value) data.p90_value.slice(1).forEach(addVal);
+  if (data.p10_value) data.p10_value.slice(1).forEach(addVal);
 
   // Scan P50 Data for Net Pool (since P100/P0 might not cover it)
   if (data.p50_data) {
-    data.p50_data.forEach(d => addVal(getNetPool(d)));
+    // Skip Month 0
+    data.p50_data.slice(1).forEach(d => addVal(getNetPool(d)));
   }
 
   if (allValues.length > 0) {

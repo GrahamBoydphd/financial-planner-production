@@ -99,7 +99,7 @@ export const EconophysicsInputs: React.FC<EconophysicsInputsProps> = ({
                 <span className="absolute right-3 top-2 text-gray-500">%</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                % of excess value removed annually.
+                % of excess value removed monthly.
               </p>
             </div>
           </div>

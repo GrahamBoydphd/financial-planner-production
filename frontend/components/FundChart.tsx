@@ -149,9 +149,11 @@ export default function FundChart({
       // Fallback if no global max provided
       let dataMax = 0;
       if (mode === 'monte_carlo' && fanData?.p100) {
-        dataMax = Math.max(...fanData.p100);
+        // Ignore Month 0 for scaling
+        dataMax = Math.max(...fanData.p100.slice(1));
       } else if (values) {
-        dataMax = Math.max(...values);
+        // Ignore Month 0 for scaling
+        dataMax = Math.max(...values.slice(1));
       }
       yAxisMax = dataMax > 0 ? dataMax * 1.2 : 100;
   }

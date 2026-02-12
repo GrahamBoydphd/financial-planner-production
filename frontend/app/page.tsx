@@ -326,14 +326,20 @@ export default function Dashboard() {
         </div>
       ) : (
         // TEMPLATES VIEW
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
-            <TemplateCard 
-              key={template.id}
-              template={template}
-              onCopy={handleImportTemplate}
-              isProcessing={loadingOp === template.id}
-            />
+        <div className="flex flex-col gap-4">
+          {[...templates]
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .map((template) => (
+            <div key={template.id} className="flex flex-row items-center gap-6 border p-4 rounded-lg hover:shadow-md transition-shadow bg-white">
+              <div className="flex-shrink-0">
+                <TemplateCard 
+                  template={template}
+                  onCopy={handleImportTemplate}
+                  isProcessing={loadingOp === template.id}
+                />
+              </div>
+              <div className="text-gray-500 italic text-sm flex-1 text-left">Description coming</div>
+            </div>
           ))}
 
           {templates.length === 0 && (

@@ -1,0 +1,78 @@
+.
+├── app
+│   ├── company
+│   │   └── [companyId]
+│   ├── fund
+│   │   └── [fundId]
+│   ├── globals.css
+│   ├── help
+│   │   └── page.tsx
+│   ├── improve
+│   │   └── page.tsx
+│   ├── layout.tsx
+│   ├── login
+│   │   └── page.tsx
+│   ├── page.tsx
+│   ├── plan
+│   │   └── [planId]
+│   ├── register
+│   │   └── page.tsx
+│   └── structure
+│       └── page.tsx
+├── a_tree.txt
+├── components
+│   ├── CashFlowChart.tsx
+│   ├── display
+│   │   └── FundKPICards.tsx
+│   ├── EventList.tsx
+│   ├── forms
+│   │   ├── AuthForm.tsx
+│   │   ├── CapitalForm.tsx
+│   │   ├── CapitalGrowthForm.tsx
+│   │   ├── CapitalList.tsx
+│   │   ├── CompanyForm.tsx
+│   │   ├── CreditForm.tsx
+│   │   ├── DividendForm.tsx
+│   │   ├── EventForm.tsx
+│   │   ├── ExpenseForm.tsx
+│   │   ├── FundForm.tsx
+│   │   ├── PlanForm.tsx
+│   │   ├── RevenueForm.tsx
+│   │   ├── shared
+│   │   ├── StaffingForm.tsx
+│   │   ├── SuccessTaxForm.tsx
+│   │   └── ValuationForm.tsx
+│   ├── FundChart.tsx
+│   ├── Layout.tsx
+│   ├── modals
+│   │   └── MoveCompanyModal.tsx
+│   ├── Navbar.tsx
+│   ├── TemplateCard.tsx
+│   └── ui
+│       ├── Button.tsx
+│       ├── Card.tsx
+│       ├── DeleteButton.tsx
+│       ├── ExpandableVideo.tsx
+│       ├── InfoTag.tsx
+│       └── Tooltip.tsx
+├── context
+│   └── AuthContext.tsx
+├── Dockerfile
+├── lib
+│   ├── api.ts
+│   ├── api.ts.fund
+│   ├── currency.ts
+│   └── presets.ts
+├── next.config.js
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.js
+├── public
+│   └── logo.png
+├── tailwind.config.ts
+├── tree.txt
+├── tsconfig.json
+└── tsconfig.tsbuildinfo
+
+22 directories, 54 files
