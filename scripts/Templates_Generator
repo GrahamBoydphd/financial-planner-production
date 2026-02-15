@@ -1,0 +1,95 @@
+-- SEED DATA: Three Standard Template Funds
+-- Replace 'YOUR_TENANT_ID' with your specific UUID
+
+-- =================================================================
+-- TEMPLATE 1: "The Venture Lottery" (High Risk, No Pooling)
+-- =================================================================
+WITH new_fund AS (
+    INSERT INTO funds (id, user_id, tenant_id, fund_name, currency_code, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction, description, created_at)
+    VALUES (
+        gen_random_uuid(), 
+        'd3ff7524-b593-43e8-8c53-ce2368bfe478', -- Placeholder User
+        'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95',  -- REPLACE THIS
+        'Template: The Venture Lottery', 
+        'EUR', 
+        true, 
+        100000000, -- $100M Cap
+        0.90,      -- 90% Friction (Aggressive)
+        'This represents the traditional VC model. It relies on "Power Law" dynamics: most companies will fail (insolvency), but you hope one "Galactic Empire" outlier covers the losses. Pooling is set to 0%, meaning no risk sharing. Volatility is set to "High Fat Tails" to simulate the wild unpredictability of startups.',
+        NOW()
+    ) RETURNING id
+),
+new_company AS (
+    INSERT INTO companies (id, fund_id, tenant_id, company_name, currency_code, industry, description, created_at)
+    SELECT gen_random_uuid(), id, 'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 'Moonshot Inc', 'EUR', 'Technology', 'A high-risk, high-reward startup. Burning cash to grow.', NOW() FROM new_fund RETURNING id
+),
+new_plan AS (
+    INSERT INTO financial_plans (id, company_id, tenant_id, plan_name, start_month, currency_code, initial_cash, pooling_fraction, insolvency_threshold, soft_limit_active, soft_limit_threshold, soft_limit_fraction, description, created_at)
+    SELECT gen_random_uuid(), id, 'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 'Base Case', '2026-01-01', 'EUR', 500000, 0.0, 0, true, 100000000, 0.90, 'Aggressive growth plan with zero pooling protection.', NOW() FROM new_company RETURNING id
+)
+INSERT INTO revenue_items (id, plan_id, revenue_name, source, start_month, initial_amount, growth_rate_percent, frequency, volatility_type, vol_mu, vol_fatness_level, created_at)
+SELECT gen_random_uuid(), id, 'Viral Product Sales', 'Product', 12, 10000, 15.0, 'Monthly', 'nrig', 0.0, 'High', NOW() FROM new_plan;
+
+
+-- =================================================================
+-- TEMPLATE 2: "The Ergodic Ecosystem" (Cooperative Resilience)
+-- =================================================================
+WITH new_fund AS (
+    INSERT INTO funds (id, user_id, tenant_id, fund_name, currency_code, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction, description, created_at)
+    VALUES (
+        gen_random_uuid(), 
+        'd3ff7524-b593-43e8-8c53-ce2368bfe478', 
+        'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 
+        'Template: The Ergodic Ecosystem', 
+        'EUR', 
+        true, 
+        50000000, -- $50M Cap
+        0.50,     -- 50% Friction (Moderate)
+        'This fund demonstrates the power of cooperative risk-sharing. By setting the Pooling Fraction to 20%, companies automatically cross-insure each other against bad luck. You will observe a significantly higher survival rate compared to the Lottery model, resulting in a higher geometric average return for the fund.',
+        NOW()
+    ) RETURNING id
+),
+new_company AS (
+    INSERT INTO companies (id, fund_id, tenant_id, company_name, currency_code, industry, description, created_at)
+    SELECT gen_random_uuid(), id, 'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 'Resilient Co', 'EUR', 'SaaS', 'A collaborative company participating in the pool.', NOW() FROM new_fund RETURNING id
+),
+new_plan AS (
+    INSERT INTO financial_plans (id, company_id, tenant_id, plan_name, start_month, currency_code, initial_cash, pooling_fraction, insolvency_threshold, soft_limit_active, soft_limit_threshold, soft_limit_fraction, description, created_at)
+    SELECT gen_random_uuid(), id, 'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 'Pooled Plan', '2026-01-01', 'EUR', 1000000, 0.20, 0, true, 50000000, 0.50, 'Standard plan contributing 20% of gains to the ecosystem.', NOW() FROM new_company RETURNING id
+)
+INSERT INTO revenue_items (id, plan_id, revenue_name, source, start_month, initial_amount, growth_rate_percent, frequency, volatility_type, vol_mu, vol_fatness_level, created_at)
+-- FIXED: Changed the hardcoded User UUID to 'id' (from new_plan)
+SELECT gen_random_uuid(), id, 'Subscription Revenue', 'Recurring', 1, 50000, 2.0, 'Monthly', 'nrig', 0.0, 'Medium', NOW() FROM new_plan;
+
+-- =================================================================
+-- TEMPLATE 3: "The Cash Cow" (SME / Dividend Focus)
+-- =================================================================
+WITH new_fund AS (
+    INSERT INTO funds (id, user_id, tenant_id, fund_name, currency_code, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction, description, created_at)
+    VALUES (
+        gen_random_uuid(), 
+        'd3ff7524-b593-43e8-8c53-ce2368bfe478', 
+        'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 
+        'Template: The Cash Cow Portfolio', 
+        'EUR', 
+        true, 
+        20000000, -- $20M Cap (Low ceiling for SMEs)
+        0.30,     -- 30% Friction
+        'A portfolio of stable, cash-generative SMEs. These companies have low volatility and low growth, but they pay out consistent dividends. The Fund Value here is driven not by exit valuations, but by the accumulation of paid dividends over time.',
+        NOW()
+    ) RETURNING id
+),
+new_company AS (
+    INSERT INTO companies (id, fund_id, tenant_id, company_name, currency_code, industry, description, created_at)
+    SELECT gen_random_uuid(), id, 'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 'Steady Hands Ltd', 'EUR', 'Manufacturing', 'A reliable business focused on cash flow.', NOW() FROM new_fund RETURNING id
+),
+new_plan AS (
+    INSERT INTO financial_plans (id, company_id, tenant_id, plan_name, start_month, currency_code, initial_cash, pooling_fraction, insolvency_threshold, soft_limit_active, soft_limit_threshold, soft_limit_fraction, description, created_at)
+    SELECT gen_random_uuid(), id, 'fd5a6c54-481b-4a03-a4a8-1df8ebb46f95', 'Dividend Strategy', '2026-01-01', 'EUR', 2000000, 0.0, 0, true, 20000000, 0.30, 'Low growth, high dividend payout.', NOW() FROM new_company RETURNING id
+),
+inserted_rev AS (
+    INSERT INTO revenue_items (id, plan_id, revenue_name, source, start_month, initial_amount, growth_rate_percent, frequency, volatility_type, vol_mu, vol_fatness_level, created_at)
+    SELECT gen_random_uuid(), id, 'Contract Income', 'Service', 1, 150000, 0.5, 'Monthly', 'nrig', 0.0, 'Low', NOW() FROM new_plan RETURNING plan_id
+)
+INSERT INTO dividend_policies (id, plan_id, is_enabled, safety_threshold, payout_ratio, tracking_enabled, created_at)
+SELECT gen_random_uuid(), plan_id, true, 500000, 0.50, true, NOW() FROM inserted_rev;

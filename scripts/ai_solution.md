@@ -1,1038 +1,4 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='frontend/app/page.tsx'>
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Layout from '@/components/Layout';
-import Card from '@/components/ui/Card';
-import DeleteButton from '@/components/ui/DeleteButton';
-import TemplateCard from '@/components/TemplateCard';
-import { api, Fund, Company, Template } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
-import { Copy, Trash2, MoveRight } from 'lucide-react';
-import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
-
-// --- ICONS ---
-const CopyIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5" />
-  </svg>
-);
-
-const Spinner = () => (
-  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-  </svg>
-);
-
-export default function Dashboard() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const router = useRouter();
-
-  // State
-  const [activeTab, setActiveTab] = useState<'funds' | 'templates'>('funds');
-  const [funds, setFunds] = useState<Fund[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [loadingOp, setLoadingOp] = useState<string | null>(null);
-  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  const fetchData = async () => {
-    try {
-      const [fundsData, companiesData, templatesData] = await Promise.all([
-        api.getFunds(),
-        api.getCompanies(),
-        api.getTemplates()
-      ]);
-      setFunds(fundsData);
-      setCompanies(companiesData);
-      setTemplates(templatesData);
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-    } finally {
-      setDataLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    }
-  }, [isAuthenticated]);
-
-  // --- HANDLERS ---
-
-  const handleDeleteFund = async (fundId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Are you sure you want to delete this fund?')) return;
-    setLoadingOp(fundId);
-    try {
-      await api.deleteFund(fundId);
-      await fetchData(); // Refresh list
-    } catch (error) {
-      alert('Could not delete fund. It might contain companies.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleDuplicateFund = async (fundId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Duplicate this fund and all its contents?')) return;
-    setLoadingOp(fundId);
-    try {
-      await api.duplicateFund(fundId);
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to duplicate fund.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleImportTemplate = async (templateId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Import this template as a new fund?')) return;
-    setLoadingOp(templateId);
-    try {
-      await api.importTemplate(templateId);
-      setActiveTab('funds');
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to import template.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleDuplicateCompany = async (companyId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Duplicate this company?')) return;
-    setLoadingOp(companyId);
-    try {
-      await api.duplicateCompany(companyId);
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to duplicate company.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleDeleteCompany = async (companyId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Are you sure you want to delete this company?')) return;
-    setLoadingOp(companyId);
-    try {
-      await api.deleteCompany(companyId);
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to delete company.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  if (authLoading || !isAuthenticated || dataLoading) return <Layout>Loading...</Layout>;
-
-  return (
-    <Layout>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex gap-4">
-          <Link 
-            href="/structure" 
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
-          >
-            New Fund
-          </Link>
-          <Link 
-            href="/structure" 
-            className="bg-indigo-600 text-white border border-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors text-sm font-medium"
-          >
-            New Company
-          </Link>
-        </div>
-      </div>
-
-      <p className="text-s text-gray-400 font-mono mb-6">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p>
-
-      {/* TABS */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
-            activeTab === 'funds'
-              ? 'border-b-2 border-indigo-600 text-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('funds')}
-        >
-          My Funds
-        </button>
-        <button
-          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
-            activeTab === 'templates'
-              ? 'border-b-2 border-indigo-600 text-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('templates')}
-        >
-          Templates Library
-        </button>
-      </div>
-
-      {/* CONTENT */}
-      {activeTab === 'funds' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {funds.map((fund) => {
-            // Find companies belonging to this fund
-            const fundCompanies = companies.filter(c => c.fund_id === fund.id);
-            const isProcessing = loadingOp === fund.id;
-
-            return (
-              <div key={fund.id} className="flex flex-col h-full">
-                <Card className="flex-1 flex flex-col border-t-4 border-t-indigo-500 hover:shadow-lg transition-shadow">
-                  
-                  {/* FUND HEADER */}
-                  <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
-                          {fund.fund_name}
-                        </Link>
-                        <span className="text-gray-400 text-sm">[{fund.currency_code || 'USD'}]</span>
-                      </h2>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isProcessing ? (
-                        <div className="p-1 text-indigo-600"><Spinner /></div>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={() => handleDuplicateFund(fund.id)}
-                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            title="Duplicate Fund"
-                            disabled={!!loadingOp}
-                          >
-                            <CopyIcon />
-                          </button>
-                          <DeleteButton onDelete={() => handleDeleteFund(fund.id)} disabled={!!loadingOp} />
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* COMPANIES LIST */}
-                  <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
-                    
-                    {fundCompanies.length > 0 ? (
-                      <ul className="space-y-2">
-                        {fundCompanies.map((company) => (
-                          <li key={company.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
-                            <Link 
-                              href={`/company/${company.id}`}
-                              className="font-medium text-gray-700 group-hover:text-indigo-700 flex-1"
-                            >
-                              {company.company_name}
-                            </Link>
-                            
-                            <div className="flex items-center gap-1">
-                              <button 
-                                  onClick={() => handleDuplicateCompany(company.id)}
-                                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title="Duplicate"
-                                  disabled={!!loadingOp}
-                              >
-                                  <Copy className="w-4 h-4" />
-                              </button>
-                              <button 
-                                  onClick={() => setMovingCompanyId(company.id)}
-                                  className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                                  title="Move"
-                                  disabled={!!loadingOp}
-                              >
-                                  <MoveRight className="w-4 h-4" />
-                              </button>
-                              <button 
-                                  onClick={() => handleDeleteCompany(company.id)}
-                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="Delete"
-                                  disabled={!!loadingOp}
-                              >
-                                  <Trash2 className="w-4 h-4" />
-                              </button>
-                              <Link href={`/company/${company.id}`} className="text-gray-400 group-hover:text-indigo-400 text-sm ml-2">
-                                  View
-                              </Link>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
-                        No companies yet.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ADD COMPANY LINK */}
-                  <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                    <Link 
-                      href="/structure" 
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
-                    >
-                      <span className="mr-1">+</span> Add Company
-                    </Link>
-                  </div>
-                </Card>
-              </div>
-            );
-          })}
-          
-          {funds.length === 0 && (
-            <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-              <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
-              <p className="text-gray-400 mt-2">Get started by creating your first fund or importing a template.</p>
-              <div className="mt-6 flex justify-center gap-4">
-                 <Link 
-                    href="/structure" 
-                    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
-                  >
-                    Create Fund
-                  </Link>
-                  <button
-                    onClick={() => setActiveTab('templates')}
-                    className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded hover:bg-indigo-50 transition-colors"
-                  >
-                    Browse Templates
-                  </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        // TEMPLATES VIEW
-        <div className="flex flex-col gap-4">
-          {[...templates]
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-            .map((template) => (
-            <div key={template.id} className="flex flex-row items-center gap-6 border p-4 rounded-lg hover:shadow-md transition-shadow bg-white">
-              <div className="flex-shrink-0">
-                <TemplateCard 
-                  template={template}
-                  onCopy={handleImportTemplate}
-                  isProcessing={loadingOp === template.id}
-                />
-              </div>
-              <div className="text-gray-500 italic text-sm flex-1 text-right">Description coming</div>
-            </div>
-          ))}
-
-          {templates.length === 0 && (
-             <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-              <h3 className="text-xl font-medium text-gray-500">No templates available</h3>
-              <p className="text-gray-400 mt-2">Check back later for public templates.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Move Company Modal */}
-      {movingCompanyId && (
-        <MoveCompanyModal 
-          isOpen={!!movingCompanyId}
-          onClose={() => setMovingCompanyId(null)}
-          onSuccess={fetchData}
-          companyId={movingCompanyId}
-          currentFundId={companies.find(c => c.id === movingCompanyId)?.fund_id || ''}
-        />
-      )}
-    </Layout>
-  );
-}
-</file>
-
-<file path='frontend/components/CashFlowChart.tsx'>
-'use client';
-
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  LogarithmicScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import { SimulationResult, MonthlyData } from '@/lib/api';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  LogarithmicScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-// --- Helper: Generate Diagonal Hatch Pattern ---
-function createDiagonalPattern(color: string) {
-  if (typeof document === 'undefined') return color;
-
-  const shape = document.createElement('canvas');
-  shape.width = 10;
-  shape.height = 10;
-  const c = shape.getContext('2d');
-  if (!c) return color;
-
-  c.strokeStyle = color;
-  c.lineWidth = 2; 
-  c.beginPath();
-  c.moveTo(0, 10);
-  c.lineTo(10, 0);
-  c.stroke();
-  
-  return c.createPattern(shape, 'repeat') || color;
-}
-
-interface Props {
-  data: SimulationResult;
-  singleRunData?: MonthlyData[];
-  isLog?: boolean;
-  mode: 'single' | 'monte_carlo' | 'standard';
-  creditLimit?: number;
-  currencySymbol?: string; 
-}
-
-export default function CashFlowChart({ data, singleRunData, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
-  const linearFloor = creditLimit > 0 ? -(creditLimit * 1.5) : 0;
-  
-  // --- 0. CALCULATE GLOBAL MIN/MAX (Unified Scale) ---
-  let globalMin = 0;
-  let globalMax = 0;
-  const allValues: number[] = [];
-
-  const addVal = (v: any) => {
-    const n = Number(v);
-    if (!isNaN(n)) allValues.push(n);
-  };
-
-  // Helper to extract net pool
-  const getNetPool = (d: any) => Number(d.pool_received || 0) - Number(d.pool_contribution || 0);
-
-  // Scan Deterministic Data
-  if (data.deterministic_data) {
-    // Skip Month 0 (Initial State) for scaling
-    data.deterministic_data.slice(1).forEach(d => {
-      addVal(d.total_value);
-      addVal(d.cash_balance);
-      addVal(d.total_exposure);
-      addVal(d.cumulative_external_capital);
-      addVal(getNetPool(d));
-    });
-  }
-
-  // Scan Single Run Data (from prop or data object)
-  const singleSource = singleRunData || data.single_run_data;
-  if (singleSource) {
-    // Skip Month 0
-    singleSource.slice(1).forEach(d => {
-      addVal(d.total_value);
-      addVal(d.cash_balance);
-      addVal(getNetPool(d));
-    });
-  }
-
-  // Scan Monte Carlo Data (P100/P0 cover the full range)
-  // Skip Month 0
-  if (data.p100_value) data.p100_value.slice(1).forEach(addVal);
-  if (data.p0_value) data.p0_value.slice(1).forEach(addVal);
-  
-  // Fallback scan for P90/P10 if P100/P0 missing
-  // Skip Month 0
-  if (data.p90_value) data.p90_value.slice(1).forEach(addVal);
-  if (data.p10_value) data.p10_value.slice(1).forEach(addVal);
-
-  // Scan P50 Data for Net Pool (since P100/P0 might not cover it)
-  if (data.p50_data) {
-    // Skip Month 0
-    data.p50_data.slice(1).forEach(d => addVal(getNetPool(d)));
-  }
-
-  if (allValues.length > 0) {
-    globalMin = Math.min(...allValues);
-    globalMax = Math.max(...allValues);
-  }
-
-  // Determine Y-Axis Min
-  // If linear, we respect the credit limit floor, but expand if data goes lower (Fantasy Debt)
-  let yAxisMin = linearFloor;
-  if (!isLog) {
-    if (globalMin < linearFloor) {
-      yAxisMin = globalMin * 1.1; // Add 10% padding below lowest data point
-    }
-  } else {
-    yAxisMin = 100; // Log scale floor
-  }
-
-  // Determine Y-Axis Max
-  // Add padding (e.g. 20%)
-  let yAxisMax = globalMax > 0 ? globalMax * 1.2 : 100;
-  
-  // Snap to grid logic for Max
-  if (yAxisMax > 0) {
-    const magnitude = Math.pow(10, Math.floor(Math.log10(yAxisMax)));
-    const niceStep = magnitude / 2; 
-    yAxisMax = Math.ceil(yAxisMax / niceStep) * niceStep;
-  }
-
-  // --- END GLOBAL SCALE CALCULATION ---
-
-  const labels = data.labels;
-  const datasets: any[] = [];
-
-  // --- 1. DETERMINE SOURCE DATA FOR RENDERING ---
-  let sourceData: MonthlyData[] = [];
-  
-  if (mode === 'standard') {
-      sourceData = data.deterministic_data || [];
-  } else if (singleRunData) {
-      sourceData = singleRunData;
-  } else if (mode === 'monte_carlo' && data.p50_data) {
-      sourceData = data.p50_data;
-  } else if (mode === 'single' && data.single_run_data) {
-      sourceData = data.single_run_data;
-  }
-
-  // --- 2. The "Red Line" (Cumulative Investment + Debt) ---
-  // UPDATED: Use sourceData so it reflects the current scenario (Single/Monte Carlo/Standard)
-  if (sourceData.length > 0) {
-      const rawInvestmentData = sourceData.map(d => Number(d.total_exposure || d.cumulative_external_capital || 0));
-      const investmentData = rawInvestmentData.map(val => {
-          return (isLog && val <= 100) ? 100 : val;
-      });
-
-      datasets.push({
-        label: 'Cumulative Investment + Debt',
-        data: investmentData,
-        rawValues: rawInvestmentData,
-        borderColor: 'rgb(220, 38, 38)', // Red-600
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0,
-        pointStyle: 'line', 
-        fill: false,
-        order: 1, 
-      });
-  }
-
-  // --- 3. Deterministic / Single Run Mode ---
-  // Only render if sourceData is present
-  if (sourceData.length > 0 && (mode === 'standard' || mode === 'single')) {
-    
-    // A. Net Value (Blue Solid)
-    const rawValueData = sourceData.map(d => Number(d.total_value));
-    const valueData = rawValueData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
-    });
-    datasets.push({
-      label: 'Net Value (Cash+Divs)',
-      data: valueData,
-      rawValues: rawValueData,
-      borderColor: 'rgb(37, 99, 235)', // Blue-600
-      borderWidth: 3,
-      pointRadius: 0,
-      tension: 0.1,
-      pointStyle: 'line', 
-      fill: false,
-      order: 2,
-    });
-
-    // B. Cash on Hand (Teal Solid)
-    const rawCashData = sourceData.map(d => Number(d.cash_balance));
-    const cashData = rawCashData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
-    });
-    datasets.push({
-      label: 'Cash on Hand',
-      data: cashData,
-      rawValues: rawCashData,
-      borderColor: 'rgb(20, 184, 166)', // Teal-500
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.1,
-      pointStyle: 'line', 
-      fill: false,
-      order: 3,
-    });
-
-    // C. Cumulative Dividends (Gold Solid)
-    const rawDivData = sourceData.map(d => Number(d.cumulative_dividends));
-    const divData = rawDivData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
-    });
-    datasets.push({
-      label: 'Cum. Dividends',
-      data: divData,
-      rawValues: rawDivData,
-      borderColor: 'rgb(234, 179, 8)', // Yellow-500
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.1,
-      pointStyle: 'line', 
-      fill: false,
-      order: 4,
-    });
-
-    // D. Monthly Revenue (Green Dashed)
-    const rawRevData = sourceData.map(d => Number(d.revenue));
-    const revData = rawRevData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
-    });
-    datasets.push({
-      label: 'Monthly Revenue',
-      data: revData,
-      rawValues: rawRevData,
-      borderColor: 'rgb(34, 197, 94)', // Green-500
-      borderDash: [5, 5],
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.1,
-      pointStyle: 'line', 
-      fill: false,
-      order: 5,
-    });
-
-    // E. Monthly Costs (Red Dashed)
-    const rawCostData = sourceData.map(d => Number(d.cogs) + Number(d.opex) + Number(d.interest_expense));
-    const costData = rawCostData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
-    });
-    datasets.push({
-      label: 'Monthly Costs',
-      data: costData,
-      rawValues: rawCostData,
-      borderColor: 'rgb(239, 68, 68)', // Red-500
-      borderDash: [2, 2],
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.1,
-      pointStyle: 'line', 
-      fill: false,
-      order: 6,
-    });
-
-    // F. DEBT VISUALIZATION (Stacked Area Logic)
-    const rawDebtData = sourceData.map(d => {
-        const cash = Number(d.cash_balance);
-        return cash < 0 ? Math.abs(cash) : 0;
-    });
-
-    // 1. Covered Overdraft (Solid Purple)
-    const debtCoveredRaw = rawDebtData.map(debt => Math.min(debt, creditLimit));
-    const debtCovered = debtCoveredRaw.map(v => (isLog && v <= 100) ? 100 : v);
-
-    datasets.push({
-      label: 'Covered Overdraft',
-      data: debtCovered,
-      rawValues: debtCoveredRaw,
-      borderColor: 'transparent',
-      backgroundColor: 'rgba(147, 51, 234, 0.3)', // Solid Purple
-      borderWidth: 0,
-      pointRadius: 0,
-      tension: 0,
-      pointStyle: 'rect', 
-      fill: 'origin', 
-      order: 30, 
-    });
-
-    // 2. Fantasy Debt (Hatched Purple)
-    const debtFantasyRaw = rawDebtData; 
-    const debtFantasy = debtFantasyRaw.map(v => (isLog && v <= 100) ? 100 : v);
-
-    datasets.push({
-      label: 'Fantasy Debt (Excess)',
-      data: debtFantasy,
-      rawValues: debtFantasyRaw,
-      borderColor: 'transparent', 
-      backgroundColor: createDiagonalPattern('rgba(147, 51, 234, 0.6)'), 
-      borderWidth: 0,
-      pointRadius: 0,
-      tension: 0,
-      pointStyle: 'rect', 
-      fill: '-1', 
-      order: 31, 
-    });
-  }
-
-  // --- 4. Monte Carlo Mode ---
-  // Check for p50_data (preferred) or p50_value (legacy)
-  if (mode === 'monte_carlo' && (data.p50_data || data.p50_value)) {
-    
-    // Extract P50 values for clamping calculations
-    let p50Vals: number[] = [];
-    if (data.p50_value) {
-        p50Vals = data.p50_value.map(v => Number(v));
-    } else if (data.p50_data) {
-        p50Vals = data.p50_data.map(d => Number(d.cash_balance));
-    }
-
-    // CALCULATE CLAMPING FLOORS
-    // New Logic: Floor based on credit limit to prevent extreme negative scaling
-    const logFloor = 100;
-
-    const clamp = (vals: (number | string)[] | undefined) => {
-        if (!vals) return [];
-        return vals.map(v => {
-            const num = Number(v);
-            if (isLog) {
-                return num < logFloor ? logFloor : num;
-            } else {
-                return num < linearFloor ? linearFloor : num;
-            }
-        });
-    };
-
-    const getRaw = (vals: (number | string)[] | undefined) => {
-        if (!vals) return [];
-        return vals.map(v => Number(v));
-    };
-
-    // LAYER 1: P100 (Max)
-    datasets.push({
-      label: 'Max (Top Edge). P100 is',
-      data: clamp(data.p100_value),
-      rawValues: getRaw(data.p100_value),
-      borderColor: 'transparent',
-      pointRadius: 0,
-      fill: false,
-      order: 50,
-    });
-    // LAYER 2: P90
-    datasets.push({
-      label: 'Top 10% (P90-Max). P90 is',
-      data: clamp(data.p90_value),
-      rawValues: getRaw(data.p90_value),
-      borderColor: 'transparent',
-      backgroundColor: 'rgba(30, 58, 138, 0.6)', 
-      pointRadius: 0,
-      pointStyle: 'rect', 
-      fill: '-1', 
-      order: 51,
-    });
-    // LAYER 3: P75
-    datasets.push({
-      label: 'Upper 15% (P75-P90). P75 is',
-      data: clamp(data.p75_value),
-      rawValues: getRaw(data.p75_value),
-      borderColor: 'transparent',
-      backgroundColor: 'rgba(37, 99, 235, 0.4)', 
-      pointRadius: 0,
-      pointStyle: 'rect', 
-      fill: '-1', 
-      order: 52,
-    });
-    // LAYER 4: P25
-    datasets.push({
-      label: 'Typical 50% (P25-P75). P25 is',
-      data: clamp(data.p25_value),
-      rawValues: getRaw(data.p25_value),
-      borderColor: 'transparent',
-      backgroundColor: 'rgba(147, 197, 253, 0.4)', 
-      pointRadius: 0,
-      pointStyle: 'rect', 
-      fill: '-1', 
-      order: 53,
-    });
-    // LAYER 5: P10
-    datasets.push({
-      label: 'Lower 15% (P10-P25). P10 is',
-      data: clamp(data.p10_value),
-      rawValues: getRaw(data.p10_value),
-      borderColor: 'transparent',
-      backgroundColor: 'rgba(37, 99, 235, 0.4)', 
-      pointRadius: 0,
-      pointStyle: 'rect', 
-      fill: '-1', 
-      order: 54,
-    });
-    // LAYER 6: P0
-    datasets.push({
-      label: 'Bottom 10% (Min-P10). P0 is',
-      data: clamp(data.p0_value),
-      rawValues: getRaw(data.p0_value),
-      borderColor: 'transparent',
-      backgroundColor: 'rgba(30, 58, 138, 0.6)', 
-      pointRadius: 0,
-      pointStyle: 'rect', 
-      fill: '-1', 
-      order: 55,
-    });
-    // LAYER 7: Median
-    datasets.push({
-      label: 'Median Cash (P50)',
-      data: clamp(p50Vals),
-      rawValues: p50Vals,
-      borderColor: 'rgb(37, 99, 235)', 
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.1,
-      fill: false,
-      pointStyle: 'line', 
-      order: 40, 
-    });
-
-    // NEW: Survival Rate (y1 axis)
-    if (data.survival_rate) {
-        datasets.push({
-            label: 'Survival Rate',
-            data: data.survival_rate,
-            rawValues: data.survival_rate,
-            borderColor: 'rgb(75, 85, 99)', // Gray-600
-            borderWidth: 2,
-            borderDash: [4, 4],
-            pointRadius: 0,
-            tension: 0.1,
-            fill: false,
-            yAxisID: 'y1',
-            order: 10, // Top layer
-        });
-    }
-  }
-
-  // --- 5. Net Pool Flow (Monthly) ---
-  // Replaces Accumulated Pool
-  if (sourceData.length > 0) {
-      const rawPoolData = sourceData.map(d => {
-          // Calculate Net Pool = Received - Contribution
-          const received = Number((d as any).pool_received || 0);
-          const contribution = Number((d as any).pool_contribution || 0);
-          return received - contribution;
-      });
-
-      const poolData = rawPoolData.map(val => {
-          return (isLog && val <= 100) ? 100 : val;
-      });
-      
-      // Only render if there is non-zero data
-      const hasPool = rawPoolData.some(v => Math.abs(v) > 1);
-
-      if (hasPool) {
-          datasets.push({
-              label: 'Net Pool Flow (Monthly)',
-              data: poolData,
-              rawValues: rawPoolData,
-              borderColor: 'rgb(168, 85, 247)', // Purple-500
-              backgroundColor: 'rgba(168, 85, 247, 0.2)', // Light purple fill
-              borderWidth: 2,
-              pointRadius: 0,
-              tension: 0.1,
-              pointStyle: 'line',
-              fill: false,
-              order: 7, 
-          });
-      }
-  }
-
-  const chartData = { labels, datasets };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    scales: {
-      x2: {
-        position: 'top' as const,
-        grid: {
-          drawTicks: false,
-          drawOnChartArea: false,
-        },
-        ticks: {
-          display: false,
-        },
-      },
-      y: {
-        type: isLog ? 'logarithmic' as const : 'linear' as const,
-        display: true,
-        position: 'left' as const,
-        title: { 
-          display: true, 
-          text: `Cash Balance (${currencySymbol})${isLog ? ' - Log Scale' : ''}` 
-        },
-        min: yAxisMin,
-        max: yAxisMax,
-        ticks: {
-          callback: (value: any) => {
-            return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
-          }
-        },
-        afterBuildTicks: (axis: any) => {
-          if (!isLog) return;
-          
-          const min = axis.min;
-          const max = axis.max;
-          if (min <= 0 || max <= 0) return;
-
-          const logMin = Math.log10(min);
-          const logMax = Math.log10(max);
-          const range = logMax - logMin;
-
-          axis.ticks = axis.ticks.filter((t: any) => {
-            const val = t.value;
-            if (val <= 0) return false;
-
-            const log10 = Math.log10(val);
-            const power = Math.floor(log10);
-            const base = Math.pow(10, power);
-            const significand = Math.round(val / base);
-
-            if (range > 5) {
-              return significand === 1;
-            } else {
-              return significand === 1 || significand === 5;
-            }
-          });
-        }
-      },
-      y1: {
-        type: 'linear' as const,
-        display: mode === 'monte_carlo',
-        position: 'right' as const,
-        title: { 
-          display: true, 
-          text: "Probability of survival" 
-        },
-        min: 0,
-        max: 1,
-        grid: {
-          drawOnChartArea: false, // keep main grid only
-        },
-        ticks: {
-          callback: (value: any) => {
-            return (Number(value) * 100).toFixed(0) + '%';
-          }
-        }
-      },
-    },
-    plugins: {
-      legend: { 
-        display: true,
-        labels: {
-          usePointStyle: true,
-          filter: function(item: any) {
-            return !item.text.includes('Top Edge') && !item.text.includes('Fantasy Debt');
-          }
-        }
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context: any) {
-            const labelStr = context.dataset.label || '';
-//            if (labelStr.includes('Top Edge')) return null;
-            
-            let value = context.parsed.y;
-            if (context.dataset.rawValues && context.dataset.rawValues[context.dataIndex] !== undefined) {
-                value = context.dataset.rawValues[context.dataIndex];
-            }
-
-            const fmt = (v: number) => currencySymbol + Number(v).toLocaleString(undefined, { maximumSignificantDigits: 3 });
-
-            // --- NEW: Strict Debt Handlers ---
-            if (labelStr === 'Fantasy Debt (Excess)') {
-                const excess = Math.max(0, value - creditLimit);
-                return 'Fantasy (Insolvent): ' + fmt(excess);
-            }
-            if (labelStr === 'Covered Overdraft') {
-                return 'Covered (Credit): ' + fmt(value);
-            }
-            // ---------------------------------
-
-            // --- NEW: Monthly Costs Breakdown ---
-            if (labelStr === 'Monthly Costs') {
-                const item = sourceData[context.dataIndex];
-                if (item) {
-                    return [
-                        'Total Costs: ' + fmt(value),
-                        '  OpEx: ' + fmt(Number(item.opex || 0)),
-                        '  COGS: ' + fmt(Number(item.cogs || 0)),
-                        '  Interest: ' + fmt(Number(item.interest_expense || 0))
-                    ];
-                }
-            }
-            // ------------------------------------
-
-            // --- NEW: Net Pool Flow ---
-            if (labelStr === 'Net Pool Flow (Monthly)') {
-                return 'Net Pool: ' + (value >= 0 ? '+' : '') + fmt(value);
-            }
-            // --------------------------
-
-            // Handle Survival Rate %
-            if (context.dataset.yAxisID === 'y1') {
-                return labelStr + ': ' + (Number(value) * 100).toFixed(1) + '%';
-            }
-
-            // --- NEW: Negative Cash Logic ---
-            if (labelStr === 'Cash on Hand' && value < 0) {
-                const deficit = Math.abs(value);
-                const coveredDebt = Math.min(deficit, creditLimit);
-                const fantasyDebt = Math.max(0, deficit - creditLimit);
-
-                const lines = [];
-                // Line 1: Original Total
-                lines.push(`${labelStr}: ${fmt(value)}`);
-                // Line 2: Covered
-                lines.push(`Covered (Credit): ${fmt(coveredDebt)}`);
-                // Line 3: Fantasy (if any)
-                if (fantasyDebt > 0) {
-                    lines.push(`Fantasy (Insolvent): ${fmt(fantasyDebt)}`);
-                }
-                return lines;
-            }
-            // --------------------------------
-
-            let finalLabel = labelStr;
-            if (finalLabel) finalLabel += ': ';
-            if (value !== null && value !== undefined) {
-              finalLabel += fmt(value);
-            }
-            return finalLabel;
-          }
-        }
-      }
-    },
-  };
-
-  return <Line options={options} data={chartData} />;
-}
-</file>
-
 <file path='frontend/components/FundChart.tsx'>
 'use client';
 
@@ -1106,6 +72,9 @@ interface Props {
   isLog?: boolean;
   minY?: number;
   maxY?: number;
+  // New props for Ergodicity Correction
+  poolingFraction?: number;
+  onPoolingChange?: (val: number) => void;
 }
 
 export default function FundChart({
@@ -1121,6 +90,8 @@ export default function FundChart({
   isLog = false,
   minY,
   maxY,
+  poolingFraction = 0,
+  onPoolingChange,
 }: Props) {
   const LOG_FLOOR = 100;
 
@@ -1194,9 +165,25 @@ export default function FundChart({
       yAxisMax = dataMax > 0 ? dataMax * 1.2 : 100;
   }
 
+  // Smart Scaling Logic for Min (Log Mode)
+  let smartLogMin = LOG_FLOOR;
+  if (isLog) {
+      let relevantLow = Infinity;
+      if (mode === 'monte_carlo' && fanData?.p10) {
+          const valid = fanData.p10.slice(1).filter(n => typeof n === 'number' && !isNaN(n));
+          if (valid.length > 0) relevantLow = Math.min(...valid);
+      } else if (values) {
+          const valid = values.slice(1).filter(n => typeof n === 'number' && !isNaN(n));
+          if (valid.length > 0) relevantLow = Math.min(...valid);
+      }
+      
+      if (relevantLow === Infinity) relevantLow = 100;
+      smartLogMin = Math.max(100, relevantLow * 0.5);
+  }
+
   if (minY !== undefined) {
       if (isLog) {
-          yAxisMin = LOG_FLOOR;
+          yAxisMin = smartLogMin;
       } else {
           // If min is negative, add padding
           if (minY < 0) {
@@ -1204,6 +191,12 @@ export default function FundChart({
           } else {
               yAxisMin = 0; // Default to 0 baseline
           }
+      }
+  } else {
+      if (isLog) {
+          yAxisMin = smartLogMin;
+      } else {
+          yAxisMin = 0;
       }
   }
 
@@ -1525,7 +518,745 @@ export default function FundChart({
     },
   };
 
-  return <Line data={{ labels, datasets }} options={options} />;
+  return (
+    <div className="flex flex-col w-full h-full">
+      {onPoolingChange && (
+        <div className="flex items-center justify-end px-4 py-2 space-x-4 bg-white border-b border-gray-100">
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            Ergodicity Correction
+          </label>
+          <div className="flex items-center space-x-3">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={poolingFraction}
+              onChange={(e) => onPoolingChange(Number(e.target.value))}
+              className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm font-bold text-blue-700 w-12 text-right">
+              {Math.round(poolingFraction * 100)}%
+            </span>
+          </div>
+        </div>
+      )}
+      <div className="flex-1 min-h-0 relative">
+        <Line data={{ labels, datasets }} options={options} />
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path='frontend/app/fund/[fundId]/results/page.tsx'>
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import { api, Fund, SimulationResult } from '@/lib/api';
+import FundChart, { FanData } from '@/components/FundChart';
+import FundKPICards from '@/components/display/FundKPICards';
+
+const YEAR_OPTIONS = [1, 2, 3, 5, 10, 20, 50, 100];
+
+type ViewMode = 'standard' | 'single' | 'monte_carlo';
+
+// Helper to extract FanData from SimulationResult
+const extractFanData = (sim: SimulationResult): FanData => {
+  const parse = (arr?: (number | string)[]) => arr?.map(v => Number(v));
+
+  return {
+    p0: parse(sim.p0_value),
+    p5: parse(sim.p5_value),
+    p10: parse(sim.p10_value),
+    p25: parse(sim.p25_value),
+    p50: parse(sim.p50_value),
+    p75: parse(sim.p75_value),
+    p90: parse(sim.p90_value),
+    p95: parse(sim.p95_value),
+    p100: parse(sim.p100_value),
+    
+    // Solvency Wiring
+    p0_solvent_count: parse(sim.p0_solvent_count),
+    p10_solvent_count: parse(sim.p10_solvent_count),
+    p25_solvent_count: parse(sim.p25_solvent_count),
+    p50_solvent_count: parse(sim.p50_solvent_count),
+    p75_solvent_count: parse(sim.p75_solvent_count),
+    p90_solvent_count: parse(sim.p90_solvent_count),
+    p100_solvent_count: parse(sim.p100_solvent_count),
+    p50_data: sim.p50_data,
+  } as any;
+};
+
+export default function FundResultsPage({ params }: { params: { fundId: string } }) {
+  const { fundId } = params;
+  const searchParams = useSearchParams();
+  const fundPlanId = searchParams.get('fund_plan_id');
+  
+  // Data State
+  const [fund, setFund] = useState<Fund | null>(null);
+  const [activePlanId, setActivePlanId] = useState<string | null>(null);
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [simLoading, setSimLoading] = useState(false);
+
+  // Control State
+  const [isLogScale, setIsLogScale] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('standard');
+  const [poolingFraction, setPoolingFraction] = useState<number>(0);
+  const [years, setYears] = useState<number>(5);
+  const [stopInsolvency, setStopInsolvency] = useState<boolean>(true);
+  const [eventsActive, setEventsActive] = useState<boolean>(true);
+  
+  // Investor Track State
+  const [targetMultiple, setTargetMultiple] = useState<number>(3.0);
+  const [includeInitialCapital, setIncludeInitialCapital] = useState<boolean>(false);
+  
+  // Path Exploration State
+  const [pathIndex, setPathIndex] = useState<number>(0);
+
+  // 1. Initial Load (Fund Metadata & Plan)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const f = await api.getFund(fundId);
+        setFund(f);
+
+        // Load Plans to find active one
+        const plans = await api.getFundPlans(fundId);
+        const active = fundPlanId 
+            ? plans.find((p: any) => p.id === fundPlanId)
+            : (plans.find((p: any) => p.is_favorite) || plans[0]);
+
+        if (active) {
+            setActivePlanId(active.id);
+            // Use fraction directly (0-1)
+            setPoolingFraction(Number(active.pooling_fraction) || 0);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [fundId, fundPlanId]);
+
+  // 2. Simulation Load
+  const loadSim = useCallback(async () => {
+    if (!fund) return;
+    
+    try {
+      setSimLoading(true);
+      
+      const months = years * 12;
+      const simParams = {
+          fund_plan_id: fundPlanId || activePlanId || undefined,
+          months: months,
+          fund_pooling_fraction: poolingFraction.toFixed(2),
+          stop_insolvency: stopInsolvency,
+          include_initial_capital: includeInitialCapital,
+          events_active: eventsActive,
+      };
+
+      // Single API call for all data
+      const res = await api.getFundSimulation(fundId, simParams);
+      setSimulation(res);
+      setPathIndex(0); // Reset path index on new simulation
+
+    } catch (e) {
+      console.error("Simulation failed", e);
+    } finally {
+      setSimLoading(false);
+    }
+  }, [fund, fundId, fundPlanId, activePlanId, poolingFraction, years, stopInsolvency, includeInitialCapital, eventsActive]);
+
+  // Trigger simulation on dependency change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+        loadSim();
+    }, 600);
+    return () => clearTimeout(timeoutId);
+  }, [loadSim]);
+
+  // 3. Persistence Handler
+  const handlePoolingSave = useCallback(async (val: number) => {
+    setPoolingFraction(val);
+    if (activePlanId) {
+        try {
+            // Store as fraction (0-1)
+            await api.updateFundPlan(activePlanId, { pooling_fraction: val.toString() });
+        } catch (e) {
+            console.error("Failed to save pooling fraction", e);
+        }
+    }
+  }, [activePlanId]);
+
+  // --- DATA PREPARATION ---
+
+  // 1. Deterministic Data (Standard Mode)
+  const detRows = simulation?.deterministic_data || [];
+  
+  // Check for empty data
+  if (simulation && detRows.length === 0) {
+      console.warn('No Deterministic Data Available');
+  }
+
+  const deterministicValues = detRows.map((d: any) => Number(d.total_value || 0));
+  // NEW: Deterministic Investment (Exposure)
+  const deterministicInvestment = detRows.map((d: any) => Number(d.total_exposure || 0));
+
+  // 2. Single Path Data (Volatile Mode)
+  const allPathsRaw = simulation?.all_paths;
+  
+  // Memoize Values
+  const allPaths = useMemo(() => 
+    Array.isArray(allPathsRaw) 
+      ? allPathsRaw.map((p: any[]) => p.map((v: any) => {
+          // FIX: Handle object structure from backend (Fortress Standard)
+          if (typeof v === 'object' && v !== null) {
+              return Number(v.total_value);
+          }
+          return Number(v);
+      })) 
+      : [], 
+  [allPathsRaw]);
+
+  // NEW: Memoize Investment/Exposure Paths
+  const allPathsInvestment = useMemo(() => 
+    Array.isArray(allPathsRaw) 
+      ? allPathsRaw.map((p: any[]) => p.map((v: any, idx: number) => {
+          if (typeof v === 'object' && v !== null) {
+              return Number(v.total_exposure || 0);
+          }
+          // Fallback to deterministic if scalar (legacy support)
+          return deterministicInvestment[idx] || 0;
+      })) 
+      : [], 
+  [allPathsRaw, deterministicInvestment]);
+    
+  const singlePathValues = allPaths.length > 0 && allPaths[pathIndex] ? allPaths[pathIndex] : [];
+  const singlePathInvestment = allPathsInvestment.length > 0 && allPathsInvestment[pathIndex] ? allPathsInvestment[pathIndex] : [];
+  
+  // Prepare current path values for KPI Cards
+  const currentPathValues = viewMode === 'single' && singlePathValues.length > 0 ? {
+      netValue: singlePathValues[singlePathValues.length - 1],
+  } : undefined;
+
+  // 3. Investor Track Math (Likelihood & DPI)
+  const p50Data = simulation?.p50_data || [];
+  
+  const { likelihoodData, dpiData } = useMemo(() => {
+    if (!simulation || !p50Data.length) return { likelihoodData: [], dpiData: [] };
+
+    // Calculate Likelihood Array (Probability > Target Multiple)
+    const likelihood = p50Data.map((_, idx) => {
+        if (idx === 0) return 0; // Prevent 100% success artifact at month 0
+        
+        if (!allPaths.length) return 0;
+
+        let count = 0;
+        for (let pathIdx = 0; pathIdx < allPaths.length; pathIdx++) {
+            const val = Number(allPaths[pathIdx][idx]);
+            const pathInvestment = Number(allPathsInvestment[pathIdx]?.[idx] || 0);
+            const target = pathInvestment * targetMultiple;
+            
+            // Only count as success if there is actual exposure AND value beats target
+            if (pathInvestment > 0 && val >= target) {
+                count++;
+            }
+        }
+        return count / allPaths.length;
+    });
+
+    // Calculate DPI Array (Distributed to Paid-In)
+    const dpi = p50Data.map(d => {
+        const dist = Number(d.cumulative_dividends);
+        const inv = Number(d.cumulative_external_capital);
+        return inv > 0 ? dist / inv : 0;
+    });
+
+    return { likelihoodData: likelihood, dpiData: dpi };
+
+  }, [simulation, p50Data, allPaths, allPathsInvestment, targetMultiple]);
+
+  const handlePrevPath = () => {
+      setPathIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextPath = () => {
+      const maxPaths = allPaths.length || 999;
+      setPathIndex(prev => Math.min(maxPaths - 1, prev + 1));
+  };
+
+  // 4. Monte Carlo Data (Fan Mode)
+  const fanData = simulation ? extractFanData(simulation) : undefined;
+
+  // 5. Global Scale Calculation (Unified Min/Max)
+  const { globalMin, globalMax } = useMemo(() => {
+    const values: number[] = [];
+    
+    const push = (arr?: any[]) => {
+        if (!arr) return;
+        arr.forEach(v => {
+            const n = Number(v);
+            if (!isNaN(n)) values.push(n);
+        });
+    };
+
+    // Deterministic
+    push(deterministicValues);
+    push(deterministicInvestment);
+
+    // Single Path (Current)
+    push(singlePathValues);
+    push(singlePathInvestment);
+
+    // Fan Data (Envelope)
+    if (fanData) {
+        push(fanData.p0);
+        push(fanData.p100);
+    }
+
+    if (values.length === 0) return { globalMin: 0, globalMax: 100 };
+
+    return {
+        globalMin: Math.min(...values),
+        globalMax: Math.max(...values)
+    };
+  }, [deterministicValues, deterministicInvestment, singlePathValues, singlePathInvestment, fanData]);
+
+  // 6. Dynamic Table Data & Pool Values
+  const activeTableData = useMemo(() => {
+      if (viewMode === 'standard') return detRows;
+      if (viewMode === 'monte_carlo') return p50Data;
+      if (viewMode === 'single') {
+          const raw = allPathsRaw?.[pathIndex];
+          return Array.isArray(raw) ? raw : [];
+      }
+      return [];
+  }, [viewMode, detRows, p50Data, allPathsRaw, pathIndex]);
+
+  const poolValues = useMemo(() => {
+      return activeTableData.map((d: any) => {
+          if (typeof d !== 'object' || d === null) return 0;
+          // CHANGED: Show Total Contribution (Volume) instead of Net Flow
+          return Number(d.pool_contribution || 0);
+      });
+  }, [activeTableData]);
+
+  const getTableTitle = () => {
+      if (viewMode === 'standard') return "Deterministic Monthly Data";
+      if (viewMode === 'single') return `Path ${pathIndex + 1} Monthly Data`;
+      return "Aggregate Fund Flows (P50 Median)";
+  };
+
+  if (loading) return <Layout>Loading...</Layout>;
+  if (!fund) return <Layout>Fund not found</Layout>;
+
+  // --- ERROR BLOCK ---
+  if (simulation?.errors && simulation.errors.length > 0) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto mt-8 bg-red-50 border-l-4 border-red-500 p-6 rounded shadow-sm">
+           <h2 className="text-red-800 font-bold text-lg mb-2 flex items-center gap-2">
+             ⚠️ Simulation Failed
+           </h2>
+           <p className="text-red-700 mb-3">The financial model could not resolve the following issues:</p>
+           <ul className="list-disc pl-5 space-y-1 text-red-600 font-medium">
+              {simulation.errors.map((e, i) => <li key={i}>{e}</li>)}
+           </ul>
+           <button onClick={() => window.location.reload()} className="mt-4 bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded text-sm font-bold transition-colors">
+              Reload & Try Again
+           </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const currency = fund.currency_code || '$';
+
+  // Helper
+  const fmt = (n: any) => 
+    `${currency} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+  // HARDENED: Unified Labels
+  const chartLabels = simulation?.labels || [];
+
+  // Determine visibility
+  const showStandard = viewMode === 'standard' && simulation;
+  const showMonteCarlo = viewMode === 'monte_carlo' && simulation;
+  const hasData = !!simulation;
+
+  // Active Data for KPIs
+  const activeData = simulation;
+  const isSingleMode = viewMode === 'single';
+
+  // Final Values for Cards
+  const lastLikelihood = likelihoodData.length > 0 ? likelihoodData[likelihoodData.length - 1] : 0;
+  const lastDpi = dpiData.length > 0 ? dpiData[dpiData.length - 1] : 0;
+
+  return (
+    <Layout>
+      <nav className='mb-6 flex justify-between items-center'>
+        <Link href={`/fund/${fundId}/inputs`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+          <ArrowLeft className='h-4 w-4' />
+          Back to Configuration
+        </Link>
+      </nav>
+
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-gray-900">{fund.fund_name} <span className="text-gray-400 font-normal">Projections</span></h1>
+            <p className="text-gray-500 text-sm">Aggregated Portfolio Performance</p>
+        </div>
+        
+        {/* CONTROLS BAR */}
+        <div className="flex flex-wrap items-center gap-4 bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+              
+              {/* Mode Selector */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-500 uppercase">Simulation Mode</label>
+                <select 
+                  className="border rounded p-1.5 text-sm font-bold text-blue-800 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                >
+                  <option value="standard">Standard (Deterministic)</option>
+                  <option value="single">Single Path (Volatile)</option>
+                  <option value="monte_carlo">Monte Carlo (Fan)</option>
+                </select>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Years Selector */}
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs font-semibold text-gray-500 uppercase">Duration</label>
+                 <select 
+                    value={years} 
+                    onChange={(e) => setYears(Number(e.target.value))}
+                    className="border rounded p-1.5 text-sm font-bold text-blue-800 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none min-w-[100px]"
+                 >
+                    {YEAR_OPTIONS.map(y => (
+                        <option key={y} value={y}>{y} Years</option>
+                    ))}
+                 </select>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Target Multiple Input */}
+              <div className="flex flex-col gap-1">
+                 <label className="text-xs font-semibold text-gray-500 uppercase">Target Multiple</label>
+                 <div className="flex items-center gap-1">
+                    <input 
+                        type="number" 
+                        min="1.0" 
+                        step="0.1"
+                        value={targetMultiple}
+                        onChange={(e) => setTargetMultiple(Number(e.target.value))}
+                        className="w-16 border rounded p-1.5 text-sm font-bold text-purple-800 bg-purple-50 focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                    <span className="text-sm font-bold text-gray-400">x</span>
+                 </div>
+              </div>
+
+              <div className="w-px h-8 bg-gray-300 mx-1"></div>
+
+              {/* Toggles */}
+              <div className="flex flex-col gap-2 px-2">
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="logScale" 
+                    checked={isLogScale} onChange={(e) => setIsLogScale(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="logScale" className="text-xs font-medium cursor-pointer text-gray-700">Log Scale</label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="includeCapital" 
+                    checked={includeInitialCapital} onChange={(e) => setIncludeInitialCapital(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="includeCapital" className="text-xs font-medium cursor-pointer text-gray-700">Incl. Capital</label>
+                </div>
+                {/* NEW CHECKBOX */}
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="eventsActive" 
+                    checked={eventsActive} onChange={(e) => setEventsActive(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    />
+                    <label htmlFor="eventsActive" className="text-xs font-medium cursor-pointer text-purple-700">Events Active</label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input 
+                    type="checkbox" id="stopInsolvency" 
+                    checked={stopInsolvency} onChange={(e) => setStopInsolvency(e.target.checked)}
+                    className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
+                    />
+                    <label htmlFor="stopInsolvency" className="text-xs font-medium cursor-pointer text-red-700">Stop if Insolvent</label>
+                </div>
+              </div>
+
+        </div>
+      </div>
+
+      {simLoading ? (
+          <div className="h-96 flex flex-col items-center justify-center bg-gray-50 border rounded-lg animate-pulse text-gray-400 font-medium gap-2">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
+              <span>Running Simulation...</span>
+          </div>
+      ) : hasData ? (
+          <>
+            {isSingleMode ? (
+                // SINGLE MODE LAYOUT
+                <div className="flex flex-col gap-6 mb-12 animate-in fade-in duration-500">
+                    
+                    {/* Charts Row */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          <Card className="border-t-4 border-gray-400 h-full">
+                              <div className="flex justify-between items-center mb-4">
+                                  <div>
+                                      <h2 className="text-lg font-bold text-gray-800">Deterministic Baseline</h2>
+                                      <p className="text-xs text-gray-500 mt-1">Zero volatility projection.</p>
+                                  </div>
+                              </div>
+                              <div className="h-[500px]">
+                                  <FundChart 
+                                      mode="standard"
+                                      labels={chartLabels}
+                                      values={deterministicValues}
+                                      investmentValues={deterministicInvestment}
+                                      currencySymbol={currency}
+                                      isLog={isLogScale}
+                                      minY={globalMin}
+                                      maxY={globalMax}
+                                      poolingFraction={poolingFraction}
+                                      onPoolingChange={handlePoolingSave}
+                                  />
+                              </div>
+                          </Card>
+
+                          <Card className="border-t-4 border-indigo-500 h-full">
+                              <div className="flex justify-between items-center mb-4">
+                                  <div>
+                                      <div className="flex items-center gap-2">
+                                          <h2 className="text-lg font-bold text-gray-800">Volatile Reality</h2>
+                                          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100">Stochastic</span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">Single stochastic trajectory</p>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-1 bg-gray-100 rounded p-1 border border-gray-200">
+                                      <button 
+                                          onClick={handlePrevPath}
+                                          disabled={pathIndex <= 0}
+                                          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                      >
+                                          ←
+                                      </button>
+                                      <span className="text-xs font-mono font-bold text-gray-700 px-2 min-w-[80px] text-center">
+                                          Path {pathIndex + 1} / {allPaths.length || 999}
+                                      </span>
+                                      <button 
+                                          onClick={handleNextPath}
+                                          disabled={!simulation || pathIndex >= (allPaths.length || 999) - 1}
+                                          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-white rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                      >
+                                          →
+                                      </button>
+                                  </div>
+                              </div>
+                              <div className="h-[500px]">
+                                  <FundChart 
+                                      mode="single"
+                                      labels={chartLabels}
+                                      values={singlePathValues}
+                                      investmentValues={singlePathInvestment}
+                                      poolValues={poolValues}
+                                      currencySymbol={currency}
+                                      isLog={isLogScale}
+                                      targetProbability={likelihoodData}
+                                      targetMultiple={targetMultiple}
+                                      minY={globalMin}
+                                      maxY={globalMax}
+                                      poolingFraction={poolingFraction}
+                                      onPoolingChange={handlePoolingSave}
+                                  />
+                              </div>
+                          </Card>
+                    </div>
+
+                    {/* KPI Row */}
+                    <div className="w-full">
+                        {activeData && (
+                            <>
+                                <Card className='mb-4 border-l-4 border-purple-500 p-4'>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
+                                    <div className='text-xs text-gray-400'>Events per lifetime</div>
+                                </Card>
+                                <FundKPICards 
+                                    data={activeData} 
+                                    currency={currency} 
+                                    mode="single"
+                                    currentPathValues={currentPathValues}
+                                    isRow={true}
+                                    targetMultiple={targetMultiple}
+                                    dpiValue={lastDpi}
+                                    likelihoodValue={lastLikelihood}
+                                />
+                            </>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                // SIDEBAR LAYOUT (Standard & Monte Carlo)
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12 animate-in fade-in duration-500">
+                    
+                    {/* LEFT COLUMN: CHART (3/4 width) */}
+                    <div className="lg:col-span-3 space-y-6">
+                        {showStandard && (
+                            <Card className="border-t-4 border-gray-400 h-full">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-800">Deterministic Projection</h2>
+                                            <p className="text-xs text-gray-500 mt-1">Standard linear projection without volatility.</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-[500px]">
+                                        <FundChart 
+                                            mode="standard"
+                                            labels={chartLabels}
+                                            values={deterministicValues}
+                                            investmentValues={deterministicInvestment}
+                                            poolValues={poolValues}
+                                            currencySymbol={currency}
+                                            isLog={isLogScale}
+                                            minY={globalMin}
+                                            maxY={globalMax}
+                                            poolingFraction={poolingFraction}
+                                            onPoolingChange={handlePoolingSave}
+                                        />
+                                    </div>
+                            </Card>
+                        )}
+
+                        {showMonteCarlo && (
+                            <Card className="border-t-4 border-indigo-500 h-full">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-800">
+                                                Probabilistic Envelope (P0-P100)
+                                            </h2>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Showing the full range of possible outcomes across 999 iterations.
+                                            </p>
+                                        </div>
+                                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600">Target Probability Overlay Active</span>
+                                    </div>
+                                    <div className="h-[500px]">
+                                        <FundChart 
+                                            mode="monte_carlo"
+                                            labels={chartLabels}
+                                            fanData={fanData}
+                                            investmentValues={deterministicInvestment}
+                                            poolValues={poolValues}
+                                            targetProbability={likelihoodData}
+                                            targetMultiple={targetMultiple}
+                                            currencySymbol={currency}
+                                            isLog={isLogScale}
+                                            minY={globalMin}
+                                            maxY={globalMax}
+                                            poolingFraction={poolingFraction}
+                                            onPoolingChange={handlePoolingSave}
+                                        />
+                                    </div>
+                            </Card>
+                        )}
+                        
+                        {/* Info Text */}
+                        <div className="flex justify-center">
+                            <span className="text-xl font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100 block text-center">
+                                Total Fund Value = Sum(Company Cash + Dividends Paid)<br />
+                                We do everything on a cash basis, not accrual, so that the impact of insolvency is visible.
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: KPIs (1/4 width) */}
+                    <div className="lg:col-span-1 flex flex-col gap-4">
+                        {activeData && (
+                            <div className="sticky top-6">
+                                <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">Key Metrics</h3>
+                                <Card className='mb-4 border-l-4 border-purple-500 p-4'>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
+                                    <div className='text-xs text-gray-400'>Events per lifetime</div>
+                                </Card>
+                                <FundKPICards 
+                                    data={activeData} 
+                                    currency={currency} 
+                                    mode={viewMode === 'standard' ? 'standard' : 'monte_carlo'}
+                                    currentPathValues={currentPathValues}
+                                    isRow={false}
+                                    targetMultiple={targetMultiple}
+                                    dpiValue={lastDpi}
+                                    likelihoodValue={lastLikelihood}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+            )}
+
+            {/* NEW TABLE SECTION */}
+            <Card className="overflow-x-auto max-h-96 mt-6 border-t-4 border-gray-600">
+                <h3 className="text-lg font-bold text-gray-700 mb-4 px-4 pt-4">{getTableTitle()}</h3>
+                <table className="min-w-full text-xs text-left text-gray-500">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                    <tr>
+                        <th className="px-4 py-3">Month</th>
+                        <th className="px-4 py-3">Net Income</th>
+                        <th className="px-4 py-3">Cash</th>
+                        <th className="px-4 py-3 text-red-600">Total Pool Contrib.</th>
+                        <th className="px-4 py-3 text-green-600">Total Pool Recv.</th>
+                        <th className="px-4 py-3">Contributors</th>
+                        <th className="px-4 py-3">Solvent Cos</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {activeTableData.map((row: any, idx: number) => (
+                        <tr key={row.month_index ?? idx} className="border-b hover:bg-gray-50 bg-white">
+                            <td className="px-4 py-2 font-medium">{row.month_index ?? idx}</td>
+                            <td className="px-4 py-2">{fmt(row.net_income)}</td>
+                            <td className="px-4 py-2 font-bold">{fmt(row.cash_balance ?? row.total_value)}</td>
+                            <td className="px-4 py-2 text-red-600">{row.pool_contribution ? fmt(row.pool_contribution) : '-'}</td>
+                            <td className="px-4 py-2 text-green-600">{row.pool_received ? fmt(row.pool_received) : '-'}</td>
+                            <td className="px-4 py-2">{row.contributing_companies ?? '-'}</td>
+                            <td className="px-4 py-2">{row.solvent_companies ?? '-'}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </Card>
+          </>
+      ) : (
+          <div className="h-64 bg-gray-50 border border-dashed rounded-lg flex items-center justify-center text-gray-400 mb-12">
+              No simulation data available. Check your configuration.
+          </div>
+      )}
+    </Layout>
+  );
 }
 </file>
 

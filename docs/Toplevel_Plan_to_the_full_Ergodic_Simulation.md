@@ -182,6 +182,7 @@ Improve the clean version with better guidance to the user.
 - [x] Make full companies demo on server. 
 - [x] Make video. 
 - [ ] Upgrade help page.
+- [ ] Add to the database and frontend entry a description of the fund and company. 
 - [x] Add copy event to companies page.
 - [ ] Add checks to all FE input items to insure in a valid range. Esp. flat check if the steps are between 1 and 20 (or some smallish number).  And add in Fortress checks in the code, and clear messages on screen if errors in operation. You are absolutely right. The previous "blind clamp" proposal was too permissive. In a financial simulation, silently converting `-2` (which is logically invalid) to `+2` is dangerous because it hides a configuration error from the user.
 	- [ ] **Big refactor** This code runs deep inside the simulation loop (`sample()` function) which returns a simple `f64`. It cannot easily return an `Result<Error>` to the user without rewriting the entire engine signature (a massive, risky change).

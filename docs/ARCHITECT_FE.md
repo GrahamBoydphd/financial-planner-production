@@ -221,7 +221,7 @@ The Frontend must respect the Backend's data ownership model.
 
 - **Initial Cash:** This is a system-of-record value stored on the `plans` table.
     
-- **Behavior:** The Graph must render `Month 0` = `initial_cash`.
+- **Behaviour:** The Graph must render `Month 0` = `initial_cash`.
     
 - **Handling:** If `initial_cash` is null, default to `"0"` visually, but prompt the user to set it.
     

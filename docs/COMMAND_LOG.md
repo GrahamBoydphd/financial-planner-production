@@ -1,17 +1,17 @@
 # Command Log & Maintenance
 
-`tree -I 'node_modules|.next|target|.sqlx|.git|*.log|*.bak|*.p.woff2|*.pack*|*.hot-update.*|__pycache__|.stfolder|.stversions|.obsidian|.trash' -L 3 > a_tree.txt`
+`tree -I 'node_modules|.next|target|.sqlx|.git|*.log|*.bak|*.p.woff2|*.pack*|*.hot-update.*|__pycache__|.stfolder|.stversions|.obsidian|.trash' > a_tree.txt`
 
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 
-| Step | Location | Command                                                                                                                                                              | Purpose                                                                                                                           |
-| :--- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Laptop   | `cargo sqlx prepare` - in backend<br>`git add . && git commit -m "msg"`<br>git status<br>git checkout branch_name e.g. feature/user-layer-v2<br>git merge ai-fix-XXX | Save changes.                                                                                                                     |
-| 2    | Laptop   | `git push origin cloud-v1-release`                                                                                                                                   | Upload to GitHub.                                                                                                                 |
-| 3    | Laptop   | `./scripts/trigger-update.sh branch_name`                                                                                                                            | **Magic Button.** Triggers the server to pull & rebuild.                                                                          |
-|      |          | <br>`git checkout -`                                                                                                                                                 | If you just want to toggle back to the **previous** branch you were on (before you switched to the current one), simply type:<br> |
-|      |          | `git branch --sort=committerdate`                                                                                                                                    | to see a list of branches, with the most recently changed one at the bottom                                                       |
+| Step | Location | Command                                                                                                                                                              | Purpose                                                                                                                           |     |
+| :--- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- | --- |
+| 1    | Laptop   | `cargo sqlx prepare` - in backend<br>`git add . && git commit -m "msg"`<br>git status<br>git checkout branch_name e.g. feature/user-layer-v2<br>git merge ai-fix-XXX | Save changes.                                                                                                                     |     |
+| 2    | Laptop   | `git push origin cloud-v1-release`                                                                                                                                   | Upload to GitHub.                                                                                                                 |     |
+| 3    | Laptop   | `./scripts/trigger-update.sh branch_name`                                                                                                                            | **Magic Button.** Triggers the server to pull & rebuild.                                                                          |     |
+|      |          | <br>`git checkout -`                                                                                                                                                 | If you just want to toggle back to the **previous** branch you were on (before you switched to the current one), simply type:<br> |     |
+|      |          | `git branch --sort=committerdate`                                                                                                                                    | to see a list of branches, with the most recently changed one at the bottom                                                       |     |
 
 
 
@@ -536,3 +536,85 @@ Enter 2. lines line by line.
 
 `find . -type f -name "*.sql" -not -path "./.sqlx/*" -exec sh -c 'echo "<file $1>"; cat "$1"; echo "</file>"' _ {} \; > all_schema.txt`
 
+
+
+
+# Installing PYTHON in a new directory
+
+Bash
+
+```
+# 1. Create the virtual environment folder (.venv)
+python3 -m venv .venv
+
+# 2. Activate it (just to install the library)
+source .venv/bin/activate
+
+# 3. Install the AI library
+pip install google-genai
+
+# 4. Deactivate (The script handles activation itself usually, but we are done)
+deactivate
+```
+
+
+# Docker CLI for Wordpress
+**The Easiest Fix for Ubuntu:** Run this command to download the `wp-cli` binary directly into your running container so your scripts work immediately:
+
+Bash
+
+```
+docker exec -it --user root evolutesix-wp sh -c "curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp"
+```
+
+
+# Wordpress deployment
+
+Build tailwind for deployment. 
+`npx tailwindcss -i ./global.css -o ./theme/assets/css/style.css --minify`
+
+then wire it up with:
+`./scripts/do_task.sh "CONTEXT: Bridging compiled Tailwind CSS into the WordPress theme architecture. ACTION: Ensure theme/style.css contains a standard WordPress Theme header block (Theme Name: Evolutesix 2026, Author: Web_Creator_E6). Then, update theme/functions.php to enqueue the compiled CSS from assets/css/style.css using wp_enqueue_style and get_template_directory_uri. CONSTRAINTS: The root theme/style.css must only contain the comment header. Do not use exclamation marks." theme/style.css theme/functions.php docs/ARCHITECTURAL_CONTEXT_CLI.md`
+
+Then issue the whole git sequence.
+### **The Recommended Namecheap Workflow: Softaculous Staging**
+
+Namecheap cPanel includes a brilliant tool called **Softaculous Apps Installer**. It has a built-in "Staging" and "Push to Live" feature that handles all the complex database URL rewriting for you automatically.
+
+Here is the exact strategy I recommend we use:
+
+#### **Phase 1: The Staging Setup (Today)**
+
+1. **Create a Subdomain:** In cPanel, go to **Subdomains** and create `2026.evolutesix.com`. This will automatically create a document root folder at `/home/grahxapf/2026.evolutesix.com/`.
+    
+2. **Install WordPress:** Use Softaculous in cPanel to install a fresh copy of WordPress onto `2026.evolutesix.com`.
+    
+3. **Deploy the Theme:** We will point our `.cpanel.yml` Git deployment directly to this staging folder.
+    
+4. **Build & Test:** You and the team can review the fully functioning site at `http://2026.evolutesix.com` while the public placeholder remains untouched.
+    
+
+#### **Phase 2: Going Live (Future)**
+
+1. When you are 100% happy with the staging site, you will go back into Softaculous in cPanel.
+    
+2. Click the **"Push to Live"** button next to your staging installation.
+    
+3. Softaculous will seamlessly clone the files and database into your empty `/home/grahxapf/evolutesix.com/` folder and mathematically rewrite all the URLs in the database to the production domain.
+    
+4. You then update your DNS to point `evolutesix.com` to Namecheap, and the site is live!
+
+ npm run build
+  git add .
+  git commit -m "Finalize image assets, WordPress functions, and compiled Tailwind CSS"
+  #2. Merge into local main
+  git checkout main
+ git merge @{-1}
+ #3. Push main to GitHub (Your backup and source of truth)
+ git push origin main
+ #4. Move the code to production and deploy
+ git checkout production
+ git merge main -m --no-ff
+ git push origin production
+ #5. Safely return to main for future development
+ git checkout main
