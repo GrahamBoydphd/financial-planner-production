@@ -54,6 +54,7 @@ export interface AuthResponse {
 export interface Fund {
   id: string;
   fund_name: string;
+  description?: string | null;
   currency_code?: string;
   created_at: string;
   default_soft_limit_active?: boolean;
@@ -67,12 +68,14 @@ export interface FundPlan {
   plan_name: string;
   selected_plans: Record<string, string>; 
   created_at?: string;
+  pooling_fraction?: number;
 }
 
 export interface Company {
   id: string;
   fund_id: string;
   company_name: string;
+  description?: string | null;
   currency_code: string;
   industry?: string;
   business_model?: string;
@@ -84,6 +87,7 @@ export interface FinancialPlan {
   id: string;
   company_id: string;
   plan_name: string;
+  description?: string | null;
   currency_code: string;
   start_month: string;
   initial_cash: string;
@@ -96,6 +100,7 @@ export interface FinancialPlan {
 
 export interface UpdatePlanRequest {
   plan_name?: string;
+  description?: string;
   start_month?: string;
   initial_cash?: string;
   pooling_fraction?: string;
@@ -345,18 +350,19 @@ export const api = {
   getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
   getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
   
-  createFund: async (fund_name: string, currency_code: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+  createFund: async (fund_name: string, currency_code: string, description?: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
     (await apiClient.post<Fund>('/api/funds', { 
       fund_name, 
       currency_code,
+      description,
       default_soft_limit_active,
       default_soft_limit_threshold,
       default_soft_limit_fraction,
       tenant_id: getTenantId() 
     })).data,
     
-  updateFund: async (id: string, fund_name: string, currency_code: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
-    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction })).data,
+  updateFund: async (id: string, fund_name: string, currency_code: string, description?: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, description, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction })).data,
   deleteFund: async (id: string) => {
     await apiClient.delete(`/api/funds/${id}`);
   },
@@ -364,13 +370,13 @@ export const api = {
   // FUND PLANS (V4)
   getFundPlans: async (fundId: string) => (await apiClient.get<FundPlan[]>(`/api/funds/${fundId}/plans`)).data,
   
-  createFundPlan: async (data: { fund_id: string, plan_name: string, selected_plans: Record<string, string> }) =>
+  createFundPlan: async (data: { fund_id: string, plan_name: string, selected_plans: Record<string, string>, pooling_fraction?: number }) =>
     (await apiClient.post<FundPlan>(`/api/funds/${data.fund_id}/plans`, {
       ...data,
       tenant_id: getTenantId()
     })).data,
     
-  updateFundPlan: async (id: string, data: { plan_name: string, selected_plans: Record<string, string> }) =>
+  updateFundPlan: async (id: string, data: { plan_name: string, selected_plans: Record<string, string>, pooling_fraction?: number }) =>
     (await apiClient.put<FundPlan>(`/api/funds/plans/${id}`, data)).data,
     
   deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)),
@@ -390,19 +396,20 @@ export const api = {
   getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
   getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
   
-  createCompany: async (company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
+  createCompany: async (company_name: string, fund_id: string, currency_code: string, description?: string, industry?: string, business_model?: string, technology?: string) => 
     (await apiClient.post<Company>('/api/companies', { 
       company_name, 
       fund_id, 
       currency_code, 
+      description,
       industry, 
       business_model, 
       technology,
       tenant_id: getTenantId()
     })).data,
     
-  updateCompany: async (id: string, company_name: string, fund_id: string, currency_code: string, industry?: string, business_model?: string, technology?: string) => 
-    (await apiClient.put<Company>(`/api/companies/${id}`, { company_name, fund_id, currency_code, industry, business_model, technology })).data,
+  updateCompany: async (id: string, company_name: string, fund_id: string, currency_code: string, description?: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.put<Company>(`/api/companies/${id}`, { company_name, fund_id, currency_code, description, industry, business_model, technology })).data,
   deleteCompany: async (id: string) => {
     await apiClient.delete(`/api/companies/${id}`);
   },  
@@ -411,12 +418,13 @@ export const api = {
   getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
   getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
   
-  createPlan: async (company_id: string, plan_name: string, start_month: string, currency_code: string) => {
+  createPlan: async (company_id: string, plan_name: string, start_month: string, currency_code: string, description?: string) => {
     return (await apiClient.post<FinancialPlan>('/api/plans', { 
       company_id, 
       plan_name, 
       start_month, 
       currency_code,
+      description,
       tenant_id: getTenantId()
     })).data;
   },

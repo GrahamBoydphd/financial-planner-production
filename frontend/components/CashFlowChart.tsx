@@ -124,7 +124,29 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
       yAxisMin = globalMin * 1.1; // Add 10% padding below lowest data point
     }
   } else {
-    yAxisMin = 100; // Log scale floor
+    // Smart Scaling Logic
+    let relevantLow = Infinity;
+
+    if (mode === 'monte_carlo' && data.p10_value) {
+        // Scan p10_value starting from index 1 (ignore Month 0)
+        const valid = data.p10_value.slice(1).map(v => Number(v)).filter(n => !isNaN(n));
+        if (valid.length > 0) {
+            relevantLow = Math.min(...valid);
+        }
+    } else {
+        // Standard or Single mode
+        const source = singleRunData || data.single_run_data || data.deterministic_data;
+        if (source) {
+            // Map to cash_balance and scan from index 1
+            const valid = source.slice(1).map(d => Number(d.cash_balance)).filter(n => !isNaN(n));
+            if (valid.length > 0) {
+                relevantLow = Math.min(...valid);
+            }
+        }
+    }
+
+    if (relevantLow === Infinity) relevantLow = 100;
+    yAxisMin = Math.max(100, relevantLow * 0.5);
   }
 
   // Determine Y-Axis Max

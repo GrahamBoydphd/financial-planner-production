@@ -15,6 +15,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
   const [startMonth, setStartMonth] = useState(initialData?.start_month || '');
   const [selectedCompany, setSelectedCompany] = useState(initialData?.company_id || '');
   const [currency, setCurrency] = useState(initialData?.currency_code || 'USD');
+  const [description, setDescription] = useState(initialData?.description || '');
   
   // Pooling fraction state (0-100 for UI, mapped to 0.0-1.0 for API)
   // Only relevant for updates, as createPlan doesn't accept it.
@@ -28,6 +29,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
       setStartMonth(initialData.start_month);
       setSelectedCompany(initialData.company_id);
       setCurrency(initialData.currency_code || 'USD');
+      setDescription(initialData.description || '');
       setPoolingFraction(initialData.pooling_fraction ? parseFloat(initialData.pooling_fraction) * 100 : 0);
     }
   }, [initialData]);
@@ -46,6 +48,13 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
     e.preventDefault();
     if (!selectedCompany) return alert('Please select a company');
     
+    // Word count validation
+    const wordCount = description.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount > 200) {
+      alert(`Description cannot exceed 200 words. Current: ${wordCount}`);
+      return;
+    }
+
     try {
       if (initialData) {
         // Update Mode: Can send pooling_fraction
@@ -53,10 +62,11 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
           plan_name: name,
           start_month: startMonth,
           pooling_fraction: (poolingFraction / 100).toString(),
+          description,
         });
       } else {
-        // Create Mode: Strict payload { company_id, name, start_month, currency }
-        await api.createPlan(selectedCompany, name, startMonth, currency);
+        // Create Mode: Strict payload { company_id, name, start_month, currency, description }
+        await api.createPlan(selectedCompany, name, startMonth, currency, description);
       }
       
       if (!initialData) {
@@ -65,6 +75,7 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
         setPoolingFraction(0);
         setSelectedCompany('');
         setCurrency('USD');
+        setDescription('');
       }
       onSuccess();
     } catch (err) {
@@ -117,6 +128,20 @@ export default function PlanForm({ companies, onSuccess, initialData }: PlanForm
           required
         />
       </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-2 border rounded h-24"
+          placeholder="Brief description of the plan..."
+        />
+        <div className="text-xs text-gray-500 text-right mt-1">
+          {description.trim().split(/\s+/).filter(Boolean).length}/200 words
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium mb-1">Start Month</label>
         <input

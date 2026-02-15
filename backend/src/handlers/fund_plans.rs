@@ -5,6 +5,7 @@ use axum::{
 };
 use sqlx::PgPool;
 use uuid::Uuid;
+use rust_decimal::Decimal;
 use crate::models::{FundPlan, CreateFundPlanRequest};
 
 /// Create a new Fund Plan Configuration
@@ -14,17 +15,20 @@ pub async fn create_fund_plan(
     Path(fund_id): Path<Uuid>,
     Json(payload): Json<CreateFundPlanRequest>,
 ) -> Result<Json<FundPlan>, (StatusCode, String)> {
+    let pooling_fraction = payload.pooling_fraction.unwrap_or(Decimal::ZERO);
+
     let plan = sqlx::query_as!(
         FundPlan,
         r#"
-        INSERT INTO fund_plans (fund_id, plan_name, selected_plans, tenant_id)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at
+        INSERT INTO fund_plans (fund_id, plan_name, selected_plans, tenant_id, pooling_fraction)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at, pooling_fraction
         "#,
         fund_id,
         payload.plan_name,
         payload.selected_plans,
-        claims.tenant_id
+        claims.tenant_id,
+        pooling_fraction
     )
     .fetch_one(&pool)
     .await
@@ -42,7 +46,7 @@ pub async fn get_fund_plans(
     let plans = sqlx::query_as!(
         FundPlan,
         r#"
-        SELECT id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at
+        SELECT id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at, pooling_fraction
         FROM fund_plans
         WHERE fund_id = $1 AND tenant_id = $2
         ORDER BY created_at DESC
@@ -66,7 +70,7 @@ pub async fn get_fund_plan(
     let plan = sqlx::query_as!(
         FundPlan,
         r#"
-        SELECT id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at
+        SELECT id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at, pooling_fraction
         FROM fund_plans
         WHERE id = $1 AND tenant_id = $2
         "#,
@@ -81,7 +85,7 @@ pub async fn get_fund_plan(
     Ok(Json(plan))
 }
 
-/// Update a Fund Plan (Name or Selection)
+/// Update a Fund Plan (Name, Selection, or Pooling)
 pub async fn update_fund_plan(
     State(pool): State<PgPool>,
     Extension(claims): Extension<crate::models::Claims>,
@@ -92,12 +96,13 @@ pub async fn update_fund_plan(
         FundPlan,
         r#"
         UPDATE fund_plans
-        SET plan_name = $1, selected_plans = $2, updated_at = NOW()
-        WHERE id = $3 AND tenant_id = $4
-        RETURNING id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at
+        SET plan_name = $1, selected_plans = $2, pooling_fraction = COALESCE($3, pooling_fraction), updated_at = NOW()
+        WHERE id = $4 AND tenant_id = $5
+        RETURNING id, fund_id, plan_name, selected_plans, tenant_id, created_at, updated_at, pooling_fraction
         "#,
         payload.plan_name,
         payload.selected_plans,
+        payload.pooling_fraction,
         id,
         claims.tenant_id
     )

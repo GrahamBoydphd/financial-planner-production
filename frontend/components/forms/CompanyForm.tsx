@@ -86,6 +86,7 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
   const [name, setName] = useState('');
   const [selectedFund, setSelectedFund] = useState('');
   const [currency, setCurrency] = useState('EUR');
+  const [description, setDescription] = useState('');
 
   // IMT State
   const [industry, setIndustry] = useState('');
@@ -102,6 +103,7 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
       setName(initialData.company_name);
       setSelectedFund(initialData.fund_id);
       setCurrency(initialData.currency_code);
+      setDescription(initialData.description || '');
 
       // Helper to set select/custom fields
       const setField = (value: string | undefined, options: string[], setSelect: any, setCustom: any) => {
@@ -127,6 +129,7 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
       setName('');
       setSelectedFund('');
       setCurrency('EUR');
+      setDescription('');
       setIndustry(''); setCustomIndustry('');
       setModel(''); setCustomModel('');
       setTech(''); setCustomTech('');
@@ -137,6 +140,13 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
     e.preventDefault();
     if (!selectedFund) return alert('Select a fund');
     
+    // Word count validation
+    const wordCount = description.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount > 200) {
+      alert(`Description cannot exceed 200 words. Current: ${wordCount}`);
+      return;
+    }
+
     // Resolve "Other" fields
     const finalIndustry = industry === 'Other' ? customIndustry : industry;
     const finalModel = model === 'Other' ? customModel : model;
@@ -144,14 +154,15 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
 
     try {
       if (initialData) {
-        await api.updateCompany(initialData.id, name, selectedFund, currency, finalIndustry, finalModel, finalTech);
+        await api.updateCompany(initialData.id, name, selectedFund, currency, description, finalIndustry, finalModel, finalTech);
       } else {
-        await api.createCompany(name, selectedFund, currency, finalIndustry, finalModel, finalTech);
+        await api.createCompany(name, selectedFund, currency, description, finalIndustry, finalModel, finalTech);
       }
       
       if (!initialData) {
         setName('');
         setCurrency('EUR');
+        setDescription('');
         setIndustry(''); setCustomIndustry('');
         setModel(''); setCustomModel('');
         setTech(''); setCustomTech('');
@@ -196,6 +207,20 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
           placeholder="e.g. GreenFuture Ltd"
           required
         />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-2 border rounded h-24"
+          placeholder="Brief description of the company..."
+        />
+        <div className="text-xs text-gray-500 text-right mt-1">
+          {description.trim().split(/\s+/).filter(Boolean).length}/200 words
+        </div>
       </div>
 
       {/* Currency */}

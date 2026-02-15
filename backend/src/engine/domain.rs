@@ -398,7 +398,7 @@ impl SimState {
         }
         self.current_cash += investment_gain;
 
-        // LOGIC C: Apply Pooling
+        // LOGIC C: Apply Pooling (Ergodicity Correction)
         // 9. Pooling Contribution (Refined)
         let total_profit = operating_profit + investment_gain; // Kept for net_income reporting
         
@@ -406,6 +406,7 @@ impl SimState {
         let poolable_gain = current_cash_floored - previous_cash_floored;
         
         let mut contribution = 0.0;
+        // VERIFIED: Uses self.pooling_fraction which is overridden by Orchestrator if ergodicity_correction is set.
         if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
             contribution = poolable_gain * self.pooling_fraction;
             self.current_cash -= contribution;

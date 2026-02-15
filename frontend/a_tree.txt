@@ -2,8 +2,16 @@
 ├── app
 │   ├── company
 │   │   └── [companyId]
+│   │       ├── ClientPage.tsx
+│   │       └── page.tsx
 │   ├── fund
 │   │   └── [fundId]
+│   │       ├── ClientPage.tsx
+│   │       ├── inputs
+│   │       │   └── page.tsx
+│   │       ├── page.tsx
+│   │       └── results
+│   │           └── page.tsx
 │   ├── globals.css
 │   ├── help
 │   │   └── page.tsx
@@ -15,6 +23,13 @@
 │   ├── page.tsx
 │   ├── plan
 │   │   └── [planId]
+│   │       ├── inputs
+│   │       │   ├── ClientPage.tsx
+│   │       │   └── page.tsx
+│   │       ├── page.tsx
+│   │       └── results
+│   │           ├── ClientPage.tsx
+│   │           └── page.tsx
 │   ├── register
 │   │   └── page.tsx
 │   └── structure
@@ -39,6 +54,9 @@
 │   │   ├── PlanForm.tsx
 │   │   ├── RevenueForm.tsx
 │   │   ├── shared
+│   │   │   ├── EconophysicsInputs.tsx
+│   │   │   ├── TruncatedText.tsx
+│   │   │   └── VolatilityInputs.tsx
 │   │   ├── StaffingForm.tsx
 │   │   ├── SuccessTaxForm.tsx
 │   │   └── ValuationForm.tsx
@@ -75,4 +93,4 @@
 ├── tsconfig.json
 └── tsconfig.tsbuildinfo
 
-22 directories, 54 files
+26 directories, 68 files

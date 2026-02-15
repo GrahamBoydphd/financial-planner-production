@@ -1,5 +1,35 @@
+# --- System Files ---
 .DS_Store
 .env
+.env.local
 /dist
 /tmp
 .obsidian/
+.stfolder/
+.stversions/
+*.bak
+*.sync-conflict-*
+
+# --- Frontend (Next.js) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/frontend.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- Backend (Rust) ---
+backend/target/
+backend/.sqlx/
+backend/backend.log
+backend/all_sql.log
+backend/fund_debug.txt
+**/Cargo.lock.bak
+
+# --- Python ---
+__pycache__/
+.venv/
+*.py[cod]
+*$py.class

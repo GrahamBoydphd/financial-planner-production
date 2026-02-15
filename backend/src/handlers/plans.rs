@@ -50,11 +50,11 @@ pub async fn create_plan(
     let plan = sqlx::query_as!(
         FinancialPlan,
         r#"
-        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id, insolvency_threshold) 
-        VALUES ($1, $2, $3, $4, $5, $6) 
+        INSERT INTO financial_plans (company_id, plan_name, start_month, currency_code, tenant_id, insolvency_threshold, description) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7) 
         RETURNING 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
+            plan_name as "plan_name!", description, start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
             last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
@@ -65,7 +65,8 @@ pub async fn create_plan(
         chrono::NaiveDate::parse_from_str(&payload.start_month, "%Y-%m-%d").unwrap(),
         currency,
         claims.tenant_id,
-        insolvency_threshold
+        insolvency_threshold,
+        payload.description
     )
     .fetch_one(&pool)
     .await?;
@@ -123,11 +124,12 @@ pub async fn update_plan(
             soft_limit_active = COALESCE($6, soft_limit_active),
             soft_limit_threshold = COALESCE($7, soft_limit_threshold),
             soft_limit_fraction = COALESCE($8, soft_limit_fraction),
+            description = COALESCE($9, description),
             updated_at = NOW() 
-        WHERE id = $9 AND tenant_id = $10
+        WHERE id = $10 AND tenant_id = $11
         RETURNING 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
+            plan_name as "plan_name!", description, start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
             last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
@@ -141,6 +143,7 @@ pub async fn update_plan(
         payload.soft_limit_active,
         soft_limit_threshold,
         soft_limit_fraction,
+        payload.description,
         id,
         claims.tenant_id
     )
@@ -161,7 +164,7 @@ pub async fn get_all_plans(
         r#"
         SELECT 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
+            plan_name as "plan_name!", description, start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
             last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
@@ -188,7 +191,7 @@ pub async fn get_plan(
         r#"
         SELECT 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
+            plan_name as "plan_name!", description, start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
             last_p50_net_value, insolvency_threshold as "insolvency_threshold!",
@@ -244,7 +247,7 @@ pub async fn get_plan_projection(
         r#"
         SELECT 
             id as "id!", company_id as "company_id!", tenant_id as "tenant_id!", 
-            plan_name as "plan_name!", start_month as "start_month!", currency_code as "currency_code!", 
+            plan_name as "plan_name!", description, start_month as "start_month!", currency_code as "currency_code!", 
             initial_cash as "initial_cash!", pooling_fraction as "pooling_fraction!", 
             created_at as "created_at!", updated_at as "updated_at!",
             last_p50_net_value, insolvency_threshold as "insolvency_threshold!",

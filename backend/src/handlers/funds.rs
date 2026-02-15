@@ -24,11 +24,12 @@ pub async fn create_fund(
 
     let fund = sqlx::query_as!(
         Fund,
-        "INSERT INTO funds (user_id, fund_name, currency_code, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction",
+        "INSERT INTO funds (user_id, fund_name, currency_code, tenant_id, description) VALUES ($1, $2, $3, $4, $5) RETURNING id, user_id, fund_name, description, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction",
         user_id,
         payload.fund_name,
         currency,
-        claims.tenant_id
+        claims.tenant_id,
+        payload.description
     )
     .fetch_one(&pool)
     .await?;
@@ -42,7 +43,7 @@ pub async fn get_funds(
 ) -> Result<Json<Vec<Fund>>, AppError> {
     let funds = sqlx::query_as!(
         Fund,
-        "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
+        "SELECT id, user_id, fund_name, description, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE tenant_id = $1 ORDER BY created_at DESC",
         claims.tenant_id
     )
     .fetch_all(&pool)
@@ -58,7 +59,7 @@ pub async fn get_fund(
 ) -> Result<Json<Fund>, AppError> {
     let fund = sqlx::query_as!(
         Fund,
-        "SELECT id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE id = $1 AND tenant_id = $2",
+        "SELECT id, user_id, fund_name, description, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
     )
@@ -98,15 +99,17 @@ pub async fn update_fund(
             currency_code = $2,
             default_soft_limit_active = COALESCE($3, default_soft_limit_active),
             default_soft_limit_threshold = COALESCE($4, default_soft_limit_threshold),
-            default_soft_limit_fraction = COALESCE($5, default_soft_limit_fraction)
-        WHERE id = $6 AND tenant_id = $7 
-        RETURNING id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction
+            default_soft_limit_fraction = COALESCE($5, default_soft_limit_fraction),
+            description = COALESCE($6, description)
+        WHERE id = $7 AND tenant_id = $8 
+        RETURNING id, user_id, fund_name, description, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction
         "#,
         payload.fund_name,
         payload.currency_code,
         payload.default_soft_limit_active,
         threshold,
         fraction,
+        payload.description,
         id,
         claims.tenant_id
     )

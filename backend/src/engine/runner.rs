@@ -263,7 +263,8 @@ pub fn generate_simulation(
         months, 
         stop_insolvency,
         events_active,
-        events // Pass raw events for stochastic generation
+        events, // Pass raw events for stochastic generation
+        Some(pooling_fraction)
     );
 
     // 12. Execute Simulation

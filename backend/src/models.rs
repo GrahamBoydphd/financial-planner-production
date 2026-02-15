@@ -32,6 +32,7 @@ pub struct Fund {
     pub id: Uuid,
     pub user_id: Uuid,
     pub fund_name: String, // Renamed from name
+    pub description: Option<String>,
     pub currency_code: String,
     pub created_at: DateTime<Utc>,
     pub tenant_id: Uuid,
@@ -43,6 +44,7 @@ pub struct Fund {
     pub default_soft_limit_threshold: Decimal,
     #[serde(default)]
     pub default_soft_limit_fraction: Decimal,
+    // REMOVED: pooling_fraction
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -51,6 +53,7 @@ pub struct Company {
     pub fund_id: Uuid,
     // tenant_id removed from here to fix duplicate field error
     pub company_name: String, // Renamed from name
+    pub description: Option<String>,
     pub currency_code: String,
     pub created_at: DateTime<Utc>,
     pub industry: Option<String>,
@@ -78,6 +81,7 @@ pub struct FinancialPlan {
     pub id: Uuid,
     pub company_id: Uuid,
     pub plan_name: String, // Renamed from name
+    pub description: Option<String>,
     pub start_month: NaiveDate,
     pub currency_code: String,
     pub created_at: DateTime<Utc>,
@@ -260,16 +264,20 @@ pub struct CapitalGrowthPolicy {
 #[derive(Deserialize, Debug)]
 pub struct CreateFundRequest {
     pub fund_name: String,
+    pub description: Option<String>,
     pub currency_code: Option<String>,
+    // REMOVED: pooling_fraction
 }
 
 #[derive(Deserialize, Debug)]
 pub struct UpdateFundRequest {
     pub fund_name: String,
+    pub description: Option<String>,
     pub currency_code: String,
     pub default_soft_limit_active: Option<bool>,
     pub default_soft_limit_threshold: Option<String>,
     pub default_soft_limit_fraction: Option<String>,
+    // REMOVED: pooling_fraction
 }
 
 #[derive(Deserialize, Debug)]
@@ -277,6 +285,7 @@ pub struct CreateCompanyRequest {
     pub fund_id: Uuid,
     pub tenant_id: Uuid,
     pub company_name: String,
+    pub description: Option<String>,
     pub business_model: Option<String>,
     pub industry: Option<String>,
     pub technology: Option<String>,
@@ -286,6 +295,7 @@ pub struct CreateCompanyRequest {
 #[derive(Deserialize, Debug)]
 pub struct UpdateCompanyRequest {
     pub company_name: String,
+    pub description: Option<String>,
     pub business_model: Option<String>,
     pub industry: Option<String>,
     pub technology: Option<String>,
@@ -350,12 +360,17 @@ pub struct FundPlan {
     pub selected_plans: serde_json::Value, // Maps to JSONB
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    // ADDED: Pooling Fraction for Scenario Independence
+    #[serde(default)]
+    pub pooling_fraction: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateFundPlanRequest {
     pub plan_name: String,
     pub selected_plans: serde_json::Value,
+    // ADDED
+    pub pooling_fraction: Option<Decimal>,
 }
 
 // --- Plan Requests ---
@@ -364,6 +379,7 @@ pub struct CreateFundPlanRequest {
 pub struct CreatePlanRequest {
     pub company_id: Uuid,
     pub plan_name: String,
+    pub description: Option<String>,
     pub start_month: String, // YYYY-MM-01
     pub currency_code: Option<String>,
     pub insolvency_threshold: Option<String>,
@@ -372,6 +388,7 @@ pub struct CreatePlanRequest {
 #[derive(Deserialize)]
 pub struct UpdatePlanRequest {
     pub plan_name: Option<String>,
+    pub description: Option<String>,
     pub start_month: Option<String>,
     pub pooling_fraction: Option<Decimal>,
     pub initial_cash: Option<String>,
@@ -395,7 +412,7 @@ pub enum EventPayload {
     Stochastic {
         occurrence_probability: String,
         magnitude: String,
-        direction: String,
+        direction: String, // Maps to direction
         duration: String, // Maps to duration_category
         is_counter_cyclic: Option<bool>,
     },

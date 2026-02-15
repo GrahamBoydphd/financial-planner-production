@@ -26,7 +26,24 @@ pub struct FundOrchestrator<Mode: SimulationMode> {
 }
 
 impl<Mode: SimulationMode> FundOrchestrator<Mode> {
-    pub fn new(iterations: usize, initial_states: Vec<SimState>, months: i32, stop_insolvency: bool, events_active: bool, events: Vec<Event>) -> Self {
+    pub fn new(
+        iterations: usize, 
+        mut initial_states: Vec<SimState>, 
+        months: i32, 
+        stop_insolvency: bool, 
+        events_active: bool, 
+        events: Vec<Event>,
+        pooling_override: Option<Decimal> // NEW: Override pooling fraction for all companies
+    ) -> Self {
+        
+        // Apply pooling override if provided (Ergodicity Correction)
+        if let Some(rate) = pooling_override {
+            let rate_f64 = rate.to_f64().unwrap_or(0.0);
+            for state in initial_states.iter_mut() {
+                state.pooling_fraction = rate_f64;
+            }
+        }
+
         // 1. Create Monte Carlo Universes
         let mut universes = Vec::with_capacity(iterations);
         for _ in 0..iterations {

@@ -35,16 +35,17 @@ pub async fn create_company(
     // 3. Insert Company with Database Constraint Handling
     let company = sqlx::query_as!(
         Company,
-        "INSERT INTO companies (fund_id, company_name, currency_code, industry, business_model, technology, tenant_id) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7) 
-         RETURNING id, fund_id, company_name, currency_code, created_at, industry, business_model, technology, tenant_id",
+        "INSERT INTO companies (fund_id, company_name, currency_code, industry, business_model, technology, tenant_id, description) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING id, fund_id, company_name, description, currency_code, created_at, industry, business_model, technology, tenant_id",
         payload.fund_id,
         payload.company_name,
         currency,
         payload.industry,
         payload.business_model,
         payload.technology,
-        claims.tenant_id
+        claims.tenant_id,
+        payload.description
     )
     .fetch_one(&pool)
     .await
@@ -71,7 +72,7 @@ pub async fn get_companies(
 ) -> Result<Json<Vec<Company>>, AppError> {
     let companies = sqlx::query_as!(
         Company,
-        "SELECT id, fund_id, company_name, currency_code, created_at, industry, business_model, technology, tenant_id 
+        "SELECT id, fund_id, company_name, description, currency_code, created_at, industry, business_model, technology, tenant_id 
          FROM companies WHERE tenant_id = $1 ORDER BY created_at DESC",
         claims.tenant_id
     )
@@ -88,7 +89,7 @@ pub async fn get_company(
 ) -> Result<Json<Company>, AppError> {
     let company = sqlx::query_as!(
         Company,
-        "SELECT id, fund_id, company_name, currency_code, created_at, industry, business_model, technology, tenant_id 
+        "SELECT id, fund_id, company_name, description, currency_code, created_at, industry, business_model, technology, tenant_id 
          FROM companies WHERE id = $1 AND tenant_id = $2",
         id,
         claims.tenant_id
@@ -115,14 +116,15 @@ pub async fn update_company(
     let company = sqlx::query_as!(
         Company,
         "UPDATE companies 
-         SET company_name = $1, currency_code = $2, industry = $3, business_model = $4, technology = $5
-         WHERE id = $6 AND tenant_id = $7
-         RETURNING id, fund_id, company_name, currency_code, created_at, industry, business_model, technology, tenant_id",
+         SET company_name = $1, currency_code = $2, industry = $3, business_model = $4, technology = $5, description = COALESCE($6, description)
+         WHERE id = $7 AND tenant_id = $8
+         RETURNING id, fund_id, company_name, description, currency_code, created_at, industry, business_model, technology, tenant_id",
         payload.company_name,
         payload.currency_code,
         payload.industry,
         payload.business_model,
         payload.technology,
+        payload.description,
         id,
         claims.tenant_id
     )

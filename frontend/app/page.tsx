@@ -11,6 +11,7 @@ import { api, Fund, Company, Template } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Copy, Trash2, MoveRight } from 'lucide-react';
 import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
+import TruncatedText from '@/components/forms/shared/TruncatedText';
 
 // --- ICONS ---
 const CopyIcon = () => (
@@ -235,6 +236,11 @@ export default function Dashboard() {
                     </div>
                   </div>
 
+                  {/* FUND DESCRIPTION */}
+                  <div className="mb-4 px-1">
+                    <TruncatedText text={fund.description} limit={10} />
+                  </div>
+
                   {/* COMPANIES LIST */}
                   <div className="flex-1">
                     <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
@@ -338,7 +344,16 @@ export default function Dashboard() {
                   isProcessing={loadingOp === template.id}
                 />
               </div>
-              <div className="text-gray-500 italic text-sm flex-1 text-left">Description coming</div>
+              <div className="text-gray-500 italic text-sm flex-1 text-left">
+                {/* Description is now inside TemplateCard, but we can keep this placeholder or remove it if redundant. 
+                    The TemplateCard itself shows the description. 
+                    However, the layout here shows a TemplateCard on the left and a text div on the right.
+                    Wait, TemplateCard is a full card component. Putting it inside a flex-row with another div seems odd if TemplateCard is large.
+                    Let's look at TemplateCard. It has header, content, footer.
+                    The previous code had: <div className="text-gray-500 italic text-sm flex-1 text-left">Description coming</div>
+                    I will leave this structure as is to avoid breaking layout assumptions, but the TemplateCard itself now shows full description.
+                */}
+              </div>
             </div>
           ))}
 

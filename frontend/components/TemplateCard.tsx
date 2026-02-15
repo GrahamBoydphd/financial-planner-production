@@ -67,7 +67,7 @@ export default function TemplateCard({ template, onCopy, isProcessing = false }:
           {displayName}
         </h3>
         
-        <p className="text-sm text-gray-500 mt-2 line-clamp-3">
+        <p className="text-sm text-gray-500 mt-2">
           {template.description}
         </p>
       </div>
