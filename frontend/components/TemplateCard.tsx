@@ -5,6 +5,7 @@ interface TemplateCardProps {
   template: Template;
   onCopy: (id: string) => void;
   isProcessing?: boolean;
+  showDescription?: boolean;
 }
 
 const ImportIcon = () => (
@@ -20,7 +21,7 @@ const Spinner = () => (
   </svg>
 );
 
-export default function TemplateCard({ template, onCopy, isProcessing = false }: TemplateCardProps) {
+export default function TemplateCard({ template, onCopy, isProcessing = false, showDescription = true }: TemplateCardProps) {
   // Logic: Handle 'fund' and 'company' types. Default to 'Fund'.
   // We cast to any to access potential dynamic fields from backend variants
   const t = template as any;
@@ -67,9 +68,11 @@ export default function TemplateCard({ template, onCopy, isProcessing = false }:
           {displayName}
         </h3>
         
-        <p className="text-sm text-gray-500 mt-2">
-          {template.description}
-        </p>
+        {showDescription && (
+          <p className="text-sm text-gray-500 mt-2">
+            {template.description}
+          </p>
+        )}
       </div>
 
       {/* Bottom: Action */}

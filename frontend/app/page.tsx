@@ -367,6 +367,7 @@ export default function Dashboard() {
                   template={template}
                   onCopy={handleImportTemplate}
                   isProcessing={loadingOp === template.id}
+                  showDescription={false}
                 />
               </div>
               {/* Right Col: Description */}
