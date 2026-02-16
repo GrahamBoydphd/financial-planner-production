@@ -37,6 +37,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('tenant_id'); // Clear tenant on 401
+      window.location.href = "/login";
     }
     return Promise.reject(error);
   }

@@ -356,7 +356,7 @@ export default function Dashboard() {
         </div>
       ) : (
         // TEMPLATES VIEW
-        <div className="flex flex-col gap-4 max-w-5xl mx-auto">
+        <div className="flex flex-col gap-4 max-w-6xl mx-auto">
           {[...templates]
             .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
             .map((template) => (

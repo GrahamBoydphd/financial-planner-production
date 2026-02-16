@@ -1,113 +1,595 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='frontend/components/Layout.tsx'>
-"use client";
+<file path='frontend/lib/api.ts'>
+import axios from 'axios';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user, logout } = useAuth();
-  const pathname = usePathname();
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  // Helper to determine if a tab is active
-  const isActive = (path: string) => {
-    if (path === '/') return pathname === '/';
-    return pathname?.startsWith(path);
-  };
+// --- HELPER: GET TENANT ID ---
+const getTenantId = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('tenant_id');
+  }
+  return null;
+};
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Master Banner / Navigation */}
-      <nav className="bg-gray-200 border-b border-gray-300">
-        <div className="max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              {/* Logo Section - Vertically Centered */}
-              <div className="flex-shrink-0 flex items-center mr-8">
-                <Link href="/" className="flex items-center font-bold text-xl text-blue-600">
-                  <img src="/logo.png" alt="Evolutesix Logo" className="h-12 w-auto mr-3" />
-                  Financial Planner
-                </Link>
-              </div>
+// --- INTERCEPTOR (CRITICAL FOR AUTH) ---
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-              {/* Navigation Tabs - Aligned to Bottom for Browser-Tab look */}
-              <div className="hidden sm:flex sm:space-x-2 items-end">
-                <Link
-                  href="/"
-                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
-                    isActive('/') 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/structure"
-                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
-                    isActive('/structure') 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Structure (Funds & Companies)
-                </Link>
-                <Link
-                  href="/help"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
-                    isActive('/help') 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Guide & Help
-                </Link>
-                <Link
-                  href="/improve"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
-                    isActive('/improve') 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  How can we improve?
-                </Link>
-              </div>
-            </div>
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('tenant_id'); // Clear tenant on 401
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
 
-            {/* User Section - Vertically Centered */}
-            <div className="flex items-center">
-              {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-700">
-                    Welcome, {user?.username}
-                  </span>
-                  <button
-                    onClick={logout}
-                    className="text-sm text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <span className="text-sm text-gray-500">Not Logged In</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+// --- INTERFACES ---
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-[92rem] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
-    </div>
-  );
+export interface AuthResponse {
+  token: string;
+  user_id: string;
+  username: string;
+  tenant_id: string;
 }
+
+export interface Fund {
+  id: string;
+  fund_name: string;
+  description?: string | null;
+  currency_code?: string;
+  created_at: string;
+  default_soft_limit_active?: boolean;
+  default_soft_limit_threshold?: string;
+  default_soft_limit_fraction?: string;
+}
+
+export interface FundPlan {
+  id: string;
+  fund_id: string;
+  plan_name: string;
+  selected_plans: Record<string, string>; 
+  created_at?: string;
+  pooling_fraction?: number;
+}
+
+export interface Company {
+  id: string;
+  fund_id: string;
+  company_name: string;
+  description?: string | null;
+  currency_code: string;
+  industry?: string;
+  business_model?: string;
+  technology?: string;
+  created_at: string;
+}
+
+export interface FinancialPlan {
+  id: string;
+  company_id: string;
+  plan_name: string;
+  description?: string | null;
+  currency_code: string;
+  start_month: string;
+  initial_cash: string;
+  pooling_fraction: string;
+  insolvency_threshold?: string;
+  soft_limit_active?: boolean;
+  soft_limit_threshold?: string;
+  soft_limit_fraction?: string;
+}
+
+export interface UpdatePlanRequest {
+  plan_name?: string;
+  description?: string;
+  start_month?: string;
+  initial_cash?: string;
+  pooling_fraction?: string;
+  insolvency_threshold?: string;
+  soft_limit_active?: boolean;
+  soft_limit_threshold?: string;
+  soft_limit_fraction?: string;
+}
+
+export interface RevenueItem {
+  id: string;
+  plan_id: string;
+  revenue_name: string;
+  source: string;
+  initial_amount: string;
+  growth_rate_percent: string;
+  start_month: number;
+  end_month?: number;
+  frequency: string;
+  cost_of_revenue_percent?: string;
+  volatility_type?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface ExpenseItem {
+  id: string;
+  plan_id: string;
+  expense_name: string;
+  category: string;
+  initial_amount: string;
+  growth_rate_percent: string;
+  start_month: number;
+  end_month?: number;
+  frequency: string;
+  pct_of_revenue?: string;
+  volatility_type?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface CapitalGrowthPolicy {
+  id: string;
+  plan_id: string;
+  volatility_type: 'none' | 'flat' | 'student_t' | 'nrig';
+  growth_rate_percent?: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
+  vol_mean?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+}
+
+export interface CapitalInjection {
+  id: string;
+  plan_id: string;
+  injection_name: string;
+  amount: string;
+  month: number;
+}
+
+export interface DividendPolicy {
+  id: string;
+  plan_id: string;
+  is_enabled: boolean;
+  safety_threshold: string;
+  payout_ratio: string;
+}
+
+export interface CreditFacility {
+  id: string;
+  plan_id: string;
+  facility_limit: string;
+  interest_rate: string;
+  is_annual_rate: boolean;
+}
+
+export interface ValuationAssumption {
+  id: string;
+  plan_id: string;
+  valuation_name: string;
+  method: 'revenue' | 'ebitda';
+  multiplier: string;
+  date_applied: string;
+}
+
+export interface StaffingRole {
+  id: string;
+  plan_id: string;
+  role_name: string;
+  annual_salary: string;
+  start_month: number;
+  target_count: number; 
+  hiring_plan: 'fixed_count' | 'monthly_rate'; 
+  hiring_rate?: string; 
+  annual_increase_percent: string;
+}
+
+export interface MonthlyData {
+  month_index: number;
+  date: string;
+  revenue: string;
+  cogs: string;
+  gross_profit: string;
+  opex: string;
+  interest_expense: string;
+  net_income: string;
+  cash_balance: string;
+  dividend_paid: string;
+  cumulative_dividends: string;
+  cumulative_external_capital: string;
+  cumulative_pool_received: string; 
+  current_debt: string;
+  total_value: string;
+  is_solvent: boolean;
+  solvent_companies?: number;
+  total_companies?: number;
+  treasury_gain?: string;
+  // Pooling Flows
+  pool_contribution?: string;
+  pool_received?: string;
+  contributing_companies?: number;
+  total_exposure?: string;
+}
+
+export interface SimulationResult {
+  labels: string[];
+  valuation_method: string;
+  deterministic_data: MonthlyData[];
+  single_run_data?: MonthlyData[];
+  single_run_value?: string[];
+
+  p0_value?: string[];
+  p5_value?: string[];
+  p10_value?: string[];
+  p25_value?: string[];
+  p50_value?: string[];
+  p75_value?: string[];
+  p90_value?: string[];
+  p95_value?: string[];
+  p100_value?: string[];
+
+  // Solvency Counts (Optional)
+  p0_solvent_count?: number[];
+  p10_solvent_count?: number[];
+  p25_solvent_count?: number[];
+  p50_solvent_count?: number[];
+  p75_solvent_count?: number[];
+  p90_solvent_count?: number[];
+  p100_solvent_count?: number[];
+
+  all_paths?: MonthlyData[][];
+
+  p50_pool_cumulative?: string[]; 
+  p50_data: MonthlyData[];
+  survival_rate: number[];
+
+  deterministic_runway?: number;
+  deterministic_valuation: string;
+  single_run_runway?: number;
+  single_run_valuation?: string;
+  p50_runway?: number;
+  p50_valuation?: string;
+
+  average_event_count?: number;
+
+  // Error reporting
+  errors?: string[];
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  industry: string;
+  complexity: string;
+}
+
+export interface SwanEvent {
+  id: string;
+  event_name: string;
+  event_type: string;
+  scope: 'global' | 'local';
+  target_ids: string[];
+  fund_ids?: string[];
+  company_ids?: string[];
+  occurrence_probability: string;
+  magnitude: string;
+  direction: string;
+  duration: string;
+  is_counter_cyclic?: boolean;
+}
+
+// --- API METHODS ---
+
+export const api = {
+  // AUTH
+  login: async (username: string, password: string) => {
+    const payload = { username, password };
+    const response = await apiClient.post<AuthResponse>('/api/auth/login', payload);
+    // Save Tenant ID immediately upon login
+    if (typeof window !== 'undefined' && response.data.tenant_id) {
+      localStorage.setItem('tenant_id', response.data.tenant_id);
+    }
+    return response.data;
+  },
+  
+  register: async (username: string, email: string, password: string, full_name: string, company_name: string) => {
+    const payload = { username, email, password, full_name, company_name };
+    await apiClient.post('/api/auth/register', payload);
+  },
+
+  // FUNDS
+  getFunds: async () => (await apiClient.get<Fund[]>('/api/funds')).data,
+  getFund: async (id: string) => (await apiClient.get<Fund>(`/api/funds/${id}`)).data,
+  
+  createFund: async (fund_name: string, currency_code: string, description?: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+    (await apiClient.post<Fund>('/api/funds', { 
+      fund_name, 
+      currency_code,
+      description,
+      default_soft_limit_active,
+      default_soft_limit_threshold,
+      default_soft_limit_fraction,
+      tenant_id: getTenantId() 
+    })).data,
+    
+  updateFund: async (id: string, fund_name: string, currency_code: string, description?: string, default_soft_limit_active?: boolean, default_soft_limit_threshold?: string, default_soft_limit_fraction?: string) => 
+    (await apiClient.put<Fund>(`/api/funds/${id}`, { fund_name, currency_code, description, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction })).data,
+  deleteFund: async (id: string) => {
+    await apiClient.delete(`/api/funds/${id}`);
+  },
+
+  // FUND PLANS (V4)
+  getFundPlans: async (fundId: string) => (await apiClient.get<FundPlan[]>(`/api/funds/${fundId}/plans`)).data,
+  
+  createFundPlan: async (data: { fund_id: string, plan_name: string, selected_plans: Record<string, string>, pooling_fraction?: number }) =>
+    (await apiClient.post<FundPlan>(`/api/funds/${data.fund_id}/plans`, {
+      ...data,
+      tenant_id: getTenantId()
+    })).data,
+    
+  updateFundPlan: async (id: string, data: { plan_name: string, selected_plans: Record<string, string>, pooling_fraction?: number }) =>
+    (await apiClient.put<FundPlan>(`/api/funds/plans/${id}`, data)).data,
+
+  // Fetch single plan (Fixes "Plan not found")
+  getFundPlan: async (id: string) => (await apiClient.get<FundPlan>(`/api/funds/plans/${id}`)).data,
+     
+  // Run simulation by Plan ID (Backend Alignment)
+  getFundPlanSimulation: async (planId: string, params: any) => {
+    const qs = new URLSearchParams(params).toString();
+    return (await apiClient.get<SimulationResult>(`/api/funds/plans/${planId}/simulation?${qs}`)).data;
+  },
+    
+  deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)).data,
+
+  // FUND SIMULATION
+  getFundSimulation: async (fundId: string, params?: { 
+    fund_plan_id?: string, 
+    fund_pooling_fraction?: string, 
+    months?: number, 
+    stop_insolvency?: boolean, 
+    include_initial_capital?: boolean,
+    events_active?: boolean
+  }) => 
+    (await apiClient.get<SimulationResult>(`/api/funds/${fundId}/simulation`, { params })).data,
+
+  // COMPANIES
+  getCompanies: async () => (await apiClient.get<Company[]>('/api/companies')).data,
+  getCompany: async (id: string) => (await apiClient.get<Company>(`/api/companies/${id}`)).data,
+  
+  createCompany: async (company_name: string, fund_id: string, currency_code: string, description?: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.post<Company>('/api/companies', { 
+      company_name, 
+      fund_id, 
+      currency_code, 
+      description,
+      industry, 
+      business_model, 
+      technology,
+      tenant_id: getTenantId()
+    })).data,
+    
+  updateCompany: async (id: string, company_name: string, fund_id: string, currency_code: string, description?: string, industry?: string, business_model?: string, technology?: string) => 
+    (await apiClient.put<Company>(`/api/companies/${id}`, { company_name, fund_id, currency_code, description, industry, business_model, technology })).data,
+  deleteCompany: async (id: string) => {
+    await apiClient.delete(`/api/companies/${id}`);
+  },  
+
+  // PLANS
+  getPlans: async () => (await apiClient.get<FinancialPlan[]>('/api/plans')).data,
+  getPlan: async (id: string) => (await apiClient.get<FinancialPlan>(`/api/plans/${id}`)).data,
+  
+  createPlan: async (company_id: string, plan_name: string, start_month: string, currency_code: string, description?: string) => {
+    return (await apiClient.post<FinancialPlan>('/api/plans', { 
+      company_id, 
+      plan_name, 
+      start_month, 
+      currency_code,
+      description,
+      tenant_id: getTenantId()
+    })).data;
+  },
+  
+  updatePlan: async (id: string, updates: UpdatePlanRequest) => 
+    (await apiClient.put<FinancialPlan>(`/api/plans/${id}`, updates)).data,
+  
+  deletePlan: async (id: string) => {
+    await apiClient.delete(`/api/plans/${id}`);
+  },
+
+  getProjection: async (planId: string, params?: { 
+    mode?: string, 
+    months?: number, 
+    stop_insolvency?: boolean, 
+    initial_cash?: number, 
+    insolvency_threshold?: string,
+    events_active?: boolean
+  }) => 
+    (await apiClient.get<SimulationResult>(`/api/plans/${planId}/projection`, { params })).data,
+
+  // REVENUE
+  getRevenueItems: async (planId: string) => (await apiClient.get<RevenueItem[]>(`/api/plans/${planId}/revenue`)).data,
+  createRevenueItem: async (item: Omit<RevenueItem, 'id'>) => (await apiClient.post<RevenueItem>('/api/revenue', item)).data,
+  updateRevenueItem: async (id: string, item: Partial<RevenueItem>) => (await apiClient.put<RevenueItem>(`/api/revenue/${id}`, item)).data,
+  deleteRevenueItem: async (id: string) => (await apiClient.delete(`/api/revenue/${id}`)),
+
+  // EXPENSES
+  getExpenseItems: async (planId: string) => 
+    (await apiClient.get<ExpenseItem[]>(`/api/plans/${planId}/expenses`)).data,
+  createExpenseItem: async (item: Omit<ExpenseItem, 'id'>) => (await apiClient.post<ExpenseItem>('/api/expenses', item)).data,
+  updateExpenseItem: async (id: string, item: Partial<ExpenseItem>) => (await apiClient.put<ExpenseItem>(`/api/expenses/${id}`, item)).data,
+  deleteExpenseItem: async (id: string) => (await apiClient.delete(`/api/expenses/${id}`)),
+
+  // STAFFING
+  getStaffingRoles: async (planId: string) => (await apiClient.get<StaffingRole[]>(`/api/plans/${planId}/staffing`)).data,
+  createStaffingRole: async (role: Omit<StaffingRole, 'id'>) => (await apiClient.post<StaffingRole>('/api/staffing', role)).data,
+  updateStaffingRole: async (role: Omit<StaffingRole, 'plan_id'> & { plan_id?: string }) => (await apiClient.put<StaffingRole>(`/api/staffing/${role.id}`, role)).data,
+  deleteStaffingRole: async (id: string) => (await apiClient.delete(`/api/staffing/${id}`)).data,
+
+  // CAPITAL GROWTH (Treasury)
+  getCapitalGrowth: async (planId: string) => (await apiClient.get<CapitalGrowthPolicy>(`/api/plans/${planId}/capital-growth`)).data,
+  upsertCapitalGrowth: async (item: Omit<CapitalGrowthPolicy, 'id'>) => 
+    (await apiClient.post<CapitalGrowthPolicy>('/api/capital-growth', item)).data,
+
+  // CAPITAL INJECTIONS
+  getCapitalInjections: async (planId: string) => 
+    (await apiClient.get<CapitalInjection[]>(`/api/plans/${planId}/capital`)).data,
+  createCapitalInjection: async (item: Omit<CapitalInjection, 'id'>) => 
+    (await apiClient.post<CapitalInjection>('/api/capital', item)).data,
+  deleteCapitalInjection: async (id: string) => 
+    (await apiClient.delete(`/api/capital/${id}`)),
+
+  // DIVIDENDS
+  getDividends: async (planId: string): Promise<DividendPolicy> => {
+    try {
+      const response = await apiClient.get<DividendPolicy>(`/api/plans/${planId}/dividends`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return {
+          id: '',
+          plan_id: planId,
+          is_enabled: false,
+          safety_threshold: '0',
+          payout_ratio: '0',
+        };
+      }
+      throw error;
+    }
+  },
+  upsertDividends: async (item: Omit<DividendPolicy, 'id'>) => 
+    (await apiClient.post<DividendPolicy>('/api/dividends', item)).data,
+
+  // CREDIT
+  getCredit: async (planId: string): Promise<CreditFacility> => {
+    try {
+      const response = await apiClient.get<CreditFacility>(`/api/plans/${planId}/credit`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return {
+          id: '',
+          plan_id: planId,
+          facility_limit: '0',
+          interest_rate: '0',
+          is_annual_rate: true,
+        };
+      }
+      throw error;
+    }
+  },
+  upsertCredit: async (item: Omit<CreditFacility, 'id'>) => 
+    (await apiClient.post<CreditFacility>('/api/credit', item)).data,
+
+  // VALUATION
+  getValuation: async (planId: string) => 
+    (await apiClient.get<ValuationAssumption[]>(`/api/plans/${planId}/valuation`)).data,
+  createValuation: async (item: { plan_id: string, valuation_name: string, method: string, multiplier: string, date_applied: string }) => 
+    (await apiClient.post('/api/valuation', item)).data,
+
+  // LIFECYCLE
+  duplicateFund: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/funds/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  duplicateCompany: async (id: string) => (await apiClient.post<Company>(`/api/lifecycle/companies/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  duplicatePlan: async (id: string) => (await apiClient.post<FinancialPlan>(`/api/lifecycle/plans/${id}/duplicate`, {}, { timeout: 60000 })).data,
+  moveCompany: async (id: string, target_fund_id: string) => 
+    (await apiClient.put<Company>(`/api/lifecycle/companies/${id}/move`, { target_fund_id }, { timeout: 60000 })).data,
+
+  // TEMPLATES
+  getTemplates: async () => (await apiClient.get<Template[]>('/api/lifecycle/templates', { timeout: 60000 })).data,
+  importTemplate: async (id: string) => (await apiClient.post<Fund>(`/api/lifecycle/templates/${id}/clone`, {}, { timeout: 60000 })).data,
+
+  // SWAN EVENTS (Formerly Shocks)
+  getEvents: async (targetIds: string[]) => {
+    const params = new URLSearchParams();
+    if (targetIds.length) {
+      params.append('target_ids', targetIds.join(','));
+    }
+    // Use any[] to allow mapping from alternative backend field names
+    const response = await apiClient.get<any[]>('/api/events', { params });
+    
+    return response.data.map((item) => {
+      // Normalization Logic
+      let scope = item.scope;
+      if (!scope) {
+        if (item.fund_ids && item.fund_ids.length > 0) scope = 'global';
+        else if (item.company_ids && item.company_ids.length > 0) scope = 'local';
+        else scope = 'global'; // Default fallback
+      }
+
+      // Ensure target_ids is populated
+      const target_ids = item.target_ids || [...(item.fund_ids || []), ...(item.company_ids || [])];
+
+      return {
+        ...item,
+        scope,
+        target_ids,
+        // Map backend fields to frontend fields
+        occurrence_probability: item.occurrence_probability || item.likelihood_annual_pct || '0',
+        event_type: item.event_type || item.event_category || 'revenue_hit',
+        magnitude: item.magnitude,
+        direction: item.direction,
+        duration: item.duration || item.duration_category,
+        is_counter_cyclic: item.is_counter_cyclic
+      };
+    }) as SwanEvent[];
+  },
+  
+  createEvent: async (event: Omit<SwanEvent, 'id'>) => (await apiClient.post<SwanEvent>('/api/events', event)).data,
+  
+  updateEvent: async (id: string, event: Partial<SwanEvent>) => (await apiClient.put<SwanEvent>(`/api/events/${id}`, event)).data,
+  
+  deleteEvent: async (id: string) => (await apiClient.delete(`/api/events/${id}`)),
+};
 </file>
 
