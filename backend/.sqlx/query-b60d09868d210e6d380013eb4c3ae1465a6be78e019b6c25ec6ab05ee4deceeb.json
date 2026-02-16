@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT \n                    id, company_id, plan_name, description, start_month, currency_code, \n                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,\n                    insolvency_threshold,\n                    soft_limit_active, soft_limit_threshold, soft_limit_fraction\n                FROM financial_plans\n                WHERE company_id = $1 AND tenant_id = $2\n                ORDER BY created_at DESC\n                LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "company_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "plan_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_month",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "initial_cash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "pooling_fraction",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_p50_net_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "insolvency_threshold",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "soft_limit_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "soft_limit_threshold",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "soft_limit_fraction",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b60d09868d210e6d380013eb4c3ae1465a6be78e019b6c25ec6ab05ee4deceeb"
+}

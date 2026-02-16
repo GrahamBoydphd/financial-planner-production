@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id, fund_id, company_name, description, currency_code, created_at, \n            industry, business_model, technology, tenant_id\n        FROM companies\n        WHERE fund_id = $1 AND tenant_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "fund_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "company_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "industry",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "business_model",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "technology",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "b0da025d6390a158e570714c0645b0b0fb8f3271826fc2c2be063a0ce0e6b916"
+}

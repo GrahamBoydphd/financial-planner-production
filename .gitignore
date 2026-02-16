@@ -22,7 +22,6 @@ frontend/yarn-error.log*
 
 # --- Backend (Rust) ---
 backend/target/
-backend/.sqlx/
 backend/backend.log
 backend/all_sql.log
 backend/fund_debug.txt

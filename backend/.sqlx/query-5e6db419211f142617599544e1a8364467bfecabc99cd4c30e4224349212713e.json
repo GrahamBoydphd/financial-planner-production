@@ -1,0 +1,122 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE financial_plans \n        SET plan_name = COALESCE($1, plan_name), \n            start_month = COALESCE($2, start_month), \n            pooling_fraction = COALESCE($3, pooling_fraction),\n            initial_cash = COALESCE($4, initial_cash),\n            insolvency_threshold = COALESCE($5, insolvency_threshold),\n            soft_limit_active = COALESCE($6, soft_limit_active),\n            soft_limit_threshold = COALESCE($7, soft_limit_threshold),\n            soft_limit_fraction = COALESCE($8, soft_limit_fraction),\n            description = COALESCE($9, description),\n            updated_at = NOW() \n        WHERE id = $10 AND tenant_id = $11\n        RETURNING \n            id as \"id!\", company_id as \"company_id!\", tenant_id as \"tenant_id!\", \n            plan_name as \"plan_name!\", description, start_month as \"start_month!\", currency_code as \"currency_code!\", \n            initial_cash as \"initial_cash!\", pooling_fraction as \"pooling_fraction!\", \n            created_at as \"created_at!\", updated_at as \"updated_at!\",\n            last_p50_net_value, insolvency_threshold as \"insolvency_threshold!\",\n            soft_limit_active as \"soft_limit_active!\", soft_limit_threshold as \"soft_limit_threshold!\", soft_limit_fraction as \"soft_limit_fraction!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "company_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "tenant_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "plan_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "start_month!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "currency_code!",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "initial_cash!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "pooling_fraction!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_p50_net_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "insolvency_threshold!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "soft_limit_active!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "soft_limit_threshold!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "soft_limit_fraction!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Bool",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5e6db419211f142617599544e1a8364467bfecabc99cd4c30e4224349212713e"
+}

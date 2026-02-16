@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE companies \n         SET company_name = $1, currency_code = $2, industry = $3, business_model = $4, technology = $5, description = COALESCE($6, description)\n         WHERE id = $7 AND tenant_id = $8\n         RETURNING id, fund_id, company_name, description, currency_code, created_at, industry, business_model, technology, tenant_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "fund_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "company_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "industry",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "business_model",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "technology",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bpchar",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "c50f3b00ba19568f070c06e970106e105d31855650381edade097d2249e2927f"
+}

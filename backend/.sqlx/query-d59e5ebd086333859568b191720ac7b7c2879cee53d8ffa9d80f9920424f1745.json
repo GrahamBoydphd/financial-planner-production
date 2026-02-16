@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT fund_id, selected_plans, pooling_fraction\n        FROM fund_plans\n        WHERE id = $1 AND tenant_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "fund_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "selected_plans",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "pooling_fraction",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d59e5ebd086333859568b191720ac7b7c2879cee53d8ffa9d80f9920424f1745"
+}

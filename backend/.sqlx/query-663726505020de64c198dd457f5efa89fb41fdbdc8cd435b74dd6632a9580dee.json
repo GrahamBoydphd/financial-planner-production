@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, fund_name, description, currency_code, created_at, tenant_id, is_public_template, default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction FROM funds WHERE id = $1 AND tenant_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "fund_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "tenant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_public_template",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "default_soft_limit_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "default_soft_limit_threshold",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "default_soft_limit_fraction",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "663726505020de64c198dd457f5efa89fb41fdbdc8cd435b74dd6632a9580dee"
+}
