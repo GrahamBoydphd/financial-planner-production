@@ -242,13 +242,14 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
 
   // 5. Global Scale Calculation (Unified Min/Max)
   const { globalMin, globalMax } = useMemo(() => {
-    const values: number[] = [];
+    // MAX CALCULATION (Scan everything)
+    const allValues: number[] = [];
     
     const push = (arr?: any[]) => {
         if (!arr) return;
         arr.forEach(v => {
             const n = Number(v);
-            if (!isNaN(n)) values.push(n);
+            if (!isNaN(n)) allValues.push(n);
         });
     };
 
@@ -266,13 +267,42 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
         push(fanData.p100);
     }
 
-    if (values.length === 0) return { globalMin: 0, globalMax: 100 };
+    const maxVal = allValues.length > 0 ? Math.max(...allValues) : 100;
+
+    // MIN CALCULATION (P10 Logic)
+    let minVal = 0;
+
+    if (isLogScale) {
+        let minBase: number[] = [];
+        
+        // Priority: P10 -> P50 -> Deterministic
+        if (simulation?.p10_value && simulation.p10_value.length > 0) {
+            minBase = simulation.p10_value.map(v => Number(v));
+        } else if (simulation?.p50_value && simulation.p50_value.length > 0) {
+            minBase = simulation.p50_value.map(v => Number(v));
+        } else {
+            minBase = deterministicValues;
+        }
+
+        // Slice(1) to ignore Month 0, Filter > 1 for Log Scale safety
+        const valid = minBase.slice(1).filter(v => v > 1);
+        
+        if (valid.length > 0) {
+            const rawMin = Math.min(...valid);
+            minVal = Math.pow(10, Math.floor(Math.log10(rawMin)));
+        } else {
+            minVal = 1; // Default floor for log scale
+        }
+    } else {
+        // Linear Scale: Use absolute min
+        minVal = allValues.length > 0 ? Math.min(...allValues) : 0;
+    }
 
     return {
-        globalMin: Math.min(...values),
-        globalMax: Math.max(...values)
+        globalMin: minVal,
+        globalMax: maxVal
     };
-  }, [deterministicValues, deterministicInvestment, singlePathValues, singlePathInvestment, fanData]);
+  }, [deterministicValues, deterministicInvestment, singlePathValues, singlePathInvestment, fanData, simulation, isLogScale]);
 
   // 6. Dynamic Table Data & Pool Values
   const activeTableData = useMemo(() => {
@@ -501,8 +531,8 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
                                       investmentValues={deterministicInvestment}
                                       currencySymbol={currency}
                                       isLog={isLogScale}
-                                      minY={globalMin}
-                                      maxY={globalMax}
+                                      yMin={globalMin}
+                                      yMax={globalMax}
                                   />
                               </div>
                           </Card>
@@ -548,8 +578,8 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
                                       isLog={isLogScale}
                                       targetProbability={likelihoodData}
                                       targetMultiple={targetMultiple}
-                                      minY={globalMin}
-                                      maxY={globalMax}
+                                      yMin={globalMin}
+                                      yMax={globalMax}
                                   />
                               </div>
                           </Card>
@@ -601,8 +631,8 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
                                             poolValues={poolValues}
                                             currencySymbol={currency}
                                             isLog={isLogScale}
-                                            minY={globalMin}
-                                            maxY={globalMax}
+                                            yMin={globalMin}
+                                            yMax={globalMax}
                                         />
                                     </div>
                             </Card>
@@ -632,8 +662,8 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
                                             targetMultiple={targetMultiple}
                                             currencySymbol={currency}
                                             isLog={isLogScale}
-                                            minY={globalMin}
-                                            maxY={globalMax}
+                                            yMin={globalMin}
+                                            yMax={globalMax}
                                         />
                                     </div>
                             </Card>

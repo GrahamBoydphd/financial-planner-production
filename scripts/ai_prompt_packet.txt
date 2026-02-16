@@ -160,518 +160,134 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: UI FIX - Remove Duplicate Description.
-The description is currently appearing twice: once inside the "TemplateCard" (left col) and once in the new text block (right col).
-We need to hide it in the "TemplateCard" when used on this dashboard.
+CONTEXT: UI TWEAK - Increase Logo Size.
+The user wants "logo.png" to appear 50% bigger.
+It is likely located in "frontend/components/Layout.tsx" (Sidebar).
 
-ACTION:
-1. UPDATE "frontend/components/TemplateCard.tsx":
-   - Update interface to accept `showDescription?: boolean`.
-   - Default it to `true` in the function arguments.
-   - Wrap the description rendering block (likely `{template.description}` or a `<p>` tag) with `{showDescription && (...)}`.
+OBJECTIVE:
+Find the <img> tag for "logo.png" in "frontend/components/Layout.tsx" and increase its width/height classes.
 
-2. UPDATE "frontend/app/page.tsx":
-   - In the `activeTab === "templates"` loop:
-   - Pass `showDescription={false}` to the `<TemplateCard ... />` component.
+INSTRUCTIONS:
+1. READ "frontend/components/Layout.tsx".
+2. LOCATE the `<img src="/logo.png" ... />`.
+3. ADJUST the sizing classes:
+   - If it is `w-10` or `w-12`, bump it up (e.g., `w-16` or `w-20`).
+   - If it has a pixel width, multiply by 1.5.
+   - Ensure the container allows the larger size (check for `overflow-hidden` or fixed sidebar width constraints).
 
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/components/TemplateCard.tsx ---
-import React from 'react';
-import { Template } from '@/lib/api';
+--- START FILE: frontend/components/Layout.tsx ---
+"use client";
 
-interface TemplateCardProps {
-  template: Template;
-  onCopy: (id: string) => void;
-  isProcessing?: boolean;
-}
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
-const ImportIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-  </svg>
-);
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, logout } = useAuth();
+  const pathname = usePathname();
 
-const Spinner = () => (
-  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-  </svg>
-);
-
-export default function TemplateCard({ template, onCopy, isProcessing = false }: TemplateCardProps) {
-  // Logic: Handle 'fund' and 'company' types. Default to 'Fund'.
-  // We cast to any to access potential dynamic fields from backend variants
-  const t = template as any;
-  const rawType = t.type || 'Fund';
-  const isFund = rawType.toLowerCase() === 'fund';
-  
-  // Badge styling based on type
-  const typeBadgeClasses = isFund 
-    ? 'bg-blue-100 text-blue-800' 
-    : 'bg-purple-100 text-purple-800';
-
-  // Fallback name resolution: name -> fund_name -> company_name -> Untitled
-  const displayName = template.name || t.fund_name || t.company_name || 'Untitled Template';
-
-  // Dynamic button text
-  const importText = isFund ? 'Import Fund' : 'Import Company';
+  // Helper to determine if a tab is active
+  const isActive = (path: string) => {
+    if (path === '/') return pathname === '/';
+    return pathname?.startsWith(path);
+  };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col h-full overflow-hidden">
-      
-      {/* Header/Top: Badges */}
-      <div className="px-5 pt-5 pb-2 flex justify-between items-start">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeBadgeClasses}`}>
-          {rawType}
-        </span>
-        
-        <div className="flex gap-2">
-          {template.industry && (
-             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-               {template.industry}
-             </span>
-          )}
-          {template.complexity && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
-              {template.complexity}
-            </span>
-          )}
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Master Banner / Navigation */}
+      <nav className="bg-gray-200 border-b border-gray-300">
+        <div className="max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              {/* Logo Section - Vertically Centered */}
+              <div className="flex-shrink-0 flex items-center mr-8">
+                <Link href="/" className="flex items-center font-bold text-xl text-blue-600">
+                  <img src="/logo.png" alt="Evolutesix Logo" className="h-8 w-auto mr-3" />
+                  Financial Planner
+                </Link>
+              </div>
+
+              {/* Navigation Tabs - Aligned to Bottom for Browser-Tab look */}
+              <div className="hidden sm:flex sm:space-x-2 items-end">
+                <Link
+                  href="/"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/structure"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/structure') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Structure (Funds & Companies)
+                </Link>
+                <Link
+                  href="/help"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/help') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Guide & Help
+                </Link>
+                <Link
+                  href="/improve"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors duration-200 ${
+                    isActive('/improve') 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  How can we improve?
+                </Link>
+              </div>
+            </div>
+
+            {/* User Section - Vertically Centered */}
+            <div className="flex items-center">
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-700">
+                    Welcome, {user?.username}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">Not Logged In</span>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Middle: Content */}
-      <div className="px-5 flex-1 flex flex-col">
-        <h3 className="text-lg font-bold text-gray-900 mt-2">
-          {displayName}
-        </h3>
-        
-        <p className="text-sm text-gray-500 mt-2">
-          {template.description}
-        </p>
-      </div>
-
-      {/* Bottom: Action */}
-      <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-        <button
-          onClick={() => onCopy(template.id)}
-          disabled={isProcessing}
-          title={`Import this ${rawType.toLowerCase()}`}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-        >
-          {isProcessing ? <Spinner /> : <ImportIcon />}
-          <span>{isProcessing ? 'Importing...' : importText}</span>
-        </button>
-      </div>
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-[92rem] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
     </div>
   );
 }
---- END FILE: frontend/components/TemplateCard.tsx ---
-
---- START FILE: frontend/app/page.tsx ---
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Layout from '@/components/Layout';
-import Card from '@/components/ui/Card';
-import DeleteButton from '@/components/ui/DeleteButton';
-import TemplateCard from '@/components/TemplateCard';
-import { api, Fund, Company, Template } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
-import { Copy, Trash2, MoveRight, ChevronDown, ChevronUp } from 'lucide-react';
-import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
-import TruncatedText from '@/components/forms/shared/TruncatedText';
-
-// --- ICONS ---
-const CopyIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5" />
-  </svg>
-);
-
-const Spinner = () => (
-  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-  </svg>
-);
-
-export default function Dashboard() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const router = useRouter();
-
-  // State
-  const [activeTab, setActiveTab] = useState<'funds' | 'templates'>('funds');
-  const [funds, setFunds] = useState<Fund[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [loadingOp, setLoadingOp] = useState<string | null>(null);
-  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
-  const [expandedFunds, setExpandedFunds] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  const fetchData = async () => {
-    try {
-      const [fundsData, companiesData, templatesData] = await Promise.all([
-        api.getFunds(),
-        api.getCompanies(),
-        api.getTemplates()
-      ]);
-      setFunds(fundsData);
-      setCompanies(companiesData);
-      setTemplates(templatesData);
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-    } finally {
-      setDataLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    }
-  }, [isAuthenticated]);
-
-  // --- HANDLERS ---
-
-  const handleDeleteFund = async (fundId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Are you sure you want to delete this fund?')) return;
-    setLoadingOp(fundId);
-    try {
-      await api.deleteFund(fundId);
-      await fetchData(); // Refresh list
-    } catch (error) {
-      alert('Could not delete fund. It might contain companies.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleDuplicateFund = async (fundId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Duplicate this fund and all its contents?')) return;
-    setLoadingOp(fundId);
-    try {
-      await api.duplicateFund(fundId);
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to duplicate fund.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleImportTemplate = async (templateId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Import this template as a new fund?')) return;
-    setLoadingOp(templateId);
-    try {
-      await api.importTemplate(templateId);
-      setActiveTab('funds');
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to import template.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleDuplicateCompany = async (companyId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Duplicate this company?')) return;
-    setLoadingOp(companyId);
-    try {
-      await api.duplicateCompany(companyId);
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to duplicate company.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const handleDeleteCompany = async (companyId: string) => {
-    if (loadingOp) return;
-    if (!confirm('Are you sure you want to delete this company?')) return;
-    setLoadingOp(companyId);
-    try {
-      await api.deleteCompany(companyId);
-      await fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to delete company.');
-    } finally {
-      setLoadingOp(null);
-    }
-  };
-
-  const toggleFund = (fundId: string) => {
-    setExpandedFunds(prev => ({
-      ...prev,
-      [fundId]: !prev[fundId]
-    }));
-  };
-
-  if (authLoading || !isAuthenticated || dataLoading) return <Layout>Loading...</Layout>;
-
-  return (
-    <Layout>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex gap-4">
-          <Link 
-            href="/structure" 
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
-          >
-            New Fund
-          </Link>
-          <Link 
-            href="/structure" 
-            className="bg-indigo-600 text-white border border-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors text-sm font-medium"
-          >
-            New Company
-          </Link>
-        </div>
-      </div>
-
-      <p className="text-s text-gray-400 font-mono mb-6">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p>
-
-      {/* TABS */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
-            activeTab === 'funds'
-              ? 'border-b-2 border-indigo-600 text-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('funds')}
-        >
-          My Funds
-        </button>
-        <button
-          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
-            activeTab === 'templates'
-              ? 'border-b-2 border-indigo-600 text-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('templates')}
-        >
-          Templates Library
-        </button>
-      </div>
-
-      {/* CONTENT */}
-      {activeTab === 'funds' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {funds.map((fund) => {
-            // Find companies belonging to this fund
-            const fundCompanies = companies.filter(c => c.fund_id === fund.id);
-            const isProcessing = loadingOp === fund.id;
-
-            return (
-              <div key={fund.id} className="flex flex-col h-full">
-                <Card className="flex-1 flex flex-col border-t-4 border-t-indigo-500 hover:shadow-lg transition-shadow">
-                  
-                  {/* FUND HEADER */}
-                  <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
-                          {fund.fund_name}
-                        </Link>
-                        <span className="text-gray-400 text-sm">[{fund.currency_code || 'USD'}]</span>
-                      </h2>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isProcessing ? (
-                        <div className="p-1 text-indigo-600"><Spinner /></div>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={() => handleDuplicateFund(fund.id)}
-                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            title="Duplicate Fund"
-                            disabled={!!loadingOp}
-                          >
-                            <CopyIcon />
-                          </button>
-                          <DeleteButton onDelete={() => handleDeleteFund(fund.id)} disabled={!!loadingOp} />
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* FUND DESCRIPTION */}
-                  <div className="mb-4 px-1">
-                    <TruncatedText text={fund.description} limit={10} />
-                  </div>
-
-                  {/* COMPANIES LIST */}
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-gray-400">
-                        Portfolio Companies ({fundCompanies.length} companies)
-                      </h3>
-                      <button
-                        onClick={() => toggleFund(fund.id)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
-                      >
-                        {expandedFunds[fund.id] ? (
-                          <>Hide <ChevronUp className="w-3 h-3" /></>
-                        ) : (
-                          <>Show <ChevronDown className="w-3 h-3" /></>
-                        )}
-                      </button>
-                    </div>
-                    
-                    {expandedFunds[fund.id] && (
-                      fundCompanies.length > 0 ? (
-                        <ul className="space-y-2">
-                          {fundCompanies.map((company) => (
-                            <li key={company.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
-                              <Link 
-                                href={`/company/${company.id}`}
-                                className="font-medium text-gray-700 group-hover:text-indigo-700 flex-1"
-                              >
-                                {company.company_name}
-                              </Link>
-                              
-                              <div className="flex items-center gap-1">
-                                <button 
-                                    onClick={() => handleDuplicateCompany(company.id)}
-                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                    title="Duplicate"
-                                    disabled={!!loadingOp}
-                                >
-                                    <Copy className="w-4 h-4" />
-                                </button>
-                                <button 
-                                    onClick={() => setMovingCompanyId(company.id)}
-                                    className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                                    title="Move"
-                                    disabled={!!loadingOp}
-                                >
-                                    <MoveRight className="w-4 h-4" />
-                                </button>
-                                <button 
-                                    onClick={() => handleDeleteCompany(company.id)}
-                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                    title="Delete"
-                                    disabled={!!loadingOp}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                                <Link href={`/company/${company.id}`} className="text-gray-400 group-hover:text-indigo-400 text-sm ml-2">
-                                    View
-                                </Link>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
-                          No companies yet.
-                        </div>
-                      )
-                    )}
-                  </div>
-
-                  {/* ADD COMPANY LINK */}
-                  <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                    <Link 
-                      href="/structure" 
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
-                    >
-                      <span className="mr-1">+</span> Add Company
-                    </Link>
-                  </div>
-                </Card>
-              </div>
-            );
-          })}
-          
-          {funds.length === 0 && (
-            <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-              <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
-              <p className="text-gray-400 mt-2">Get started by creating your first fund or importing a template.</p>
-              <div className="mt-6 flex justify-center gap-4">
-                 <Link 
-                    href="/structure" 
-                    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
-                  >
-                    Create Fund
-                  </Link>
-                  <button
-                    onClick={() => setActiveTab('templates')}
-                    className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded hover:bg-indigo-50 transition-colors"
-                  >
-                    Browse Templates
-                  </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        // TEMPLATES VIEW
-        <div className="flex flex-col gap-4 max-w-5xl mx-auto">
-          {[...templates]
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-            .map((template) => (
-            <div key={template.id} className="flex flex-col md:flex-row bg-white rounded-lg shadow-sm border p-0 overflow-hidden mb-4">
-              {/* Left Col: Card Info */}
-              <div className="w-full md:w-1/3 border-r bg-gray-50 p-4 flex flex-col justify-between">
-                <TemplateCard 
-                  template={template}
-                  onCopy={handleImportTemplate}
-                  isProcessing={loadingOp === template.id}
-                />
-              </div>
-              {/* Right Col: Description */}
-              <div className="w-full md:w-2/3 p-6 flex flex-col justify-center">
-                <div className="text-gray-700 text-sm text-justify leading-relaxed whitespace-normal">
-                  {template.description}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {templates.length === 0 && (
-             <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-              <h3 className="text-xl font-medium text-gray-500">No templates available</h3>
-              <p className="text-gray-400 mt-2">Check back later for public templates.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Move Company Modal */}
-      {movingCompanyId && (
-        <MoveCompanyModal 
-          isOpen={!!movingCompanyId}
-          onClose={() => setMovingCompanyId(null)}
-          onSuccess={fetchData}
-          companyId={movingCompanyId}
-          currentFundId={companies.find(c => c.id === movingCompanyId)?.fund_id || ''}
-        />
-      )}
-    </Layout>
-  );
-}
---- END FILE: frontend/app/page.tsx ---
+--- END FILE: frontend/components/Layout.tsx ---
 
 </source_code>

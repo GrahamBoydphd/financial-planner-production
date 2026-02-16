@@ -485,6 +485,82 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
        };
   }) : [];
 
+  // --- CALCULATE GLOBAL MIN/MAX FOR UNIFIED SCALING ---
+  let globalMin = 1;
+  let globalMax = 100;
+  
+  if (projection) {
+      // 1. Calculate Max (Scan everything)
+      const allValues: number[] = [];
+      const add = (v: any) => {
+          const n = Number(v);
+          if (!isNaN(n)) allValues.push(n);
+      };
+      
+      projection.deterministic_data?.forEach((d: any) => { add(d.cash_balance); add(d.total_value); });
+      projection.single_run_data?.forEach((d: any) => { add(d.cash_balance); add(d.total_value); });
+      projection.p50_data?.forEach((d: any) => { add(d.cash_balance); });
+      projection.p0_value?.forEach(add);
+      projection.p100_value?.forEach(add);
+      
+      if (allValues.length > 0) {
+          globalMax = Math.max(...allValues);
+      }
+
+      // 2. Calculate Min (P10 Logic)
+      if (isLogScale) {
+          let minBase: number[] = [];
+          
+          // Try P10 Data (Object Array)
+          if (projection.p10_data && Array.isArray(projection.p10_data)) {
+              minBase = projection.p10_data.map((d: any) => Number(d.total_value ?? d.cash_balance));
+          }
+          // Try P10 Value (Scalar Array)
+          else if (projection.p10_value && Array.isArray(projection.p10_value)) {
+              minBase = projection.p10_value.map((v: any) => Number(v));
+          }
+          // Fallback P50 Data
+          else if (projection.p50_data && Array.isArray(projection.p50_data)) {
+              minBase = projection.p50_data.map((d: any) => Number(d.total_value ?? d.cash_balance));
+          }
+          // Fallback Deterministic
+          else if (projection.deterministic_data) {
+              minBase = projection.deterministic_data.map((d: any) => Number(d.total_value ?? d.cash_balance));
+          }
+
+          // Slice(1) to ignore Month 0, Filter > 1 for Log Scale safety
+          const validMin = minBase.slice(1).filter(v => v > 1);
+          
+          if (validMin.length > 0) {
+              const rawMin = Math.min(...validMin);
+              // Smart Min: Power of 10 floor
+              globalMin = Math.pow(10, Math.floor(Math.log10(rawMin)));
+          } else {
+              globalMin = 1; // Default
+          }
+      } else {
+          // Linear Scale: Use absolute min
+          globalMin = allValues.length > 0 ? Math.min(...allValues) : 0;
+          
+          // Respect credit limit floor if applicable
+          const limit = Number(creditLimit);
+          if (limit > 0) {
+              const floor = -(limit * 1.5);
+              if (globalMin > floor) globalMin = floor;
+          }
+      }
+  }
+  
+  const smartMin = globalMin;
+  
+  // Calculate Smart Max (add padding)
+  let smartMax = globalMax > 0 ? globalMax * 1.2 : 100;
+  if (smartMax > 0) {
+      const mag = Math.pow(10, Math.floor(Math.log10(smartMax)));
+      smartMax = Math.ceil(smartMax / (mag/2)) * (mag/2);
+  }
+  // ----------------------------------------------------
+
   if (!plan) return <Layout>Loading...</Layout>;
 
   // --- ERROR BLOCK ---
@@ -651,6 +727,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     mode="standard" 
                     creditLimit={Number(creditLimit)}
                     currencySymbol={`${currency} `}
+                    yMin={smartMin}
+                    yMax={smartMax}
                   />
                 </div>
               </Card>
@@ -692,6 +770,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                     mode="single" 
                     creditLimit={Number(creditLimit)}
                     currencySymbol={`${currency} `}
+                    yMin={smartMin}
+                    yMax={smartMax}
                   />
                 </div>
               </Card>
@@ -711,6 +791,8 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                       mode={simMode} 
                       creditLimit={Number(creditLimit)}
                       currencySymbol={`${currency} `}
+                      yMin={smartMin}
+                      yMax={smartMax}
                     />
                   </div>
                 </Card>

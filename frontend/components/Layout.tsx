@@ -24,7 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {/* Logo Section - Vertically Centered */}
               <div className="flex-shrink-0 flex items-center mr-8">
                 <Link href="/" className="flex items-center font-bold text-xl text-blue-600">
-                  <img src="/logo.png" alt="Evolutesix Logo" className="h-8 w-auto mr-3" />
+                  <img src="/logo.png" alt="Evolutesix Logo" className="h-16 w-auto mr-3" />
                   Financial Planner
                 </Link>
               </div>

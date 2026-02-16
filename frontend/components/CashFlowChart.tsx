@@ -47,6 +47,26 @@ function createDiagonalPattern(color: string) {
   return c.createPattern(shape, 'repeat') || color;
 }
 
+// --- Helper: Smart Min Calculation ---
+function getSmartMin(minVal: number, isLog: boolean) {
+  if (isLog) {
+    if (minVal <= 0) return 1; // Log scale fallback
+    return Math.pow(10, Math.floor(Math.log10(minVal)));
+  }
+  return minVal < 0 ? minVal * 1.1 : minVal * 0.9;
+}
+
+// --- Helper: Nice Log Max Calculation ---
+function getNiceLogMax(maxVal: number) {
+  if (maxVal <= 0) return 10;
+  const exponent = Math.floor(Math.log10(maxVal));
+  const fraction = maxVal / Math.pow(10, exponent);
+  
+  if (fraction <= 1) return 1 * Math.pow(10, exponent);
+  if (fraction <= 5) return 5 * Math.pow(10, exponent);
+  return 10 * Math.pow(10, exponent);
+}
+
 interface Props {
   data: SimulationResult;
   singleRunData?: MonthlyData[];
@@ -54,14 +74,25 @@ interface Props {
   mode: 'single' | 'monte_carlo' | 'standard';
   creditLimit?: number;
   currencySymbol?: string; 
+  yMin?: number;
+  yMax?: number;
 }
 
-export default function CashFlowChart({ data, singleRunData, isLog = false, mode, creditLimit = 0, currencySymbol = '$' }: Props) {
+export default function CashFlowChart({ 
+  data, 
+  singleRunData, 
+  isLog = false, 
+  mode, 
+  creditLimit = 0, 
+  currencySymbol = '$',
+  yMin,
+  yMax
+}: Props) {
   const linearFloor = creditLimit > 0 ? -(creditLimit * 1.5) : 0;
   
-  // --- 0. CALCULATE GLOBAL MIN/MAX (Unified Scale) ---
-  let globalMin = 0;
-  let globalMax = 0;
+  // --- 0. CALCULATE INTERNAL MIN/MAX (Fallback) ---
+  let internalMin = 0;
+  let internalMax = 0;
   const allValues: number[] = [];
 
   const addVal = (v: any) => {
@@ -74,7 +105,6 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
 
   // Scan Deterministic Data
   if (data.deterministic_data) {
-    // Skip Month 0 (Initial State) for scaling
     data.deterministic_data.slice(1).forEach(d => {
       addVal(d.total_value);
       addVal(d.cash_balance);
@@ -84,10 +114,9 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
   }
 
-  // Scan Single Run Data (from prop or data object)
+  // Scan Single Run Data
   const singleSource = singleRunData || data.single_run_data;
   if (singleSource) {
-    // Skip Month 0
     singleSource.slice(1).forEach(d => {
       addVal(d.total_value);
       addVal(d.cash_balance);
@@ -95,72 +124,62 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     });
   }
 
-  // Scan Monte Carlo Data (P100/P0 cover the full range)
-  // Skip Month 0
+  // Scan Monte Carlo Data
   if (data.p100_value) data.p100_value.slice(1).forEach(addVal);
   if (data.p0_value) data.p0_value.slice(1).forEach(addVal);
-  
-  // Fallback scan for P90/P10 if P100/P0 missing
-  // Skip Month 0
   if (data.p90_value) data.p90_value.slice(1).forEach(addVal);
   if (data.p10_value) data.p10_value.slice(1).forEach(addVal);
-
-  // Scan P50 Data for Net Pool (since P100/P0 might not cover it)
-  if (data.p50_data) {
-    // Skip Month 0
-    data.p50_data.slice(1).forEach(d => addVal(getNetPool(d)));
-  }
+  if (data.p50_data) data.p50_data.slice(1).forEach(d => addVal(getNetPool(d)));
 
   if (allValues.length > 0) {
-    globalMin = Math.min(...allValues);
-    globalMax = Math.max(...allValues);
+    internalMin = Math.min(...allValues);
+    internalMax = Math.max(...allValues);
   }
 
-  // Determine Y-Axis Min
-  // If linear, we respect the credit limit floor, but expand if data goes lower (Fantasy Debt)
-  let yAxisMin = linearFloor;
-  if (!isLog) {
-    if (globalMin < linearFloor) {
-      yAxisMin = globalMin * 1.1; // Add 10% padding below lowest data point
-    }
+  // --- DETERMINE FINAL AXIS BOUNDS ---
+  let axisMin = 0;
+  let axisMax = 100;
+
+  // Min Logic
+  if (yMin !== undefined) {
+    axisMin = yMin;
   } else {
-    // Smart Scaling Logic
-    let relevantLow = Infinity;
-
-    if (mode === 'monte_carlo' && data.p10_value) {
-        // Scan p10_value starting from index 1 (ignore Month 0)
-        const valid = data.p10_value.slice(1).map(v => Number(v)).filter(n => !isNaN(n));
-        if (valid.length > 0) {
-            relevantLow = Math.min(...valid);
-        }
+    // Internal Calculation
+    if (!isLog) {
+      // Linear: Respect credit limit floor but expand if data is lower
+      let baseMin = internalMin;
+      if (baseMin > linearFloor) baseMin = linearFloor;
+      axisMin = getSmartMin(baseMin, false);
     } else {
-        // Standard or Single mode
-        const source = singleRunData || data.single_run_data || data.deterministic_data;
-        if (source) {
-            // Map to cash_balance and scan from index 1
-            const valid = source.slice(1).map(d => Number(d.cash_balance)).filter(n => !isNaN(n));
-            if (valid.length > 0) {
-                relevantLow = Math.min(...valid);
-            }
-        }
+      // Log: Find lowest positive value
+      let relevantLow = Infinity;
+      const positives = allValues.filter(v => v > 0);
+      if (positives.length > 0) {
+        relevantLow = Math.min(...positives);
+      } else {
+        relevantLow = 100; // Default
+      }
+      axisMin = getSmartMin(relevantLow, true);
     }
-
-    if (relevantLow === Infinity) relevantLow = 100;
-    yAxisMin = Math.max(100, relevantLow * 0.5);
   }
 
-  // Determine Y-Axis Max
-  // Add padding (e.g. 20%)
-  let yAxisMax = globalMax > 0 ? globalMax * 1.2 : 100;
-  
-  // Snap to grid logic for Max
-  if (yAxisMax > 0) {
-    const magnitude = Math.pow(10, Math.floor(Math.log10(yAxisMax)));
-    const niceStep = magnitude / 2; 
-    yAxisMax = Math.ceil(yAxisMax / niceStep) * niceStep;
+  // Max Logic
+  if (yMax !== undefined) {
+    axisMax = yMax;
+  } else {
+    if (isLog) {
+      axisMax = getNiceLogMax(internalMax);
+    } else {
+      axisMax = internalMax > 0 ? internalMax * 1.2 : 100;
+      if (axisMax > 0) {
+        const magnitude = Math.pow(10, Math.floor(Math.log10(axisMax)));
+        const niceStep = magnitude / 2; 
+        axisMax = Math.ceil(axisMax / niceStep) * niceStep;
+      }
+    }
   }
 
-  // --- END GLOBAL SCALE CALCULATION ---
+  // --- END SCALE CALCULATION ---
 
   const labels = data.labels;
   const datasets: any[] = [];
@@ -179,11 +198,10 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   }
 
   // --- 2. The "Red Line" (Cumulative Investment + Debt) ---
-  // UPDATED: Use sourceData so it reflects the current scenario (Single/Monte Carlo/Standard)
   if (sourceData.length > 0) {
       const rawInvestmentData = sourceData.map(d => Number(d.total_exposure || d.cumulative_external_capital || 0));
       const investmentData = rawInvestmentData.map(val => {
-          return (isLog && val <= 100) ? 100 : val;
+          return (isLog && val <= axisMin) ? axisMin : val;
       });
 
       datasets.push({
@@ -201,13 +219,12 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   }
 
   // --- 3. Deterministic / Single Run Mode ---
-  // Only render if sourceData is present
   if (sourceData.length > 0 && (mode === 'standard' || mode === 'single')) {
     
     // A. Net Value (Blue Solid)
     const rawValueData = sourceData.map(d => Number(d.total_value));
     const valueData = rawValueData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
+        return (isLog && val <= axisMin) ? axisMin : val;
     });
     datasets.push({
       label: 'Net Value (Cash+Divs)',
@@ -225,7 +242,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     // B. Cash on Hand (Teal Solid)
     const rawCashData = sourceData.map(d => Number(d.cash_balance));
     const cashData = rawCashData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
+        return (isLog && val <= axisMin) ? axisMin : val;
     });
     datasets.push({
       label: 'Cash on Hand',
@@ -243,7 +260,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     // C. Cumulative Dividends (Gold Solid)
     const rawDivData = sourceData.map(d => Number(d.cumulative_dividends));
     const divData = rawDivData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
+        return (isLog && val <= axisMin) ? axisMin : val;
     });
     datasets.push({
       label: 'Cum. Dividends',
@@ -261,7 +278,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     // D. Monthly Revenue (Green Dashed)
     const rawRevData = sourceData.map(d => Number(d.revenue));
     const revData = rawRevData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
+        return (isLog && val <= axisMin) ? axisMin : val;
     });
     datasets.push({
       label: 'Monthly Revenue',
@@ -280,7 +297,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     // E. Monthly Costs (Red Dashed)
     const rawCostData = sourceData.map(d => Number(d.cogs) + Number(d.opex) + Number(d.interest_expense));
     const costData = rawCostData.map(val => {
-        return (isLog && val <= 100) ? 100 : val;
+        return (isLog && val <= axisMin) ? axisMin : val;
     });
     datasets.push({
       label: 'Monthly Costs',
@@ -296,15 +313,15 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
       order: 6,
     });
 
-    // F. DEBT VISUALIZATION (Stacked Area Logic)
+    // F. DEBT VISUALIZATION
     const rawDebtData = sourceData.map(d => {
         const cash = Number(d.cash_balance);
         return cash < 0 ? Math.abs(cash) : 0;
     });
 
-    // 1. Covered Overdraft (Solid Purple)
+    // 1. Covered Overdraft
     const debtCoveredRaw = rawDebtData.map(debt => Math.min(debt, creditLimit));
-    const debtCovered = debtCoveredRaw.map(v => (isLog && v <= 100) ? 100 : v);
+    const debtCovered = debtCoveredRaw.map(v => (isLog && v <= axisMin) ? axisMin : v);
 
     datasets.push({
       label: 'Covered Overdraft',
@@ -320,9 +337,9 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
       order: 30, 
     });
 
-    // 2. Fantasy Debt (Hatched Purple)
+    // 2. Fantasy Debt
     const debtFantasyRaw = rawDebtData; 
-    const debtFantasy = debtFantasyRaw.map(v => (isLog && v <= 100) ? 100 : v);
+    const debtFantasy = debtFantasyRaw.map(v => (isLog && v <= axisMin) ? axisMin : v);
 
     datasets.push({
       label: 'Fantasy Debt (Excess)',
@@ -340,10 +357,8 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   }
 
   // --- 4. Monte Carlo Mode ---
-  // Check for p50_data (preferred) or p50_value (legacy)
   if (mode === 'monte_carlo' && (data.p50_data || data.p50_value)) {
     
-    // Extract P50 values for clamping calculations
     let p50Vals: number[] = [];
     if (data.p50_value) {
         p50Vals = data.p50_value.map(v => Number(v));
@@ -352,15 +367,12 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
     }
 
     // CALCULATE CLAMPING FLOORS
-    // New Logic: Floor based on credit limit to prevent extreme negative scaling
-    const logFloor = 100;
-
     const clamp = (vals: (number | string)[] | undefined) => {
         if (!vals) return [];
         return vals.map(v => {
             const num = Number(v);
             if (isLog) {
-                return num < logFloor ? logFloor : num;
+                return num < axisMin ? axisMin : num;
             } else {
                 return num < linearFloor ? linearFloor : num;
             }
@@ -475,20 +487,17 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
   }
 
   // --- 5. Net Pool Flow (Monthly) ---
-  // Replaces Accumulated Pool
   if (sourceData.length > 0) {
       const rawPoolData = sourceData.map(d => {
-          // Calculate Net Pool = Received - Contribution
           const received = Number((d as any).pool_received || 0);
           const contribution = Number((d as any).pool_contribution || 0);
           return received - contribution;
       });
 
       const poolData = rawPoolData.map(val => {
-          return (isLog && val <= 100) ? 100 : val;
+          return (isLog && val <= axisMin) ? axisMin : val;
       });
       
-      // Only render if there is non-zero data
       const hasPool = rawPoolData.some(v => Math.abs(v) > 1);
 
       if (hasPool) {
@@ -497,7 +506,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
               data: poolData,
               rawValues: rawPoolData,
               borderColor: 'rgb(168, 85, 247)', // Purple-500
-              backgroundColor: 'rgba(168, 85, 247, 0.2)', // Light purple fill
+              backgroundColor: 'rgba(168, 85, 247, 0.2)', 
               borderWidth: 2,
               pointRadius: 0,
               tension: 0.1,
@@ -536,39 +545,28 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
           display: true, 
           text: `Cash Balance (${currencySymbol})${isLog ? ' - Log Scale' : ''}` 
         },
-        min: yAxisMin,
-        max: yAxisMax,
+        min: axisMin,
+        max: axisMax,
         ticks: {
           callback: (value: any) => {
-            return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
-          }
-        },
-        afterBuildTicks: (axis: any) => {
-          if (!isLog) return;
-          
-          const min = axis.min;
-          const max = axis.max;
-          if (min <= 0 || max <= 0) return;
+            const label = currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+            
+            if (!isLog) return label;
 
-          const logMin = Math.log10(min);
-          const logMax = Math.log10(max);
-          const range = logMax - logMin;
-
-          axis.ticks = axis.ticks.filter((t: any) => {
-            const val = t.value;
-            if (val <= 0) return false;
-
+            const val = Number(value);
             const log10 = Math.log10(val);
-            const power = Math.floor(log10);
-            const base = Math.pow(10, power);
-            const significand = Math.round(val / base);
+            const isPowerOf10 = Math.abs(log10 - Math.round(log10)) < 1e-6;
+            const log5 = Math.log10(val / 5);
+            const isPowerOf5 = Math.abs(log5 - Math.round(log5)) < 1e-6;
 
-            if (range > 5) {
-              return significand === 1;
+            const decades = Math.log10(axisMax) - Math.log10(axisMin);
+
+            if (decades > 5) {
+              return isPowerOf10 ? label : null;
             } else {
-              return significand === 1 || significand === 5;
+              return (isPowerOf10 || isPowerOf5) ? label : null;
             }
-          });
+          }
         }
       },
       y1: {
@@ -582,7 +580,7 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
         min: 0,
         max: 1,
         grid: {
-          drawOnChartArea: false, // keep main grid only
+          drawOnChartArea: false, 
         },
         ticks: {
           callback: (value: any) => {
@@ -605,7 +603,6 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
         callbacks: {
           label: function(context: any) {
             const labelStr = context.dataset.label || '';
-//            if (labelStr.includes('Top Edge')) return null;
             
             let value = context.parsed.y;
             if (context.dataset.rawValues && context.dataset.rawValues[context.dataIndex] !== undefined) {
@@ -614,7 +611,6 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
 
             const fmt = (v: number) => currencySymbol + Number(v).toLocaleString(undefined, { maximumSignificantDigits: 3 });
 
-            // --- NEW: Strict Debt Handlers ---
             if (labelStr === 'Fantasy Debt (Excess)') {
                 const excess = Math.max(0, value - creditLimit);
                 return 'Fantasy (Insolvent): ' + fmt(excess);
@@ -622,9 +618,6 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
             if (labelStr === 'Covered Overdraft') {
                 return 'Covered (Credit): ' + fmt(value);
             }
-            // ---------------------------------
-
-            // --- NEW: Monthly Costs Breakdown ---
             if (labelStr === 'Monthly Costs') {
                 const item = sourceData[context.dataIndex];
                 if (item) {
@@ -636,37 +629,25 @@ export default function CashFlowChart({ data, singleRunData, isLog = false, mode
                     ];
                 }
             }
-            // ------------------------------------
-
-            // --- NEW: Net Pool Flow ---
             if (labelStr === 'Net Pool Flow (Monthly)') {
                 return 'Net Pool: ' + (value >= 0 ? '+' : '') + fmt(value);
             }
-            // --------------------------
-
-            // Handle Survival Rate %
             if (context.dataset.yAxisID === 'y1') {
                 return labelStr + ': ' + (Number(value) * 100).toFixed(1) + '%';
             }
-
-            // --- NEW: Negative Cash Logic ---
             if (labelStr === 'Cash on Hand' && value < 0) {
                 const deficit = Math.abs(value);
                 const coveredDebt = Math.min(deficit, creditLimit);
                 const fantasyDebt = Math.max(0, deficit - creditLimit);
 
                 const lines = [];
-                // Line 1: Original Total
                 lines.push(`${labelStr}: ${fmt(value)}`);
-                // Line 2: Covered
                 lines.push(`Covered (Credit): ${fmt(coveredDebt)}`);
-                // Line 3: Fantasy (if any)
                 if (fantasyDebt > 0) {
                     lines.push(`Fantasy (Insolvent): ${fmt(fantasyDebt)}`);
                 }
                 return lines;
             }
-            // --------------------------------
 
             let finalLabel = labelStr;
             if (finalLabel) finalLabel += ': ';

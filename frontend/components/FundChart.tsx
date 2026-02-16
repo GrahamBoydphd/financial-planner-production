@@ -28,6 +28,26 @@ ChartJS.register(
   Filler
 );
 
+// --- Helper: Smart Min Calculation ---
+function getSmartMin(minVal: number, isLog: boolean) {
+  if (isLog) {
+    if (minVal <= 0) return 1; // Log scale fallback
+    return Math.pow(10, Math.floor(Math.log10(minVal)));
+  }
+  return minVal < 0 ? minVal * 1.1 : minVal * 0.9;
+}
+
+// --- Helper: Nice Log Max Calculation ---
+function getNiceLogMax(maxVal: number) {
+  if (maxVal <= 0) return 10;
+  const exponent = Math.floor(Math.log10(maxVal));
+  const fraction = maxVal / Math.pow(10, exponent);
+  
+  if (fraction <= 1) return 1 * Math.pow(10, exponent);
+  if (fraction <= 5) return 5 * Math.pow(10, exponent);
+  return 10 * Math.pow(10, exponent);
+}
+
 export interface FanData {
   p0?: number[];
   p5?: number[];
@@ -68,8 +88,8 @@ interface Props {
   targetMultiple?: number; // For label
   currencySymbol?: string;
   isLog?: boolean;
-  minY?: number;
-  maxY?: number;
+  yMin?: number; // Explicit Min Override
+  yMax?: number; // Explicit Max Override
 }
 
 export default function FundChart({
@@ -83,16 +103,67 @@ export default function FundChart({
   targetMultiple,
   currencySymbol = '$',
   isLog = false,
-  minY,
-  maxY,
+  yMin,
+  yMax,
 }: Props) {
-  const LOG_FLOOR = 1000;
+  
+  // --- Calculate Axis Limits ---
+  let yAxisMin = 0;
+  let yAxisMax = 100;
+
+  // Determine Min
+  if (yMin !== undefined) {
+      yAxisMin = yMin;
+  } else {
+      // Fallback calculation if no prop provided
+      let dataMin = 0;
+      if (mode === 'monte_carlo' && fanData?.p0) {
+          const valid = fanData.p0.slice(1).filter(v => !isLog || v > 0);
+          if (valid.length > 0) dataMin = Math.min(...valid);
+      } else if (values) {
+          const valid = values.slice(1).filter(v => !isLog || v > 0);
+          if (valid.length > 0) dataMin = Math.min(...valid);
+      }
+      
+      if (isLog && dataMin <= 0) dataMin = 100; // Default
+      yAxisMin = getSmartMin(dataMin, isLog);
+  }
+
+  // Safety: If Log Scale and min is <= 0, force it to be positive
+  if (isLog && yAxisMin <= 0) {
+      yAxisMin = getSmartMin(yAxisMin, true);
+  }
+
+  // Determine Max
+  if (yMax !== undefined) {
+      yAxisMax = yMax;
+  } else {
+      let dataMax = 0;
+      if (mode === 'monte_carlo' && fanData?.p100) {
+        dataMax = Math.max(...fanData.p100.slice(1));
+      } else if (values) {
+        dataMax = Math.max(...values.slice(1));
+      }
+      
+      if (isLog) {
+          yAxisMax = getNiceLogMax(dataMax);
+      } else {
+          yAxisMax = dataMax > 0 ? dataMax * 1.2 : 100;
+          // Snap logic
+          if (yAxisMax > 0) {
+              const magnitude = Math.pow(10, Math.floor(Math.log10(yAxisMax)));
+              const niceStep = magnitude / 2;
+              yAxisMax = Math.ceil(yAxisMax / niceStep) * niceStep;
+          }
+      }
+  }
 
   // --- Helpers ---
   const clamp = (val: number | undefined | null): number | null => {
     if (val === undefined || val === null) return null;
     if (!isLog) return val;
-    return val < LOG_FLOOR ? LOG_FLOOR : val;
+    // In log mode, clamp values below min to min (so they appear at the bottom instead of disappearing)
+    return val < yAxisMin ? yAxisMin : val;
   };
 
   const processArray = (arr: number[] | undefined) => {
@@ -103,7 +174,6 @@ export default function FundChart({
   // Helper to retrieve raw values for tooltips
   const getRaw = (datasetLabel: string, index: number): number | null => {
     if (mode === 'monte_carlo' && fanData) {
-      // Map new labels to data
       if (datasetLabel.includes('Max')) return fanData.p100?.[index] ?? null;
       if (datasetLabel.includes('Top 10%')) return fanData.p90?.[index] ?? null;
       if (datasetLabel.includes('Upper 15%')) return fanData.p75?.[index] ?? null;
@@ -126,50 +196,11 @@ export default function FundChart({
       }
       return values[index] ?? null;
     }
-    // Handle Pool Values Raw
     if (datasetLabel === 'Total Pool Contribution' && poolValues) {
         return poolValues[index] ?? null;
     }
     return null;
   };
-
-  // --- Calculate Axis Limits ---
-  let yAxisMin = 0;
-  let yAxisMax = 100;
-
-  if (maxY !== undefined) {
-      yAxisMax = maxY > 0 ? maxY * 1.2 : 100;
-      // Snap logic
-      if (yAxisMax > 0) {
-          const magnitude = Math.pow(10, Math.floor(Math.log10(yAxisMax)));
-          const niceStep = magnitude / 2;
-          yAxisMax = Math.ceil(yAxisMax / niceStep) * niceStep;
-      }
-  } else {
-      // Fallback if no global max provided
-      let dataMax = 0;
-      if (mode === 'monte_carlo' && fanData?.p100) {
-        // Ignore Month 0 for scaling
-        dataMax = Math.max(...fanData.p100.slice(1));
-      } else if (values) {
-        // Ignore Month 0 for scaling
-        dataMax = Math.max(...values.slice(1));
-      }
-      yAxisMax = dataMax > 0 ? dataMax * 1.2 : 100;
-  }
-
-  if (minY !== undefined) {
-      if (isLog) {
-          yAxisMin = LOG_FLOOR;
-      } else {
-          // If min is negative, add padding
-          if (minY < 0) {
-              yAxisMin = minY * 1.1;
-          } else {
-              yAxisMin = 0; // Default to 0 baseline
-          }
-      }
-  }
 
   const datasets: any[] = [];
 
@@ -187,7 +218,6 @@ export default function FundChart({
       fill: false,
     });
 
-    // Investment Line for Standard/Single
     if (investmentValues && investmentValues.length > 0) {
         datasets.push({
             label: 'Cumulative Investment + Debt',
@@ -222,10 +252,10 @@ export default function FundChart({
       data: processArray(fanData.p90),
       solvencyData: fanData.p90_solvent_count,
       borderColor: 'transparent',
-      backgroundColor: 'rgba(30, 58, 138, 0.6)', // Blue-900ish
+      backgroundColor: 'rgba(30, 58, 138, 0.6)', 
       pointRadius: 0,
       pointStyle: 'rect',
-      fill: '-1', // Fills to previous dataset (P100)
+      fill: '-1', 
       order: 51,
     });
 
@@ -235,7 +265,7 @@ export default function FundChart({
       data: processArray(fanData.p75),
       solvencyData: fanData.p75_solvent_count,
       borderColor: 'transparent',
-      backgroundColor: 'rgba(37, 99, 235, 0.4)', // Blue-600ish
+      backgroundColor: 'rgba(37, 99, 235, 0.4)', 
       pointRadius: 0,
       pointStyle: 'rect',
       fill: '-1',
@@ -248,7 +278,7 @@ export default function FundChart({
       data: processArray(fanData.p25),
       solvencyData: fanData.p25_solvent_count,
       borderColor: 'transparent',
-      backgroundColor: 'rgba(147, 197, 253, 0.4)', // Blue-300ish
+      backgroundColor: 'rgba(147, 197, 253, 0.4)', 
       pointRadius: 0,
       pointStyle: 'rect',
       fill: '-1',
@@ -261,7 +291,7 @@ export default function FundChart({
       data: processArray(fanData.p10),
       solvencyData: fanData.p10_solvent_count,
       borderColor: 'transparent',
-      backgroundColor: 'rgba(37, 99, 235, 0.4)', // Blue-600ish
+      backgroundColor: 'rgba(37, 99, 235, 0.4)', 
       pointRadius: 0,
       pointStyle: 'rect',
       fill: '-1',
@@ -274,7 +304,7 @@ export default function FundChart({
       data: processArray(fanData.p0),
       solvencyData: fanData.p0_solvent_count,
       borderColor: 'transparent',
-      backgroundColor: 'rgba(30, 58, 138, 0.6)', // Blue-900ish
+      backgroundColor: 'rgba(30, 58, 138, 0.6)', 
       pointRadius: 0,
       pointStyle: 'rect',
       fill: '-1',
@@ -286,7 +316,7 @@ export default function FundChart({
       label: 'Median Value (P50)',
       data: processArray(fanData.p50),
       solvencyData: fanData.p50_solvent_count || fanData.p50_data?.map(d => d.solvent_companies),
-      borderColor: 'rgb(37, 99, 235)', // Blue-600 (Matched CashFlowChart)
+      borderColor: 'rgb(37, 99, 235)', 
       borderWidth: 2,
       pointRadius: 0,
       tension: 0.1,
@@ -295,7 +325,7 @@ export default function FundChart({
       order: 40,
     });
 
-    // 8. Cumulative Investment + Debt (Updated)
+    // 8. Cumulative Investment + Debt
     let mcInvestmentData: number[] = [];
     if (fanData.p50_data) {
         mcInvestmentData = fanData.p50_data.map(d => Number(d.total_exposure ?? d.cumulative_external_capital ?? 0));
@@ -317,12 +347,12 @@ export default function FundChart({
       });
     }
 
-    // 9. Target Probability (Secondary Axis)
+    // 9. Target Probability
     if (targetProbability && targetMultiple !== undefined) {
       datasets.push({
         label: `Likelihood of ${targetMultiple}X`,
-        data: targetProbability.map(p => p * 100), // Map to 0-100 scale
-        borderColor: 'rgb(75, 85, 99)', // Gray-600 (Dashed)
+        data: targetProbability.map(p => p * 100), 
+        borderColor: 'rgb(75, 85, 99)', 
         borderWidth: 2,
         borderDash: [5, 5],
         pointRadius: 0,
@@ -335,18 +365,18 @@ export default function FundChart({
     }
   }
 
-  // --- 3. Net Pool Flow (Universal) ---
+  // --- 3. Net Pool Flow ---
   if (poolValues && poolValues.length > 0) {
       datasets.push({
           label: 'Total Pool Contribution',
           data: processArray(poolValues),
-          borderColor: 'rgb(168, 85, 247)', // Purple-500
+          borderColor: 'rgb(168, 85, 247)', 
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.1,
           fill: false,
           pointStyle: 'line',
-          order: 30, // Distinct order
+          order: 30, 
       });
   }
 
@@ -380,37 +410,24 @@ export default function FundChart({
         max: yAxisMax, 
         ticks: {
           callback: (value: any) => {
-            return currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
-          },
-        },
-        afterBuildTicks: (axis: any) => {
-          if (!isLog) return;
-          
-          const min = axis.min;
-          const max = axis.max;
-          if (min <= 0 || max <= 0) return;
+            const label = currencySymbol + Number(value).toLocaleString(undefined, { maximumSignificantDigits: 3 });
+            
+            if (!isLog) return label;
 
-          const logMin = Math.log10(min);
-          const logMax = Math.log10(max);
-          const range = logMax - logMin;
-
-          axis.ticks = axis.ticks.filter((t: any) => {
-            const val = t.value;
-            if (val <= 0) return false;
-
+            const val = Number(value);
             const log10 = Math.log10(val);
-            const power = Math.floor(log10);
-            const base = Math.pow(10, power);
-            const significand = Math.round(val / base);
+            const isPowerOf10 = Math.abs(log10 - Math.round(log10)) < 1e-6;
+            const log5 = Math.log10(val / 5);
+            const isPowerOf5 = Math.abs(log5 - Math.round(log5)) < 1e-6;
 
-            if (range > 5) {
-              // Only powers of 10 (significand 1)
-              return significand === 1;
+            const decades = Math.log10(yAxisMax) - Math.log10(yAxisMin);
+
+            if (decades > 5) {
+              return isPowerOf10 ? label : null;
             } else {
-              // Powers of 10 (1) or half-steps (5)
-              return significand === 1 || significand === 5;
+              return (isPowerOf10 || isPowerOf5) ? label : null;
             }
-          });
+          },
         }
       },
       y1: {
@@ -422,7 +439,7 @@ export default function FundChart({
           text: 'Likelihood of hitting the target multiplier',
         },
         min: 0,
-        max: 100, // Force 0-100
+        max: 100, 
         grid: {
           drawOnChartArea: false,
         },
@@ -439,37 +456,30 @@ export default function FundChart({
         labels: {
           usePointStyle: true,
           filter: function (item: LegendItem) {
-            // Hide helper datasets like Top Edge
             return !item.text.includes('Top Edge');
           },
         },
       },
       tooltip: {
         itemSort: function (a: TooltipItem<any>, b: TooltipItem<any>) {
-          // Sort by value descending
           return b.parsed.y - a.parsed.y;
         },
         callbacks: {
           label: function (context: TooltipItem<any>) {
             let label = context.dataset.label || '';
             
-            // Handle Target Probability
             if (context.dataset.yAxisID === 'y1') {
-              // Data is already 0-100
               return `${label}: ${Number(context.parsed.y).toFixed(1)}%`;
             }
 
-            // Custom tooltip for Pool Volume
             if (label === 'Total Pool Contribution') {
                 label = 'Pool Volume';
             }
 
-            // Handle Financial Values (use getRaw to show real value, not clamped)
             const rawVal = getRaw(context.dataset.label || '', context.dataIndex);
             const displayVal = rawVal !== null ? rawVal : context.parsed.y;
             const formattedVal = `${currencySymbol}${Number(displayVal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
             
-            // Solvency Logic
             const dataset = context.dataset as any;
             if (dataset.solvencyData) {
               const numerator = dataset.solvencyData[context.dataIndex] ?? 0;
