@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import Card from '@/components/ui/Card';
 import { api, Fund, SimulationResult } from '@/lib/api';
@@ -41,13 +40,12 @@ const extractFanData = (sim: SimulationResult): FanData => {
   } as any;
 };
 
-export default function FundResultsPage({ params }: { params: { fundId: string } }) {
-  const { fundId } = params;
-  const searchParams = useSearchParams();
-  const fundPlanId = searchParams.get('fund_plan_id');
+export default function FundResultsPage({ params }: { params: { fundPlanId: string } }) {
+  const { fundPlanId } = params;
   
   // Data State
   const [fund, setFund] = useState<Fund | null>(null);
+  const [plan, setPlan] = useState<any | null>(null);
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [simLoading, setSimLoading] = useState(false);
@@ -71,15 +69,15 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
   useEffect(() => {
     const load = async () => {
       try {
-        const f = await api.getFund(fundId);
-        setFund(f);
+        // Fetch Plan first
+        const p = await api.getFundPlan(fundPlanId);
+        setPlan(p);
+        // Backend stores decimal (0.20), Frontend uses integer (20)
+        setPoolingFraction(Math.round((Number(p.pooling_fraction) || 0) * 100));
 
-        // NEW: Load Plan Config if ID exists
-        if (fundPlanId) {
-            const plan = await api.getFundPlan(fundPlanId);
-            // Backend stores decimal (0.20), Frontend uses integer (20)
-            setPoolingFraction(Math.round((Number(plan.pooling_fraction) || 0) * 100));
-        }
+        // Fetch Fund using ID from Plan
+        const f = await api.getFund(p.fund_id);
+        setFund(f);
       } catch (e) {
         console.error(e);
       } finally {
@@ -87,14 +85,15 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
       }
     };
     load();
-  }, [fundId, fundPlanId]);
+  }, [fundPlanId]);
 
   // NEW: Handle Save Pooling Fraction
   const handleSavePooling = async () => {
-      if (!fundPlanId) return;
+      if (!plan) return;
       try {
           // Convert integer (20) back to decimal string (0.2)
           await api.updateFundPlan(fundPlanId, { 
+              ...plan,
               pooling_fraction: (poolingFraction / 100).toString() 
           });
       } catch (e) {
@@ -111,16 +110,16 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
       
       const months = years * 12;
       const simParams = {
-          fund_plan_id: fundPlanId || undefined,
+          fund_plan_id: fundPlanId,
           months: months,
-          fund_pooling_fraction: poolingFraction.toFixed(1),
+          fund_pooling_fraction: (poolingFraction / 100).toFixed(2),
           stop_insolvency: stopInsolvency,
           include_initial_capital: includeInitialCapital,
           events_active: eventsActive,
       };
 
       // Single API call for all data
-      const res = await api.getFundSimulation(fundId, simParams);
+      const res = await api.getFundPlanSimulation(fundPlanId, simParams);
       setSimulation(res);
       setPathIndex(0); // Reset path index on new simulation
 
@@ -129,15 +128,17 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
     } finally {
       setSimLoading(false);
     }
-  }, [fund, fundId, fundPlanId, poolingFraction, years, stopInsolvency, includeInitialCapital, eventsActive]);
+  }, [fund, fundPlanId, poolingFraction, years, stopInsolvency, includeInitialCapital, eventsActive]);
 
   // Trigger simulation on dependency change
   useEffect(() => {
+    if (!fund) return;
+
     const timeoutId = setTimeout(() => {
         loadSim();
     }, 600);
     return () => clearTimeout(timeoutId);
-  }, [loadSim]);
+  }, [loadSim, fund]);
 
   // --- DATA PREPARATION ---
 
@@ -346,7 +347,7 @@ export default function FundResultsPage({ params }: { params: { fundId: string }
   return (
     <Layout>
       <nav className='mb-6 flex justify-between items-center'>
-        <Link href={`/fund/${fundId}/inputs`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
+        <Link href={`/fund-plan/${fundPlanId}/inputs`} className='text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium transition-colors'>
           <ArrowLeft className='h-4 w-4' />
           Back to Configuration
         </Link>

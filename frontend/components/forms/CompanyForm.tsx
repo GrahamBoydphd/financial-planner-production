@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api, Fund, Company } from '@/lib/api';
 import Button from '@/components/ui/Button';
+import { DescriptionInput } from '@/components/forms/shared/DescriptionInput';
 
 // --- IMT Options ---
 const INDUSTRY_OPTIONS = [
@@ -210,18 +211,11 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
       </div>
 
       {/* Description */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Description</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full p-2 border rounded h-24"
-          placeholder="Brief description of the company..."
-        />
-        <div className="text-xs text-gray-500 text-right mt-1">
-          {description.trim().split(/\s+/).filter(Boolean).length}/200 words
-        </div>
-      </div>
+      <DescriptionInput
+        value={description}
+        onChange={setDescription}
+        placeholder="Brief description of the company..."
+      />
 
       {/* Currency */}
       <div>

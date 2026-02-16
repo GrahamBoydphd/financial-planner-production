@@ -32,6 +32,59 @@ pub struct SimParams {
     pub events_active: Option<bool>,
 }
 
+/// NEW: Plan-Centric Simulation Handler
+/// Runs simulation directly from a Fund Plan ID
+#[debug_handler]
+pub async fn run_fund_plan_simulation(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<models::Claims>,
+    Path(plan_id): Path<Uuid>,
+    Query(params): Query<SimParams>,
+) -> Result<Json<SimulationResult>, AppError> {
+    // 1. Fetch Fund Plan
+    let fund_plan = sqlx::query!(
+        r#"
+        SELECT fund_id, selected_plans, pooling_fraction
+        FROM fund_plans
+        WHERE id = $1 AND tenant_id = $2
+        "#,
+        plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("Fund Plan not found: {}", plan_id)))?;
+
+    let selected_plans_map: HashMap<String, Uuid> = serde_json::from_value(fund_plan.selected_plans)
+        .unwrap_or_default();
+
+    // Determine Pooling for Orchestrator (Slider Override > Plan Value)
+    let pooling_for_orchestrator = if let Some(ref s) = params.ergodicity_correction {
+        Some(Decimal::from_str(s).unwrap_or(Decimal::ZERO))
+    } else {
+        Some(fund_plan.pooling_fraction)
+    };
+
+    // Determine Pooling for SimState (Plan Value as default, unless legacy param overrides)
+    let pooling_for_sim_state = if let Some(ref s) = params.fund_pooling_fraction {
+        Decimal::from_str(s).unwrap_or(Decimal::ZERO) / Decimal::from(100)
+    } else {
+        fund_plan.pooling_fraction
+    };
+
+    internal_run_simulation(
+        &pool,
+        claims.tenant_id,
+        fund_plan.fund_id,
+        selected_plans_map,
+        pooling_for_orchestrator,
+        pooling_for_sim_state,
+        params
+    ).await
+}
+
+/// EXISTING: Fund-Centric Simulation Handler
+/// Runs simulation from a Fund ID, optionally taking a plan_id in query params
 #[debug_handler]
 pub async fn run_fund_simulation(
     State(pool): State<Pool<Postgres>>,
@@ -39,16 +92,9 @@ pub async fn run_fund_simulation(
     Path(fund_id): Path<Uuid>,
     Query(params): Query<SimParams>,
 ) -> Result<Json<SimulationResult>, AppError> {
-    // 1. Fetch Fund (Removed pooling_fraction from selection)
-    let _fund = sqlx::query_as!(
-        models::Fund,
-        r#"
-        SELECT 
-            id, user_id, fund_name, description, currency_code, created_at, tenant_id, is_public_template,
-            default_soft_limit_active, default_soft_limit_threshold, default_soft_limit_fraction
-        FROM funds
-        WHERE id = $1 AND tenant_id = $2
-        "#,
+    // 1. Check Fund Exists
+    let _fund = sqlx::query!(
+        "SELECT id FROM funds WHERE id = $1 AND tenant_id = $2",
         fund_id,
         claims.tenant_id
     )
@@ -56,26 +102,7 @@ pub async fn run_fund_simulation(
     .await?
     .ok_or_else(|| AppError::NotFound(format!("Fund not found: {}", fund_id)))?;
 
-    // 2. Fetch Companies
-    let companies = sqlx::query_as!(
-        models::Company,
-        r#"
-        SELECT 
-            id, fund_id, company_name, description, currency_code, created_at, 
-            industry, business_model, technology, tenant_id
-        FROM companies
-        WHERE fund_id = $1 AND tenant_id = $2
-        "#,
-        fund_id,
-        claims.tenant_id
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    // Capture company IDs for event filtering later
-    let company_ids: Vec<Uuid> = companies.iter().map(|c| c.id).collect();
-
-    // NEW: Handle Fund Plan Selection & Pooling Fraction
+    // 2. Handle Fund Plan Selection & Pooling Fraction
     let mut selected_plans_map: HashMap<String, Uuid> = HashMap::new();
     let mut fund_plan_pooling = Decimal::ZERO;
 
@@ -93,39 +120,76 @@ pub async fn run_fund_simulation(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Fund Plan not found: {}", fp_id)))?;
 
-        let json_val = record.selected_plans;
-        if let Ok(map) = serde_json::from_value::<HashMap<String, Uuid>>(json_val) {
+        if let Ok(map) = serde_json::from_value::<HashMap<String, Uuid>>(record.selected_plans) {
             selected_plans_map = map;
         }
         fund_plan_pooling = record.pooling_fraction;
     }
 
-    // Extract simulation parameters early to pass to SimState builder
+    // Determine Pooling for Orchestrator (Slider Override > Plan Value > 0)
+    let pooling_for_orchestrator = if let Some(ref s) = params.ergodicity_correction {
+        Some(Decimal::from_str(s).unwrap_or(Decimal::ZERO))
+    } else {
+        Some(fund_plan_pooling)
+    };
+
+    // Determine Pooling for SimState (Legacy Param > 0)
+    let pooling_for_sim_state = if let Some(ref s) = params.fund_pooling_fraction {
+        Decimal::from_str(s).unwrap_or(Decimal::ZERO) / Decimal::from(100)
+    } else {
+        Decimal::ZERO
+    };
+
+    internal_run_simulation(
+        &pool,
+        claims.tenant_id,
+        fund_id,
+        selected_plans_map,
+        pooling_for_orchestrator,
+        pooling_for_sim_state,
+        params
+    ).await
+}
+
+/// Shared Internal Simulation Logic
+async fn internal_run_simulation(
+    pool: &Pool<Postgres>,
+    tenant_id: Uuid,
+    fund_id: Uuid,
+    selected_plans_map: HashMap<String, Uuid>,
+    pooling_for_orchestrator: Option<Decimal>,
+    pooling_for_sim_state: Decimal,
+    params: SimParams,
+) -> Result<Json<SimulationResult>, AppError> {
+    
+    // 1. Fetch Companies
+    let companies = sqlx::query_as!(
+        models::Company,
+        r#"
+        SELECT 
+            id, fund_id, company_name, description, currency_code, created_at, 
+            industry, business_model, technology, tenant_id
+        FROM companies
+        WHERE fund_id = $1 AND tenant_id = $2
+        "#,
+        fund_id,
+        tenant_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Capture company IDs for event filtering later
+    let company_ids: Vec<Uuid> = companies.iter().map(|c| c.id).collect();
+
+    // Extract simulation parameters
     let stop_insolvency = params.stop_insolvency.unwrap_or(true);
     let include_init = params.include_initial_capital.unwrap_or(false);
     let events_active = params.events_active.unwrap_or(true);
 
-    // Parse fund_pooling_fraction (Global Real Pooling Rate) - Legacy/Default
-    let (_input_percent, real_pooling_rate) = if let Some(ref s) = params.fund_pooling_fraction {
-        let val = Decimal::from_str(s).unwrap_or(Decimal::ZERO);
-        (val, val / Decimal::from(100))
-    } else {
-        (Decimal::ZERO, Decimal::ZERO)
-    };
-
-    // Parse ergodicity_correction (Override)
-    let pooling_override = if let Some(ref s) = params.ergodicity_correction {
-        let val = Decimal::from_str(s).unwrap_or(Decimal::ZERO);
-        Some(val / Decimal::from(100))
-    } else {
-        // Use Fund Plan setting if available, else 0
-        Some(fund_plan_pooling / Decimal::from(100))
-    };
-
     let mut sim_states: Vec<SimState> = Vec::new();
     let mut error_log: Vec<String> = Vec::new();
 
-    // 3. Build SimState for each Company
+    // 2. Build SimState for each Company
     for company in companies {
         // Determine if we have a specific plan override
         let specific_plan_id = selected_plans_map.get(&company.id.to_string()).copied();
@@ -144,9 +208,9 @@ pub async fn run_fund_simulation(
                 WHERE id = $1 AND tenant_id = $2
                 "#,
                 plan_id,
-                claims.tenant_id
+                tenant_id
             )
-            .fetch_optional(&pool)
+            .fetch_optional(pool)
             .await?
         } else {
             // Fetch latest plan (Default)
@@ -164,21 +228,21 @@ pub async fn run_fund_simulation(
                 LIMIT 1
                 "#,
                 company.id,
-                claims.tenant_id
+                tenant_id
             )
-            .fetch_optional(&pool)
+            .fetch_optional(pool)
             .await?
         };
 
         if let Some(plan) = plan {
             let state = fetch_and_map_company_state(
-                &pool, 
+                pool, 
                 plan, 
                 company.company_name, 
                 company.id, 
                 stop_insolvency,
                 include_init,
-                real_pooling_rate,
+                pooling_for_sim_state,
                 &mut error_log
             ).await?;
             sim_states.push(state);
@@ -196,9 +260,8 @@ pub async fn run_fund_simulation(
         return Err(AppError::ValidationError("No valid financial plans found for companies in this fund.".to_string()));
     }
 
-    // 4. Run Simulation
+    // 3. Run Simulation
     let months = params.months.unwrap_or(60).clamp(1, 1200);
-    // stop_insolvency is already defined above
 
     // Fetch Stochastic Events (Probabilistic events with no fixed start_month)
     let stochastic_events = sqlx::query_as!(
@@ -228,11 +291,10 @@ pub async fn run_fund_simulation(
         fund_id,
         &company_ids
     )
-    .fetch_all(&pool)
+    .fetch_all(pool)
     .await?;
 
     // Initialize FundOrchestrator with 1000 iterations (Portfolio Mode for Fund Simulation)
-    // Pass pooling_override to enforce Ergodicity Correction
     let orchestrator = FundOrchestrator::<PortfolioMode>::new(
         1000, 
         sim_states, 
@@ -240,7 +302,7 @@ pub async fn run_fund_simulation(
         stop_insolvency, 
         events_active, 
         stochastic_events,
-        pooling_override
+        pooling_for_orchestrator
     );
     let result = orchestrator.run();
 

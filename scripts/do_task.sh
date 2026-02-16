@@ -17,6 +17,22 @@ VENV_DIR="$PROJECT_ROOT/.venv"
 PYTHON_CMD="$VENV_DIR/bin/python3"
 PIP_CMD="$VENV_DIR/bin/pip"
 
+# 2. SAFETY SNAPSHOT (The New Feature)
+# ---------------------------------------------------------
+# Only run if there are uncommitted changes
+if [[ -n $(git status -s) ]]; then
+    echo "📸  Uncommitted changes detected. Creating safety snapshot..."
+    # Save changes to stash, including untracked files (-u)
+    git stash push -u -m "Pre-Agent-Snapshot-$TIMESTAMP" > /dev/null 2>&1
+    
+    # Immediately bring them back so the agent can see/edit them
+    git stash apply > /dev/null 2>&1
+    echo "✅  Snapshot saved! (Ref: Pre-Agent-Snapshot-$TIMESTAMP)"
+else
+    echo "✨  Working tree is clean. No snapshot needed."
+fi
+
+
 # 2. LOAD SECRETS
 # ---------------------------------------------------------
 if [ -f "$PROJECT_ROOT/.env" ]; then

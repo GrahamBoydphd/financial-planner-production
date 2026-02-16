@@ -86,7 +86,7 @@ export default function FundChart({
   minY,
   maxY,
 }: Props) {
-  const LOG_FLOOR = 100;
+  const LOG_FLOOR = 1000;
 
   // --- Helpers ---
   const clamp = (val: number | undefined | null): number | null => {

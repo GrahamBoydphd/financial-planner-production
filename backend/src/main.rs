@@ -57,6 +57,8 @@ async fn main() {
         .route("/api/funds/:id/simulation", get(handlers::fund_simulation::run_fund_simulation))
         .route("/api/funds/:id/plans", post(handlers::fund_plans::create_fund_plan).get(handlers::fund_plans::get_fund_plans))
         .route("/api/funds/plans/:id", get(handlers::fund_plans::get_fund_plan).put(handlers::fund_plans::update_fund_plan).delete(handlers::fund_plans::delete_fund_plan))
+        // NEW: Plan-Centric Simulation Route
+        .route("/api/funds/plans/:id/simulation", get(handlers::fund_simulation::run_fund_plan_simulation))
         
         // Companies
         .route("/api/companies", post(handlers::companies::create_company).get(handlers::companies::get_companies))

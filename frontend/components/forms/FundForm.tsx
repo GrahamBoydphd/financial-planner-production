@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api, Fund } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import { EconophysicsInputs } from '@/components/forms/shared/EconophysicsInputs';
+import { DescriptionInput } from '@/components/forms/shared/DescriptionInput';
 
 interface FundFormProps {
   onSuccess?: () => void;
@@ -12,6 +13,7 @@ interface FundFormProps {
 export default function FundForm({ onSuccess, initialData, onCancel }: FundFormProps) {
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('EUR');
+  const [description, setDescription] = useState('');
   
   // Econophysics / Success Tax
   const [softLimitActive, setSoftLimitActive] = useState(true);
@@ -22,6 +24,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
     if (initialData) {
       setName(initialData.fund_name);
       setCurrency(initialData.currency_code || 'EUR');
+      setDescription(initialData.description || '');
       
       // Explicitly update Econophysics state
       setSoftLimitActive(initialData.default_soft_limit_active ?? true);
@@ -40,6 +43,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
     } else {
       setName('');
       setCurrency('EUR');
+      setDescription('');
       setSoftLimitActive(true);
       setSoftLimitThreshold('100,000,000');
       setSoftLimitFraction('70');
@@ -68,6 +72,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
           initialData.id, 
           name, 
           currency,
+          description,
           softLimitActive,
           cleanThreshold,
           cleanFraction
@@ -76,6 +81,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
         await api.createFund(
           name, 
           currency,
+          description,
           softLimitActive,
           cleanThreshold,
           cleanFraction
@@ -85,6 +91,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
       if (!initialData) {
         setName('');
         setCurrency('EUR');
+        setDescription('');
         setSoftLimitActive(true);
         setSoftLimitThreshold('100,000,000');
         setSoftLimitFraction('70');
@@ -124,6 +131,12 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
             <option value="GBP">GBP</option>
           </select>
         </div>
+
+        <DescriptionInput 
+          value={description}
+          onChange={setDescription}
+          placeholder="Fund investment thesis and description..."
+        />
       </div>
 
       {/* Econophysics & Friction Section */}

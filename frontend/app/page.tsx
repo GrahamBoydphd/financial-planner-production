@@ -9,7 +9,7 @@ import DeleteButton from '@/components/ui/DeleteButton';
 import TemplateCard from '@/components/TemplateCard';
 import { api, Fund, Company, Template } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Copy, Trash2, MoveRight } from 'lucide-react';
+import { Copy, Trash2, MoveRight, ChevronDown, ChevronUp } from 'lucide-react';
 import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
 import TruncatedText from '@/components/forms/shared/TruncatedText';
 
@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   const [loadingOp, setLoadingOp] = useState<string | null>(null);
   const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
+  const [expandedFunds, setExpandedFunds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -146,6 +147,13 @@ export default function Dashboard() {
     }
   };
 
+  const toggleFund = (fundId: string) => {
+    setExpandedFunds(prev => ({
+      ...prev,
+      [fundId]: !prev[fundId]
+    }));
+  };
+
   if (authLoading || !isAuthenticated || dataLoading) return <Layout>Loading...</Layout>;
 
   return (
@@ -243,55 +251,71 @@ export default function Dashboard() {
 
                   {/* COMPANIES LIST */}
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-3">Portfolio Companies</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-400">
+                        Portfolio Companies ({fundCompanies.length} companies)
+                      </h3>
+                      <button
+                        onClick={() => toggleFund(fund.id)}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                      >
+                        {expandedFunds[fund.id] ? (
+                          <>Hide <ChevronUp className="w-3 h-3" /></>
+                        ) : (
+                          <>Show <ChevronDown className="w-3 h-3" /></>
+                        )}
+                      </button>
+                    </div>
                     
-                    {fundCompanies.length > 0 ? (
-                      <ul className="space-y-2">
-                        {fundCompanies.map((company) => (
-                          <li key={company.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
-                            <Link 
-                              href={`/company/${company.id}`}
-                              className="font-medium text-gray-700 group-hover:text-indigo-700 flex-1"
-                            >
-                              {company.company_name}
-                            </Link>
-                            
-                            <div className="flex items-center gap-1">
-                              <button 
-                                  onClick={() => handleDuplicateCompany(company.id)}
-                                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title="Duplicate"
-                                  disabled={!!loadingOp}
+                    {expandedFunds[fund.id] && (
+                      fundCompanies.length > 0 ? (
+                        <ul className="space-y-2">
+                          {fundCompanies.map((company) => (
+                            <li key={company.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
+                              <Link 
+                                href={`/company/${company.id}`}
+                                className="font-medium text-gray-700 group-hover:text-indigo-700 flex-1"
                               >
-                                  <Copy className="w-4 h-4" />
-                              </button>
-                              <button 
-                                  onClick={() => setMovingCompanyId(company.id)}
-                                  className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                                  title="Move"
-                                  disabled={!!loadingOp}
-                              >
-                                  <MoveRight className="w-4 h-4" />
-                              </button>
-                              <button 
-                                  onClick={() => handleDeleteCompany(company.id)}
-                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="Delete"
-                                  disabled={!!loadingOp}
-                              >
-                                  <Trash2 className="w-4 h-4" />
-                              </button>
-                              <Link href={`/company/${company.id}`} className="text-gray-400 group-hover:text-indigo-400 text-sm ml-2">
-                                  View
+                                {company.company_name}
                               </Link>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
-                        No companies yet.
-                      </div>
+                              
+                              <div className="flex items-center gap-1">
+                                <button 
+                                    onClick={() => handleDuplicateCompany(company.id)}
+                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="Duplicate"
+                                    disabled={!!loadingOp}
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => setMovingCompanyId(company.id)}
+                                    className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                    title="Move"
+                                    disabled={!!loadingOp}
+                                >
+                                    <MoveRight className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => handleDeleteCompany(company.id)}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Delete"
+                                    disabled={!!loadingOp}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                                <Link href={`/company/${company.id}`} className="text-gray-400 group-hover:text-indigo-400 text-sm ml-2">
+                                    View
+                                </Link>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
+                          No companies yet.
+                        </div>
+                      )
                     )}
                   </div>
 
@@ -345,14 +369,7 @@ export default function Dashboard() {
                 />
               </div>
               <div className="text-gray-500 italic text-sm flex-1 text-left">
-                {/* Description is now inside TemplateCard, but we can keep this placeholder or remove it if redundant. 
-                    The TemplateCard itself shows the description. 
-                    However, the layout here shows a TemplateCard on the left and a text div on the right.
-                    Wait, TemplateCard is a full card component. Putting it inside a flex-row with another div seems odd if TemplateCard is large.
-                    Let's look at TemplateCard. It has header, content, footer.
-                    The previous code had: <div className="text-gray-500 italic text-sm flex-1 text-left">Description coming</div>
-                    I will leave this structure as is to avoid breaking layout assumptions, but the TemplateCard itself now shows full description.
-                */}
+                {/* Description is now inside TemplateCard */}
               </div>
             </div>
           ))}

@@ -12,6 +12,13 @@
 │   │       ├── page.tsx
 │   │       └── results
 │   │           └── page.tsx
+│   ├── fund-plan
+│   │   └── [fundPlanId]
+│   │       ├── inputs
+│   │       │   └── page.tsx
+│   │       ├── page.tsx
+│   │       └── results
+│   │           └── page.tsx
 │   ├── globals.css
 │   ├── help
 │   │   └── page.tsx
@@ -93,4 +100,4 @@
 ├── tsconfig.json
 └── tsconfig.tsbuildinfo
 
-26 directories, 68 files
+30 directories, 71 files

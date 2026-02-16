@@ -47,6 +47,11 @@
         "ordinal": 8,
         "name": "currency_code",
         "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "description",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -63,7 +68,8 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "65f32b0e3a2e814563a103b238794cdfe4edd0663188ad0e9fcac8353e1fe68a"

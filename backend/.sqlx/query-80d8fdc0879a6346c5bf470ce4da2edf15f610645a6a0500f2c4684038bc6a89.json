@@ -52,6 +52,11 @@
         "ordinal": 9,
         "name": "default_soft_limit_fraction",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "description",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -69,7 +74,8 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "80d8fdc0879a6346c5bf470ce4da2edf15f610645a6a0500f2c4684038bc6a89"

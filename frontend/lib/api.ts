@@ -378,15 +378,24 @@ export const api = {
     
   updateFundPlan: async (id: string, data: { plan_name: string, selected_plans: Record<string, string>, pooling_fraction?: number }) =>
     (await apiClient.put<FundPlan>(`/api/funds/plans/${id}`, data)).data,
+
+  // Fetch single plan (Fixes "Plan not found")
+  getFundPlan: async (id: string) => (await apiClient.get<FundPlan>(`/api/funds/plans/${id}`)).data,
+     
+  // Run simulation by Plan ID (Backend Alignment)
+  getFundPlanSimulation: async (planId: string, params: any) => {
+    const qs = new URLSearchParams(params).toString();
+    return (await apiClient.get<SimulationResult>(`/api/funds/plans/${planId}/simulation?${qs}`)).data;
+  },
     
-  deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)),
+  deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)).data,
 
   // FUND SIMULATION
   getFundSimulation: async (fundId: string, params?: { 
     fund_plan_id?: string, 
     fund_pooling_fraction?: string, 
     months?: number, 
-    stop_insolvency?: boolean,
+    stop_insolvency?: boolean, 
     include_initial_capital?: boolean,
     events_active?: boolean
   }) => 

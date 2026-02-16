@@ -45,8 +45,30 @@
 │   ├── src
 │   │   ├── distributions.rs
 │   │   ├── engine
+│   │   │   ├── domain.rs
+│   │   │   ├── event_manager.rs
+│   │   │   ├── mod.rs
+│   │   │   ├── orchestrator.rs
+│   │   │   └── runner.rs
 │   │   ├── errors.rs
 │   │   ├── handlers
+│   │   │   ├── auth.rs
+│   │   │   ├── capital_growth.rs
+│   │   │   ├── capital.rs
+│   │   │   ├── companies.rs
+│   │   │   ├── credit.rs
+│   │   │   ├── dividends.rs
+│   │   │   ├── events.rs
+│   │   │   ├── expenses.rs
+│   │   │   ├── fund_plans.rs
+│   │   │   ├── fund_simulation.rs
+│   │   │   ├── funds.rs
+│   │   │   ├── lifecycle.rs
+│   │   │   ├── mod.rs
+│   │   │   ├── plans.rs
+│   │   │   ├── revenue.rs
+│   │   │   ├── staffing.rs
+│   │   │   └── valuation.rs
 │   │   ├── main.rs
 │   │   ├── middleware.rs
 │   │   ├── models.rs
@@ -74,6 +96,7 @@
 │   ├── Context_History.md
 │   ├── Distribution_Theory.md
 │   ├── FE_Prompts.md
+│   ├── GEM-2 for Website.md
 │   ├── Handoffs_BE_API_STANDARDS_V3_260116.md
 │   ├── Handoffs_BE.md
 │   ├── Handoffs_Deployment+Historical.md
@@ -89,27 +112,77 @@
 ├── frontend
 │   ├── app
 │   │   ├── company
+│   │   │   └── [companyId]
+│   │   │       ├── ClientPage.tsx
+│   │   │       └── page.tsx
 │   │   ├── fund
+│   │   │   └── [fundId]
+│   │   │       ├── ClientPage.tsx
+│   │   │       ├── inputs
+│   │   │       │   └── page.tsx
+│   │   │       ├── page.tsx
+│   │   │       └── results
+│   │   │           └── page.tsx
 │   │   ├── globals.css
 │   │   ├── help
+│   │   │   └── page.tsx
 │   │   ├── improve
+│   │   │   └── page.tsx
 │   │   ├── layout.tsx
 │   │   ├── login
+│   │   │   └── page.tsx
 │   │   ├── page.tsx
 │   │   ├── plan
+│   │   │   └── [planId]
+│   │   │       ├── inputs
+│   │   │       │   ├── ClientPage.tsx
+│   │   │       │   └── page.tsx
+│   │   │       ├── page.tsx
+│   │   │       └── results
+│   │   │           ├── ClientPage.tsx
+│   │   │           └── page.tsx
 │   │   ├── register
+│   │   │   └── page.tsx
 │   │   └── structure
+│   │       └── page.tsx
+│   ├── a_tree.txt
 │   ├── components
 │   │   ├── CashFlowChart.tsx
 │   │   ├── display
+│   │   │   └── FundKPICards.tsx
 │   │   ├── EventList.tsx
 │   │   ├── forms
+│   │   │   ├── AuthForm.tsx
+│   │   │   ├── CapitalForm.tsx
+│   │   │   ├── CapitalGrowthForm.tsx
+│   │   │   ├── CapitalList.tsx
+│   │   │   ├── CompanyForm.tsx
+│   │   │   ├── CreditForm.tsx
+│   │   │   ├── DividendForm.tsx
+│   │   │   ├── EventForm.tsx
+│   │   │   ├── ExpenseForm.tsx
+│   │   │   ├── FundForm.tsx
+│   │   │   ├── PlanForm.tsx
+│   │   │   ├── RevenueForm.tsx
+│   │   │   ├── shared
+│   │   │   │   ├── EconophysicsInputs.tsx
+│   │   │   │   └── VolatilityInputs.tsx
+│   │   │   ├── StaffingForm.tsx
+│   │   │   ├── SuccessTaxForm.tsx
+│   │   │   └── ValuationForm.tsx
 │   │   ├── FundChart.tsx
 │   │   ├── Layout.tsx
 │   │   ├── modals
+│   │   │   └── MoveCompanyModal.tsx
 │   │   ├── Navbar.tsx
 │   │   ├── TemplateCard.tsx
 │   │   └── ui
+│   │       ├── Button.tsx
+│   │       ├── Card.tsx
+│   │       ├── DeleteButton.tsx
+│   │       ├── ExpandableVideo.tsx
+│   │       ├── InfoTag.tsx
+│   │       └── Tooltip.tsx
 │   ├── context
 │   │   └── AuthContext.tsx
 │   ├── Dockerfile
@@ -175,4 +248,4 @@
 │   └── verify_auth.sh
 └── tree.txt
 
-28 directories, 148 files
+36 directories, 213 files
