@@ -356,20 +356,24 @@ export default function Dashboard() {
         </div>
       ) : (
         // TEMPLATES VIEW
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 max-w-5xl mx-auto">
           {[...templates]
             .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
             .map((template) => (
-            <div key={template.id} className="flex flex-row items-center gap-6 border p-4 rounded-lg hover:shadow-md transition-shadow bg-white">
-              <div className="flex-shrink-0">
+            <div key={template.id} className="flex flex-col md:flex-row bg-white rounded-lg shadow-sm border p-0 overflow-hidden mb-4">
+              {/* Left Col: Card Info */}
+              <div className="w-full md:w-1/3 border-r bg-gray-50 p-4 flex flex-col justify-between">
                 <TemplateCard 
                   template={template}
                   onCopy={handleImportTemplate}
                   isProcessing={loadingOp === template.id}
                 />
               </div>
-              <div className="text-gray-500 italic text-sm flex-1 text-left">
-                {/* Description is now inside TemplateCard */}
+              {/* Right Col: Description */}
+              <div className="w-full md:w-2/3 p-6 flex flex-col justify-center">
+                <div className="text-gray-700 text-sm text-justify leading-relaxed whitespace-normal">
+                  {template.description}
+                </div>
               </div>
             </div>
           ))}

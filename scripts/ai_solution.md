@@ -1,538 +1,405 @@
 🤖 Connecting to gemini-3-pro-preview (Paid Tier)...
-<file path='frontend/components/forms/shared/DescriptionInput.tsx'>
-import React from 'react';
+<file path='frontend/app/page.tsx'>
+'use client';
 
-interface DescriptionInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  label?: string;
-  placeholder?: string;
-  className?: string;
-  maxWords?: number;
-}
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Layout from '@/components/Layout';
+import Card from '@/components/ui/Card';
+import DeleteButton from '@/components/ui/DeleteButton';
+import TemplateCard from '@/components/TemplateCard';
+import { api, Fund, Company, Template } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { Copy, Trash2, MoveRight, ChevronDown, ChevronUp } from 'lucide-react';
+import MoveCompanyModal from '@/components/modals/MoveCompanyModal';
+import TruncatedText from '@/components/forms/shared/TruncatedText';
 
-export function DescriptionInput({
-  value,
-  onChange,
-  label = "Description",
-  placeholder = "Enter description...",
-  className = "",
-  maxWords = 200
-}: DescriptionInputProps) {
-  const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
-  const isOverLimit = wordCount > maxWords;
+// --- ICONS ---
+const CopyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5" />
+  </svg>
+);
 
-  return (
-    <div className={className}>
-      <label className="block text-sm font-medium mb-1 text-gray-700">
-        {label}
-      </label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full p-2 border rounded h-24 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-          isOverLimit ? 'border-red-500' : 'border-gray-300'
-        }`}
-        placeholder={placeholder}
-      />
-      <div className={`text-xs text-right mt-1 ${isOverLimit ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-        {wordCount}/{maxWords} words
-      </div>
-    </div>
-  );
-}
-</file>
+const Spinner = () => (
+  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+);
 
-<file path='frontend/components/forms/FundForm.tsx'>
-import { useState, useEffect } from 'react';
-import { api, Fund } from '@/lib/api';
-import Button from '@/components/ui/Button';
-import { EconophysicsInputs } from '@/components/forms/shared/EconophysicsInputs';
-import { DescriptionInput } from '@/components/forms/shared/DescriptionInput';
+export default function Dashboard() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
 
-interface FundFormProps {
-  onSuccess?: () => void;
-  initialData?: Fund | null;
-  onCancel?: () => void;
-}
-
-export default function FundForm({ onSuccess, initialData, onCancel }: FundFormProps) {
-  const [name, setName] = useState('');
-  const [currency, setCurrency] = useState('EUR');
-  const [description, setDescription] = useState('');
-  
-  // Econophysics / Success Tax
-  const [softLimitActive, setSoftLimitActive] = useState(true);
-  const [softLimitThreshold, setSoftLimitThreshold] = useState('100,000,000'); // Default 100M formatted
-  const [softLimitFraction, setSoftLimitFraction] = useState('70'); // Default 70%
+  // State
+  const [activeTab, setActiveTab] = useState<'funds' | 'templates'>('funds');
+  const [funds, setFunds] = useState<Fund[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [loadingOp, setLoadingOp] = useState<string | null>(null);
+  const [movingCompanyId, setMovingCompanyId] = useState<string | null>(null);
+  const [expandedFunds, setExpandedFunds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.fund_name);
-      setCurrency(initialData.currency_code || 'EUR');
-      setDescription(initialData.description || '');
-      
-      // Explicitly update Econophysics state
-      setSoftLimitActive(initialData.default_soft_limit_active ?? true);
-      
-      setSoftLimitThreshold(
-        initialData.default_soft_limit_threshold 
-          ? Number(initialData.default_soft_limit_threshold).toLocaleString() 
-          : '100,000,000'
-      );
-      
-      setSoftLimitFraction(
-        initialData.default_soft_limit_fraction 
-          ? (Number(initialData.default_soft_limit_fraction) * 100).toString() 
-          : '70'
-      );
-    } else {
-      setName('');
-      setCurrency('EUR');
-      setDescription('');
-      setSoftLimitActive(true);
-      setSoftLimitThreshold('100,000,000');
-      setSoftLimitFraction('70');
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
     }
-  }, [initialData]);
+  }, [authLoading, isAuthenticated, router]);
 
-  const handleSoftLimitActiveChange = (newValue: boolean) => {
-    if (!newValue) {
-      if (window.confirm("Disabling this leads to physically unrealistic behaviours")) {
-        setSoftLimitActive(false);
-      }
-    } else {
-      setSoftLimitActive(true);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const fetchData = async () => {
     try {
-      // Prepare data for API
-      const cleanThreshold = softLimitThreshold.replace(/,/g, '');
-      const cleanFraction = (Number(softLimitFraction) / 100).toString();
-
-      if (initialData) {
-        await api.updateFund(
-          initialData.id, 
-          name, 
-          currency,
-          description,
-          softLimitActive,
-          cleanThreshold,
-          cleanFraction
-        );
-      } else {
-        await api.createFund(
-          name, 
-          currency,
-          description,
-          softLimitActive,
-          cleanThreshold,
-          cleanFraction
-        );
-      }
-      
-      if (!initialData) {
-        setName('');
-        setCurrency('EUR');
-        setDescription('');
-        setSoftLimitActive(true);
-        setSoftLimitThreshold('100,000,000');
-        setSoftLimitFraction('70');
-      }
-      onSuccess?.();
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.error || 'Failed to save fund');
+      const [fundsData, companiesData, templatesData] = await Promise.all([
+        api.getFunds(),
+        api.getCompanies(),
+        api.getTemplates()
+      ]);
+      setFunds(fundsData);
+      setCompanies(companiesData);
+      setTemplates(templatesData);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setDataLoading(false);
     }
   };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Fund Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded"
-            placeholder="e.g. My VC Fund I"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Currency</label>
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            disabled
-            className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-          </select>
-        </div>
-
-        <DescriptionInput 
-          value={description}
-          onChange={setDescription}
-          placeholder="Fund investment thesis and description..."
-        />
-      </div>
-
-      {/* Econophysics & Friction Section */}
-      <div className="border-t pt-4 mt-4">
-        <EconophysicsInputs
-          active={softLimitActive}
-          threshold={softLimitThreshold}
-          fraction={softLimitFraction}
-          currencyCode={currency}
-          onChangeActive={handleSoftLimitActiveChange}
-          onChangeThreshold={setSoftLimitThreshold}
-          onChangeFraction={setSoftLimitFraction}
-        />
-      </div>
-
-      <div className="flex gap-2 pt-2">
-        <Button type="submit">{initialData ? 'Update Fund' : 'Create Fund'}</Button>
-        {initialData && (
-          <button 
-            type="button" 
-            onClick={onCancel}
-            className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
-    </form>
-  );
-}
-</file>
-
-<file path='frontend/components/forms/CompanyForm.tsx'>
-import { useState, useEffect } from 'react';
-import { api, Fund, Company } from '@/lib/api';
-import Button from '@/components/ui/Button';
-import { DescriptionInput } from '@/components/forms/shared/DescriptionInput';
-
-// --- IMT Options ---
-const INDUSTRY_OPTIONS = [
-  "Agriculture & Forestry", 
-  "Food & Beverage", 
-  "Textiles & Fashion", 
-  "Wood & Paper", 
-  "Chemicals & Plastics", 
-  "Metals & Mining", 
-  "Electronics", 
-  "Machinery & Equipment", 
-  "Automotive", 
-  "Furniture", 
-  "Construction", 
-  "Real Estate", 
-  "Waste & Water", 
-  "Energy & Utilities", 
-  "Logistics", 
-  "ICT & Software", 
-  "Professional Services", 
-  "Retail & Trade", 
-  "Healthcare", 
-  "Tourism", "Other"
-];
-
-
-
-const MODEL_OPTIONS = [
-  "SaaS / Subscription", 
-  "Marketplace / Platform", 
-  "Regenerative, Circular Design", 
-  "Regenerative, Circular Inputs", 
-  "Regenerative Sourcing",
-  "Primary Material Sourcing",  
-  "Product Life Extension", 
-  "Primary Manufacturing", 
-  "Remanufacturing / Refurbishment", 
-  "Second-life / Repurposing", 
-  "Material / Resource Recovery", 
-  "Nutrient Recovery", 
-  "Urban Mining", 
-  "conventional Mining", 
-  "Product-as-a-Service (PaaS)", 
-  "Sharing Platforms", 
-  "Digital Tools", 
-  "Ecosystem Restoration", 
-  "Carbon Sequestration",  
-  "Other"
-];
-
-const TECH_OPTIONS = [
-  "CleanTech", "AgriTech / Bio-Systems", 
-  "Off-Grid / Decentralized",  
-  "Web / Mobile", "Blockchain / ReFi", "Material Science", 
-  "Blockchain / DLT", 
-  "Internet of Things (IoT)", 
-  "AI / Machine Learning", 
-  "Digital Product Passports", 
-  "Satellite Imagery & Remote Sensing", 
-  "Digital Twins / Simulation Modeling", 
-  "Chemical", 
-  "Automated Sorting & Robotics", 
-  "3D Printing (Additive Mfg)", 
-  "Energy Storage & Battery Tech", 
-  "Modular Construction", 
-  "Precision Agriculture", 
-  "Hydroponics/Aeroponics", 
-  "Synthetic Biology (Bio-materials)", 
-  "Biodegradable / Compostable Polymers", 
-  "Conventional Polymers", 
-  "Water Purification & Desalination", 
-  "Other"
-];
-
-interface CompanyFormProps {
-  onSuccess?: () => void;
-  funds?: Fund[];
-  initialData?: Company | null;
-  onCancel?: () => void;
-}
-
-export default function CompanyForm({ onSuccess, funds = [], initialData, onCancel }: CompanyFormProps) {
-  const [name, setName] = useState('');
-  const [selectedFund, setSelectedFund] = useState('');
-  const [currency, setCurrency] = useState('EUR');
-  const [description, setDescription] = useState('');
-
-  // IMT State
-  const [industry, setIndustry] = useState('');
-  const [customIndustry, setCustomIndustry] = useState('');
-  
-  const [model, setModel] = useState('');
-  const [customModel, setCustomModel] = useState('');
-  
-  const [tech, setTech] = useState('');
-  const [customTech, setCustomTech] = useState('');
 
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.company_name);
-      setSelectedFund(initialData.fund_id);
-      setCurrency(initialData.currency_code);
-      setDescription(initialData.description || '');
-
-      // Helper to set select/custom fields
-      const setField = (value: string | undefined, options: string[], setSelect: any, setCustom: any) => {
-        if (!value) {
-          setSelect('');
-          setCustom('');
-          return;
-        }
-        if (options.includes(value)) {
-          setSelect(value);
-          setCustom('');
-        } else {
-          setSelect('Other');
-          setCustom(value);
-        }
-      };
-
-      setField(initialData.industry, INDUSTRY_OPTIONS, setIndustry, setCustomIndustry);
-      setField(initialData.business_model, MODEL_OPTIONS, setModel, setCustomModel);
-      setField(initialData.technology, TECH_OPTIONS, setTech, setCustomTech);
-
-    } else {
-      setName('');
-      setSelectedFund('');
-      setCurrency('EUR');
-      setDescription('');
-      setIndustry(''); setCustomIndustry('');
-      setModel(''); setCustomModel('');
-      setTech(''); setCustomTech('');
+    if (isAuthenticated) {
+      fetchData();
     }
-  }, [initialData]);
+  }, [isAuthenticated]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFund) return alert('Select a fund');
-    
-    // Word count validation
-    const wordCount = description.trim().split(/\s+/).filter(Boolean).length;
-    if (wordCount > 200) {
-      alert(`Description cannot exceed 200 words. Current: ${wordCount}`);
-      return;
-    }
+  // --- HANDLERS ---
 
-    // Resolve "Other" fields
-    const finalIndustry = industry === 'Other' ? customIndustry : industry;
-    const finalModel = model === 'Other' ? customModel : model;
-    const finalTech = tech === 'Other' ? customTech : tech;
-
+  const handleDeleteFund = async (fundId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Are you sure you want to delete this fund?')) return;
+    setLoadingOp(fundId);
     try {
-      if (initialData) {
-        await api.updateCompany(initialData.id, name, selectedFund, currency, description, finalIndustry, finalModel, finalTech);
-      } else {
-        await api.createCompany(name, selectedFund, currency, description, finalIndustry, finalModel, finalTech);
-      }
-      
-      if (!initialData) {
-        setName('');
-        setCurrency('EUR');
-        setDescription('');
-        setIndustry(''); setCustomIndustry('');
-        setModel(''); setCustomModel('');
-        setTech(''); setCustomTech('');
-      }
-      if (onSuccess) onSuccess();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to save company');
+      await api.deleteFund(fundId);
+      await fetchData(); // Refresh list
+    } catch (error) {
+      alert('Could not delete fund. It might contain companies.');
+    } finally {
+      setLoadingOp(null);
     }
   };
 
+  const handleDuplicateFund = async (fundId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Duplicate this fund and all its contents?')) return;
+    setLoadingOp(fundId);
+    try {
+      await api.duplicateFund(fundId);
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to duplicate fund.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleImportTemplate = async (templateId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Import this template as a new fund?')) return;
+    setLoadingOp(templateId);
+    try {
+      await api.importTemplate(templateId);
+      setActiveTab('funds');
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to import template.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleDuplicateCompany = async (companyId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Duplicate this company?')) return;
+    setLoadingOp(companyId);
+    try {
+      await api.duplicateCompany(companyId);
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to duplicate company.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const handleDeleteCompany = async (companyId: string) => {
+    if (loadingOp) return;
+    if (!confirm('Are you sure you want to delete this company?')) return;
+    setLoadingOp(companyId);
+    try {
+      await api.deleteCompany(companyId);
+      await fetchData();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to delete company.');
+    } finally {
+      setLoadingOp(null);
+    }
+  };
+
+  const toggleFund = (fundId: string) => {
+    setExpandedFunds(prev => ({
+      ...prev,
+      [fundId]: !prev[fundId]
+    }));
+  };
+
+  if (authLoading || !isAuthenticated || dataLoading) return <Layout>Loading...</Layout>;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded shadow">
-      <h3 className="text-lg font-semibold text-gray-800">
-        {initialData ? 'Edit Company' : 'New Company'}
-      </h3>
-      
-      {/* Fund Selection */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Parent Fund</label>
-        <select
-          value={selectedFund}
-          onChange={(e) => setSelectedFund(e.target.value)}
-          className="w-full p-2 border rounded"
-          required
+    <Layout>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex gap-4">
+          <Link 
+            href="/structure" 
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
+          >
+            New Fund
+          </Link>
+          <Link 
+            href="/structure" 
+            className="bg-indigo-600 text-white border border-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors text-sm font-medium"
+          >
+            New Company
+          </Link>
+        </div>
+      </div>
+
+      <p className="text-s text-gray-400 font-mono mb-6">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p>
+
+      {/* TABS */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
+            activeTab === 'funds'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('funds')}
         >
-          <option value="">Select a Fund</option>
-          {funds.map(f => (
-            <option key={f.id} value={f.id}>{f.fund_name}</option>
+          My Funds
+        </button>
+        <button
+          className={`py-2 px-4 font-medium text-sm focus:outline-none transition-colors ${
+            activeTab === 'templates'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('templates')}
+        >
+          Templates Library
+        </button>
+      </div>
+
+      {/* CONTENT */}
+      {activeTab === 'funds' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {funds.map((fund) => {
+            // Find companies belonging to this fund
+            const fundCompanies = companies.filter(c => c.fund_id === fund.id);
+            const isProcessing = loadingOp === fund.id;
+
+            return (
+              <div key={fund.id} className="flex flex-col h-full">
+                <Card className="flex-1 flex flex-col border-t-4 border-t-indigo-500 hover:shadow-lg transition-shadow">
+                  
+                  {/* FUND HEADER */}
+                  <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Link href={`/fund/${fund.id}`} className="hover:underline text-gray-900 font-bold cursor-pointer">
+                          {fund.fund_name}
+                        </Link>
+                        <span className="text-gray-400 text-sm">[{fund.currency_code || 'USD'}]</span>
+                      </h2>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Fund</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isProcessing ? (
+                        <div className="p-1 text-indigo-600"><Spinner /></div>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => handleDuplicateFund(fund.id)}
+                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                            title="Duplicate Fund"
+                            disabled={!!loadingOp}
+                          >
+                            <CopyIcon />
+                          </button>
+                          <DeleteButton onDelete={() => handleDeleteFund(fund.id)} disabled={!!loadingOp} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* FUND DESCRIPTION */}
+                  <div className="mb-4 px-1">
+                    <TruncatedText text={fund.description} limit={10} />
+                  </div>
+
+                  {/* COMPANIES LIST */}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-400">
+                        Portfolio Companies ({fundCompanies.length} companies)
+                      </h3>
+                      <button
+                        onClick={() => toggleFund(fund.id)}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                      >
+                        {expandedFunds[fund.id] ? (
+                          <>Hide <ChevronUp className="w-3 h-3" /></>
+                        ) : (
+                          <>Show <ChevronDown className="w-3 h-3" /></>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {expandedFunds[fund.id] && (
+                      fundCompanies.length > 0 ? (
+                        <ul className="space-y-2">
+                          {fundCompanies.map((company) => (
+                            <li key={company.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
+                              <Link 
+                                href={`/company/${company.id}`}
+                                className="font-medium text-gray-700 group-hover:text-indigo-700 flex-1"
+                              >
+                                {company.company_name}
+                              </Link>
+                              
+                              <div className="flex items-center gap-1">
+                                <button 
+                                    onClick={() => handleDuplicateCompany(company.id)}
+                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="Duplicate"
+                                    disabled={!!loadingOp}
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => setMovingCompanyId(company.id)}
+                                    className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                    title="Move"
+                                    disabled={!!loadingOp}
+                                >
+                                    <MoveRight className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => handleDeleteCompany(company.id)}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Delete"
+                                    disabled={!!loadingOp}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                                <Link href={`/company/${company.id}`} className="text-gray-400 group-hover:text-indigo-400 text-sm ml-2">
+                                    View
+                                </Link>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-sm text-gray-400 italic py-4 text-center bg-gray-50 rounded border border-dashed">
+                          No companies yet.
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  {/* ADD COMPANY LINK */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                    <Link 
+                      href="/structure" 
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 inline-flex items-center"
+                    >
+                      <span className="mr-1">+</span> Add Company
+                    </Link>
+                  </div>
+                </Card>
+              </div>
+            );
+          })}
+          
+          {funds.length === 0 && (
+            <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <h3 className="text-xl font-medium text-gray-500">No funds found</h3>
+              <p className="text-gray-400 mt-2">Get started by creating your first fund or importing a template.</p>
+              <div className="mt-6 flex justify-center gap-4">
+                 <Link 
+                    href="/structure" 
+                    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
+                  >
+                    Create Fund
+                  </Link>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded hover:bg-indigo-50 transition-colors"
+                  >
+                    Browse Templates
+                  </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        // TEMPLATES VIEW
+        <div className="flex flex-col gap-4 max-w-5xl mx-auto">
+          {[...templates]
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .map((template) => (
+            <div key={template.id} className="flex flex-col md:flex-row bg-white rounded-lg shadow-sm border p-0 overflow-hidden mb-4">
+              {/* Left Col: Card Info */}
+              <div className="w-full md:w-1/3 border-r bg-gray-50 p-4 flex flex-col justify-between">
+                <TemplateCard 
+                  template={template}
+                  onCopy={handleImportTemplate}
+                  isProcessing={loadingOp === template.id}
+                />
+              </div>
+              {/* Right Col: Description */}
+              <div className="w-full md:w-2/3 p-6 flex flex-col justify-center">
+                <div className="text-gray-700 text-sm text-justify leading-relaxed whitespace-normal">
+                  {template.description}
+                </div>
+              </div>
+            </div>
           ))}
-        </select>
-      </div>
 
-      {/* Name */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Company Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full p-2 border rounded"
-          placeholder="e.g. GreenFuture Ltd"
-          required
+          {templates.length === 0 && (
+             <div className="col-span-full text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <h3 className="text-xl font-medium text-gray-500">No templates available</h3>
+              <p className="text-gray-400 mt-2">Check back later for public templates.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Move Company Modal */}
+      {movingCompanyId && (
+        <MoveCompanyModal 
+          isOpen={!!movingCompanyId}
+          onClose={() => setMovingCompanyId(null)}
+          onSuccess={fetchData}
+          companyId={movingCompanyId}
+          currentFundId={companies.find(c => c.id === movingCompanyId)?.fund_id || ''}
         />
-      </div>
-
-      {/* Description */}
-      <DescriptionInput
-        value={description}
-        onChange={setDescription}
-        placeholder="Brief description of the company..."
-      />
-
-      {/* Currency */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Currency</label>
-        <select
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          disabled
-          className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-        >
-          <option value="USD">USD</option>
-          <option value="EUR">EUR</option>
-          <option value="GBP">GBP</option>
-        </select>
-      </div>
-
-      {/* Industry */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Industry (Sector)</label>
-          <select
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            className="w-full p-2 border rounded"
-          >
-            <option value="">Select Industry</option>
-            {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-          {industry === 'Other' && (
-            <input
-              type="text"
-              placeholder="Specify Industry..."
-              value={customIndustry}
-              onChange={(e) => setCustomIndustry(e.target.value)}
-              className="mt-2 w-full p-2 border rounded text-sm"
-            />
-          )}
-        </div>
-
-        {/* Business Model */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Business Model</label>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="w-full p-2 border rounded"
-          >
-            <option value="">Select Model</option>
-            {MODEL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-          {model === 'Other' && (
-            <input
-              type="text"
-              placeholder="Specify Model..."
-              value={customModel}
-              onChange={(e) => setCustomModel(e.target.value)}
-              className="mt-2 w-full p-2 border rounded text-sm"
-            />
-          )}
-        </div>
-
-        {/* Technology */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Technology</label>
-          <select
-            value={tech}
-            onChange={(e) => setTech(e.target.value)}
-            className="w-full p-2 border rounded"
-          >
-            <option value="">Select Tech</option>
-            {TECH_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-          {tech === 'Other' && (
-            <input
-              type="text"
-              placeholder="Specify Tech..."
-              value={customTech}
-              onChange={(e) => setCustomTech(e.target.value)}
-              className="mt-2 w-full p-2 border rounded text-sm"
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={!selectedFund}>
-          {initialData ? 'Update Company' : 'Create Company'}
-        </Button>
-        {initialData && (
-          <button 
-            type="button" 
-            onClick={onCancel}
-            className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
-    </form>
+      )}
+    </Layout>
   );
 }
 </file>
