@@ -8,15 +8,15 @@ This section provides a comprehensive glossary of input fields used throughout t
 
 ### Staffing Form
 
-| Label                      | Purpose                                                           | Validation Rules                                                                                               |
-| -------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Role Name                  | Title of the position (e.g., 'Sales Rep', 'Developer').           | Required, must not be empty.                                                                                  |
-| Annual Salary              | Base annual salary per person in this role.                      | Required, must be a valid number.                                                                            |
-| Hiring Plan                | How employees are added over time (Fixed Count or Monthly Rate). | Select from dropdown: "fixed_count" or "monthly_rate".                                                        |
-| Target Headcount           | Maximum number of people to hire for this role.                  | Required, must be an integer greater than or equal to 1.                                                      |
-| Hiring Pace (Months per Hire) | Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly).| Required if Hiring Plan is "monthly_rate", must be an integer greater than or equal to 1.                          |
-| Start Month                | Month number (1-60) when hiring begins.                         | Required, must be an integer between 1 and 60 (inclusive).                                                    |
-| Annual Increase (%)        | Expected annual salary increase (e.g., 3.5 for 3.5%).             | Optional, must be a number between 0 and 100 (inclusive). Displayed to the user with a percentage symbol. |
+| Label                         | Purpose                                                           | Validation Rules                                                                                          |
+| ----------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Role Name                     | Title of the position (e.g., 'Sales Rep', 'Developer').           | Required, must not be empty.                                                                              |
+| Annual Salary                 | Base annual salary per person in this role.                       | Required, must be a valid number.                                                                         |
+| Hiring Plan                   | How employees are added over time (Fixed Count or Monthly Rate).  | Select from dropdown: "fixed_count" or "monthly_rate".                                                    |
+| Target Headcount              | Maximum number of people to hire for this role.                   | Required, must be an integer greater than or equal to 1.                                                  |
+| Hiring Pace (Months per Hire) | Hire 1 person every X months. (e.g., 1 = monthly, 3 = quarterly). | Required if Hiring Plan is "monthly_rate", must be an integer greater than or equal to 1.                 |
+| Start Month                   | Month number (1-60) when hiring begins.                           | Required, must be an integer between 1 and 60 (inclusive).                                                |
+| Annual Increase (%)           | Expected annual salary increase (e.g., 3.5 for 3.5%).             | Optional, must be a number between 0 and 100 (inclusive). Displayed to the user with a percentage symbol. |
 
 ### Revenue Form
 

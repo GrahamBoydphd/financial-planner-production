@@ -384,9 +384,25 @@ export const api = {
   getFundPlan: async (id: string) => (await apiClient.get<FundPlan>(`/api/funds/plans/${id}`)).data,
      
   // Run simulation by Plan ID (Backend Alignment)
-  getFundPlanSimulation: async (planId: string, params: any) => {
-    const qs = new URLSearchParams(params).toString();
-    return (await apiClient.get<SimulationResult>(`/api/funds/plans/${planId}/simulation?${qs}`)).data;
+  runFundSimulation: async (
+    planId: string, 
+    durationMonths: number, 
+    ergodicityCorrection: number,
+    options?: {
+      stop_insolvency?: boolean,
+      include_initial_capital?: boolean,
+      events_active?: boolean
+    }
+  ) => {
+    const params = {
+      months: durationMonths,
+      ergodicity_correction: ergodicityCorrection.toFixed(2),
+      ...options
+    };
+    return (await apiClient.get<SimulationResult>(
+      `/api/funds/plans/${planId}/simulation`,
+      { params }
+    )).data;
   },
     
   deleteFundPlan: async (id: string) => (await apiClient.delete(`/api/funds/plans/${id}`)).data,

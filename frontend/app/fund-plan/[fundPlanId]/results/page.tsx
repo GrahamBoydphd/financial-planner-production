@@ -109,17 +109,19 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
       setSimLoading(true);
       
       const months = years * 12;
-      const simParams = {
-          fund_plan_id: fundPlanId,
-          months: months,
-          fund_pooling_fraction: (poolingFraction / 100).toFixed(2),
-          stop_insolvency: stopInsolvency,
-          include_initial_capital: includeInitialCapital,
-          events_active: eventsActive,
-      };
-
+      
       // Single API call for all data
-      const res = await api.getFundPlanSimulation(fundPlanId, simParams);
+      const res = await api.runFundSimulation(
+          fundPlanId, 
+          months, 
+          poolingFraction / 100,
+          {
+              stop_insolvency: stopInsolvency,
+              include_initial_capital: includeInitialCapital,
+              events_active: eventsActive
+          }
+      );
+
       setSimulation(res);
       setPathIndex(0); // Reset path index on new simulation
 
