@@ -161,10 +161,10 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   <p>
                     Use this guide to understand our risk-based modeling before building your first plan. 
                   </p>
-                  <ExpandableVideo videoId='XleORl54teI' />
+                  <ExpandableVideo videoId='RpHR-XkiYhw' />
                   <p>
                     <strong>Or watch the quick-start
-                    <Link href="https://youtu.be/XleORl54teI" className="text-yellow-300 hover:underline"> video</Link>!</strong>
+                    <Link href="https://youtu.be/RpHR-XkiYhw" className="text-yellow-300 hover:underline"> video</Link>!</strong>
                   </p>
                   <ol className="list-decimal pl-5 space-y-2">
                     <li>
@@ -173,6 +173,8 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                       <li> Get started by copying one of our templates. Play with it, edit it, have fun experimenting!</li> 
                       <li> Click on a company to edit the inputs and see the company level projections. </li>
                       <li> Click on a fund to create fund scenarios and see the projections.</li>
+                      <li> <strong> Take care: there is no protection against physically impossible parameters. 
+                           Impossible input will give you impossible results!</strong> </li>
                     </ul>
                     </li>
                     <li>                      
@@ -226,8 +228,10 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   <h3 className="font-bold text-yellow-800">Alpha Release Warning</h3>
                   <div className="mt-2 text-yellow-700">
                     <p>
-                      This software is in Alpha. Financial models are probabilistic estimations, not guarantees. 
-                      Results should be used for strategic planning and scenario analysis only, not as tax or investment advice.
+                      This software is in Alpha. These financial models are probabilistic projections using specific input parameters
+                      estimating future volatility. They are not in any way guarantees. 
+                      Results should be used for strategic planning and scenario analysis only, not as advice for any purpose, 
+                      certainly not as tax or investment advice.
                     </p>
                   </div>
                 </div>
@@ -243,19 +247,21 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                   <p>
                     Use this guide to understand our risk-based modeling before building your first plan. 
                   </p>
-                  <ExpandableVideo videoId='XleORl54teI' />
+                  <ExpandableVideo videoId='RpHR-XkiYhw' /> 
                   <p>
                     <strong>Or watch the quick-start 
-                    <Link href="https://youtu.be/XleORl54teI" className="text-indigo-600 hover:underline"> video</Link>!</strong>
+                    <Link href="https://youtu.be/RpHR-XkiYhw" className="text-indigo-600 hover:underline"> video</Link>!</strong>
                   </p>
                   <ol className="list-decimal pl-5 space-y-2">
                     <li>
                       <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-indigo-600 hover:underline">Dashboard</Link> to see all of your funds and companies.
                       <ul className="list-disc pl-5 mt-1">
-                      <li> Get started by copying one of our templates. Play with it, edit it, have fun experimenting!</li> 
-                      <li> Click on a company to edit the inputs and see the company level projections. </li>
-                      <li> Click on a fund to create fund scenarios and see the projections.</li>
-                    </ul>
+                        <li> Get started by copying one of our templates. Play with it, edit it, have fun experimenting!</li> 
+                        <li> Click on a company to edit the inputs and see the company level projections. </li>
+                        <li> Click on a fund to create fund scenarios and see the projections.</li>
+                        <li> <strong> Take care: there is no protection against physically impossible parameters. 
+                           Impossible input will give you impossible results!</strong> </li>                    
+                      </ul>
                     </li>
                     <li>                      
                     <strong>Structure:</strong> Go to the <Link href="/structure" className="text-indigo-600 hover:underline">Structure (Funds & Companies)</Link> page to create your first Fund and Company.
@@ -289,14 +295,20 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
               <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-6">Antifragile Financial Modeling</h1>
               <div className="prose prose-indigo text-gray-600 max-w-none">
                 <p className="text-xl leading-relaxed">
-                  Traditional spreadsheets assume averages. Reality is volatile. Our engine prioritizes 
+                  <ExpandableVideo videoId='Xlnqf4GvqkU' />
+                  Traditional approaches to company financial planning, and modern portfolio theory approaches to hitting the right 
+                  risk-return profile for a fund extrapolate averages. But, because of how volatility in reality actually plays out, 
+                  this excessively simplified approach is misleading. 
+                  Our engine prioritizes 
                   <span className="font-bold text-gray-900"> "reality over premature simplicity"</span> by modeling 
-                  non-ergodic path dependence—meaning the order of events matters. And then averages are fundamentally misleading.
-                  Especially if your intent is regenerative, systemic, circular, doughnut, etc. 
-                </p>
-                <p className="mt-4">
-                  A 50% drop followed by a 50% gain leaves you with 75% of your starting capital, not 100%. 
-                  We simulate thousands of equally likely real-world trajectories to show you your likelihood of ruin or success, 
+                  non-ergodic path dependence—meaning the order of events matters. Because averages are fundamentally misleading.
+                  Especially if your intent is regenerative, systemic, circular, doughnut, etc.
+                </p> 
+                <p className="text-xl leading-relaxed">
+                  Many of you know that a 50% drop followed by a 50% gain leaves you with 75% of your starting capital, not 100%.
+                  But not many know the consequence of all aspects of this kind of volatile growth, called non-ergodic growth.  
+                  Because it can't be calculated with pen and paper, only laborously simulated with computers!
+                  We simulate hundreds of equally likely real-world trajectories to show you your likelihood of ruin or success, 
                   not just the average outcome.
                   This approach helps you build an "Antifragile" strategy that can withstand and potentially benefit from volatility.
                 </p>

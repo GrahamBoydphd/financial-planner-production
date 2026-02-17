@@ -176,7 +176,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <p className="text-s text-gray-400 font-mono mb-6">This is an alpha release for early developmental testing, feedback, and educational purposes only. We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.</p>
+      <p className="text-s text-gray-400 font-mono mb-6">This is an alpha release for early developmental testing, feedback, 
+         and educational purposes only. Results should be used for strategic planning and scenario analysis only, not as advice 
+         for any purpose, certainly not as tax or investment advice. 
+         We may at any stage need to do a complete clean reset, at which point all of your data and login details may be lost.
+      </p>
 
       {/* TABS */}
       <div className="flex border-b border-gray-200 mb-6">

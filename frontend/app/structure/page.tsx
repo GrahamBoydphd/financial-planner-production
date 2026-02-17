@@ -104,7 +104,11 @@ export default function StructurePage() {
                 Define the hierarchy of your financial simulation. Create <strong>Funds</strong> to act as holding entities and <strong>Companies</strong> to model specific business ventures.
             </p>
             <div className="text-xs text-indigo-500 font-mono space-y-1">
-                <p>This is an alpha release for early developmental testing, feedback, and educational purposes only.</p>
+                <p>This is an alpha release for early developmental testing, feedback, 
+                   and educational purposes only. Results should be used for strategic planning and scenario analysis only, not  
+                   as advice for any purpose, certainly not as tax or investment advice. We may at any stage 
+                   need to do a complete clean reset, at which point all of your data and login details may be lost.
+                </p>
                 <p>Note: Each company can currently be a member of one fund only.</p>
             </div>
         </div>
