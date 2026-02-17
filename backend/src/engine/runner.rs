@@ -253,8 +253,8 @@ pub fn generate_simulation(
     };
 
     // 11. Initialize Orchestrator (Ensemble Mode for Single Company Simulation)
-    // Use 999 simulations to ensure an exact median exists (odd number).
-    let num_simulations = 999;
+    // Use 499 simulations to ensure an exact median exists (odd number).
+    let num_simulations = 499;
     assert!(num_simulations % 2 != 0, "Number of simulations must be odd for exact percentiles.");
 
     let orchestrator = FundOrchestrator::<EnsembleMode>::new(

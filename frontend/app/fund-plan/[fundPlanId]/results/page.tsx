@@ -47,6 +47,7 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
   const [fund, setFund] = useState<Fund | null>(null);
   const [plan, setPlan] = useState<any | null>(null);
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [simLoading, setSimLoading] = useState(false);
 
@@ -107,6 +108,8 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
     
     try {
       setSimLoading(true);
+      setSimulation(null); // Wipes old data
+      setError(null);      // Clear previous errors
       
       const months = years * 12;
       
@@ -125,8 +128,17 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
       setSimulation(res);
       setPathIndex(0); // Reset path index on new simulation
 
-    } catch (e) {
+    } catch (e: any) {
       console.error("Simulation failed", e);
+      
+      // Robust Error Handling
+      if (e.code === 'ECONNABORTED') {
+          setError("Simulation timed out. The calculation is too complex for the current timeframe.");
+      } else if (e.response?.status === 502) {
+          setError("Simulation engine unavailable (502). Please try again in a moment.");
+      } else {
+          setError(e.message || "An unexpected error occurred during simulation.");
+      }
     } finally {
       setSimLoading(false);
     }
@@ -334,7 +346,7 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
   if (loading) return <Layout>Loading...</Layout>;
   if (!fund) return <Layout>Fund not found</Layout>;
 
-  // --- ERROR BLOCK ---
+  // --- ERROR BLOCK (Business Logic Errors) ---
   if (simulation?.errors && simulation.errors.length > 0) {
     return (
       <Layout>
@@ -505,7 +517,14 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
         </div>
       </div>
 
-      {simLoading ? (
+      {error ? (
+          <div className="bg-red-50 text-red-700 p-4 rounded mt-6 border border-red-200 shadow-sm">
+              <h3 className="font-bold flex items-center gap-2">
+                  ⚠️ Simulation Error
+              </h3>
+              <p className="mt-1">{error}</p>
+          </div>
+      ) : simLoading ? (
           <div className="h-96 flex flex-col items-center justify-center bg-gray-50 border rounded-lg animate-pulse text-gray-400 font-medium gap-2">
               <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
               <span>Running Simulation...</span>

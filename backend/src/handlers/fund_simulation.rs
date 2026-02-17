@@ -294,17 +294,22 @@ async fn internal_run_simulation(
     .fetch_all(pool)
     .await?;
 
-    // Initialize FundOrchestrator with 1000 iterations (Portfolio Mode for Fund Simulation)
-    let orchestrator = FundOrchestrator::<PortfolioMode>::new(
-        1000, 
-        sim_states, 
-        months, 
-        stop_insolvency, 
-        events_active, 
-        stochastic_events,
-        pooling_for_orchestrator
-    );
-    let result = orchestrator.run();
+    // Initialize FundOrchestrator with 499 iterations (Portfolio Mode for Fund Simulation)
+    // Move ownership of heavy data into the blocking thread
+    let result = tokio::task::spawn_blocking(move || {
+        let orchestrator = FundOrchestrator::<PortfolioMode>::new(
+            499, 
+            sim_states, 
+            months, 
+            stop_insolvency, 
+            events_active, 
+            stochastic_events, 
+            pooling_for_orchestrator
+        );
+        orchestrator.run()
+    })
+    .await
+    .map_err(|e| AppError::InternalServerError(format!("Simulation task failed: {}", e)))?;
 
     Ok(Json(result))
 }

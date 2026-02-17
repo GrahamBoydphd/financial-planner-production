@@ -483,30 +483,42 @@ pub async fn get_plan_projection(
     let stop_insolvency = params.stop_insolvency.unwrap_or(false);
     let events_active = params.events_active.unwrap_or(true);
 
-    let result = generate_simulation(
-        plan.company_id,
-        plan.plan_name.clone(),
-        plan.currency_code.clone(),
-        months,
-        initial_cash,
-        revenue_items,
-        expense_items,
-        staffing_roles,
-        events,
-        capital_injections,
-        credit_facility,
-        dividend_policy,
-        valuation_assumptions,
-        capital_growth,
-        use_monte_carlo,
-        stop_insolvency,
-        events_active,
-        plan.pooling_fraction,
-        plan.insolvency_threshold,
-        plan.soft_limit_active,
-        plan.soft_limit_threshold,
-        plan.soft_limit_fraction
-    );
+    // Extract fields to move into closure
+    let company_id = plan.company_id;
+    let plan_name = plan.plan_name.clone();
+    let currency_code = plan.currency_code.clone();
+    let pooling_fraction = plan.pooling_fraction;
+    let insolvency_threshold = plan.insolvency_threshold;
+    let soft_limit_active = plan.soft_limit_active;
+    let soft_limit_threshold = plan.soft_limit_threshold;
+    let soft_limit_fraction = plan.soft_limit_fraction;
+
+    let result = tokio::task::spawn_blocking(move || {
+        generate_simulation(
+            company_id,
+            plan_name,
+            currency_code,
+            months,
+            initial_cash,
+            revenue_items,
+            expense_items,
+            staffing_roles,
+            events,
+            capital_injections,
+            credit_facility,
+            dividend_policy,
+            valuation_assumptions,
+            capital_growth,
+            use_monte_carlo,
+            stop_insolvency,
+            events_active,
+            pooling_fraction,
+            insolvency_threshold,
+            soft_limit_active,
+            soft_limit_threshold,
+            soft_limit_fraction
+        )
+    }).await.map_err(|e| AppError::InternalServerError(format!("Simulation execution failed: {}", e)))?;
 
     Ok(Json(result))
 }

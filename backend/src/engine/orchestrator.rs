@@ -8,6 +8,7 @@ use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use uuid::Uuid;
+use rayon::prelude::*;
 
 pub trait SimulationMode {}
 pub struct PortfolioMode;
@@ -262,8 +263,73 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
             labels.push(format!("Month {}", m));
         }
 
-        // Statistical Aggregation
         let cap = (self.months + 1) as usize;
+
+        // Parallel aggregation of monthly statistics
+        // Returns a vector of tuples: (p_values array, solvent_counts array, survival_rate)
+        let monthly_results: Vec<([Decimal; 7], [i32; 7], Decimal)> = (0..cap)
+            .into_par_iter()
+            .map(|m_idx| {
+                let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
+                let mut solvent_universes = 0;
+
+                if !fund_trajectories.is_empty() {
+                    for run in &fund_trajectories {
+                        if let Some(data) = run.get(m_idx) {
+                            snapshots.push(data);
+                            
+                            if data.is_solvent {
+                                solvent_universes += 1;
+                            }
+                        }
+                    }
+                }
+
+                // Sort snapshots by Target Metric
+                snapshots.sort_by(|a, b| if sort_by_total_value {
+                    a.total_value.cmp(&b.total_value)
+                } else {
+                    a.cash_balance.cmp(&b.cash_balance)
+                });
+                
+                let len = snapshots.len();
+                let mut p_vals = [Decimal::ZERO; 7];
+                let mut c_vals = [0; 7];
+
+                if len > 0 {
+                    // Helper to pick exact index
+                    let get_idx = |pct: f64| -> usize {
+                        let idx = (len as f64 * pct).floor() as usize;
+                        if idx >= len { len - 1 } else { idx }
+                    };
+
+                    let targets = [
+                        snapshots[0],                   // P0
+                        snapshots[get_idx(0.10)],       // P10
+                        snapshots[get_idx(0.25)],       // P25
+                        snapshots[get_idx(0.50)],       // P50
+                        snapshots[get_idx(0.75)],       // P75
+                        snapshots[get_idx(0.90)],       // P90
+                        snapshots[len - 1]              // P100
+                    ];
+
+                    for (i, data) in targets.iter().enumerate() {
+                        p_vals[i] = if sort_by_total_value { data.total_value } else { data.cash_balance };
+                        c_vals[i] = data.solvent_companies;
+                    }
+                }
+
+                let rate = if iterations > 0 {
+                    solvent_universes as f64 / iterations as f64
+                } else {
+                    0.0
+                };
+                
+                (p_vals, c_vals, Decimal::from_f64_retain(rate).unwrap_or_default())
+            })
+            .collect();
+
+        // Unzip results into column vectors
         let mut p0_vec = Vec::with_capacity(cap);
         let mut p10_vec = Vec::with_capacity(cap);
         let mut p25_vec = Vec::with_capacity(cap);
@@ -282,75 +348,24 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
         let mut survival_vec = Vec::with_capacity(cap);
 
-        // LOGIC A: Cross-Sectional Graph Arrays
-        if !fund_trajectories.is_empty() {
-            for m_idx in 0..cap {
-                let mut snapshots: Vec<&MonthlyData> = Vec::with_capacity(iterations);
-                let mut solvent_universes = 0;
+        for (p, c, s) in monthly_results {
+            p0_vec.push(p[0]);
+            p10_vec.push(p[1]);
+            p25_vec.push(p[2]);
+            p50_vec.push(p[3]);
+            p75_vec.push(p[4]);
+            p90_vec.push(p[5]);
+            p100_vec.push(p[6]);
 
-                for run in &fund_trajectories {
-                    if let Some(data) = run.get(m_idx) {
-                        snapshots.push(data);
-                        
-                        if data.is_solvent {
-                            solvent_universes += 1;
-                        }
-                    }
-                }
+            p0_count.push(c[0]);
+            p10_count.push(c[1]);
+            p25_count.push(c[2]);
+            p50_count.push(c[3]);
+            p75_count.push(c[4]);
+            p90_count.push(c[5]);
+            p100_count.push(c[6]);
 
-                // Sort snapshots by Target Metric (Cash Balance or Total Value)
-                snapshots.sort_by(|a, b| if sort_by_total_value {
-                    a.total_value.cmp(&b.total_value)
-                } else {
-                    a.cash_balance.cmp(&b.cash_balance)
-                });
-                
-                let len = snapshots.len();
-
-                if len > 0 {
-                    // Helper to pick exact index
-                    let get_idx = |pct: f64| -> usize {
-                        let idx = (len as f64 * pct).floor() as usize;
-                        if idx >= len { len - 1 } else { idx }
-                    };
-
-                    let p0 = snapshots[0];
-                    let p10 = snapshots[get_idx(0.10)];
-                    let p25 = snapshots[get_idx(0.25)];
-                    let p50 = snapshots[get_idx(0.50)];
-                    let p75 = snapshots[get_idx(0.75)];
-                    let p90 = snapshots[get_idx(0.90)];
-                    let p100 = snapshots[len - 1];
-
-                    // Helper to extract value based on sort mode
-                    let get_val = |d: &MonthlyData| if sort_by_total_value { d.total_value } else { d.cash_balance };
-
-                    // Push Values
-                    p0_vec.push(get_val(p0));
-                    p10_vec.push(get_val(p10));
-                    p25_vec.push(get_val(p25));
-                    p50_vec.push(get_val(p50));
-                    p75_vec.push(get_val(p75));
-                    p90_vec.push(get_val(p90));
-                    p100_vec.push(get_val(p100));
-
-                    // Push Solvent Counts (Associated with the P-tile)
-                    p0_count.push(p0.solvent_companies);
-                    p10_count.push(p10.solvent_companies);
-                    p25_count.push(p25.solvent_companies);
-                    p50_count.push(p50.solvent_companies);
-                    p75_count.push(p75.solvent_companies);
-                    p90_count.push(p90.solvent_companies);
-                    p100_count.push(p100.solvent_companies);
-                }
-
-                let rate = if iterations > 0 {
-                    solvent_universes as f64 / iterations as f64
-                } else {
-                    0.0
-                };
-                survival_vec.push(Decimal::from_f64_retain(rate).unwrap_or_default());
-            }
+            survival_vec.push(s);
         }
 
         // LOGIC B: Pathwise Data Object (p50_data)
@@ -428,62 +443,75 @@ impl FundOrchestrator<PortfolioMode> {
         let iterations = self.universes.len();
         let mut total_events_triggered = 0;
         
+        // Extract read-only references to allow concurrent mutable borrow of universes
+        let events = &self.events;
+        let event_manager = &self.event_manager;
+        let events_active = self.events_active;
+
         for month_idx in 1..=self.months {
             // A. Step Monte Carlo Universes (Horizontal Pooling ON, Reaper ON)
-            for universe in self.universes.iter_mut() {
-                // 1. Generate stochastic shocks for this universe
-                let mut monthly_shocks = Vec::new();
-                for event in &self.events {
-                    // Skip deterministic events (handled elsewhere)
-                    if event.start_month.is_some() { continue; }
+            // Parallel execution using Rayon
+            let monthly_events_count: usize = self.universes.par_iter_mut()
+                .map(|universe| {
+                    let mut local_triggered = 0;
+                    // 1. Generate stochastic shocks for this universe
+                    let mut monthly_shocks = Vec::new();
+                    for event in events {
+                        // Skip deterministic events (handled elsewhere)
+                        if event.start_month.is_some() { continue; }
 
-                    if self.events_active && self.event_manager.check_trigger(event) {
-                        total_events_triggered += 1;
-                        
-                        let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
-                        
-                        // Identify targets
-                        let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
-                            // Fund Scope: Target all companies
-                            universe.companies.iter().map(|c| c.id).collect()
-                        } else {
-                            // Company Scope: Target specific companies
-                            event.company_ids.clone().unwrap_or_default()
-                        };
+                        if events_active && event_manager.check_trigger(event) {
+                            local_triggered += 1;
+                            
+                            let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
+                            
+                            // Identify targets
+                            let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
+                                // Fund Scope: Target all companies
+                                universe.companies.iter().map(|c| c.id).collect()
+                            } else {
+                                // Company Scope: Target specific companies
+                                event.company_ids.clone().unwrap_or_default()
+                            };
 
-                        if is_counter_cyclic {
-                            // Counter-Cyclic: Independent shocks per company
-                            for target_id in targets {
-                                let (value, duration) = self.event_manager.resolve_impact(event);
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        } else {
-                            // Standard: Correlated shock (Same impact for all)
-                            let (value, duration) = self.event_manager.resolve_impact(event);
-                            for target_id in targets {
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
+                            if is_counter_cyclic {
+                                // Counter-Cyclic: Independent shocks per company
+                                for target_id in targets {
+                                    let (value, duration) = event_manager.resolve_impact(event);
+                                    monthly_shocks.push(Shock {
+                                        name: event.event_name.clone(),
+                                        month: month_idx,
+                                        impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
+                                        impact_value: value,
+                                        duration_months: Some(duration),
+                                        target_company_id: Some(target_id),
+                                    });
+                                }
+                            } else {
+                                // Standard: Correlated shock (Same impact for all)
+                                let (value, duration) = event_manager.resolve_impact(event);
+                                for target_id in targets {
+                                    monthly_shocks.push(Shock {
+                                        name: event.event_name.clone(),
+                                        month: month_idx,
+                                        impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
+                                        impact_value: value,
+                                        duration_months: Some(duration),
+                                        target_company_id: Some(target_id),
+                                    });
+                                }
                             }
                         }
                     }
-                }
 
-                // 2. Step universe with shocks
-                Self::step_universe(universe, month_idx, true, true, &monthly_shocks);
-            }
+                    // 2. Step universe with shocks
+                    Self::step_universe(universe, month_idx, true, true, &monthly_shocks);
+                    
+                    local_triggered
+                })
+                .sum();
+
+            total_events_triggered += monthly_events_count;
 
             // B. Step Deterministic Universe (Horizontal Pooling ON, Reaper ON)
             // No stochastic shocks for deterministic run
@@ -491,10 +519,11 @@ impl FundOrchestrator<PortfolioMode> {
         }
 
         let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
-        let mut fund_trajectories = Vec::with_capacity(iterations);
-        for universe in self.universes.iter() {
-            fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
-        }
+        
+        // Parallelize aggregation of universe history
+        let fund_trajectories: Vec<_> = self.universes.par_iter()
+            .map(|universe| Self::aggregate_universe_history(universe, self.months))
+            .collect();
 
         // PortfolioMode -> Sort by Total Value (true)
         self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered, true)
@@ -506,81 +535,92 @@ impl FundOrchestrator<EnsembleMode> {
         let iterations = self.universes.len();
         let mut total_events_triggered = 0;
         
+        // Extract read-only references for Rayon
+        let events = &self.events;
+        let event_manager = &self.event_manager;
+        let events_active = self.events_active;
+
         for month_idx in 1..=self.months {
-            let mut total_pot = 0.0;
-            let mut solvent_universes_indices = Vec::new();
+            // PHASE A: Step Universes (Parallel)
+            // Returns (pot, is_solvent, events_triggered)
+            let results: Vec<(f64, bool, usize)> = self.universes.par_iter_mut()
+                .map(|universe| {
+                    let mut local_events_triggered = 0;
+                    
+                    // 1. Generate stochastic shocks
+                    let mut monthly_shocks = Vec::new();
+                    for event in events {
+                        if event.start_month.is_some() { continue; }
 
-            // A. Step Monte Carlo Universes (Horizontal Pooling OFF, Reaper OFF)
-            for (i, universe) in self.universes.iter_mut().enumerate() {
-                // 1. Generate stochastic shocks for this universe
-                let mut monthly_shocks = Vec::new();
-                for event in &self.events {
-                    if event.start_month.is_some() { continue; }
+                        if events_active && event_manager.check_trigger(event) {
+                            local_events_triggered += 1;
 
-                    if self.events_active && self.event_manager.check_trigger(event) {
-                        total_events_triggered += 1;
+                            let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
+                            
+                            let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
+                                universe.companies.iter().map(|c| c.id).collect()
+                            } else {
+                                event.company_ids.clone().unwrap_or_default()
+                            };
 
-                        let is_counter_cyclic = event.is_counter_cyclic.unwrap_or(false);
-
-                        let targets: Vec<Uuid> = if !event.fund_ids.as_deref().unwrap_or(&[]).is_empty() {
-                            universe.companies.iter().map(|c| c.id).collect()
-                        } else {
-                            event.company_ids.clone().unwrap_or_default()
-                        };
-
-                        if is_counter_cyclic {
-                            // Counter-Cyclic: Independent shocks per company
-                            for target_id in targets {
-                                let (value, duration) = self.event_manager.resolve_impact(event);
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
-                            }
-                        } else {
-                            // Standard: Correlated shock
-                            let (value, duration) = self.event_manager.resolve_impact(event);
-                            for target_id in targets {
-                                monthly_shocks.push(Shock {
-                                    name: event.event_name.clone(),
-                                    month: month_idx,
-                                    impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
-                                    impact_value: value,
-                                    duration_months: Some(duration),
-                                    target_company_id: Some(target_id),
-                                });
+                            if is_counter_cyclic {
+                                for target_id in targets {
+                                    let (value, duration) = event_manager.resolve_impact(event);
+                                    monthly_shocks.push(Shock {
+                                        name: event.event_name.clone(),
+                                        month: month_idx,
+                                        impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
+                                        impact_value: value,
+                                        duration_months: Some(duration),
+                                        target_company_id: Some(target_id),
+                                    });
+                                }
+                            } else {
+                                let (value, duration) = event_manager.resolve_impact(event);
+                                for target_id in targets {
+                                    monthly_shocks.push(Shock {
+                                        name: event.event_name.clone(),
+                                        month: month_idx,
+                                        impact_type: event.impact_type.clone().unwrap_or_else(|| "expense".to_string()),
+                                        impact_value: value,
+                                        duration_months: Some(duration),
+                                        target_company_id: Some(target_id),
+                                    });
+                                }
                             }
                         }
                     }
-                }
 
-                // 2. Step universe with shocks
-                let pot = Self::step_universe(universe, month_idx, false, false, &monthly_shocks);
+                    // 2. Step universe (No Horizontal Pooling locally, No Reaper yet)
+                    let pot = Self::step_universe(universe, month_idx, false, false, &monthly_shocks);
+                    
+                    let is_alive = universe.companies.iter().any(|c| c.is_solvent);
+                    
+                    (pot, is_alive, local_events_triggered)
+                })
+                .collect();
+
+            // Aggregation
+            let mut total_pot = 0.0;
+            let mut solvent_count = 0;
+            
+            for (pot, is_alive, triggered) in results {
                 total_pot += pot;
-
-                // Check if universe is "alive" (has at least one solvent company)
-                if universe.companies.iter().any(|c| c.is_solvent) {
-                    solvent_universes_indices.push(i);
+                if is_alive {
+                    solvent_count += 1;
                 }
+                total_events_triggered += triggered;
             }
 
-            // B. Vertical Pooling Logic
-            let solvent_count = solvent_universes_indices.len();
+            // PHASE B: Vertical Pooling (Parallel)
             if solvent_count > 0 && total_pot > 0.0 {
                 let share = total_pot / solvent_count as f64;
 
-                for idx in solvent_universes_indices {
-                    let universe = &mut self.universes[idx];
+                self.universes.par_iter_mut().for_each(|universe| {
+                    let universe_solvent_companies_count = universe.companies.iter().filter(|c| c.is_solvent).count();
                     
-                    // Distribute share to this universe's solvent companies
-                    let universe_solvent_companies = universe.companies.iter().filter(|c| c.is_solvent).count();
-                    
-                    if universe_solvent_companies > 0 {
-                        let company_share = share / universe_solvent_companies as f64;
+                    if universe_solvent_companies_count > 0 {
+                        let company_share = share / universe_solvent_companies_count as f64;
                         
                         for company in universe.companies.iter_mut() {
                             if company.is_solvent {
@@ -597,23 +637,24 @@ impl FundOrchestrator<EnsembleMode> {
                             }
                         }
                     }
-                }
+                });
             }
 
-            // C. Run Reaper (Delayed Death)
-            for universe in self.universes.iter_mut() {
+            // PHASE C: Reaper (Parallel)
+            self.universes.par_iter_mut().for_each(|universe| {
                 Self::run_reaper(universe);
-            }
+            });
 
-            // D. Step Deterministic Universe (Standard Mode)
+            // PHASE D: Deterministic
             Self::step_universe(&mut self.deterministic_universe, month_idx, true, true, &[]);
         }
 
         let deterministic_data = Self::aggregate_universe_history(&self.deterministic_universe, self.months);
-        let mut fund_trajectories = Vec::with_capacity(iterations);
-        for universe in self.universes.iter() {
-            fund_trajectories.push(Self::aggregate_universe_history(universe, self.months));
-        }
+        
+        // Parallelize aggregation of universe history
+        let fund_trajectories: Vec<_> = self.universes.par_iter()
+            .map(|universe| Self::aggregate_universe_history(universe, self.months))
+            .collect();
 
         // EnsembleMode -> Sort by Cash Balance (false)
         self.finalize_results(fund_trajectories, deterministic_data, total_events_triggered, false)
