@@ -10,7 +10,9 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    localStorage.removeItem("token");
+    localStorage.removeItem("tenant_id");
+    window.location.href = "/login";
   };
 
   return (
