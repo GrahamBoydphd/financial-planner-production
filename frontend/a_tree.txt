@@ -7,11 +7,7 @@
 │   ├── fund
 │   │   └── [fundId]
 │   │       ├── ClientPage.tsx
-│   │       ├── inputs
-│   │       │   └── page.tsx
-│   │       ├── page.tsx
-│   │       └── results
-│   │           └── page.tsx
+│   │       └── page.tsx
 │   ├── fund-plan
 │   │   └── [fundPlanId]
 │   │       ├── inputs
@@ -61,6 +57,7 @@
 │   │   ├── PlanForm.tsx
 │   │   ├── RevenueForm.tsx
 │   │   ├── shared
+│   │   │   ├── DescriptionInput.tsx
 │   │   │   ├── EconophysicsInputs.tsx
 │   │   │   ├── TruncatedText.tsx
 │   │   │   └── VolatilityInputs.tsx
@@ -100,4 +97,4 @@
 ├── tsconfig.json
 └── tsconfig.tsbuildinfo
 
-30 directories, 71 files
+28 directories, 70 files

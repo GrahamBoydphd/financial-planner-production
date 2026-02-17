@@ -313,7 +313,7 @@ export default function FundPage({ params }: { params: { fundId: string } }) {
           fundId={fund?.id || null} 
           fundName={fund?.fund_name} 
           companies={companies} 
-          funds={[]} 
+          funds={fund ? [fund] : []} 
         />
       </section>
 
