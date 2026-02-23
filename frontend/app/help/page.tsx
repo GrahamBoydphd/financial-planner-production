@@ -148,8 +148,14 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
               <div className="bg-indigo-600 rounded-lg shadow-md p-8 text-white">
                 <h2 className="text-3xl font-bold mb-4">Welcome to Evolutesix's planner with real-world volatility<br/>For founders and investors</h2>
                 <div className="space-y-4 text-indigo-100 text-lg">
+                  <ExpandableVideo videoId='Xlnqf4GvqkU' />
                   <p>
                     Congratulations on starting your journey. This alpha release Financial Planner helps founders and investors understand how a business or fund is likely to behave under real-world uncertainty.
+                  </p>
+                  <p>
+                    <strong>Don't spend any of your time on this if volatility has no impact on you; 
+                       if none of the "why" in this 5 minute video is relevant to you. 
+                    <Link href="https://youtu.be/Xlnqf4GvqkU" className="text-yellow-300 hover:underline"> video</Link>!</strong>
                   </p>
                   <p>
                     Instead of projecting a single “expected” outcome, the tool stress-tests your plan across thousands of possible paths, revealing how sensitive your business is to the volatility you already can estimate, as well as white and black swan events, where volatility creates hidden risk or opportunity, and where strategic choices meaningfully reduce the chance of failure.
@@ -242,16 +248,21 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
             {/* Quick Start Guide (Subsequent Visits) */}
             {!isNewUser && (
               <section id="quick-start" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                <ExpandableVideo videoId='Xlnqf4GvqkU' />
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Start Guide</h2>
                 <div className="prose prose-indigo text-gray-600 max-w-none space-y-4">
                   <p>
-                    Use this guide to understand our risk-based modeling before building your first plan. 
+                    Use this guide to understand our risk-based modeling before building your first plan.
                   </p>
-                  <ExpandableVideo videoId='RpHR-XkiYhw' /> 
+                  <p> 
+                    Why this is relevant to you in a 5 minute  
+                    <Link href="https://youtu.be/Xlnqf4GvqkU" className="text-indigo-600 hover:underline"> video!</Link>
+                  </p>
                   <p>
                     <strong>Or watch the quick-start 
                     <Link href="https://youtu.be/RpHR-XkiYhw" className="text-indigo-600 hover:underline"> video</Link>!</strong>
                   </p>
+                  <ExpandableVideo videoId='RpHR-XkiYhw' /> 
                   <ol className="list-decimal pl-5 space-y-2">
                     <li>
                       <strong>Dashboard:</strong> Navigate to the <Link href="/" className="text-indigo-600 hover:underline">Dashboard</Link> to see all of your funds and companies.
