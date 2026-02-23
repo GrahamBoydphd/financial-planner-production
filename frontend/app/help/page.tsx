@@ -255,12 +255,13 @@ export default function HelpPage({ searchParams }: { searchParams?: { new?: stri
                     Use this guide to understand our risk-based modeling before building your first plan.
                   </p>
                   <p> 
-                    Why this is relevant to you in a 5 minute  
+                    <strong>Why</strong> this is relevant to you in a 5 minute  
                     <Link href="https://youtu.be/Xlnqf4GvqkU" className="text-indigo-600 hover:underline"> video!</Link>
                   </p>
                   <p>
-                    <strong>Or watch the quick-start 
-                    <Link href="https://youtu.be/RpHR-XkiYhw" className="text-indigo-600 hover:underline"> video</Link>!</strong>
+                    <strong>And next</strong> watch the quick-start 
+                    <Link href="https://youtu.be/RpHR-XkiYhw" className="text-indigo-600 hover:underline"> video</Link>! 
+                    Or read the instructions below.
                   </p>
                   <ExpandableVideo videoId='RpHR-XkiYhw' /> 
                   <ol className="list-decimal pl-5 space-y-2">
