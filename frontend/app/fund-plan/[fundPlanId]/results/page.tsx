@@ -9,7 +9,7 @@ import { api, Fund, SimulationResult } from '@/lib/api';
 import FundChart, { FanData } from '@/components/FundChart';
 import FundKPICards from '@/components/display/FundKPICards';
 
-const YEAR_OPTIONS = [1, 2, 3, 5, 10, 20, 50, 100];
+const YEAR_OPTIONS = [1, 2, 3, 5, 10, 20];
 
 type ViewMode = 'standard' | 'single' | 'monte_carlo';
 
@@ -55,7 +55,7 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
   const [isLogScale, setIsLogScale] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('standard');
   const [poolingFraction, setPoolingFraction] = useState<number>(0);
-  const [years, setYears] = useState<number>(5);
+  const [years, setYears] = useState<number>(10);
   const [stopInsolvency, setStopInsolvency] = useState<boolean>(true);
   const [eventsActive, setEventsActive] = useState<boolean>(true);
   

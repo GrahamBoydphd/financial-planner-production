@@ -240,7 +240,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
   const [valuationMethod, setValuationMethod] = useState('revenue');
 
   // Controls
-  const [years, setYears] = useState(5);
+  const [years, setYears] = useState(10);
   const [isLogScale, setIsLogScale] = useState(true); // Default Log Scale
   const [simMode, setSimMode] = useState<'single' | 'monte_carlo' | 'standard'>('standard');
   const [stopInsolvency, setStopInsolvency] = useState(true); // Default to TRUE
@@ -605,7 +605,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 value={years}
                 onChange={(e) => setYears(Number(e.target.value))}
               >
-                {[1, 2, 3, 5, 10, 20, 50, 100].map(y => <option key={y} value={y}>{y} Years</option>)}
+                {[1, 2, 3, 5, 10, 20].map(y => <option key={y} value={y}>{y} Years</option>)}
               </select>
 
               <div className="flex items-center gap-2 border-l pl-4">
@@ -625,7 +625,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 >
                   <option value="standard">Standard (Average)</option>
                   <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Likely real-world outcomes (999 Runs)</option>
+                  <option value="monte_carlo">Likely real-world outcomes (499 Runs)</option>
                 </select>
               </div>
 
