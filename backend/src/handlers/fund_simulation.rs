@@ -261,7 +261,7 @@ async fn internal_run_simulation(
     }
 
     // 3. Run Simulation
-    let months = params.months.unwrap_or(60).clamp(1, 1200);
+    let months = params.months.unwrap_or(120).clamp(1, 1200);
 
     // Fetch Stochastic Events (Probabilistic events with no fixed start_month)
     let stochastic_events = sqlx::query_as!(

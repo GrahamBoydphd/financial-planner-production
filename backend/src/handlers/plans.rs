@@ -236,7 +236,7 @@ pub async fn get_plan_projection(
 ) -> Result<Json<SimulationResult>, AppError> {
     
     // DoS Protection: Check months limit
-    let months = params.months.unwrap_or(60);
+    let months = params.months.unwrap_or(120);
     if months > 1200 {
         return Err(AppError::ValidationError("Simulation limited to 100 years (1200 months)".into()));
     }
