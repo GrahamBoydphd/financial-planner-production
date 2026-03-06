@@ -196,7 +196,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
         </Card>
 
         <Card className="text-center mb-4">
-            <h3 className="text-gray-500 text-sm uppercase">Avg. Shocks (Universe)</h3>
+            <h3 className="text-gray-500 text-sm uppercase">Average number of events)</h3>
             <p className="text-2xl font-bold text-indigo-600">
                 {projection.average_event_count?.toFixed(1) ?? 0}
             </p>

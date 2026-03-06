@@ -611,7 +611,7 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
                         {activeData && (
                             <>
                                 <Card className='mb-4 border-l-4 border-purple-500 p-4'>
-                                    <div className='text-xs font-bold text-gray-500 uppercase'>Avg. Shocks (Universe)</div>
+                                    <div className='text-xs font-bold text-gray-500 uppercase'>Average number of Events</div>
                                     <div className='text-2xl font-bold text-gray-900'>{simulation?.average_event_count?.toFixed(1) ?? 0}</div>
                                     <div className='text-xs text-gray-400'>Events per lifetime</div>
                                 </Card>

@@ -206,9 +206,9 @@ export default function EventForm({ fundId, funds, companies, initialData, onSuc
             value={event.event_type}
             onChange={(e) => setEvent({ ...event, event_type: e.target.value })}
           >
-            <option value="revenue_shock">Revenue Shock</option>
-            <option value="expense_shock">Expense Shock</option>
-            <option value="valuation_shock">Valuation Shock</option>
+            <option value="revenue_shock">Revenue Impacted</option>
+            <option value="expense_shock">Expense Impacted</option>
+            <option value="valuation_shock">Capital Growth Impacted</option>
           </select>
         </div>
 

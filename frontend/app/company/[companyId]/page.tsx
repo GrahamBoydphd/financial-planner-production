@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card';
 import { api, Company, FinancialPlan, Fund } from '@/lib/api';
 import Link from 'next/link';
 import { ArrowLeft, Copy, Loader2, Trash2, Edit2, Check, X } from 'lucide-react';
+import CompanyForm from "@/components/forms/CompanyForm";
 
 export default function CompanyPage({ params }: { params: { companyId: string } }) {
   const { companyId } = params;
@@ -25,6 +26,9 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
   // Editing State
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [tempPlanName, setTempPlanName] = useState("");
+
+  // Company Edit State
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
 
   const loadData = async () => {
     try {
@@ -126,7 +130,12 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
 
       <div className="flex justify-between items-center mb-8">
         <div>
-            <h1 className="text-3xl font-bold text-gray-900">{company.company_name} [{company.currency_code}]</h1>
+            <div className="flex items-center">
+                <h1 className="text-3xl font-bold text-gray-900">{company.company_name} [{company.currency_code}]</h1>
+                <button onClick={() => setIsEditingCompany(true)} className="ml-3 text-gray-400 hover:text-blue-600 transition-colors">
+                    <Edit2 className="h-5 w-5 inline" />
+                </button>
+            </div>
             <p className="text-gray-500">{company.industry} • {company.business_model || 'Business Model'}</p>
         </div>
         <button 
@@ -136,6 +145,17 @@ export default function CompanyPage({ params }: { params: { companyId: string } 
           + New Scenario
         </button>
       </div>
+
+      {isEditingCompany && (
+        <div className="mb-8 p-6 bg-gray-50 border border-gray-200 rounded-lg animate-fade-in">
+          <CompanyForm 
+            initialData={company} 
+            funds={fund ? [fund] : []} 
+            onSuccess={() => { setIsEditingCompany(false); loadData(); }} 
+            onCancel={() => setIsEditingCompany(false)} 
+          />
+        </div>
+      )}
 
       {isCreating && (
         <div className="mb-6 p-4 bg-teal-50 border border-teal-200 rounded animate-fade-in">
