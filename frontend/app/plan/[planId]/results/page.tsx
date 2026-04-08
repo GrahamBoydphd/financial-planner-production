@@ -115,6 +115,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
     const detTotalVal = Number(lastData.total_value || 0);
     const gap = Number(totalVal) - detTotalVal;
     const formattedGap = `${gap < 0 ? '-' : ''}${getCurrencySymbol(currency)}${Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    const formattedDetTotalVal = `${detTotalVal < 0 ? '-' : ''}${getCurrencySymbol(currency)}${Math.abs(detTotalVal).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     return (
       <>
@@ -124,8 +125,8 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
             <p className={`text-2xl font-bold ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
               {formattedGap}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              You have a gap of {formattedGap} vs. the deterministic projection
+            <p className="text-base text-gray-400 mt-1">
+              You have a gap of {formattedGap} vs. the deterministic projection of {formattedDetTotalVal}
             </p>
           </Card>
         )}

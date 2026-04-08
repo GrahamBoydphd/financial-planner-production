@@ -160,16 +160,21 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: UI TWEAK - Relocate Volatility Tax Card.
-The "Volatility Tax" (or "Ergodicity Gap") card has already been created and is rendering on the results pages, but it needs to be moved to the first position.
+CONTEXT: UI TWEAK - Update Volatility Tax Copy.
+The user wants to add the actual formatted value of the deterministic projection to the end of the Volatility Tax subtext.
+
+CURRENT TEXT: "You have a gap of [Gap Amount] vs. the deterministic projection"
+DESIRED TEXT: "You have a gap of [Gap Amount] vs. the deterministic projection of [Formatted Deterministic Amount]"
 
 OBJECTIVE:
-Relocate the existing Volatility Tax card so it is the VERY FIRST card displayed in the metrics/KPI row.
+Locate the Volatility Tax card in the UI and append the formatted final deterministic value to its descriptive text.
 
 INSTRUCTIONS:
-1. LOCATE the JSX code rendering the "Volatility Tax" card in the provided files.
-2. MOVE that entire JSX block (the `<Card>` or `<div>` containing it) so that it is the first item inside its parent flex/grid container, appearing before any other metric cards (like Revenue, Cash Flow, etc.).
-3. DO NOT change the calculation logic, just reorder the UI components.
+1. LOCATE the JSX where the "Volatility Tax" card is rendered in the provided files.
+2. FIND the text string: "vs. the deterministic projection".
+3. UPDATE the text to append " of " followed by the formatted final value of the deterministic array. 
+   - Example JSX update: `vs. the deterministic projection of {formatCurrency(deterministicEndValue)}` (adapt variable names based on the local scope).
+4. Ensure the deterministic value is formatted using the exact same currency formatter as the gap value.
 
 </task_instruction>
 
@@ -295,6 +300,18 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
 
     return (
       <>
+        {(simMode === 'single' || simMode === 'monte_carlo') && (
+          <Card className="text-center border-b-4 border-pink-500 mb-4">
+            <h3 className="text-pink-700 text-xs uppercase font-bold">Volatility Tax</h3>
+            <p className={`text-2xl font-bold ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
+              {formattedGap}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              You have a gap of {formattedGap} vs. the deterministic projection
+            </p>
+          </Card>
+        )}
+
         {simMode === 'monte_carlo' && (
             <Card className="text-center border-b-4 border-orange-500 mb-4">
                 <h3 className="text-orange-700 text-xs uppercase font-bold">Risk & Variance</h3>
@@ -303,13 +320,6 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
                     <p className={`text-xl font-bold ${finalSurvival < 50 ? 'text-red-600' : 'text-green-600'}`}>
                         {finalSurvival.toFixed(1)}%
                     </p>
-                </div>
-                <div className="border-t pt-2">
-                    <p className="text-xs text-gray-500">Comparing cash: realistic projection is: </p>
-                    <p className={`text-lg font-bold ${cashDelta < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {cashDelta > 0 ? '+' : ''}{fmt(cashDelta)}
-                    </p>
-                    <p className="text-xs text-gray-500"> vs. conventional (unrealistic) projection</p>
                 </div>
             </Card>
         )}
@@ -336,18 +346,6 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
              </>
           )}
         </Card>
-
-        {(simMode === 'single' || simMode === 'monte_carlo') && (
-          <Card className="text-center border-b-4 border-pink-500 mb-4">
-            <h3 className="text-pink-700 text-xs uppercase font-bold">Volatility Tax</h3>
-            <p className={`text-2xl font-bold ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
-              {formattedGap}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              You have a gap of {formattedGap} vs. the deterministic projection
-            </p>
-          </Card>
-        )}
 
         {simMode === 'monte_carlo' && (
           <Card className="text-center border-b-4 border-blue-600 mb-4">
@@ -2144,6 +2142,19 @@ export default function FundKPICards({
   return (
     <div className={containerClass}>
       
+      {/* CARD 4: VOLATILITY TAX (Moved to top) */}
+      {showInvestorMetrics && netValue !== undefined && detNetValue !== undefined && (
+        <Card className="text-center border-t-4 border-pink-500 p-4">
+            <h3 className="text-gray-500 text-xs uppercase font-bold">Volatility Tax</h3>
+            <p className={`text-3xl font-bold mt-2 ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
+              {formattedGap}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              You have a gap of {formattedGap} vs. the deterministic projection
+            </p>
+        </Card>
+      )}
+
       {/* CARD 1: LIKELIHOOD (Replaces Survival) */}
       {showInvestorMetrics && targetMultiple !== undefined && (
         <Card className={`text-center border-t-4 p-4 ${likelihoodNum < 50 ? 'border-orange-400' : 'border-green-500'}`}>
@@ -2173,19 +2184,6 @@ export default function FundKPICards({
             </p>
             <p className="text-xs text-gray-400 mt-1">Realized Returns</p>
             <p className='text-xs italic text-gray-500 mt-2'>* in this simulation only dividends are distributed, no companies are able to be sold.</p>
-        </Card>
-      )}
-
-      {/* CARD 4: VOLATILITY TAX */}
-      {showInvestorMetrics && netValue !== undefined && detNetValue !== undefined && (
-        <Card className="text-center border-t-4 border-pink-500 p-4">
-            <h3 className="text-gray-500 text-xs uppercase font-bold">Volatility Tax</h3>
-            <p className={`text-3xl font-bold mt-2 ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
-              {formattedGap}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              You have a gap of {formattedGap} vs. the deterministic projection
-            </p>
         </Card>
       )}
 

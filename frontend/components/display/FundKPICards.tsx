@@ -68,6 +68,7 @@ export default function FundKPICards({
 
   const gap = netValue !== undefined && detNetValue !== undefined ? netValue - detNetValue : 0;
   const formattedGap = `${gap < 0 ? '-' : ''}${getCurrencySymbol(currency)}${Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const formattedDetNetValue = detNetValue !== undefined ? `${detNetValue < 0 ? '-' : ''}${getCurrencySymbol(currency)}${Math.abs(detNetValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '';
 
   // Layout: Row = Grid 4 cols (for Single View), Col = Flex Col (for Sidebar)
   const containerClass = isRow 
@@ -91,8 +92,8 @@ export default function FundKPICards({
             <p className={`text-3xl font-bold mt-2 ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
               {formattedGap}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              You have a gap of {formattedGap} vs. the deterministic projection
+            <p className="text-base text-gray-400 mt-1">
+              You have a gap of {formattedGap} vs. the deterministic projection of {formattedDetNetValue}
             </p>
         </Card>
       )}
