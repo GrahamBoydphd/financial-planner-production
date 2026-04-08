@@ -2,6 +2,7 @@
 
 import Card from '@/components/ui/Card';
 import { SimulationResult } from '@/lib/api';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface Props {
   data: SimulationResult;
@@ -38,10 +39,13 @@ export default function FundKPICards({
 
   // 1. METRICS EXTRACTION
   let netValue: number | undefined = undefined;
+  let detNetValue: number | undefined = undefined;
   let labelSuffix = '';
   
   // Show Investor Metrics in Monte Carlo and Single mode
   const showInvestorMetrics = mode === 'monte_carlo' || mode === 'single';
+
+  detNetValue = getLast(data.deterministic_data, 'total_value');
 
   if (mode === 'monte_carlo') {
     // P50 Data
@@ -58,9 +62,12 @@ export default function FundKPICards({
     // No fallback to deterministic
   } else {
     // Standard / Deterministic
-    netValue = getLast(data.deterministic_data, 'total_value');
+    netValue = detNetValue;
     labelSuffix = '(Deterministic)';
   }
+
+  const gap = netValue !== undefined && detNetValue !== undefined ? netValue - detNetValue : 0;
+  const formattedGap = `${gap < 0 ? '-' : ''}${getCurrencySymbol(currency)}${Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   // Layout: Row = Grid 4 cols (for Single View), Col = Flex Col (for Sidebar)
   const containerClass = isRow 
@@ -77,6 +84,19 @@ export default function FundKPICards({
   return (
     <div className={containerClass}>
       
+      {/* CARD 4: VOLATILITY TAX (Moved to top) */}
+      {showInvestorMetrics && netValue !== undefined && detNetValue !== undefined && (
+        <Card className="text-center border-t-4 border-pink-500 p-4">
+            <h3 className="text-gray-500 text-xs uppercase font-bold">Volatility Tax</h3>
+            <p className={`text-3xl font-bold mt-2 ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
+              {formattedGap}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              You have a gap of {formattedGap} vs. the deterministic projection
+            </p>
+        </Card>
+      )}
+
       {/* CARD 1: LIKELIHOOD (Replaces Survival) */}
       {showInvestorMetrics && targetMultiple !== undefined && (
         <Card className={`text-center border-t-4 p-4 ${likelihoodNum < 50 ? 'border-orange-400' : 'border-green-500'}`}>
@@ -97,9 +117,7 @@ export default function FundKPICards({
         <p className="text-xs text-gray-400 mt-1">Aggregated Cash + Dividends</p>
       </Card>
 
-      {/* CARD 3: CASH BALANCE - REMOVED */}
-
-      {/* CARD 4: DPI (New) */}
+      {/* CARD 3: DPI */}
       {showInvestorMetrics && (
         <Card className="text-center border-t-4 border-purple-500 p-4">
             <h3 className="text-gray-500 text-xs uppercase font-bold">DPI (Distributed to Paid-In)</h3>

@@ -269,7 +269,7 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-xl text-gray-600">
             {mode === 'login' ? (
               <p>
                 Don't have an account?{' '}

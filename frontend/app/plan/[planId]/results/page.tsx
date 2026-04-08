@@ -8,6 +8,7 @@ import Card from '@/components/ui/Card';
 import CashFlowChart from '@/components/CashFlowChart';
 import Button from '@/components/ui/Button';
 import { api, FinancialPlan, CapitalInjection, DividendPolicy, CreditFacility, Company } from '@/lib/api';
+import { getCurrencySymbol } from '@/lib/currency';
 
 // --- COMPONENT: KPI CARDS ---
 interface KPIProps {
@@ -110,8 +111,25 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
     const detCash = projection.deterministic_data?.[projection.deterministic_data.length - 1]?.cash_balance ?? 0;
     const cashDelta = Number(p50Cash) - Number(detCash);
 
+    // --- VOLATILITY TAX CALCULATION ---
+    const detTotalVal = Number(lastData.total_value || 0);
+    const gap = Number(totalVal) - detTotalVal;
+    const formattedGap = `${gap < 0 ? '-' : ''}${getCurrencySymbol(currency)}${Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
     return (
       <>
+        {(simMode === 'single' || simMode === 'monte_carlo') && (
+          <Card className="text-center border-b-4 border-pink-500 mb-4">
+            <h3 className="text-pink-700 text-xs uppercase font-bold">Volatility Tax</h3>
+            <p className={`text-2xl font-bold ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
+              {formattedGap}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              You have a gap of {formattedGap} vs. the deterministic projection
+            </p>
+          </Card>
+        )}
+
         {simMode === 'monte_carlo' && (
             <Card className="text-center border-b-4 border-orange-500 mb-4">
                 <h3 className="text-orange-700 text-xs uppercase font-bold">Risk & Variance</h3>
@@ -120,13 +138,6 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
                     <p className={`text-xl font-bold ${finalSurvival < 50 ? 'text-red-600' : 'text-green-600'}`}>
                         {finalSurvival.toFixed(1)}%
                     </p>
-                </div>
-                <div className="border-t pt-2">
-                    <p className="text-xs text-gray-500">Comparing cash: realistic projection is: </p>
-                    <p className={`text-lg font-bold ${cashDelta < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {cashDelta > 0 ? '+' : ''}{fmt(cashDelta)}
-                    </p>
-                    <p className="text-xs text-gray-500"> vs. conventional (unrealistic) projection</p>
                 </div>
             </Card>
         )}

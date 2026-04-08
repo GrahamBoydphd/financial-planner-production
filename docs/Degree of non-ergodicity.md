@@ -150,7 +150,7 @@ Based on the literature review and the search outputs provided, here are the cor
     
 - **Peters, O.** (Various, Ergodicity Economics): Though not explicitly named in your raw search, Peters' work mathematically defines the difference between time and ensemble averages in economics, multiplicative growth, and absorbing barriers.
     
-- **Lin, Leon (2025). "Ergodicity: What Does It Mean?"** _Finextra Research_: A recent contextual overview of ensemble versus time averages in financial applications.
+- **Lin, Leon (2025). "Ergodicity: What Does It Mean?"** _Finextra Research_: A recent contextual overview of ensemble versus time averages in financial applications.  **entry level application**
     
 - **Pearson, Taylor**: Useful for contextualizing non-ergodicity within systemic risk, risk management, and the probability of ruin.
     
