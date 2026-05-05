@@ -88,7 +88,7 @@ export default function FundKPICards({
       {/* CARD 4: VOLATILITY TAX (Moved to top) */}
       {showInvestorMetrics && netValue !== undefined && detNetValue !== undefined && (
         <Card className="text-center border-t-4 border-pink-500 p-4">
-            <h3 className="text-gray-500 text-xs uppercase font-bold">Volatility Tax</h3>
+            <h3 className="text-gray-500 text-xs uppercase font-bold">Volatility Tax / Non-Ergodic Losses</h3>
             <p className={`text-3xl font-bold mt-2 ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
               {formattedGap}
             </p>

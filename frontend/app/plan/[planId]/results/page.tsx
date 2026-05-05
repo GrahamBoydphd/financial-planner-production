@@ -121,7 +121,7 @@ const KPICards = ({ simMode, projection, creditLimit, stopInsolvency, currency, 
       <>
         {(simMode === 'single' || simMode === 'monte_carlo') && (
           <Card className="text-center border-b-4 border-pink-500 mb-4">
-            <h3 className="text-pink-700 text-xs uppercase font-bold">Volatility Tax</h3>
+            <h3 className="text-pink-700 text-xs uppercase font-bold">Volatility Tax / Non-Ergodic Losses</h3>
             <p className={`text-2xl font-bold ${gap < 0 ? 'text-red-500' : 'text-green-500'}`}>
               {formattedGap}
             </p>
@@ -687,7 +687,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
               {simMode === 'monte_carlo' && (
                 <div className="flex flex-col justify-center border-l pl-4 w-40">
                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Higher values pool more profit to smooth volatility across trajectories.">Ergodicity Correction</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Currently only fractional profit pooling. Higher values pool more profit to smooth volatility across trajectories.">Ergodicity Correction</span>
                         {updatingPooling ? (
                             <span className="text-xs font-bold text-gray-400 animate-pulse">Updating...</span>
                         ) : (

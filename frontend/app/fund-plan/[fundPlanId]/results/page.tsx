@@ -442,7 +442,7 @@ export default function FundResultsPage({ params }: { params: { fundPlanId: stri
                     <div className="w-px h-8 bg-gray-300 mx-1"></div>
                     <div className="flex flex-col gap-1 w-40 animate-in fade-in slide-in-from-left-2 duration-300">
                             <div className="flex justify-between">
-                            <label className="text-xs font-semibold text-gray-500 uppercase">ERGODICITY CORRECTION</label>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-help" title="Strength of the correction factor for non-ergodicity. Currently only fractional profit pooling. Higher values pool more profit to smooth volatility across trajectories.">Ergodicity Correction</label>
                             <span className="text-xs font-bold text-indigo-600">{poolingFraction}%</span>
                             </div>
                             <input 

@@ -131,12 +131,12 @@ In energy networks, the degree of non-ergodicity measures the gap between the ne
 
 ### 4. Summary of Differences
 
-|**Feature**|**Ergodic System**|**Non-Ergodic System**|
-|---|---|---|
-|**Averages**|Time Average = Ensemble Average|Time Average $\neq$ Ensemble Average|
-|**History**|No long-term memory|Path-dependent (deep history matters)|
-|**Absorbing Barriers ("Ruin")**|Irrelevant to long-term outcome|Highly possible and disruptive|
-|**Degree of Non-Ergodicity**|Exactly 0|$> 0$ (Increases with path dependence)|
+| **Feature**                     | **Ergodic System**              | **Non-Ergodic System**                 |
+| ------------------------------- | ------------------------------- | -------------------------------------- |
+| **Averages**                    | Time Average = Ensemble Average | Time Average $\neq$ Ensemble Average   |
+| **History**                     | No long-term memory             | Path-dependent (deep history matters)  |
+| **Absorbing Barriers ("Ruin")** | Irrelevant to long-term outcome | Highly possible and disruptive         |
+| **Degree of Non-Ergodicity**    | Exactly 0                       | $> 0$ (Increases with path dependence) |
 
 ---
 
