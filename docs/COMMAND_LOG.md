@@ -2,6 +2,42 @@
 
 `tree -I 'node_modules|.next|target|.sqlx|.git|*.log|*.bak|*.p.woff2|*.pack*|*.hot-update.*|__pycache__|.stfolder|.stversions|.obsidian|.trash' > a_tree.txt`
 
+
+# 3.5 do_task.sh upgrade
+### 🏎️ How to Shift Gears
+
+- **The Default (Heavy Architectural Work, defaults to 3.1 pro):**
+    
+    Bash
+    
+    ```
+    ./scripts/do_task.sh "Build the new ERG simulation engine" backend/src/engine.rs
+    ```
+    
+- **The Fast Lane (Simple UI fixes, typos, small scripts):**
+    
+    Bash
+    
+    ```
+    ./scripts/do_task.sh -m gemini-3.5-flash "Change button color to blue" frontend/components/Button.tsx
+    ```
+
+
+# 0. Coding Workflow
+### Kill old running backends
+sudo lsof -i :8000
+sudo kill -9 2794
+
+### Start Backend
+cargo run
+try_build.sh
+
+### Start Frontend
+npm run dev
+
+Go to:   http://localhost:3000/
+
+
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 
@@ -532,6 +568,40 @@ Enter 2. lines line by line.
 - This fund will now appear in the results of `GET /api/lifecycle/templates`.
 
 
+# Fix a password in the Scaleway database
+### Method 1: The "Clone a Hash" Trick (Fastest)
+
+If you have a test account (or your own admin account) where you **know** the password, you can just copy the hash from your account and paste it into theirs. This temporarily sets their password to be the exact same as yours.
+
+**1. Find the column name:** Run this in `psql` to see the structure of your users table (look for `password_hash` or something similar):
+
+SQL
+
+```
+\d users
+```
+
+**2. Copy a known hash:** Let's say your email is `graham@example.com` and you know your password is "Temp123!". Get your hash:
+
+SQL
+
+```
+SELECT email, password_hash FROM users WHERE email = 'graham@example.com';
+```
+
+**3. Paste it to the locked user:** Take that long, gibberish string (the hash) and update the locked user's row:
+
+SQL
+
+```
+UPDATE users 
+SET password_hash = 'PASTE_YOUR_HASH_HERE' 
+WHERE email = 'lockeduser@example.com';
+```
+
+_Now, the user can log in with "Temp123!" and change it th_
+
+
 ## CAT all of the files into one, with names, for a single upload.
 
 `find . -type f -name "*.sql" -not -path "./.sqlx/*" -exec sh -c 'echo "<file $1>"; cat "$1"; echo "</file>"' _ {} \; > all_schema.txt`
@@ -557,6 +627,18 @@ pip install google-genai
 deactivate
 ```
 
+
+### The Fix if Python has been updated by Linux: Nuke and Rebuild
+
+Because your `do_task.sh` script already has the intelligence to build a virtual environment if one doesn't exist, the easiest solution is to just throw the broken one in the trash.
+
+**1. Delete the broken environment:**
+
+Bash
+
+```
+rm -rf .venv
+```
 
 # Docker CLI for Wordpress
 **The Easiest Fix for Ubuntu:** Run this command to download the `wp-cli` binary directly into your running container so your scripts work immediately:

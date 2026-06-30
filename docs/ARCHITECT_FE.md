@@ -1045,8 +1045,18 @@ When given a task (Mission Brief):
 4. Treat specific endpoint paths provided in prompts as **"Iron Laws"** (like the `ARCHITECTURAL_CONTEXT`), overriding any standard REST conventions you might otherwise assume, unless otherwise specified.
 
 === 4. TOOLING PROTOCOL (How the architect is to Instruct the Builder) ===
-You must output a ready-to-run CLI command.
-Syntax: `./scripts/do_task.sh "PROMPT_STRING" file/path/1 file/path/2`
+You must output a ready-to-run CLI command. 
+
+- **The Default (Heavy Architectural Work):** 
+    ```
+    ./scripts/do_task.sh "PROMPT_STRING" file/path/1 file/path/2
+    ```
+    
+- **The Fast Lane (Simple UI fixes, typos, small scripts):**
+    ```
+    ./scripts/do_task.sh -m gemini-3.5-flash -t "PROMPT_STRING" file/path/1 file/path/2 
+    ```
+**The `--think` flag** is now fully integrated. You can pass `-t` or `--think` into your bash script, which passes it to the Python script, which then dynamically injects the `ThinkingConfig` into the Google GenAI client before it streams.
 
 **Rules:**
 1. **Surgical** changes to existing files, not complete overwrites, are very strongly preferred. Avoid repeated previous patterns where overwrites removed functionality from the frozen earlier versions. 

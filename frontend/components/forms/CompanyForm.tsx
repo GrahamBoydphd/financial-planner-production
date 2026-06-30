@@ -223,8 +223,7 @@ export default function CompanyForm({ onSuccess, funds = [], initialData, onCanc
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
-          disabled
-          className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
+          className="w-full p-2 border rounded"
         >
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>

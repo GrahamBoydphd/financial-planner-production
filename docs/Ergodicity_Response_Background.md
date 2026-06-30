@@ -1,3 +1,7 @@
+Objective truth vs. subjective vs. personal. 
+No royal road. 
+
+
 this is a synthesis of responses to the comments about the mathematics, ergodicity, etc. on our paper from a range of people, especially the comments of Robert, Sally, Brian, Filippos, and Ken; as well as further discussion with the ergodicity economics researchers, Greg, Raif, Jonas, and more.
 
 ## My intention
@@ -9,6 +13,8 @@ But having spent nearly a decade in physics research (PhD and 3 post-docs, resea
 So my primary intention in this paper, and in these notes, is to invite career academics to take the lead on doing further detailed research to either prove this wrong, or not, in which case investors can use it with even more confidence in practice. 
 
 My secondary intention is to enjoy exploring new concepts without needing to fit into the academic career ladder!
+
+So maybe an ideal next step is to convene an online discussion between all of us, including folk from LML in London, CLEA and HOST in Brussels, and maybe more, for a dialogue on: what we're pointing at with this paper; and the further research needed to ground it thoroughly; and make it useful. 
 
 ## Transdisciplinary challenges
 
@@ -27,7 +33,65 @@ Rise in authors using the precise language over the past decade or two
 - Molenaar
 - Ole Peters
 
+## The assumption of ergodicity
+From a Gemini search
+A fundamental truth that the "Ergodicity Economics" movement is spotlighting: neoclassical economics deeply relies on the *assumption* that time averages and ensemble averages (expected values) are interchangeable. In a non-ergodic world, this assumption breaks down, leading to flawed theories about risk, growth, and decision-making.
+
+Some foundational papers, canonical graduate-level textbooks, and critical literature that exposes this exact blind spot that show that mainstream economics explicitly or implicitly bakes the **"ergodic hypothesis"** into its DNA.
+
+## 1. The Methodological Foundation: Paul Samuelson
+
+Paul Samuelson, the architect of the neoclassical synthesis, explicitly imported the concept of ergodicity from statistical mechanics into economics to make the discipline feel more like a "hard" science.
+
+- **The Reference:** Samuelson, P. A. (1968). "What Classical and Neoclassical Monetary Theory Really Was." _Journal of Money, Credit and Banking_, 1(1), pp. 1-15.
+    
+- **The Assumption:** Samuelson explicitly defined the ergodic hypothesis in economics as **"a belief in unique long-run equilibrium independent of initial conditions."** * **The Quote:** In subsequent papers, Samuelson defended this choice by writing that if economists hope to move economics from "the realm of history" into "the realm of science," they must impose the "ergodic hypothesis" on their theory. He noted that a stable stochastic process _"eventually forgets its past and therefore can be expected in the far future to approach an ergodic probability distribution."_
+    
+
+## 2. The Advanced Graduate Textbooks (The Workhorses)
+
+If you want to cite standard graduate-level textbooks where this assumption is actively operationalized, look no further than the "bibles" of modern macroeconomics. These texts use the contraction mapping theorem and Markov processes to force economic models into unique, stable, path-independent steady states.
+
+### Stokey, Lucas, & Prescott (1989) — _Recursive Methods in Economic Dynamics_
+
+- **Where to look:** Chapter 12 ("Markov Processes").
+    
+- **The Assumption:** This textbook is the mathematical foundation for modern neoclassical macroeconomics. The authors detail how Markov transition functions guarantee that an economy will converge to a unique **invariant probability distribution** (a stochastic steady state). By doing so, the system structurally "forgets" its initial conditions over time, ensuring that long-run simulated paths track seamlessly to the population mean.
+    
+
+### Ljungqvist & Sargent (2012) — _Recursive Macroeconomic Theory_
+
+- **Where to look:** Section 2.2 ("Markov Chains").
+    
+- **The Assumption:** This is the standard textbook for modern quantitative and dynamic stochastic general equilibrium (DSGE) modeling. The authors explicitly define and rely on ergodicity to ensure that time-series sample averages converge to population means (Kamihigashi & Stachurski, 2016). Formally, for a Markov process Xt​ with a stationary distribution π, they assume:
+    
+
+n→∞lim​n1​t=1∑n​h(Xt​)=E[h(X)]=∫h(x)π(dx)
+
+> **Why this matters:** As modern economic analysis points out, without this strict mathematical convenience, the calibration, simulation, and estimation methods that underpin almost all quantitative neoclassical modeling completely break down (Kamihigashi & Stachurski, 2016).
+
+## 3. The Critical Exposure: Paul Davidson
+
+If you want an academic reference that explicitly _critiques_ neoclassical economics for blindly assuming ergodicity, look at the work of Post-Keynesian economist Paul Davidson. He spent decades arguing that the real economy is transmutable and non-ergodic.
+
+- **The Reference:** Davidson, P. (2012). "Is economics a science? Should economics be rigorous?" _Real-World Economics Review_, (59), pp. 58-66.
+    
+- **The Argument:** Davidson argues that both the **Rational Expectations Hypothesis** (pioneered by Robert Lucas) and the **Efficient Market Hypothesis** are entirely dependent on what he calls the **"ergodic axiom."** Neoclassical theory must assume that the future is governed by an already existing, unchanging stochastic process. Because of this axiom, mainstream theory presumes that an analysis of past data provides statistically reliable, actuarial knowledge about future expectations.
+    
+
+## References
+
+Kamihigashi, T., & Stachurski, J. (2016). Seeking ergodicity in dynamic economies. _Journal of Economic Theory_, _163_, 900–924. [https://doi.org/10.1016/j.jet.2016.03.006](https://doi.org/10.1016/j.jet.2016.03.006) Cited by: 11
+
+Poitras, G. (2018). The pre-history of econophysics and the history of economics: Boltzmann versus the marginalists. _Physica A: Statistical Mechanics and its Applications_, _507_, 89–98. [https://doi.org/10.1016/j.physa.2018.05.058](https://doi.org/10.1016/j.physa.2018.05.058) Cited by: 14
+
 ## Behaviours vs. values, cultures,  incentives and structures
+
+| Personal, Hidden   | Personal, Visible   |
+| ------------------ | ------------------- |
+| Collective, HIdden | Collective, Visible |
+
+
 
 
 
@@ -123,10 +187,10 @@ The more I read the emerging papers of ergodicity ecnomics; and especially writi
 This begins with recognising that the foundational equations of energy networks, unless proven to be in domains 1 or 2, must be treated in domain 3. In other words, explicitly including time, the hypothesis is that the foundational equations become, when looking for the typical outcome over some time $T$, something like:
 $$
 \begin{align}
-H(T) &= -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t)=1}^{n(t)} p_i(t) \log\left(p_i(t)\right) \\
-C(T) &= -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{n(t)} p_{ij}(t) \log(p_{ij}(t)) \\
-A(T) &=  \frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{n(t)} p_{ij}(t) \log\left(\frac{p_{ij}(t)}{p_i(t)p_j(t)}\right) \\
-\Phi(T) &=  -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{n(t)} p_{ij}(t) \log\left(\frac{p_{ij}(t)}{p_i(t)p_j(t)}\right)
+H(T) &= -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t)=1}^{N(t)} p_i(t) \log\left(p_i(t)\right) \\
+C(T) &= -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{N(t)} p_{ij}(t) \log(p_{ij}(t)) \\
+A(T) &=  \frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{N(t)} p_{ij}(t) \log\left(\frac{p_{ij}(t)}{p_i(t)p_j(t)}\right) \\
+\Phi(T) &=  -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{N(t)} p_{ij}(t) \log\left(\frac{p_{ij}(t)}{p_i(t)p_j(t)}\right)
 \end{align}
 $$
 (I've not worked through all the details and implications; that deserves a publication or two just on this, for example Robert's Ecoduality paper may yield new insights building in time dependence.)
@@ -134,9 +198,9 @@ $$
 Or looking at the equivalent equations for energy network analysis the equations for the typical outcome across time, i.e., the time average, may be:
 $$
 \begin{align}
-C(T) &= -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{n(t)} M_{ij}(t) \log\left(M_{ij}(t)\right) \\
-A(T) &=  \frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{n(t)} M_{ij}(t) \log\left(\frac{M_{ij}(t)M_{..}(t)}{M_i(t)M_j(t)}\right) \\
-\Phi(T) &=  -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{n(t)} M_{ij}(t) \log\left(\frac{M_{ij}(t)}{M_i(t)M_j(t)}\right) \\
+C(T) &= -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{N(t)} M_{ij}(t) \log\left(M_{ij}(t)\right) \\
+A(T) &=  \frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{N(t)} M_{ij}(t) \log\left(\frac{M_{ij}(t)M_{..}(t)}{M_i(t)M_j(t)}\right) \\
+\Phi(T) &=  -\frac{1}{T}\sum_{t=0}^{T}\sum_{i(t),j(t)=1}^{N(t)} M_{ij}(t) \log\left(\frac{M_{ij}(t)}{M_i(t)M_j(t)}\right) 
 \end{align}
 $$
 where $M_{ij}$ is used instead of the original $T_{ij}$ to avoid confusion with time. This means that, instead of using the average flow between nodes $i$ and $j$ over some time period, say a year, we look in detail at the flow in each time step between $t=0$ and $t=T$. By simulating once the network across time with the appropriate random number generators for each node and connection, as well as appropriate random number generations for nodes ceasing to exist, or coming into existence, as well as for entire classes of nodes emerging or dying, we create one single path that the network could follow across time. 
@@ -183,3 +247,45 @@ Then comes Keynesian uncertainty, defined as inherently unknowable events, which
 
 
 
+## Additional comments
+#### Emergent
+There is no single optimum - it's dynamic, emergent, like walking a tight-rope! The system should strive towards the lowest possible non-ergodicity, but that leads to perfect efficiency as the optimal strategy, which then breaks down when something in the context changes (e.g. a volcano) which then bumps the non-ergodicity up high again requiring a quick move to high redundancy as optimal. So then the system has to actively change itself to reduce the degree. 
+
+#### Getting to sustainability
+Minimising the degree of non-ergodicity cannot itself lead to a sustainable economy; but without doing so there is no path to a sustainable economy. And yes, it can be used to simply increase extractive behaviour over short time periods. However, because two of the biggest drivers of non-ergodicity are resource constraint absorbing boundaries and then insolvency absorbing boundaries, any aspect of nature, including a human economy, that fails to minimise the degree of non-ergodicity, will eventually go extinct. Thereby re-establishing sustainability!
+
+And so much more is needed. Minimising non-ergodicity is necessary but not sufficient.
+
+#### Swan events
+Black Swan events are classic strong ergodicity breaking examples. Nassim Taleb began using the language of ergodicity nearly a decade ago to capture everything he's talking about. Unknown unknowns are core non-ergodic dynamics - because they're not even in the ensemble in the first place! Same with Swan events.
+They can be simulated in our planner.evoluesix.com app. 
+
+
+#### Double-sided hedging
+Lots of proof of our definition of these words (not standard symmetric double sided hedging in investor speak). See Nassim Taleb and alpha vs beta. Visible most easily in the Farmer's Fable! And in the world of professional poker players: everyone benefits if any in the syndicate has good luck, and exactly that minimises the risk that any hit a ruin state (Expected Value Pool). 
+Nassim Taleb addresses alpha and beta investment strategies in relation to ergodicity primarily in his book **"Skin in the Game"** (specifically in the chapter _The Logic of Risk Taking_) and expands upon the concept in interviews. [[1](https://medium.com/incerto/the-logic-of-risk-taking-107bf41029d3), [2](https://www.priceactionlab.com/Blog/2024/04/strategy-alpha/), [3](https://spiralinquiry.org/a-spiral-thread-on-rationality-why-nassim-taleb-is-wrong/)]
+
+He challenges the conventional use of these terms through the lens of ergodicity:
+
+- **The Illusion of Expected Alpha:** Taleb famously states, _"If the probability of ruin is not zero, you cannot even talk about alpha."_ He argues that many so-called "alpha" strategies simply generate steady, visible returns by implicitly selling insurance against rare but severe tail risks (e.g., picking up pennies in front of a steamroller).
+- **Ensemble vs. Time:** This relates directly to the concept of ergodicity (where the average outcome of a group equals the average outcome of one individual over time). In non-ergodic markets with an "absorption barrier" (total ruin, or going bust), the group average and an individual's long-term path diverge. Because a single individual cannot survive the "blow-up" scenario to reap the long-term expected returns, the true alpha is effectively negative.
+- **Survival First:** Taleb argues that staying alive in the market dimension is infinitely more valuable than any calculated excess return or standard alpha. He advocates that investment decisions must prioritize survival across time over any theoretical beta or short-term alpha. [[1](https://podcasts.apple.com/us/podcast/ergodicity-simply-explained-nassim-talebs-favourite/id1537567679?i=1000537612593), [2](https://shell-capital.com/asymmetry-observations/why-nassim-nicholas-taleb-says-most-alpha-isnt-real), [3](https://mindvault.co/vault/ergodicity-the-most-mysterious-concept), [4](https://www.reddit.com/r/nassimtaleb/comments/r6ie23/what_is_ergodicity_and_why_is_it_such_a_big_thing/), [5](https://g-tejas.medium.com/ergodicity-f60a3abfcdf8), [6](https://www.priceactionlab.com/Blog/2024/04/strategy-alpha/), [8](https://medium.com/incerto/the-logic-of-risk-taking-107bf41029d3)]
+
+
+#### Why haven't markets already corrected?
+1. In some ways they already do, but dysfunctionally. e.g. Unicorn strategies, externalities, and more.
+2. Black-Scholes, time-diversified portfolios, etc. are half-sighted inclusions of non-ergodic dynamics. 
+Neither of these change the degree of non-ergodicity itself, by using the most effective approach of capital pooling. They just compensate for the losses by pushing them elsewhere. 
+3. Conglomerates like P&G do it well internally with 100% capital pooling. Why they are so good at avoiding ruin. 
+The main problem is the hegemony of neoclassical economics and neoliberlism across most of western politics and thinking. 
+
+
+#### Non-ergodicity vs. non-equilibrium in complexity economics
+These are strongly related, a colleague of GB (Greg Fisher) is working on this from the complexity economics side. 
+1. For some time period of length $\tau$ this is very relevant. Even if the system were ergodic, the system still needs to take care of the short-term deviation. 
+
+
+## Circle Fragilities. 
+*I have some hesitation about raising this point, but I would like to mention it because I find it difficult to read this back in the paper. In Sections 2.3 and 3.1, you discuss path dependence and absorbing boundaries. However, the specific vulnerability of circular production chains does not seem to be explicitly elaborated in this context. In a circular economy, "waste = resource". This means that the cycles are sequentially dependent: if step n fails (e.g., a technical breakdown in a recycling facility), step n+1 cannot take place because the material flow stops. This is the physical manifestation of an absorbing boundary. In a linear chain, such a failure is merely a local cost — one can switch to virgin resources. In a circular chain, however, it leads to an end of the cycle. Could this "chain fragility" significantly strengthens your argument? In my view: it shows why financial buffers (pooling) are not just useful for risk diversification, but existentially necessary to guarantee the continuity of the material cycle in the face of inevitable technical disruptions. Consider also adding a figure that visually illustrates this difference: Scenario A (linear) — a link fails, the rest can continue with virgin resources (local damage); Scenario B (circular) — a link fails, the entire cycle stops (total collapse). This would immediately let the reader feel why non-ergodicity in practice means that circular systems are extra vulnerable, and why strong circular finance is the only way to bridge this vulnerability.* 
+FB: This is a great point, Maarten! I'll have a think about where in the paper we can make this explicit, because I think this highlights something really important about how ergodicity applies to CE!
+GB:  Yes, this is exactly the point. It's also key in the first-mover disadvantage. If the last link in the circle fails, the first mover investors risk losing everything. The ecosystemic approach addresses this both via pooling mechanisms financially and in governance; as well as by opening up the possibility of multiple slightly different complementary paths from node i to j in the circle. Just as nature has multiple types of beetles; if one type goes extinct the other types pick up the work.

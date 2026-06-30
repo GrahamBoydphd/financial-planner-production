@@ -7,7 +7,7 @@
 **Identity:** Username-based.
 
 # === IMMUTABLE ===
-# 虫 Master Architectural Reference: The Fortress Standard (V3.1)
+# Master Architectural Reference: The Fortress Standard (V3.1)
 
 **Status**: Hardened | **Date**: 2026-01-24 | **Target**: Frontend & Backend Architects
 **Core Mission**: To maintain 100% mathematical integrity, structural consistency, and tenant isolation across the Evolutesix Financial Engine.

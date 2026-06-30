@@ -52,7 +52,7 @@ then $F_\text{max} = 1$ at $\alpha = e^{-1/\beta}$
 
 Then as  $\tilde{E}^{\circ}(\tau) \to 0$ $F_\text{max}(\alpha)$ occurs at $\alpha = 0$, and as  $\tilde{E}^{\circ}(\tau) \to \infty$ $F_\text{max}(\alpha)$ occurs at $\alpha = 1$.  
 
-The comes the question of what it is that can change ergodically or non-ergodically. Building on the work of Goerner et al. and subsequent papers we define 
+Then comes the question of what it is that can change ergodically or non-ergodically. Building on the work of Goerner et al. and subsequent papers we define 
 $$
 M_{ij}(t)
 $$
