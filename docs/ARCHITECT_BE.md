@@ -169,7 +169,10 @@ You must output a ready-to-run CLI command.
     ```
     ./scripts/do_task.sh -m gemini-3.5-flash -t "PROMPT_STRING" file/path/1 file/path/2 
     ```
+Bias towards Pro if there is a risk flash might not be good enough
 **The `--think` flag** is now fully integrated. You can pass `-t` or `--think` into your bash script, which passes it to the Python script, which then dynamically injects the `ThinkingConfig` into the Google GenAI client before it streams.
+
+**Note the comments on what the --think flag actually does in the COMMAND_LOG**.
 
 **Rules:**
 1. **PROMPT_STRING:** Must include "CONTEXT", "ACTION", and "CONSTRAINTS".

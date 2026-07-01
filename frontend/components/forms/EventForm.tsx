@@ -208,7 +208,9 @@ export default function EventForm({ fundId, funds, companies, initialData, onSuc
           >
             <option value="revenue_shock">Revenue Impacted</option>
             <option value="expense_shock">Expense Impacted</option>
-            <option value="valuation_shock">Capital Growth Impacted</option>
+            <option value="valuation_shock">Valuation Multiplier Impacted</option>
+            <option value="cash_shock">Cash Balance Impacted</option>
+            <option value="capital_growth_shock">Capital Growth (Interest Yield) Impacted</option>
           </select>
         </div>
 

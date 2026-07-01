@@ -440,7 +440,6 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
 
 impl FundOrchestrator<PortfolioMode> {
     pub fn run(mut self) -> SimulationResult {
-        let iterations = self.universes.len();
         let mut total_events_triggered = 0;
         
         // Extract read-only references to allow concurrent mutable borrow of universes
@@ -532,7 +531,6 @@ impl FundOrchestrator<PortfolioMode> {
 
 impl FundOrchestrator<EnsembleMode> {
     pub fn run(mut self) -> SimulationResult {
-        let iterations = self.universes.len();
         let mut total_events_triggered = 0;
         
         // Extract read-only references for Rayon

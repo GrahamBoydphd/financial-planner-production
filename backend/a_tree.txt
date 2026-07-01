@@ -1,0 +1,81 @@
+.
+├── a_tree.txt
+├── Cargo.lock
+├── Cargo.toml
+├── clippy_output.txt
+├── Dockerfile
+├── migrations
+│   ├── 20251207202039_initial_schema.sql
+│   ├── 20251207204450_financial_data_models.sql
+│   ├── 20251212144500_add_multi_company_model.sql
+│   ├── 20251213150000_update_expense_logic.sql
+│   ├── 20251213170000_add_volatility_params.sql
+│   ├── 20251213180000_add_nrig_fields.sql
+│   ├── 20251214180000_add_v2_features.sql
+│   ├── 20251218081052_add_cascade_delete.sql
+│   ├── 20251219140000_add_staffing_roles.sql
+│   ├── 20251220100000_upgrade_staffing_schema.sql
+│   ├── 20260103144940_add_pooling_fraction.sql
+│   ├── 20260109104134_init_auth_tables.sql
+│   ├── 20260109114841_enforce_tenant_not_null.sql
+│   ├── 20260110131527_ensure_cascade_deletes.sql
+│   ├── 20260110154428_add_initial_cash_to_plans.sql
+│   ├── 20260113083505_standardize_capital_growth.sql
+│   ├── 20260113095020_standardize_staffing_naming.sql
+│   ├── 20260116081601_standardize_valuation_naming.sql
+│   ├── 20260116092316_sync_fortress_names.sql
+│   ├── 20260116093903_final_fortress_sync.sql
+│   ├── 20260116094310_ensure_audit_columns.sql
+│   ├── 20260116095602_fortress_repair_and_sync.sql
+│   ├── 20260116113044_hardened_net_value_audit.sql
+│   ├── 20260116163008_multi_currency_support.sql
+│   ├── 20260117180606_rename_to_scoped_names.sql
+│   ├── 20260118073929_rename_event_shocks.sql
+│   ├── 20260121065332_create_fund_plans.sql
+│   ├── 20260121075842_add_tenant_to_fund_plans.sql
+│   ├── 20260124083638_lifecycle_and_demo_guard.sql
+│   ├── 20260125084951_add_insolvency_threshold.sql
+│   ├── 20260126171152_semantic_shocks.sql
+│   ├── 20260127050735_refine_events_schema.sql
+│   ├── 20260127064506_multi_target_events.sql
+│   ├── 20260128131914_add_counter_cyclic.sql
+│   ├── 20260205164849_harden_dist_params.sql
+│   ├── 20260210144654_add_soft_limit_friction.sql
+│   ├── 20260214143049_add_entity_descriptions.sql
+│   ├── 20260215070519_add_fund_pooling.sql
+│   ├── 20260215073215_move_pooling_to_plans.sql
+│   └── all_schema.txt
+├── src
+│   ├── distributions.rs
+│   ├── engine
+│   │   ├── domain.rs
+│   │   ├── event_manager.rs
+│   │   ├── mod.rs
+│   │   ├── orchestrator.rs
+│   │   └── runner.rs
+│   ├── errors.rs
+│   ├── handlers
+│   │   ├── auth.rs
+│   │   ├── capital_growth.rs
+│   │   ├── capital.rs
+│   │   ├── companies.rs
+│   │   ├── credit.rs
+│   │   ├── dividends.rs
+│   │   ├── events.rs
+│   │   ├── expenses.rs
+│   │   ├── fund_plans.rs
+│   │   ├── fund_simulation.rs
+│   │   ├── funds.rs
+│   │   ├── lifecycle.rs
+│   │   ├── mod.rs
+│   │   ├── plans.rs
+│   │   ├── revenue.rs
+│   │   ├── staffing.rs
+│   │   └── valuation.rs
+│   ├── main.rs
+│   ├── middleware.rs
+│   ├── models.rs
+│   └── projection.rs
+└── tree.txt
+
+5 directories, 74 files

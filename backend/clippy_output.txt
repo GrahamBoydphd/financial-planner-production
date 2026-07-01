@@ -1,0 +1,411 @@
+warning: redundant field names in struct initialization
+   --> src/handlers/fund_simulation.rs:660:17
+    |
+660 |                 month: month,
+    |                 ^^^^^^^^^^^^ help: replace it with: `month`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#redundant_field_names
+    = note: `#[warn(clippy::redundant_field_names)]` on by default
+
+warning: unused import: `rust_decimal::prelude::*`
+ --> src/projection.rs:3:5
+  |
+3 | use rust_decimal::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `FromPrimitive` and `ToPrimitive`
+ --> src/engine/domain.rs:5:29
+  |
+5 | use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+  |                             ^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `FromPrimitive`
+ --> src/engine/orchestrator.rs:7:29
+  |
+7 | use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+  |                             ^^^^^^^^^^^^^
+
+warning: unused import: `std::cmp::Ordering`
+ --> src/engine/orchestrator.rs:8:5
+  |
+8 | use std::cmp::Ordering;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: redundant field names in struct initialization
+   --> src/engine/orchestrator.rs:247:17
+    |
+247 |                 solvent_companies: solvent_companies,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `solvent_companies`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#redundant_field_names
+
+warning: redundant field names in struct initialization
+   --> src/engine/runner.rs:170:17
+    |
+170 |                 month: month,
+    |                 ^^^^^^^^^^^^ help: replace it with: `month`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#redundant_field_names
+
+warning: unused variable: `iterations`
+   --> src/engine/orchestrator.rs:443:13
+    |
+443 |         let iterations = self.universes.len();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_iterations`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `iterations`
+   --> src/engine/orchestrator.rs:535:13
+    |
+535 |         let iterations = self.universes.len();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_iterations`
+
+warning: struct `Tenant` is never constructed
+  --> src/models.rs:10:12
+   |
+10 | pub struct Tenant {
+   |            ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `User` is never constructed
+  --> src/models.rs:17:12
+   |
+17 | pub struct User {
+   |            ^^^^
+
+warning: struct `ExchangeRate` is never constructed
+  --> src/models.rs:67:12
+   |
+67 | pub struct ExchangeRate {
+   |            ^^^^^^^^^^^^
+
+warning: struct `EventShock` is never constructed
+   --> src/models.rs:229:12
+    |
+229 | pub struct EventShock {
+    |            ^^^^^^^^^^
+
+warning: field `tenant_id` is never read
+   --> src/models.rs:286:9
+    |
+284 | pub struct CreateCompanyRequest {
+    |            -------------------- field in this struct
+285 |     pub fund_id: Uuid,
+286 |     pub tenant_id: Uuid,
+    |         ^^^^^^^^^
+    |
+    = note: `CreateCompanyRequest` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: struct `SimParams` is never constructed
+   --> src/handlers/funds.rs:179:12
+    |
+179 | pub struct SimParams {
+    |            ^^^^^^^^^
+
+warning: function `get_fund_simulation` is never used
+   --> src/handlers/funds.rs:183:14
+    |
+183 | pub async fn get_fund_simulation(
+    |              ^^^^^^^^^^^^^^^^^^^
+
+warning: associated function `new_empty` is never used
+  --> src/projection.rs:32:12
+   |
+31 | impl MonthlyData {
+   | ---------------- associated function in this implementation
+32 |     pub fn new_empty(month: i32) -> Self {
+   |            ^^^^^^^^^
+
+warning: method `force_insolvency_state` is never used
+   --> src/engine/domain.rs:195:12
+    |
+155 | impl SimState {
+    | ------------- method in this implementation
+...
+195 |     pub fn force_insolvency_state(&mut self) {
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: enum `EventMagnitude` is never used
+ --> src/engine/event_manager.rs:9:10
+  |
+9 | pub enum EventMagnitude {
+  |          ^^^^^^^^^^^^^^
+
+warning: called `map(..).flatten()` on `Option`
+  --> src/handlers/plans.rs:92:10
+   |
+92 |           .map(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+   |  __________^
+93 | |         .flatten();
+   | |__________________^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#map_flatten
+   = note: `#[warn(clippy::map_flatten)]` on by default
+
+warning: called `map(..).flatten()` on `Option`
+  --> src/handlers/plans.rs:97:10
+   |
+97 |           .map(|s| Decimal::from_str(s).ok())
+   |  __________^
+98 | |         .flatten();
+   | |__________________^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|s| Decimal::from_str(s).ok())`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#map_flatten
+
+warning: called `map(..).flatten()` on `Option`
+   --> src/handlers/plans.rs:102:10
+    |
+102 |           .map(|s| Decimal::from_str(s).ok())
+    |  __________^
+103 | |         .flatten();
+    | |__________________^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|s| Decimal::from_str(s).ok())`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#map_flatten
+
+warning: called `map(..).flatten()` on `Option`
+   --> src/handlers/plans.rs:107:10
+    |
+107 |           .map(|s| Decimal::from_str(s).ok())
+    |  __________^
+108 | |         .flatten();
+    | |__________________^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|s| Decimal::from_str(s).ok())`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#map_flatten
+
+warning: called `map(..).flatten()` on `Option`
+   --> src/handlers/plans.rs:112:10
+    |
+112 |           .map(|s| Decimal::from_str(s).ok())
+    |  __________^
+113 | |         .flatten();
+    | |__________________^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|s| Decimal::from_str(s).ok())`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#map_flatten
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+  --> src/handlers/revenue.rs:77:6
+   |
+77 | ) -> Result<(Option<Decimal>, Option<Decimal>, Option<Decimal>, Decimal), AppError> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#type_complexity
+   = note: `#[warn(clippy::type_complexity)]` on by default
+
+warning: this function has too many arguments (8/7)
+  --> src/handlers/revenue.rs:68:1
+   |
+68 | / fn calculate_nrig_params(
+69 | |     mode: &str,
+70 | |     fatness: Option<&str>,
+71 | |     skew: Option<&str>,
+...  |
+76 | |     inp_scale: Option<Decimal>,
+77 | | ) -> Result<(Option<Decimal>, Option<Decimal>, Option<Decimal>, Decimal), AppError> {
+   | |___________________________________________________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+   = note: `#[warn(clippy::too_many_arguments)]` on by default
+
+warning: wildcard pattern covers any other pattern as it will match anyway
+  --> src/handlers/revenue.rs:86:13
+   |
+86 |             "heavy" | _ => 0.5,
+   |             ^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#wildcard_in_or_patterns
+   = note: `#[warn(clippy::wildcard_in_or_patterns)]` on by default
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+  --> src/handlers/expenses.rs:76:6
+   |
+76 | ) -> Result<(Option<Decimal>, Option<Decimal>, Option<Decimal>, Decimal), AppError> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#type_complexity
+
+warning: this function has too many arguments (8/7)
+  --> src/handlers/expenses.rs:67:1
+   |
+67 | / fn calculate_nrig_params(
+68 | |     mode: &str,
+69 | |     fatness: Option<&str>,
+70 | |     skew: Option<&str>,
+...  |
+75 | |     inp_scale: Option<Decimal>,
+76 | | ) -> Result<(Option<Decimal>, Option<Decimal>, Option<Decimal>, Decimal), AppError> {
+   | |___________________________________________________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: wildcard pattern covers any other pattern as it will match anyway
+  --> src/handlers/expenses.rs:85:13
+   |
+85 |             "heavy" | _ => 0.5,
+   |             ^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#wildcard_in_or_patterns
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+  --> src/handlers/capital_growth.rs:53:6
+   |
+53 | ) -> Result<(Option<Decimal>, Option<Decimal>, Option<Decimal>, Decimal), AppError> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#type_complexity
+
+warning: this function has too many arguments (8/7)
+  --> src/handlers/capital_growth.rs:44:1
+   |
+44 | / fn calculate_nrig_params(
+45 | |     mode: &str,
+46 | |     fatness: Option<&str>,
+47 | |     skew: Option<&str>,
+...  |
+52 | |     inp_scale: Option<Decimal>,
+53 | | ) -> Result<(Option<Decimal>, Option<Decimal>, Option<Decimal>, Decimal), AppError> {
+   | |___________________________________________________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: wildcard pattern covers any other pattern as it will match anyway
+  --> src/handlers/capital_growth.rs:62:13
+   |
+62 |             "heavy" | _ => 0.5,
+   |             ^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#wildcard_in_or_patterns
+
+warning: this function has too many arguments (8/7)
+   --> src/handlers/fund_simulation.rs:318:1
+    |
+318 | / async fn fetch_and_map_company_state(
+319 | |     pool: &Pool<Postgres>,
+320 | |     plan: models::FinancialPlan,
+321 | |     company_name: String,
+...   |
+326 | |     error_log: &mut Vec<String>,
+327 | | ) -> Result<SimState, AppError> {
+    | |_______________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: this function has too many arguments (15/7)
+   --> src/handlers/fund_simulation.rs:545:1
+    |
+545 | / fn map_to_sim_state(
+546 | |     company_id: Uuid,
+547 | |     plan: models::FinancialPlan,
+548 | |     company_name: String,
+...   |
+560 | |     pooling_rate_override: Decimal,
+561 | | ) -> SimState {
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: this function has too many arguments (9/7)
+   --> src/handlers/fund_simulation.rs:740:1
+    |
+740 | / fn create_sampler_from_db(
+741 | |     vol_type: Option<String>,
+742 | |     mean: Option<rust_decimal::Decimal>,
+743 | |     scale: Option<rust_decimal::Decimal>,
+...   |
+749 | |     beta: Option<rust_decimal::Decimal>,
+750 | | ) -> GrowthSampler {
+    | |__________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: name `NRIG` contains a capitalized acronym
+  --> src/distributions.rs:19:5
+   |
+19 |     NRIG {
+   |     ^^^^ help: consider making the acronym lowercase, except the initial letter: `Nrig`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#upper_case_acronyms
+   = note: `#[warn(clippy::upper_case_acronyms)]` on by default
+
+warning: clamp-like pattern without using clamp function
+  --> src/distributions.rs:85:34
+   |
+85 |                     let p_high = p_high.max(0.0).min(1.0);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `p_high.clamp(0.0, 1.0)`
+   |
+   = note: clamp will panic if max < min, min.is_nan(), or max.is_nan()
+   = note: clamp returns NaN if the input is NaN
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#manual_clamp
+   = note: `#[warn(clippy::manual_clamp)]` on by default
+
+warning: this function has too many arguments (9/7)
+   --> src/distributions.rs:163:1
+    |
+163 | / pub fn create_sampler(
+164 | |     vol_type: Option<&str>,
+165 | |     mean: Option<f64>,
+166 | |     scale: Option<f64>,
+...   |
+172 | |     beta: Option<f64>,
+173 | | ) -> GrowthSampler {
+    | |__________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: stripping a prefix manually
+  --> src/middleware.rs:22:22
+   |
+22 |                 Some(&header_val[7..])
+   |                      ^^^^^^^^^^^^^^^^
+   |
+note: the prefix was tested here
+  --> src/middleware.rs:21:13
+   |
+21 |             if header_val.starts_with("Bearer ") {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#manual_strip
+   = note: `#[warn(clippy::manual_strip)]` on by default
+help: try using the `strip_prefix` method
+   |
+21 ~             if let Some(<stripped>) = header_val.strip_prefix("Bearer ") {
+22 ~                 Some(<stripped>)
+   |
+
+warning: this function has too many arguments (9/7)
+  --> src/engine/runner.rs:14:1
+   |
+14 | / fn create_sampler_from_db(
+15 | |     vol_type: Option<&str>,
+16 | |     mean: Option<Decimal>,
+17 | |     scale: Option<Decimal>,
+...  |
+23 | |     beta: Option<Decimal>,
+24 | | ) -> GrowthSampler {
+   | |__________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: this function has too many arguments (22/7)
+  --> src/engine/runner.rs:40:1
+   |
+40 | / pub fn generate_simulation(
+41 | |     company_id: Uuid,
+42 | |     plan_name: String,
+43 | |     currency_code: String,
+...  |
+63 | |     soft_limit_fraction: Decimal,
+64 | | ) -> SimulationResult {
+   | |_____________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#too_many_arguments
+
+warning: `backend` (bin "backend") generated 42 warnings (run `cargo clippy --fix --bin "backend"` to apply 12 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.33s
+warning: the following packages contain code that will be rejected by a future version of Rust: sqlx-postgres v0.7.4
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`

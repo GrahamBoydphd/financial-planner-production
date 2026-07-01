@@ -82,7 +82,11 @@ fn calculate_nrig_params(
             "skinny" => 100.0,
             "normal" => 50.0,
             "moderate" => 2.0,
-            "heavy" | _ => 0.5,
+            "heavy" => 0.5,
+            unrecognized => {
+                eprintln!("ERROR: Unrecognized fatness option: {}. Defaulting alpha to 50.0 (normal).", unrecognized);
+                50.0
+            }
         };
 
         // 2. Beta (Skew)
@@ -92,7 +96,10 @@ fn calculate_nrig_params(
             "symmetric" => 0.0,
             "medium_upside" => 0.4,
             "strong_upside" => 0.9,
-            _ => 0.0,
+            unrecognized => {
+                eprintln!("ERROR: Unrecognized skew option: {}. Defaulting skew to 0.0 (symmetric).", unrecognized);
+                0.0
+            }
         };
         let beta_f: f64 = alpha_f * skew_factor;
 
@@ -103,7 +110,10 @@ fn calculate_nrig_params(
             "medium" => 10.0,
             "high" => 20.0,
             "very_high" => 32.0,
-            _ => 10.0,
+            unrecognized => {
+                eprintln!("ERROR: Unrecognized width option: {}. Defaulting width to 10.0 (medium).", unrecognized);
+                10.0
+            }
         };
         
         // Delta = Sigma^2 * Alpha * (1 - Factor^2)^1.5

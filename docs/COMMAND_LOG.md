@@ -41,13 +41,13 @@ Go to:   http://localhost:3000/
 ## 1. The Deployment Workflow (Routine)
 **Goal:** Deploy local changes to `planner.evolutesix.com`.
 
-| Step | Location | Command                                                                                                                                                                                             | Purpose                                                                                                                           |     |
-| :--- | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- | --- |
-| 1    | Laptop   | `cargo sqlx prepare` (in backend)<br>npm run build (in frontend)<br>`git add . && git commit -m "msg"`<br>git status<br>git checkout branch_name e.g. feature/user-layer-v2<br>git merge ai-fix-XXX | Save changes.                                                                                                                     |     |
-| 2    | Laptop   | `git push origin cloud-v1-release`                                                                                                                                                                  | Upload to GitHub.                                                                                                                 |     |
-| 3    | Laptop   | `./scripts/trigger-update.sh branch_name`                                                                                                                                                           | **Magic Button.** Triggers the server to pull & rebuild.                                                                          |     |
-|      |          | <br>`git checkout -`                                                                                                                                                                                | If you just want to toggle back to the **previous** branch you were on (before you switched to the current one), simply type:<br> |     |
-|      |          | `git branch --sort=committerdate`                                                                                                                                                                   | to see a list of branches, with the most recently changed one at the bottom                                                       |     |
+| Step | Location | Command                                                                                                                                                                                                    | Purpose                                                                                                                           |     |
+| :--- | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- | --- |
+| 1    | Laptop   | `cargo sqlx prepare` (in backend)<br>npm run build (in frontend)<br>`git add . && git commit -m "msg"`<br>git status<br>git checkout branch_name e.g. feature/stage-4-architecture<br>git merge ai-fix-XXX | Save changes.                                                                                                                     |     |
+| 2    | Laptop   | `git push origin feature/stage-4-architecture`                                                                                                                                                             | Upload to GitHub.                                                                                                                 |     |
+| 3    | Laptop   | `./scripts/trigger-update.sh branch_name` e.g. feature/stage-4-architecture                                                                                                                                | **Magic Button.** Triggers the server to pull & rebuild.                                                                          |     |
+|      |          | <br>`git checkout -`                                                                                                                                                                                       | If you just want to toggle back to the **previous** branch you were on (before you switched to the current one), simply type:<br> |     |
+|      |          | `git branch --sort=committerdate`                                                                                                                                                                          | to see a list of branches, with the most recently changed one at the bottom                                                       |     |
 
 
 
@@ -700,3 +700,113 @@ Here is the exact strategy I recommend we use:
  git push origin production
  #5. Safely return to main for future development
  git checkout main
+
+
+
+# Automated Debugging and Validation
+This is an incredibly clear diagnostic map. Knowing that your biggest threat isn't syntax errors, but **silent, logical drifts in complex financial math** (like Monte Carlo simulations and non-ergodicity profit pooling), completely shifts our strategy.
+
+In financial engineering, these are known as "invisible bugs"—the code compiles perfectly, the loops run flawlessly, but the mathematical logic is quietly bleeding or distorting data.
+
+Because you currently have zero automated tests but you have access to both **Jules (Google's asynchronous cloud coding agent)** and your local **Gemini CLI**, you can build a defensive validation shield without having to manually write thousands of lines of boilerplate testing code.
+
+## 🛠️ The 3-Tier Validation Blueprint
+
+### Phase 1: Deploy the Static Defense (Stop the Tech Debt)
+
+Before trying to prove the mathematics are correct, we must ensure the code isn't hiding bugs in unhandled variables or sloppy types.
+
+Run these two commands manually in your terminal today:
+
+1. **In the Backend:** Run `cargo clippy &> clippy_output.txt`. Clippy is Rust’s native code-smell detector. It will deeply scan your Monte Carlo code for unoptimized logic, memory overhead, and hidden anti-patterns.
+    
+2. **In the Frontend:** Run `npx tsc --noEmit`. This forces TypeScript to check every single file for type safety. It guarantees that a frontend component isn’t passing a string where your simulation expects a floating-point number. If there is no output, all is fine.
+    
+
+### Phase 2: Task Jules with "Statistical Invariant" Testing
+
+Because Jules clones your repository into an isolated cloud virtual machine, builds your project, and can run code execution loops autonomously, it is the **perfect vehicle** to build your missing safety net.
+
+Standard unit tests ("does this function return an array?") won't catch a broken profit-pooling algorithm. You need **Invariant Property Testing**—testing that a statistical truth holds true no matter how many times the Monte Carlo simulation runs.
+
+#### How to prompt Jules:
+
+Go to Jules (or use its issue tracking pipeline) and give it an explicit, highly targeted task:
+
+> **Prompt for Jules:** "I need a comprehensive statistical integration test for the Monte Carlo simulation engine and the profit pooling logic located in `backend/src/...`.
+> 
+> Currently, there is no automated testing suite. Please bootstrap a standard Rust integration test file (`tests/monte_carlo_tests.rs`).
+> 
+> **The Core Invariant to Test:** Profit pooling is mathematically designed to minimize the degree of non-ergodicity. Therefore, across 10,000 simulated paths, a pooled multi-tenant cohort _must_ display a lower final variance and a higher median wealth trajectory than an unpooled cohort over time.
+> 
+> Write a test that runs both scenarios with mock financial parameters, calculates the variance of the outputs, and asserts that the pooled variance is strictly less than the unpooled variance within a 95% confidence interval. Let the test suite run, verify execution in your VM, and generate a PR."
+
+Jules will write the test, attempt to compile and run it via `cargo test`, see if it fails, adjust the code or the test parameters autonomously, and hand you a clean Pull Request.
+
+### Phase 3: The Local Gemini CLI "Differential Audit"
+
+While Jules is cooking your automated test suite in the cloud, you can use your newly upgraded local `do_task.sh` with the heavy-duty model and the thinking engine to perform a deep logical sanity check on specific mathematical formulas.
+
+You can target your simulation file directly using the thinking engine:
+
+Bash
+
+```
+./scripts/do_task.sh -m gemini-3.1-pro-preview --think "CRITICAL AUDIT: Look closely at how profit pooling is calculated in this file. Step-by-step, trace the wealth allocation across multiple iterations. Is there any logical leak where non-ergodicity is preserved rather than minimized? Explain your mathematical reasoning before suggesting modifications." backend/src/simulation/mod.rs
+```
+
+Because you turned on the `--think` switch, the model will run a highly disciplined mental simulation of your code’s execution path before it outputs a single line, helping you catch structural flaws _before_ they manifest in production.
+
+### 🧠 The Reality: Thinking is _Always On_ for Gemini 3 / 3.1 Pro
+
+For the Gemini 3 and 3.1 Pro series, **the internal reasoning engine cannot be turned off**. It is baked directly into the model's core architecture.
+
+The model _always_ pauses, maps out the math, and plans its strategy internally before it generates a single line of code. By default, 3.1 Pro automatically runs at the highest possible thinking level (`HIGH`). Gemini 3.5 Flash defaults to a lower reasoning level (`MEDIUM`) to keep things fast.
+
+### ⚙️ What our `--think` Flag Actually Toggles
+
+Because the AI is _always_ thinking under the hood anyway, our `--think` flag doesn't turn the brain on; **it opens the curtain so you can see it work**.
+
+In our `builder.py` script, the `--think` flag injects this specific setting:
+
+Python
+
+```
+thinking_config=types.ThinkingConfig(include_thoughts=True)
+```
+
+This instructs the API to stream the AI's raw, internal "scratchpad" thoughts right into your terminal and your `ai_solution.md` file alongside the final answer.
+
+### 📊 Flash vs. Pro Matrix
+
+Here is exactly what happens behind the scenes depending on how you fire the command:
+
+| **Command**                                | **Model Used** | **Reasoning Depth**                                 | **What gets saved to ai_solution.md**             |
+| ------------------------------------------ | -------------- | --------------------------------------------------- | ------------------------------------------------- |
+| `./do_task.sh -m gemini-3.5-flash`         | 3.5 Flash      | **Moderate** (`MEDIUM` level) *GB-Suspect not true* | Just the final code adjustments.                  |
+| `./do_task.sh -m gemini-3.5-flash --think` | 3.5 Flash      | **Moderate** (`MEDIUM` level)                       | The step-by-step logic text **AND** the code.     |
+| `./do_task.sh` _(Defaults to Pro)_         | 3.1 Pro        | **Maximum** (`HIGH` level)                          | Just the final, architected code files.           |
+| `./do_task.sh --think` _(Defaults to Pro)_ | 3.1 Pro        | **Maximum** (`HIGH` level)                          | The raw mathematical scratchpad **AND** the code. |
+
+### 🎯 How to leverage this for your Monte Carlo Auditing
+
+Your conclusion that the flag is "irrelevant" for Pro is true if you _only care about the final code output_. The Pro model will give you the same high-tier architectural results whether you pass the flag or not.
+
+**However, the `--think` flag becomes highly relevant when debugging complex math like ergodicity and profit pooling.** If you run the Pro model _with_ `--think` on your simulation files, you get to read the AI's full, unedited internal mathematical proof. You will see it literally write out things like:
+
+> _"If I pool the profit using a standard arithmetic mean, I am preserving an ensemble average which fails to address time-average non-ergodicity. Therefore, I must evaluate the geometric variance across paths..."_
+
+It essentially acts as a free, highly detailed **Code Audit Report** printed right at the top of your markdown file.
+
+
+### Your Final Optimization Blueprint
+
+| **Environment**    | **Agent Role**      | **Chosen Model**        | **Why This Model?**                                               |
+| ------------------ | ------------------- | ----------------------- | ----------------------------------------------------------------- |
+| **Browser (Web)**  | Frontend Management | **Gemini 3.5 Thinking** | Fast component planning, zero browser lag.                        |
+| **Browser (Web)**  | Backend Management  | **Gemini 3.5 Thinking** | High-level orchestration, **bypasses the timeout glitch.**        |
+| **Terminal (CLI)** | Frontend Executor   | **Gemini 3.5 Flash**    | Blazing fast TypeScript generation, lowest API costs.             |
+| **Terminal (CLI)** | Backend Executor    | **Gemini 3.1 Pro**      | Absolute maximum reasoning for Rust lifetimes & Monte Carlo math. |
+
+
+

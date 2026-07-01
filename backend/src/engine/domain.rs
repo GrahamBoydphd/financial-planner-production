@@ -239,6 +239,7 @@ impl SimState {
 
         // Merge External Shocks (Persist them in state)
         self.shocks.extend_from_slice(external_shocks);
+        self.shocks.retain(|s| month < s.month + s.duration_months.unwrap_or(1));
 
         let mut monthly_rev = 0.0;
         let mut monthly_cogs = 0.0;
@@ -328,16 +329,17 @@ impl SimState {
         }
 
         // 4. Apply Active Shocks
+        let mut capital_growth_mult = 1.0;
         for shock in &self.shocks {
             let duration = shock.duration_months.unwrap_or(1);
             if month >= shock.month && month < shock.month + duration {
                 
-                let raw_pct = shock.impact_value / 100.0;
+                let monthly_raw_pct = (shock.impact_value / 100.0) / duration as f64;
                 
                 // Updated is_expense check to include "expense_shock"
                 let is_expense = matches!(shock.impact_type.as_str(), "expense" | "opex" | "cogs" | "expense_shock");
                 
-                let mult = if is_expense { 1.0 - raw_pct } else { 1.0 + raw_pct };
+                let mult = if is_expense { 1.0 - monthly_raw_pct } else { 1.0 + monthly_raw_pct };
                 let mult = mult.max(0.0);
                 
                 match shock.impact_type.as_str() {
@@ -350,11 +352,20 @@ impl SimState {
                     },
                     "cogs" => monthly_cogs *= mult,
                     "cash" | "cash_shock" => {
-                        self.current_cash *= mult;
+                        // Apply fractionally to absolute cash to avoid debt bailouts
+                        let cash_impact = self.current_cash.abs() * monthly_raw_pct;
+                        if is_expense {
+                            self.current_cash -= cash_impact; // Detrimental: drains cash / increases debt
+                        } else {
+                            self.current_cash += cash_impact; // Beneficial: adds cash / shrinks debt
+                        }
                     },
                     "valuation" | "valuation_shock" => {
                         // Valuation shocks do not affect operational cash flow or cash balance directly.
                         // They affect the theoretical equity value, which is calculated downstream or in aggregation.
+                    },
+                    "capital_growth" | "capital_growth_shock" => {
+                        capital_growth_mult *= (1.0 + monthly_raw_pct).max(0.0);
                     },
                     _ => {}
                 }
@@ -391,7 +402,7 @@ impl SimState {
             if let Some(policy) = &self.capital_growth {
                 if let Some(sampler) = &mut self.cap_growth_sampler {
                     let rate = sampler.sample();
-                    let effective_rate = (policy.growth_rate * 100.0 + rate) / 100.0;
+                    let effective_rate = ((policy.growth_rate * 100.0 + rate) / 100.0) * capital_growth_mult;
                     investment_gain = self.current_cash * effective_rate;
                 }
             }
