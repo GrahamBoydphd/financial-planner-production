@@ -5,14 +5,12 @@ use rust_decimal::Decimal;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use crate::projection::MonthlyData;
 
-// --- STRUCTS (Preserved) ---
+// --- STRUCTS ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemState {
     pub current_value: f64,
     pub is_active: bool,
-    pub compounding_growth_sampler: Option<GrowthSampler>,
-    pub transient_noise_sampler: Option<GrowthSampler>,
 }
 
 impl Default for ItemState {
@@ -20,10 +18,21 @@ impl Default for ItemState {
         Self { 
             current_value: 0.0, 
             is_active: false,
-            compounding_growth_sampler: None,
-            transient_noise_sampler: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Phase {
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    // Using f64 for the hot path to maintain hardware-level speed per the Immutable Data Contract
+    pub trigger_threshold: Option<f64>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate: f64,
+    pub variable_pct: Option<f64>,
+    pub compounding_growth_sampler: Option<GrowthSampler>,
+    pub transient_noise_sampler: Option<GrowthSampler>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,9 +41,9 @@ pub struct Revenue {
     pub start_month: i32,
     pub end_month: Option<i32>,
     pub initial_amount: f64,
-    pub growth_rate: f64,
     pub frequency: String,
-    pub cost_of_revenue: f64,
+    pub trigger_strategy: String,
+    pub phases: Vec<Phase>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,9 +53,9 @@ pub struct Expense {
     pub start_month: i32,
     pub end_month: Option<i32>,
     pub initial_amount: f64,
-    pub growth_rate: f64,
     pub frequency: String,
-    pub pct_of_revenue: Option<f64>,
+    pub trigger_strategy: String,
+    pub phases: Vec<Phase>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -249,7 +258,7 @@ impl SimState {
         let mut monthly_interest = 0.0;
 
         // 1. Revenue
-        for (i, item) in self.revenues.iter().enumerate() {
+        for (i, item) in self.revenues.iter_mut().enumerate() {
             let s = &mut self.revenue_states[i];
             
             if month == item.start_month {
@@ -262,28 +271,66 @@ impl SimState {
             if s.is_active {
                 if item.frequency == "One-time" && month != item.start_month { continue; }
                 
-                // Logic: Base Growth + Volatility
-                if month > item.start_month {
-                    if let Some(sampler) = &mut s.compounding_growth_sampler {
-                        let rate = sampler.sample();
-                        s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                    } else {
-                        s.current_value *= 1.0 + item.growth_rate;
+                let mut active_idx: Option<usize> = None;
+                for (p_idx, phase) in item.phases.iter().enumerate() {
+                    let is_active = match item.trigger_strategy.as_str() {
+                        "time_based" => {
+                            if let Some(tm) = phase.trigger_month {
+                                month >= tm
+                            } else {
+                                false
+                            }
+                        },
+                        "value_based" => {
+                            if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                                match op {
+                                    "greater_than" => s.current_value > thresh,
+                                    "less_than" => s.current_value < thresh,
+                                    _ => false,
+                                }
+                            } else {
+                                false
+                            }
+                        },
+                        _ => false,
+                    };
+                    if is_active {
+                        if let Some(curr_idx) = active_idx {
+                            if phase.phase_sequence > item.phases[curr_idx].phase_sequence {
+                                active_idx = Some(p_idx);
+                            }
+                        } else {
+                            active_idx = Some(p_idx);
+                        }
                     }
                 }
-                
-                let mut item_rev = s.current_value;
-                if let Some(sampler) = &mut s.transient_noise_sampler {
-                    item_rev *= 1.0 + sampler.sample() / 100.0;
+
+                if let Some(idx) = active_idx {
+                    let phase = &mut item.phases[idx];
+                    
+                    if month > item.start_month {
+                        let mut step_growth = phase.growth_rate;
+                        if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                            step_growth += sampler.sample() / 100.0;
+                        }
+                        s.current_value *= 1.0 + step_growth;
+                    }
+                    
+                    let mut item_rev = s.current_value;
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        item_rev *= 1.0 + sampler.sample() / 100.0;
+                    }
+                    
+                    monthly_rev += item_rev;
+                    monthly_cogs += item_rev * phase.variable_pct.unwrap_or(0.0);
+                } else {
+                    monthly_rev += s.current_value;
                 }
-                
-                monthly_rev += item_rev;
-                monthly_cogs += item_rev * item.cost_of_revenue;
             }
         }
 
         // 2. Expenses
-        for (i, item) in self.expenses.iter().enumerate() {
+        for (i, item) in self.expenses.iter_mut().enumerate() {
             let s = &mut self.expense_states[i];
             
             if month == item.start_month {
@@ -296,24 +343,63 @@ impl SimState {
             if s.is_active {
                 if item.frequency == "One-time" && month != item.start_month { continue; }
                 
-                if month > item.start_month {
-                    if let Some(sampler) = &mut s.compounding_growth_sampler {
-                        let rate = sampler.sample();
-                        s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                    } else {
-                        s.current_value *= 1.0 + item.growth_rate;
+                let mut active_idx: Option<usize> = None;
+                for (p_idx, phase) in item.phases.iter().enumerate() {
+                    let is_active = match item.trigger_strategy.as_str() {
+                        "time_based" => {
+                            if let Some(tm) = phase.trigger_month {
+                                month >= tm
+                            } else {
+                                false
+                            }
+                        },
+                        "value_based" => {
+                            if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                                match op {
+                                    "greater_than" => s.current_value > thresh,
+                                    "less_than" => s.current_value < thresh,
+                                    _ => false,
+                                }
+                            } else {
+                                false
+                            }
+                        },
+                        _ => false,
+                    };
+                    if is_active {
+                        if let Some(curr_idx) = active_idx {
+                            if phase.phase_sequence > item.phases[curr_idx].phase_sequence {
+                                active_idx = Some(p_idx);
+                            }
+                        } else {
+                            active_idx = Some(p_idx);
+                        }
                     }
                 }
-                
-                let mut amt = s.current_value;
-                if let Some(sampler) = &mut s.transient_noise_sampler {
-                    amt *= 1.0 + sampler.sample() / 100.0;
+
+                if let Some(idx) = active_idx {
+                    let phase = &mut item.phases[idx];
+                    
+                    if month > item.start_month {
+                        let mut step_growth = phase.growth_rate;
+                        if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                            step_growth += sampler.sample() / 100.0;
+                        }
+                        s.current_value *= 1.0 + step_growth;
+                    }
+                    
+                    let mut amt = s.current_value;
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        amt *= 1.0 + sampler.sample() / 100.0;
+                    }
+                    
+                    if let Some(pct) = phase.variable_pct {
+                        amt += monthly_rev * pct;
+                    }
+                    monthly_opex += amt;
+                } else {
+                    monthly_opex += s.current_value;
                 }
-                
-                if let Some(pct) = item.pct_of_revenue {
-                    amt += monthly_rev * pct;
-                }
-                monthly_opex += amt;
             }
         }
 

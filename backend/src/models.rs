@@ -109,9 +109,21 @@ pub struct RevenueItem {
     pub start_month: i32,
     pub end_month: Option<i32>,
     pub initial_amount: Decimal,
-    pub growth_rate_percent: Decimal,
     pub frequency: String,
-    pub cost_of_revenue_percent: Option<Decimal>,
+    pub trigger_strategy: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct RevenueItemPhase {
+    pub id: Uuid,
+    pub revenue_item_id: Uuid,
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate_percent: String,
+    pub cost_of_revenue_percent: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -125,7 +137,7 @@ pub struct RevenueItemResponse {
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct RevenueVolatilityPolicy {
     pub id: Uuid,
-    pub revenue_item_id: Uuid,
+    pub revenue_item_phase_id: Uuid,
     pub mode_name: String,
     pub volatility_type: String,
     pub vol_min: Option<Decimal>,
@@ -154,9 +166,21 @@ pub struct ExpenseItem {
     pub start_month: i32,
     pub end_month: Option<i32>,
     pub initial_amount: Decimal,
-    pub growth_rate_percent: Decimal,
     pub frequency: String,
-    pub pct_of_revenue: Option<Decimal>,
+    pub trigger_strategy: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ExpenseItemPhase {
+    pub id: Uuid,
+    pub expense_item_id: Uuid,
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate_percent: String,
+    pub pct_of_revenue: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -170,7 +194,7 @@ pub struct ExpenseItemResponse {
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct ExpenseVolatilityPolicy {
     pub id: Uuid,
-    pub expense_item_id: Uuid,
+    pub expense_item_phase_id: Uuid,
     pub mode_name: String,
     pub volatility_type: String,
     pub vol_min: Option<Decimal>,

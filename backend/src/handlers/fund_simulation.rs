@@ -32,8 +32,9 @@ pub struct SimParams {
     pub events_active: Option<bool>,
 }
 
+#[derive(Debug, Clone)]
 pub struct VolatilityPolicyData {
-    pub item_id: Uuid,
+    pub phase_id: Uuid,
     pub mode_name: String,
     pub volatility_type: Option<String>,
     pub vol_min: Option<Decimal>,
@@ -44,6 +45,53 @@ pub struct VolatilityPolicyData {
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbRevenueItem {
+    pub id: Uuid,
+    pub revenue_name: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub frequency: String,
+    pub trigger_strategy: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbRevenuePhase {
+    pub id: Uuid,
+    pub revenue_item_id: Uuid,
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate_percent: Option<String>,
+    pub cost_of_revenue_percent: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbExpenseItem {
+    pub id: Uuid,
+    pub expense_name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub frequency: String,
+    pub trigger_strategy: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbExpensePhase {
+    pub id: Uuid,
+    pub expense_item_id: Uuid,
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate_percent: Option<String>,
+    pub pct_of_revenue: Option<String>,
 }
 
 /// NEW: Plan-Centric Simulation Handler
@@ -340,14 +388,13 @@ async fn fetch_and_map_company_state(
     error_log: &mut Vec<String>,
 ) -> Result<SimState, AppError> {
     
-    // Fetch Revenue
+    // Fetch Revenue Items
     let revenue_items = sqlx::query_as!(
-        models::RevenueItem,
+        DbRevenueItem,
         r#"
         SELECT 
-            id, plan_id, revenue_name, source, start_month, end_month, 
-            initial_amount, growth_rate_percent, frequency, 
-            cost_of_revenue_percent, created_at
+            id, revenue_name, start_month, end_month, 
+            initial_amount, frequency, trigger_strategy
         FROM revenue_items
         WHERE plan_id = $1
         "#,
@@ -356,16 +403,51 @@ async fn fetch_and_map_company_state(
     .fetch_all(pool)
     .await?;
 
-    // Fetch Expenses
-    let expense_items = sqlx::query_as!(
-        models::ExpenseItem,
+    // Fetch Revenue Phases
+    let revenue_phases = sqlx::query_as!(
+        DbRevenuePhase,
         r#"
         SELECT 
-            id, plan_id, expense_name, category, start_month, end_month, 
-            initial_amount, growth_rate_percent, frequency, 
-            pct_of_revenue, created_at
+            p.id, p.revenue_item_id, p.phase_sequence, 
+            p.trigger_month, p.trigger_threshold, p.trigger_operator, 
+            p.growth_rate_percent, p.cost_of_revenue_percent
+        FROM revenue_item_phases p
+        JOIN revenue_items i ON i.id = p.revenue_item_id
+        WHERE i.plan_id = $1
+        ORDER BY p.phase_sequence ASC
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Expense Items
+    let expense_items = sqlx::query_as!(
+        DbExpenseItem,
+        r#"
+        SELECT 
+            id, expense_name, category, start_month, end_month, 
+            initial_amount, frequency, trigger_strategy
         FROM expense_items
         WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Expense Phases
+    let expense_phases = sqlx::query_as!(
+        DbExpensePhase,
+        r#"
+        SELECT 
+            p.id, p.expense_item_id, p.phase_sequence, 
+            p.trigger_month, p.trigger_threshold, p.trigger_operator, 
+            p.growth_rate_percent, p.pct_of_revenue
+        FROM expense_item_phases p
+        JOIN expense_items i ON i.id = p.expense_item_id
+        WHERE i.plan_id = $1
+        ORDER BY p.phase_sequence ASC
         "#,
         plan.id
     )
@@ -376,11 +458,12 @@ async fn fetch_and_map_company_state(
     let revenue_policies = sqlx::query!(
         r#"
         SELECT 
-            p.id, p.revenue_item_id, p.mode_name, p.volatility_type, 
+            p.id, p.revenue_item_phase_id as "phase_id!", p.mode_name, p.volatility_type, 
             p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, 
             p.vol_freedom, p.vol_alpha, p.vol_beta
         FROM revenue_item_volatility_policies p
-        JOIN revenue_items i ON i.id = p.revenue_item_id
+        JOIN revenue_item_phases ph ON ph.id = p.revenue_item_phase_id
+        JOIN revenue_items i ON i.id = ph.revenue_item_id
         WHERE i.plan_id = $1
         "#,
         plan.id
@@ -389,7 +472,7 @@ async fn fetch_and_map_company_state(
     .await?;
 
     let rev_policies_data: Vec<VolatilityPolicyData> = revenue_policies.into_iter().map(|p| VolatilityPolicyData {
-        item_id: p.revenue_item_id,
+        phase_id: p.phase_id,
         mode_name: p.mode_name,
         volatility_type: Some(p.volatility_type),
         vol_min: p.vol_min,
@@ -406,11 +489,12 @@ async fn fetch_and_map_company_state(
     let expense_policies = sqlx::query!(
         r#"
         SELECT 
-            p.id, p.expense_item_id, p.mode_name, p.volatility_type, 
+            p.id, p.expense_item_phase_id as "phase_id!", p.mode_name, p.volatility_type, 
             p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, 
             p.vol_freedom, p.vol_alpha, p.vol_beta
         FROM expense_item_volatility_policies p
-        JOIN expense_items i ON i.id = p.expense_item_id
+        JOIN expense_item_phases ph ON ph.id = p.expense_item_phase_id
+        JOIN expense_items i ON i.id = ph.expense_item_id
         WHERE i.plan_id = $1
         "#,
         plan.id
@@ -419,7 +503,7 @@ async fn fetch_and_map_company_state(
     .await?;
 
     let exp_policies_data: Vec<VolatilityPolicyData> = expense_policies.into_iter().map(|p| VolatilityPolicyData {
-        item_id: p.expense_item_id,
+        phase_id: p.phase_id,
         mode_name: p.mode_name,
         volatility_type: Some(p.volatility_type),
         vol_min: p.vol_min,
@@ -552,8 +636,9 @@ async fn fetch_and_map_company_state(
     // --- NRIG Validation & Policy Check ---
     for r in &revenue_items {
         let mut has_policy = false;
+        let item_phase_ids: Vec<Uuid> = revenue_phases.iter().filter(|ph| ph.revenue_item_id == r.id).map(|ph| ph.id).collect();
         for p in &rev_policies_data {
-            if p.item_id == r.id {
+            if item_phase_ids.contains(&p.phase_id) {
                 has_policy = true;
                 if let Some(vt) = &p.volatility_type {
                     if vt == "NRIG" {
@@ -567,14 +652,15 @@ async fn fetch_and_map_company_state(
             }
         }
         if !has_policy {
-            error_log.push(format!("Stream item {} must have at least one volatility mode selected.", r.revenue_name));
+            error_log.push(format!("Stream item {} must have at least one volatility mode selected across its phases.", r.revenue_name));
         }
     }
 
     for e in &expense_items {
         let mut has_policy = false;
+        let item_phase_ids: Vec<Uuid> = expense_phases.iter().filter(|ph| ph.expense_item_id == e.id).map(|ph| ph.id).collect();
         for p in &exp_policies_data {
-            if p.item_id == e.id {
+            if item_phase_ids.contains(&p.phase_id) {
                 has_policy = true;
                 if let Some(vt) = &p.volatility_type {
                     if vt == "NRIG" {
@@ -588,7 +674,7 @@ async fn fetch_and_map_company_state(
             }
         }
         if !has_policy {
-            error_log.push(format!("Stream item {} must have at least one volatility mode selected.", e.expense_name));
+            error_log.push(format!("Stream item {} must have at least one volatility mode selected across its phases.", e.expense_name));
         }
     }
 
@@ -612,6 +698,8 @@ async fn fetch_and_map_company_state(
         company_name,
         revenue_items,
         expense_items,
+        revenue_phases,
+        expense_phases,
         rev_policies_data,
         exp_policies_data,
         capital_injections,
@@ -632,8 +720,10 @@ fn map_to_sim_state(
     company_id: Uuid,
     plan: models::FinancialPlan,
     company_name: String,
-    revenue_items: Vec<models::RevenueItem>,
-    expense_items: Vec<models::ExpenseItem>,
+    revenue_items: Vec<DbRevenueItem>,
+    expense_items: Vec<DbExpenseItem>,
+    revenue_phases: Vec<DbRevenuePhase>,
+    expense_phases: Vec<DbExpensePhase>,
     revenue_policies: Vec<VolatilityPolicyData>,
     expense_policies: Vec<VolatilityPolicyData>,
     capital_injections: Vec<models::CapitalInjection>,
@@ -650,33 +740,47 @@ fn map_to_sim_state(
     
     let mut revenue_states = Vec::with_capacity(revenue_items.len());
     let engine_revenues: Vec<domain::Revenue> = revenue_items.into_iter().map(|r| {
-        let mut compounding_growth_sampler = None;
-        let mut transient_noise_sampler = None;
+        let mut item_phases = Vec::new();
+        for ph in revenue_phases.iter().filter(|p| p.revenue_item_id == r.id) {
+            let mut compounding_growth_sampler = None;
+            let mut transient_noise_sampler = None;
 
-        for p in revenue_policies.iter().filter(|p| p.item_id == r.id) {
-            let sampler = create_sampler_from_db(
-                p.volatility_type.clone(),
-                p.vol_mean,
-                p.vol_scale,
-                p.vol_min,
-                p.vol_max,
-                p.vol_intervals,
-                p.vol_freedom,
-                p.vol_alpha,
-                p.vol_beta
-            );
-            if p.mode_name == "compounding_growth" {
-                compounding_growth_sampler = Some(sampler);
-            } else if p.mode_name == "transient_noise" {
-                transient_noise_sampler = Some(sampler);
+            for p in revenue_policies.iter().filter(|p| p.phase_id == ph.id) {
+                let sampler = create_sampler_from_db(
+                    p.volatility_type.clone(),
+                    p.vol_mean,
+                    p.vol_scale,
+                    p.vol_min,
+                    p.vol_max,
+                    p.vol_intervals,
+                    p.vol_freedom,
+                    p.vol_alpha,
+                    p.vol_beta
+                );
+                if p.mode_name == "compounding_growth" {
+                    compounding_growth_sampler = Some(sampler);
+                } else if p.mode_name == "transient_noise" {
+                    transient_noise_sampler = Some(sampler);
+                }
             }
+
+            item_phases.push(domain::Phase {
+                phase_sequence: ph.phase_sequence,
+                trigger_month: ph.trigger_month,
+                trigger_threshold: ph.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+                trigger_operator: ph.trigger_operator.clone(),
+                growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
+                variable_pct: ph.cost_of_revenue_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                compounding_growth_sampler,
+                transient_noise_sampler,
+            });
         }
-        
+
+        item_phases.sort_by_key(|p| p.phase_sequence);
+
         revenue_states.push(ItemState {
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            compounding_growth_sampler,
-            transient_noise_sampler,
         });
 
         domain::Revenue {
@@ -684,41 +788,55 @@ fn map_to_sim_state(
             start_month: r.start_month,
             end_month: r.end_month,
             initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: r.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
             frequency: r.frequency,
-            cost_of_revenue: r.cost_of_revenue_percent.map(|d| d.to_f64().unwrap_or(0.0) / 100.0).unwrap_or(0.0),
+            trigger_strategy: r.trigger_strategy,
+            phases: item_phases,
         }
     }).collect();
 
     let mut expense_states = Vec::with_capacity(expense_items.len());
     let engine_expenses: Vec<domain::Expense> = expense_items.into_iter().map(|e| {
-        let mut compounding_growth_sampler = None;
-        let mut transient_noise_sampler = None;
+        let mut item_phases = Vec::new();
+        for ph in expense_phases.iter().filter(|p| p.expense_item_id == e.id) {
+            let mut compounding_growth_sampler = None;
+            let mut transient_noise_sampler = None;
 
-        for p in expense_policies.iter().filter(|p| p.item_id == e.id) {
-            let sampler = create_sampler_from_db(
-                p.volatility_type.clone(),
-                p.vol_mean,
-                p.vol_scale,
-                p.vol_min,
-                p.vol_max,
-                p.vol_intervals,
-                p.vol_freedom,
-                p.vol_alpha,
-                p.vol_beta
-            );
-            if p.mode_name == "compounding_growth" {
-                compounding_growth_sampler = Some(sampler);
-            } else if p.mode_name == "transient_noise" {
-                transient_noise_sampler = Some(sampler);
+            for p in expense_policies.iter().filter(|p| p.phase_id == ph.id) {
+                let sampler = create_sampler_from_db(
+                    p.volatility_type.clone(),
+                    p.vol_mean,
+                    p.vol_scale,
+                    p.vol_min,
+                    p.vol_max,
+                    p.vol_intervals,
+                    p.vol_freedom,
+                    p.vol_alpha,
+                    p.vol_beta
+                );
+                if p.mode_name == "compounding_growth" {
+                    compounding_growth_sampler = Some(sampler);
+                } else if p.mode_name == "transient_noise" {
+                    transient_noise_sampler = Some(sampler);
+                }
             }
+
+            item_phases.push(domain::Phase {
+                phase_sequence: ph.phase_sequence,
+                trigger_month: ph.trigger_month,
+                trigger_threshold: ph.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+                trigger_operator: ph.trigger_operator.clone(),
+                growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
+                variable_pct: ph.pct_of_revenue.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                compounding_growth_sampler,
+                transient_noise_sampler,
+            });
         }
+
+        item_phases.sort_by_key(|p| p.phase_sequence);
 
         expense_states.push(ItemState {
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            compounding_growth_sampler,
-            transient_noise_sampler,
         });
 
         domain::Expense {
@@ -727,9 +845,9 @@ fn map_to_sim_state(
             start_month: e.start_month,
             end_month: e.end_month,
             initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: e.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
             frequency: e.frequency,
-            pct_of_revenue: e.pct_of_revenue.map(|d| d.to_f64().unwrap_or(0.0) / 100.0),
+            trigger_strategy: e.trigger_strategy,
+            phases: item_phases,
         }
     }).collect();
 

@@ -44,6 +44,8 @@
 │   ├── 20260214143049_add_entity_descriptions.sql
 │   ├── 20260215070519_add_fund_pooling.sql
 │   ├── 20260215073215_move_pooling_to_plans.sql
+│   ├── 20260701125157_dual_stochasticity.sql
+│   ├── 20260702072440_phase_shift_architecture.sql
 │   └── all_schema.txt
 ├── src
 │   ├── distributions.rs
@@ -78,4 +80,4 @@
 │   └── projection.rs
 └── tree.txt
 
-5 directories, 74 files
+5 directories, 76 files

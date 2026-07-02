@@ -264,15 +264,15 @@ pub async fn get_plan_projection(
     let plan = plan.ok_or(AppError::NotFound("Plan not found".to_string()))?;
 
     // Fetch Inputs with strict tenant isolation in subqueries
-    let revenue_items: Vec<crate::models::RevenueItem> = sqlx::query_as!(
-        crate::models::RevenueItem,
+    let revenue_items: Vec<crate::handlers::fund_simulation::DbRevenueItem> = sqlx::query_as!(
+        crate::handlers::fund_simulation::DbRevenueItem,
         r#"
         SELECT 
-            id as "id!", plan_id as "plan_id!", revenue_name as "revenue_name!", source as "source!", 
+            id as "id!", revenue_name as "revenue_name!", 
             start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", cost_of_revenue_percent, 
-            created_at as "created_at!"
+            initial_amount as "initial_amount!", 
+            frequency as "frequency!",
+            trigger_strategy
         FROM revenue_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
@@ -284,15 +284,50 @@ pub async fn get_plan_projection(
     .fetch_all(&pool)
     .await?;
 
-    let expense_items: Vec<crate::models::ExpenseItem> = sqlx::query_as!(
-        crate::models::ExpenseItem,
+    let revenue_phases: Vec<crate::handlers::fund_simulation::DbRevenuePhase> = sqlx::query_as!(
+        crate::handlers::fund_simulation::DbRevenuePhase,
         r#"
         SELECT 
-            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
+            p.id as "id!", p.revenue_item_id as "revenue_item_id!", p.phase_sequence as "phase_sequence!", 
+            p.trigger_month as "trigger_month!", p.growth_rate_percent as "growth_rate_percent!", 
+            p.cost_of_revenue_percent,
+            p.trigger_operator, p.trigger_threshold
+        FROM revenue_item_phases p
+        JOIN revenue_items i ON i.id = p.revenue_item_id
+        WHERE i.plan_id = $1
+        ORDER BY p.phase_sequence ASC
+        "#,
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let revenue_policies: Vec<crate::handlers::fund_simulation::VolatilityPolicyData> = sqlx::query_as!(
+        crate::handlers::fund_simulation::VolatilityPolicyData,
+        r#"
+        SELECT 
+            v.revenue_item_phase_id as "phase_id!", v.mode_name as "mode_name!", 
+            v.volatility_type as "volatility_type!", v.vol_min, v.vol_max, v.vol_intervals,
+            v.vol_mean, v.vol_scale, v.vol_freedom, v.vol_alpha, v.vol_beta
+        FROM revenue_item_volatility_policies v
+        JOIN revenue_item_phases p ON p.id = v.revenue_item_phase_id
+        JOIN revenue_items i ON i.id = p.revenue_item_id
+        WHERE i.plan_id = $1
+        "#,
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let expense_items: Vec<crate::handlers::fund_simulation::DbExpenseItem> = sqlx::query_as!(
+        crate::handlers::fund_simulation::DbExpenseItem,
+        r#"
+        SELECT 
+            id as "id!", expense_name as "expense_name!", category as "category!",
             start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", pct_of_revenue, 
-            created_at as "created_at!"
+            initial_amount as "initial_amount!", 
+            frequency as "frequency!",
+            trigger_strategy
         FROM expense_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
@@ -300,6 +335,41 @@ pub async fn get_plan_projection(
         "#,
         id,
         claims.tenant_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let expense_phases: Vec<crate::handlers::fund_simulation::DbExpensePhase> = sqlx::query_as!(
+        crate::handlers::fund_simulation::DbExpensePhase,
+        r#"
+        SELECT 
+            p.id as "id!", p.expense_item_id as "expense_item_id!", p.phase_sequence as "phase_sequence!", 
+            p.trigger_month as "trigger_month!", p.growth_rate_percent as "growth_rate_percent!", 
+            p.pct_of_revenue,
+            p.trigger_operator, p.trigger_threshold
+        FROM expense_item_phases p
+        JOIN expense_items i ON i.id = p.expense_item_id
+        WHERE i.plan_id = $1
+        ORDER BY p.phase_sequence ASC
+        "#,
+        id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let expense_policies: Vec<crate::handlers::fund_simulation::VolatilityPolicyData> = sqlx::query_as!(
+        crate::handlers::fund_simulation::VolatilityPolicyData,
+        r#"
+        SELECT 
+            v.expense_item_phase_id as "phase_id!", v.mode_name as "mode_name!", 
+            v.volatility_type as "volatility_type!", v.vol_min, v.vol_max, v.vol_intervals,
+            v.vol_mean, v.vol_scale, v.vol_freedom, v.vol_alpha, v.vol_beta
+        FROM expense_item_volatility_policies v
+        JOIN expense_item_phases p ON p.id = v.expense_item_phase_id
+        JOIN expense_items i ON i.id = p.expense_item_id
+        WHERE i.plan_id = $1
+        "#,
+        id
     )
     .fetch_all(&pool)
     .await?;
@@ -477,7 +547,11 @@ pub async fn get_plan_projection(
             months,
             initial_cash,
             revenue_items,
+            revenue_phases,
+            revenue_policies,
             expense_items,
+            expense_phases,
+            expense_policies,
             staffing_roles,
             events,
             capital_injections,

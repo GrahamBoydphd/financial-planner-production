@@ -1,6 +1,9 @@
 use crate::models::{
-    RevenueItem, ExpenseItem, StaffingRole, Event, CapitalInjection, 
+    StaffingRole, Event, CapitalInjection, 
     CreditFacility, DividendPolicy, ValuationAssumption, CapitalGrowthPolicy
+};
+use crate::handlers::fund_simulation::{
+    DbRevenueItem, DbRevenuePhase, DbExpenseItem, DbExpensePhase, VolatilityPolicyData
 };
 use crate::projection::SimulationResult;
 use crate::engine::domain::{self, SimState, ItemState, GrowthSampler};
@@ -35,6 +38,112 @@ fn create_sampler_from_db(
     )
 }
 
+/// Evaluates the active phase for a given stream item based on its strategy and current state.
+pub fn evaluate_active_phase<'a>(
+    trigger_strategy: &str,
+    phases: &'a [domain::Phase],
+    current_month: i32,
+    previous_value: f64,
+) -> Option<&'a domain::Phase> {
+    let mut active_phase: Option<&'a domain::Phase> = None;
+    for phase in phases {
+        let is_active = match trigger_strategy {
+            "time_based" => {
+                if let Some(tm) = phase.trigger_month {
+                    current_month >= tm
+                } else {
+                    false
+                }
+            },
+            "value_based" => {
+                if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                    match op {
+                        "greater_than" => previous_value > thresh,
+                        "less_than" => previous_value < thresh,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            },
+            _ => false,
+        };
+        if is_active {
+            if let Some(current) = active_phase {
+                if phase.phase_sequence > current.phase_sequence {
+                    active_phase = Some(phase);
+                }
+            } else {
+                active_phase = Some(phase);
+            }
+        }
+    }
+    active_phase
+}
+
+/// Executes the step projection for a stream item dynamically applying the active phase's parameters.
+pub fn project_item_step(
+    trigger_strategy: &str,
+    current_month: i32,
+    previous_value: f64,
+    phases: &mut [domain::Phase],
+) -> (f64, f64) {
+    let mut active_idx: Option<usize> = None;
+    for (i, phase) in phases.iter().enumerate() {
+        let is_active = match trigger_strategy {
+            "time_based" => {
+                if let Some(tm) = phase.trigger_month {
+                    current_month >= tm
+                } else {
+                    false
+                }
+            },
+            "value_based" => {
+                if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                    match op {
+                        "greater_than" => previous_value > thresh,
+                        "less_than" => previous_value < thresh,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            },
+            _ => false,
+        };
+        if is_active {
+            if let Some(curr_idx) = active_idx {
+                if phase.phase_sequence > phases[curr_idx].phase_sequence {
+                    active_idx = Some(i);
+                }
+            } else {
+                active_idx = Some(i);
+            }
+        }
+    }
+    
+    if let Some(idx) = active_idx {
+        let phase = &mut phases[idx];
+        let mut step_growth = phase.growth_rate;
+        if let Some(sampler) = &mut phase.compounding_growth_sampler {
+            step_growth += sampler.sample() / 100.0;
+        }
+        
+        let mut noise = 0.0;
+        if let Some(sampler) = &mut phase.transient_noise_sampler {
+            noise = sampler.sample() / 100.0;
+        }
+        
+        let new_value = previous_value * (1.0 + step_growth);
+        let final_value = new_value * (1.0 + noise);
+        let cost = phase.variable_pct.unwrap_or(0.0);
+        
+        (final_value, cost)
+    } else {
+        (previous_value, 0.0)
+    }
+}
+
 /// Generates a full Monte Carlo simulation for a single company entity.
 /// Maps database models to the V4 Engine domain models and executes the orchestrator.
 pub fn generate_simulation(
@@ -43,8 +152,12 @@ pub fn generate_simulation(
     currency_code: String,
     months: i32,
     initial_cash: Decimal,
-    revenue_items: Vec<RevenueItem>,
-    expense_items: Vec<ExpenseItem>,
+    revenue_items: Vec<DbRevenueItem>,
+    revenue_phases: Vec<DbRevenuePhase>,
+    revenue_policies: Vec<VolatilityPolicyData>,
+    expense_items: Vec<DbExpenseItem>,
+    expense_phases: Vec<DbExpensePhase>,
+    expense_policies: Vec<VolatilityPolicyData>,
     staffing_roles: Vec<StaffingRole>,
     events: Vec<Event>,
     capital_injections: Vec<CapitalInjection>,
@@ -65,14 +178,51 @@ pub fn generate_simulation(
     
     // 1. Map Revenue Items
     let engine_revenues: Vec<domain::Revenue> = revenue_items.iter().map(|r| {
+        let mut item_phases = Vec::new();
+        for ph in revenue_phases.iter().filter(|p| p.revenue_item_id == r.id) {
+            let mut compounding_growth_sampler = None;
+            let mut transient_noise_sampler = None;
+
+            for p in revenue_policies.iter().filter(|p| p.phase_id == ph.id) {
+                let sampler = create_sampler_from_db(
+                    p.volatility_type.as_deref(),
+                    p.vol_mean,
+                    p.vol_scale,
+                    p.vol_min,
+                    p.vol_max,
+                    p.vol_intervals,
+                    p.vol_freedom,
+                    p.vol_alpha,
+                    p.vol_beta
+                );
+                if p.mode_name == "compounding_growth" {
+                    compounding_growth_sampler = Some(sampler);
+                } else if p.mode_name == "transient_noise" {
+                    transient_noise_sampler = Some(sampler);
+                }
+            }
+
+            item_phases.push(domain::Phase {
+                phase_sequence: ph.phase_sequence,
+                trigger_month: ph.trigger_month,
+                trigger_threshold: ph.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+                trigger_operator: ph.trigger_operator.clone(),
+                growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
+                variable_pct: ph.cost_of_revenue_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                compounding_growth_sampler,
+                transient_noise_sampler,
+            });
+        }
+        item_phases.sort_by_key(|p| p.phase_sequence);
+
         domain::Revenue {
             name: r.revenue_name.clone(),
             start_month: r.start_month,
             end_month: r.end_month,
             initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: r.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
             frequency: r.frequency.clone(),
-            cost_of_revenue: r.cost_of_revenue_percent.and_then(|d| d.to_f64()).unwrap_or(0.0) / 100.0,
+            trigger_strategy: r.trigger_strategy.clone(),
+            phases: item_phases,
         }
     }).collect();
 
@@ -80,22 +230,57 @@ pub fn generate_simulation(
         ItemState {
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            compounding_growth_sampler: None,
-            transient_noise_sampler: None,
         }
     }).collect();
 
     // 2. Map Expense Items
     let engine_expenses: Vec<domain::Expense> = expense_items.iter().map(|e| {
+        let mut item_phases = Vec::new();
+        for ph in expense_phases.iter().filter(|p| p.expense_item_id == e.id) {
+            let mut compounding_growth_sampler = None;
+            let mut transient_noise_sampler = None;
+
+            for p in expense_policies.iter().filter(|p| p.phase_id == ph.id) {
+                let sampler = create_sampler_from_db(
+                    p.volatility_type.as_deref(),
+                    p.vol_mean,
+                    p.vol_scale,
+                    p.vol_min,
+                    p.vol_max,
+                    p.vol_intervals,
+                    p.vol_freedom,
+                    p.vol_alpha,
+                    p.vol_beta
+                );
+                if p.mode_name == "compounding_growth" {
+                    compounding_growth_sampler = Some(sampler);
+                } else if p.mode_name == "transient_noise" {
+                    transient_noise_sampler = Some(sampler);
+                }
+            }
+
+            item_phases.push(domain::Phase {
+                phase_sequence: ph.phase_sequence,
+                trigger_month: ph.trigger_month,
+                trigger_threshold: ph.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+                trigger_operator: ph.trigger_operator.clone(),
+                growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
+                variable_pct: ph.pct_of_revenue.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                compounding_growth_sampler,
+                transient_noise_sampler,
+            });
+        }
+        item_phases.sort_by_key(|p| p.phase_sequence);
+
         domain::Expense {
             name: e.expense_name.clone(),
             category: e.category.clone(),
             start_month: e.start_month,
             end_month: e.end_month,
             initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
-            growth_rate: e.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
             frequency: e.frequency.clone(),
-            pct_of_revenue: e.pct_of_revenue.and_then(|d| d.to_f64()).map(|v| v / 100.0),
+            trigger_strategy: e.trigger_strategy.clone(),
+            phases: item_phases,
         }
     }).collect();
 
@@ -103,8 +288,6 @@ pub fn generate_simulation(
         ItemState {
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            compounding_growth_sampler: None,
-            transient_noise_sampler: None,
         }
     }).collect();
 

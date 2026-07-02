@@ -63,25 +63,29 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         let mut det_states = initial_states.clone();
         for state in det_states.iter_mut() {
             // Sanitize Revenue
-            for item in state.revenue_states.iter_mut() {
-                if let Some(sampler) = &mut item.compounding_growth_sampler {
-                    let mean = sampler.mean();
-                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-                }
-                if let Some(sampler) = &mut item.transient_noise_sampler {
-                    let mean = sampler.mean();
-                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+            for rev in state.revenues.iter_mut() {
+                for phase in rev.phases.iter_mut() {
+                    if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                        let mean = sampler.mean();
+                        sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                    }
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        let mean = sampler.mean();
+                        sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                    }
                 }
             }
             // Sanitize Expenses
-            for item in state.expense_states.iter_mut() {
-                if let Some(sampler) = &mut item.compounding_growth_sampler {
-                    let mean = sampler.mean();
-                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
-                }
-                if let Some(sampler) = &mut item.transient_noise_sampler {
-                    let mean = sampler.mean();
-                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+            for exp in state.expenses.iter_mut() {
+                for phase in exp.phases.iter_mut() {
+                    if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                        let mean = sampler.mean();
+                        sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                    }
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        let mean = sampler.mean();
+                        sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                    }
                 }
             }
             // Sanitize Capital Growth Policy

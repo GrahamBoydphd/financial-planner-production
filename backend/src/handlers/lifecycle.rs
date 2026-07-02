@@ -6,7 +6,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 use chrono::Utc;
 use crate::models::{
-    Fund, Company, FinancialPlan, RevenueItem, ExpenseItem, 
+    Fund, Company, FinancialPlan, 
     CapitalInjection, DividendPolicy, CreditFacility, 
     ValuationAssumption, Event, CapitalGrowthPolicy, StaffingRole,
     Claims
@@ -59,36 +59,106 @@ async fn copy_plan_internal(
     .execute(&mut **txn)
     .await?;
 
-    // Copy Revenue
-    let revenues = sqlx::query_as!(RevenueItem, "SELECT * FROM revenue_items WHERE plan_id = $1", source_plan_id)
-        .fetch_all(&mut **txn).await?;
+    // Copy Revenue (Items, Phases, Policies)
+    let revenues = sqlx::query!(
+        "SELECT id, revenue_name, source, start_month, end_month, initial_amount, frequency FROM revenue_items WHERE plan_id = $1", 
+        source_plan_id
+    ).fetch_all(&mut **txn).await?;
+    
     for item in revenues {
+        let new_rev_id = Uuid::new_v4();
         sqlx::query!(
             r#"INSERT INTO revenue_items (
                 id, plan_id, revenue_name, source, start_month, end_month, 
-                initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent,
-                created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
-            Uuid::new_v4(), new_plan_id, item.revenue_name, item.source, item.start_month, item.end_month,
-            item.initial_amount, item.growth_rate_percent, item.frequency, item.cost_of_revenue_percent,
-            Utc::now()
+                initial_amount, frequency, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+            new_rev_id, new_plan_id, item.revenue_name, item.source, item.start_month, item.end_month,
+            item.initial_amount, item.frequency, Utc::now()
         ).execute(&mut **txn).await?;
+
+        let phases = sqlx::query!(
+            "SELECT id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent FROM revenue_item_phases WHERE revenue_item_id = $1",
+            item.id
+        ).fetch_all(&mut **txn).await?;
+
+        for phase in phases {
+            let new_phase_id = Uuid::new_v4();
+            sqlx::query!(
+                r#"INSERT INTO revenue_item_phases (
+                    id, revenue_item_id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
+                new_phase_id, new_rev_id, phase.phase_sequence, phase.trigger_month, phase.growth_rate_percent, phase.cost_of_revenue_percent, Utc::now()
+            ).execute(&mut **txn).await?;
+
+            let policies = sqlx::query!(
+                "SELECT mode_name, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level FROM revenue_item_volatility_policies WHERE revenue_item_phase_id = $1",
+                phase.id
+            ).fetch_all(&mut **txn).await?;
+
+            for pol in policies {
+                sqlx::query!(
+                    r#"INSERT INTO revenue_item_volatility_policies (
+                        id, revenue_item_phase_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,
+                        vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
+                        target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"#,
+                    Uuid::new_v4(), new_phase_id, pol.mode_name, pol.volatility_type, pol.vol_min, pol.vol_max, pol.vol_intervals,
+                    pol.vol_mean, pol.vol_scale, pol.vol_freedom, pol.vol_alpha, pol.vol_beta,
+                    pol.target_mean, pol.vol_mu, pol.vol_input_mode, pol.vol_fatness_level, pol.vol_skew_level, pol.vol_width_level, Utc::now()
+                ).execute(&mut **txn).await?;
+            }
+        }
     }
 
-    // Copy Expenses
-    let expenses = sqlx::query_as!(ExpenseItem, "SELECT * FROM expense_items WHERE plan_id = $1", source_plan_id)
-        .fetch_all(&mut **txn).await?;
+    // Copy Expenses (Items, Phases, Policies)
+    let expenses = sqlx::query!(
+        "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency FROM expense_items WHERE plan_id = $1", 
+        source_plan_id
+    ).fetch_all(&mut **txn).await?;
+    
     for item in expenses {
+        let new_exp_id = Uuid::new_v4();
         sqlx::query!(
             r#"INSERT INTO expense_items (
                 id, plan_id, expense_name, category, start_month, end_month,
-                initial_amount, growth_rate_percent, frequency, pct_of_revenue,
-                created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
-            Uuid::new_v4(), new_plan_id, item.expense_name, item.category, item.start_month, item.end_month,
-            item.initial_amount, item.growth_rate_percent, item.frequency, item.pct_of_revenue,
-            Utc::now()
+                initial_amount, frequency, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+            new_exp_id, new_plan_id, item.expense_name, item.category, item.start_month, item.end_month,
+            item.initial_amount, item.frequency, Utc::now()
         ).execute(&mut **txn).await?;
+
+        let phases = sqlx::query!(
+            "SELECT id, phase_sequence, trigger_month, growth_rate_percent, pct_of_revenue FROM expense_item_phases WHERE expense_item_id = $1",
+            item.id
+        ).fetch_all(&mut **txn).await?;
+
+        for phase in phases {
+            let new_phase_id = Uuid::new_v4();
+            sqlx::query!(
+                r#"INSERT INTO expense_item_phases (
+                    id, expense_item_id, phase_sequence, trigger_month, growth_rate_percent, pct_of_revenue, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
+                new_phase_id, new_exp_id, phase.phase_sequence, phase.trigger_month, phase.growth_rate_percent, phase.pct_of_revenue, Utc::now()
+            ).execute(&mut **txn).await?;
+
+            let policies = sqlx::query!(
+                "SELECT mode_name, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level FROM expense_item_volatility_policies WHERE expense_item_phase_id = $1",
+                phase.id
+            ).fetch_all(&mut **txn).await?;
+
+            for pol in policies {
+                sqlx::query!(
+                    r#"INSERT INTO expense_item_volatility_policies (
+                        id, expense_item_phase_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,
+                        vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
+                        target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"#,
+                    Uuid::new_v4(), new_phase_id, pol.mode_name, pol.volatility_type, pol.vol_min, pol.vol_max, pol.vol_intervals,
+                    pol.vol_mean, pol.vol_scale, pol.vol_freedom, pol.vol_alpha, pol.vol_beta,
+                    pol.target_mean, pol.vol_mu, pol.vol_input_mode, pol.vol_fatness_level, pol.vol_skew_level, pol.vol_width_level, Utc::now()
+                ).execute(&mut **txn).await?;
+            }
+        }
     }
 
     // Copy Staffing
