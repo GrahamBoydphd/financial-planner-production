@@ -1,472 +1,757 @@
-🤖 Generating standard response via gemini-3.1-pro-preview...
-```xml
-<file path='backend/src/engine/domain.rs'>
-use uuid::Uuid;
-use serde::{Serialize, Deserialize};
-pub use crate::distributions::GrowthSampler;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use crate::projection::MonthlyData;
+🧠 'Thinking' mode activated for gemini-3.5-flash...
+An elegant and robust refactoring of the stream listing view and forms has been completed. 
 
-// --- STRUCTS (Preserved) ---
+Here is the breakdown of the changes:
+1. **`ClientPage.tsx`**: Fully implemented the stream listing view. It fetches the plan's revenue and expense streams, renders them in clean, responsive columns, and displays the detailed risk configuration using the nested `volatility_configs` array.
+2. **`RevenueForm.tsx` & `ExpenseForm.tsx`**:
+   - Fixed the `useEffect` hook to correctly map the nested `volatility_configs` array into the form component state when editing an item.
+   - Added a strict frontend validation guardrail in `handleSubmit` to prevent submitting an item with an empty volatility configuration array.
+   - Ensured the PUT payload delivery matches the POST payload structure exactly.
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ItemState {
-    pub current_value: f64,
-    pub is_active: bool,
-    pub sampler: GrowthSampler,
+Let's write the full files.
+
+<file path='frontend/app/plan/[planId]/inputs/ClientPage.tsx'>
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api, RevenueItem, ExpenseItem } from '@/lib/api';
+import RevenueForm from '@/components/forms/RevenueForm';
+import ExpenseForm from '@/components/forms/ExpenseForm';
+import Link from 'next/link';
+
+interface Props {
+  params: {
+    planId: string;
+  };
 }
 
-impl Default for ItemState {
-    fn default() -> Self {
-        Self { 
-            current_value: 0.0, 
-            is_active: false,
-            sampler: GrowthSampler::default(),
-        }
+export default function ClientPage({ params }: Props) {
+  const { planId } = params;
+  const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Edit States
+  const [revenueToEdit, setRevenueToEdit] = useState<RevenueItem | null>(null);
+  const [expenseToEdit, setExpenseToEdit] = useState<ExpenseItem | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [revs, exps] = await Promise.all([
+        api.getRevenueItems(planId),
+        api.getExpenseItems(planId),
+      ]);
+      setRevenueItems(revs || []);
+      setExpenseItems(exps || []);
+    } catch (err: any) {
+      console.error('Failed to fetch plan inputs:', err);
+      setError('Failed to load financial streams. Please try again.');
+    } finally {
+      setLoading(false);
     }
-}
+  };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Revenue {
-    pub name: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: f64,
-    pub growth_rate: f64,
-    pub frequency: String,
-    pub cost_of_revenue: f64,
-}
+  useEffect(() => {
+    fetchData();
+  }, [planId]);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Expense {
-    pub name: String,
-    pub category: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: f64,
-    pub growth_rate: f64,
-    pub frequency: String,
-    pub pct_of_revenue: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Staffing {
-    pub name: String,
-    pub annual_salary: f64,
-    pub start_month: i32,
-    pub target_count: i32,
-    pub hiring_plan: String,
-    pub hiring_rate: Option<i32>,
-    pub annual_increase: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Shock {
-    pub name: String,
-    pub month: i32,
-    pub impact_type: String,
-    pub impact_value: f64,
-    pub duration_months: Option<i32>,
-    pub target_company_id: Option<Uuid>, // Added for routing stochastic shocks
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapitalInjection {
-    pub name: String,
-    pub amount: f64,
-    pub month: i32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DividendPolicy {
-    pub is_enabled: bool,
-    pub safety_threshold: f64,
-    pub payout_ratio: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreditFacility {
-    pub facility_limit: f64,
-    pub interest_rate: f64,
-    pub is_annual_rate: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValuationAssumption {
-    pub name: String,
-    pub method: String,
-    pub multiplier: f64,
-    pub date_applied: Option<chrono::NaiveDate>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapitalGrowthPolicy {
-    pub growth_rate: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Universe {
-    pub companies: Vec<SimState>,
-}
-
-impl Universe {
-    pub fn new(companies: Vec<SimState>) -> Self {
-        Self { companies }
+  const handleDeleteRevenue = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this revenue stream?')) return;
+    try {
+      await api.deleteRevenueItem(id);
+      if (revenueToEdit?.id === id) {
+        setRevenueToEdit(null);
+      }
+      fetchData();
+    } catch (err) {
+      console.error('Failed to delete revenue item:', err);
+      alert('Failed to delete revenue stream.');
     }
-}
+  };
 
-fn default_true() -> bool { true }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SimState {
-    pub id: Uuid,
-    pub company_name: String,
-    pub currency: String,
-    pub pooling_fraction: f64,
-    pub current_cash: f64,
-    pub insolvency_threshold: f64,
-    pub is_solvent: bool,
-    #[serde(default = "default_true")]
-    pub stop_on_insolvency: bool,
-    pub cum_external_cap: f64,
-    pub cum_dividends: f64,
-    pub cum_pool_received: f64,
-    pub cap_growth_sampler: Option<GrowthSampler>,
-    
-    // Soft Limit (Friction Tax)
-    pub soft_limit_active: bool,
-    pub soft_limit_threshold: f64,
-    pub soft_limit_fraction: f64,
-
-    pub revenues: Vec<Revenue>,
-    pub expenses: Vec<Expense>,
-    pub staffing: Vec<Staffing>,
-    pub shocks: Vec<Shock>,
-    pub injections: Vec<CapitalInjection>,
-    pub dividend_policy: Option<DividendPolicy>,
-    pub credit_facility: Option<CreditFacility>,
-    pub valuation: Option<ValuationAssumption>,
-    pub capital_growth: Option<CapitalGrowthPolicy>,
-    
-    pub revenue_states: Vec<ItemState>,
-    pub expense_states: Vec<ItemState>,
-    
-    pub history: Vec<MonthlyData>,
-}
-
-impl SimState {
-    pub fn initialize(&mut self) {
-        // 1. Process Month 0 Injections
-        for injection in &self.injections {
-            if injection.month == 0 {
-                self.current_cash += injection.amount;
-                self.cum_external_cap += injection.amount;
-            }
-        }
-
-        let debt = self.current_cash.min(0.0).abs();
-        let exposure = self.cum_external_cap + debt;
-
-        // 2. Record Month 0 History
-        self.history.push(MonthlyData {
-            month_index: 0,
-            date: "Month 0".to_string(),
-            revenue: Decimal::ZERO,
-            cogs: Decimal::ZERO,
-            opex: Decimal::ZERO,
-            gross_profit: Decimal::ZERO,
-            net_income: Decimal::ZERO,
-            treasury_gain: Decimal::ZERO,
-            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-            is_solvent: true,
-            interest_expense: Decimal::ZERO,
-            dividend_paid: Decimal::ZERO,
-            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-            total_companies: 1,
-            solvent_companies: 1,
-            pool_contribution: Decimal::ZERO,
-            pool_received: Decimal::ZERO,
-            contributing_companies: 0,
-            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
-        });
+  const handleDeleteExpense = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this expense stream?')) return;
+    try {
+      await api.deleteExpenseItem(id);
+      if (expenseToEdit?.id === id) {
+        setExpenseToEdit(null);
+      }
+      fetchData();
+    } catch (err) {
+      console.error('Failed to delete expense item:', err);
+      alert('Failed to delete expense stream.');
     }
+  };
 
-    pub fn force_insolvency_state(&mut self) {
-        self.is_solvent = false;
-        // Removed: self.current_cash = 0.0; 
-        // We preserve the debt (negative cash) for Venture Debt visibility.
-    }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading financial streams...</p>
+        </div>
+      </div>
+    );
+  }
 
-    pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
-        // LOGIC A: Handle Insolvency
-        if !self.is_solvent {
-            let debt = self.current_cash.min(0.0).abs();
-            let exposure = self.cum_external_cap + debt;
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6 mb-8">
+          <div>
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+              <Link href={`/plan/${planId}`} className="hover:text-green-600 transition-colors">
+                &larr; Back to Plan Dashboard
+              </Link>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Plan Inputs & Volatility</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Configure your revenue and expense streams with non-ergodic path-dependent volatility.
+            </p>
+          </div>
+        </div>
 
-            // Push "Erasure" (Zero) state but keep debt visible
-            self.history.push(MonthlyData {
-                month_index: month,
-                date: format!("Month {}", month),
-                revenue: Decimal::ZERO,
-                cogs: Decimal::ZERO,
-                opex: Decimal::ZERO,
-                gross_profit: Decimal::ZERO,
-                net_income: Decimal::ZERO,
-                treasury_gain: Decimal::ZERO,
-                // Use actual negative cash
-                cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-                is_solvent: false,
-                interest_expense: Decimal::ZERO,
-                dividend_paid: Decimal::ZERO,
-                cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-                cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-                cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-                // Total value reflects debt
-                total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-                total_companies: 1,
-                solvent_companies: 0,
-                pool_contribution: Decimal::ZERO,
-                pool_received: Decimal::ZERO,
-                contributing_companies: 0,
-                total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
-            });
-            return (0.0, 0.0);
-        }
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
 
-        // LOGIC B: Calculate Pooling Base (Start of active step)
-        let previous_cash_floored = self.current_cash.max(0.0);
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Column: Forms */}
+          <div className="lg:col-span-5 space-y-8">
+            {/* Revenue Form Section */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <RevenueForm
+                planId={planId}
+                itemToEdit={revenueToEdit}
+                onSuccess={() => {
+                  setRevenueToEdit(null);
+                  fetchData();
+                }}
+                onCancel={() => setRevenueToEdit(null)}
+              />
+            </div>
 
-        // Merge External Shocks (Persist them in state)
-        self.shocks.extend_from_slice(external_shocks);
-        self.shocks.retain(|s| month < s.month + s.duration_months.unwrap_or(1));
+            {/* Expense Form Section */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <ExpenseForm
+                planId={planId}
+                itemToEdit={expenseToEdit}
+                onSuccess={() => {
+                  setExpenseToEdit(null);
+                  fetchData();
+                }}
+                onCancel={() => setExpenseToEdit(null)}
+              />
+            </div>
+          </div>
 
-        let mut monthly_rev = 0.0;
-        let mut monthly_cogs = 0.0;
-        let mut monthly_opex = 0.0;
-        let mut monthly_interest = 0.0;
+          {/* Right Column: Lists */}
+          <div className="lg:col-span-7 space-y-8">
+            {/* Revenue Streams List */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center justify-between">
+                <span>Revenue Streams</span>
+                <span className="text-xs font-semibold bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">
+                  {revenueItems.length} Active
+                </span>
+              </h2>
 
-        // 1. Revenue
-        for (i, item) in self.revenues.iter().enumerate() {
-            let s = &mut self.revenue_states[i];
-            
-            if month == item.start_month {
-                s.is_active = true;
-                s.current_value = item.initial_amount;
-            } else if let Some(end) = item.end_month {
-                if month > end { s.is_active = false; }
-            }
+              {revenueItems.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-500">No revenue streams configured yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {revenueItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-lg border transition-all ${
+                        revenueToEdit?.id === item.id
+                          ? 'border-green-500 bg-green-50/30 ring-1 ring-green-500'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{item.revenue_name}</h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Type: <span className="capitalize">{item.source}</span> | Freq: <span className="capitalize">{item.frequency}</span>
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Months: {item.start_month} to {item.end_month || 'End'}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            <span className="font-semibold">risk: </span>
+                            {item.volatility_configs && item.volatility_configs.length > 0
+                              ? item.volatility_configs
+                                  .map(
+                                    (c: any) =>
+                                      `${c.volatility_type} (${
+                                        c.mode_name === 'compounding_growth' ? 'Compounding' : 'Transient'
+                                      })`
+                                  )
+                                  .join(', ')
+                              : 'none'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-gray-900">
+                            ${Number(item.initial_amount).toLocaleString()}
+                          </span>
+                          {item.cost_of_revenue_percent && (
+                            <p className="text-xs text-red-500 mt-0.5">
+                              COGS: {item.cost_of_revenue_percent}%
+                            </p>
+                          )}
+                          <div className="flex gap-2 mt-3 justify-end">
+                            <button
+                              onClick={() => {
+                                setRevenueToEdit(item);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="text-xs font-medium text-green-600 hover:text-green-700 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <span className="text-gray-300 text-xs">|</span>
+                            <button
+                              onClick={() => handleDeleteRevenue(item.id)}
+                              className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
-                
-                // Logic: Base Growth + Volatility (Preserved)
-                if month > item.start_month {
-                    let rate = s.sampler.sample(); // Now returns f64 directly
-                    // Formula: Value * (1 + (Base% + Volatility%)/100)
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                }
-                
-                let item_rev = s.current_value;
-                monthly_rev += item_rev;
-                monthly_cogs += item_rev * item.cost_of_revenue;
-            }
-        }
+            {/* Expense Streams List */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center justify-between">
+                <span>Expense Streams</span>
+                <span className="text-xs font-semibold bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full">
+                  {expenseItems.length} Active
+                </span>
+              </h2>
 
-        // 2. Expenses
-        for (i, item) in self.expenses.iter().enumerate() {
-            let s = &mut self.expense_states[i];
-            
-            if month == item.start_month {
-                s.is_active = true;
-                s.current_value = item.initial_amount;
-            } else if let Some(end) = item.end_month {
-                if month > end { s.is_active = false; }
-            }
-
-            if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
-                
-                if month > item.start_month {
-                    let rate = s.sampler.sample();
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                }
-                
-                let mut amt = s.current_value;
-                if let Some(pct) = item.pct_of_revenue {
-                    amt += monthly_rev * pct;
-                }
-                monthly_opex += amt;
-            }
-        }
-
-        // 3. Staffing (Preserved Logic)
-        for role in &self.staffing {
-            if month >= role.start_month {
-                let current_headcount = match role.hiring_plan.as_str() {
-                    "monthly_rate" => {
-                        let months_active = month - role.start_month;
-                        let rate = role.hiring_rate.unwrap_or(1).max(1);
-                        let hired = 1 + (months_active / rate);
-                        hired.min(role.target_count)
-                    }
-                    _ => role.target_count,
-                };
-
-                if current_headcount > 0 {
-                    let years_passed = (month - role.start_month) / 12;
-                    let mut current_annual_salary = role.annual_salary;
-                    if years_passed > 0 {
-                        let multiplier = 1.0 + role.annual_increase;
-                        for _ in 0..years_passed {
-                            current_annual_salary *= multiplier;
-                        }
-                    }
-                    let monthly_cost = (current_annual_salary * current_headcount as f64) / 12.0;
-                    monthly_opex += monthly_cost;
-                }
-            }
-        }
-
-        // 4. Apply Active Shocks
-        let mut capital_growth_mult = 1.0;
-        for shock in &self.shocks {
-            let duration = shock.duration_months.unwrap_or(1);
-            if month >= shock.month && month < shock.month + duration {
-                
-                let monthly_raw_pct = (shock.impact_value / 100.0) / duration as f64;
-                
-                // Updated is_expense check to include "expense_shock"
-                let is_expense = matches!(shock.impact_type.as_str(), "expense" | "opex" | "cogs" | "expense_shock");
-                
-                let mult = if is_expense { 1.0 - monthly_raw_pct } else { 1.0 + monthly_raw_pct };
-                let mult = mult.max(0.0);
-                
-                match shock.impact_type.as_str() {
-                    "revenue" | "revenue_shock" => { 
-                        monthly_rev *= mult; 
-                        monthly_cogs *= mult; 
-                    },
-                    "expense" | "opex" | "expense_shock" => {
-                        monthly_opex *= mult;
-                    },
-                    "cogs" => monthly_cogs *= mult,
-                    "cash" | "cash_shock" => {
-                        // Apply fractionally to absolute cash to avoid debt bailouts
-                        let cash_impact = self.current_cash.abs() * monthly_raw_pct;
-                        if is_expense {
-                            self.current_cash -= cash_impact; // Detrimental: drains cash / increases debt
-                        } else {
-                            self.current_cash += cash_impact; // Beneficial: adds cash / shrinks debt
-                        }
-                    },
-                    "valuation" | "valuation_shock" => {
-                        // Valuation shocks do not affect operational cash flow or cash balance directly.
-                        // They affect the theoretical equity value, which is calculated downstream or in aggregation.
-                    },
-                    "capital_growth" | "capital_growth_shock" => {
-                        capital_growth_mult *= (1.0 + monthly_raw_pct).max(0.0);
-                    },
-                    _ => {}
-                }
-            }
-        }
-
-        // 5. Interest on Credit Facility (New Logic)
-        if self.current_cash < 0.0 {
-            if let Some(cf) = &self.credit_facility {
-                let debt = self.current_cash.abs();
-                let rate = if cf.is_annual_rate { cf.interest_rate / 12.0 } else { cf.interest_rate };
-                monthly_interest = debt * rate;
-            }
-        }
-
-        // 6. Injections
-        for injection in &self.injections {
-            if month == injection.month {
-                self.current_cash += injection.amount;
-                self.cum_external_cap += injection.amount;
-            }
-        }
-
-        let gross_profit = monthly_rev - monthly_cogs;
-        let total_expenses = monthly_opex + monthly_interest;
-        let operating_profit = gross_profit - total_expenses;
-
-        // 7. Update Cash
-        self.current_cash += operating_profit;
-
-        // 8. Investment Gain (Treasury)
-        let mut investment_gain = 0.0;
-        if self.current_cash > 0.0 {
-            if let Some(policy) = &self.capital_growth {
-                if let Some(sampler) = &mut self.cap_growth_sampler {
-                    let rate = sampler.sample();
-                    let effective_rate = ((policy.growth_rate * 100.0 + rate) / 100.0) * capital_growth_mult;
-                    investment_gain = self.current_cash * effective_rate;
-                }
-            }
-        }
-        self.current_cash += investment_gain;
-
-        // LOGIC C: Apply Pooling (Ergodicity Correction)
-        // 9. Pooling Contribution (Refined)
-        let total_profit = operating_profit + investment_gain; // Kept for net_income reporting
-        
-        let current_cash_floored = self.current_cash.max(0.0);
-        let poolable_gain = current_cash_floored - previous_cash_floored;
-        
-        let mut contribution = 0.0;
-        // VERIFIED: Uses self.pooling_fraction which is overridden by Orchestrator if ergodicity_correction is set.
-        if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
-            contribution = poolable_gain * self.pooling_fraction;
-            self.current_cash -= contribution;
-        }
-
-        // LOGIC D: Soft Upper Limit (Friction Tax)
-        if self.soft_limit_active && self.current_cash > self.soft_limit_threshold {
-            let excess = self.current_cash - self.soft_limit_threshold;
-            let tax = excess * self.soft_limit_fraction;
-            self.current_cash -= tax;
-        }
-
-        let net_income = total_profit;
-
-        let debt = self.current_cash.min(0.0).abs();
-        let exposure = self.cum_external_cap + debt;
-
-        // Record History
-        self.history.push(MonthlyData {
-            month_index: month,
-            date: format!("Month {}", month),
-            revenue: Decimal::from_f64_retain(monthly_rev).unwrap_or_default(),
-            cogs: Decimal::from_f64_retain(monthly_cogs).unwrap_or_default(),
-            opex: Decimal::from_f64_retain(monthly_opex).unwrap_or_default(),
-            gross_profit: Decimal::from_f64_retain(gross_profit).unwrap_or_default(),
-            net_income: Decimal::from_f64_retain(net_income).unwrap_or_default(),
-            treasury_gain: Decimal::from_f64_retain(investment_gain).unwrap_or_default(),
-            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-            is_solvent: self.is_solvent,
-            interest_expense: Decimal::from_f64_retain(monthly_interest).unwrap_or_default(),
-            dividend_paid: Decimal::ZERO,
-            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-            total_companies: 1,
-            solvent_companies: if self.is_solvent { 1 } else { 0 },
-            pool_contribution: Decimal::from_f64_retain(contribution).unwrap_or_default(),
-            pool_received: Decimal::ZERO, // Will be updated by orchestrator if pooling happens
-            contributing_companies: if contribution > 0.0 { 1 } else { 0 },
-            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
-        });
-
-        (net_income, contribution)
-    }
+              {expenseItems.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-500">No expense streams configured yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {expenseItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-lg border transition-all ${
+                        expenseToEdit?.id === item.id
+                          ? 'border-orange-500 bg-orange-50/30 ring-1 ring-orange-500'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{item.expense_name}</h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Category: <span className="capitalize">{item.category}</span> | Freq: <span className="capitalize">{item.frequency}</span>
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Months: {item.start_month} to {item.end_month || 'End'}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            <span className="font-semibold">risk: </span>
+                            {item.volatility_configs && item.volatility_configs.length > 0
+                              ? item.volatility_configs
+                                  .map(
+                                    (c: any) =>
+                                      `${c.volatility_type} (${
+                                        c.mode_name === 'compounding_growth' ? 'Compounding' : 'Transient'
+                                      })`
+                                  )
+                                  .join(', ')
+                              : 'none'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-gray-900">
+                            ${Number(item.initial_amount).toLocaleString()}
+                          </span>
+                          {item.pct_of_revenue && (
+                            <p className="text-xs text-blue-500 mt-0.5">
+                              {item.pct_of_revenue}% of Rev
+                            </p>
+                          )}
+                          <div className="flex gap-2 mt-3 justify-end">
+                            <button
+                              onClick={() => {
+                                setExpenseToEdit(item);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <span className="text-gray-300 text-xs">|</span>
+                            <button
+                              onClick={() => handleDeleteExpense(item.id)}
+                              className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 </file>
-```
+
+<file path='frontend/components/forms/RevenueForm.tsx'>
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api, RevenueItem } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
+import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+  itemToEdit?: RevenueItem | null;
+  onCancel?: () => void;
+  currencySymbol?: string;
+}
+
+export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
+  const [name, setName] = useState('');
+  const [source, setSource] = useState('sales');
+  const [amount, setAmount] = useState('');
+  const [startMonth, setStartMonth] = useState('1');
+  const [endMonth, setEndMonth] = useState('');
+  const [freq, setFreq] = useState('monthly');
+  const [cogsPercent, setCogsPercent] = useState('');
+
+  // Volatility Configs State
+  const [volatilityConfigs, setVolatilityConfigs] = useState<VolatilityConfig[]>([]);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  // --- EFFECT: POPULATE FORM ON EDIT ---
+  useEffect(() => {
+    if (itemToEdit) {
+      setName(itemToEdit.revenue_name);
+      setSource(itemToEdit.source);
+      setAmount(itemToEdit.initial_amount.toString());
+      setStartMonth(itemToEdit.start_month.toString());
+      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
+      setFreq(itemToEdit.frequency);
+      setCogsPercent(itemToEdit.cost_of_revenue_percent ? itemToEdit.cost_of_revenue_percent.toString() : '');
+      
+      // Map volatility configs safely to match form state expectations
+      const configs = (itemToEdit as any).volatility_configs || [];
+      setVolatilityConfigs(configs.map((c: any) => ({
+        id: c.id,
+        mode_name: c.mode_name,
+        volatility_type: c.volatility_type,
+        low_value: c.low_value !== undefined && c.low_value !== null ? c.low_value.toString() : '',
+        high_value: c.high_value !== undefined && c.high_value !== null ? c.high_value.toString() : '',
+        mean_value: c.mean_value !== undefined && c.mean_value !== null ? c.mean_value.toString() : '',
+        std_dev: c.std_dev !== undefined && c.std_dev !== null ? c.std_dev.toString() : '',
+        degrees_of_freedom: c.degrees_of_freedom !== undefined && c.degrees_of_freedom !== null ? c.degrees_of_freedom.toString() : '',
+      })));
+    } else {
+      clearForm();
+    }
+  }, [itemToEdit]);
+
+  const clearForm = () => {
+    setName('');
+    setSource('sales');
+    setAmount('');
+    setStartMonth('1');
+    setEndMonth('');
+    setFreq('monthly');
+    setCogsPercent('');
+    setVolatilityConfigs([]);
+    setErrors([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
+
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
+
+    // Strict validation guardrail: cannot submit with empty volatility configs
+    if (!volatilityConfigs || volatilityConfigs.length === 0) {
+        newErrors.push("Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.");
+    }
+
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+
+    try {
+        const payload = {
+            plan_id: planId,
+            revenue_name: name,
+            source: source.toLowerCase(),
+            initial_amount: String(amount),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
+            frequency: freq.toLowerCase(),
+            cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
+            volatility_configs: volatilityConfigs
+        };
+
+        if (itemToEdit) {
+            await api.updateRevenueItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createRevenueItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess(); 
+    } catch (err: any) {
+        console.error(err);
+        const status = err.response?.status;
+        const errMsg = err.response?.data?.message || err.message || '';
+        if (status === 400 || errMsg.toLowerCase().includes('volatility') || errMsg.toLowerCase().includes('empty')) {
+            setErrors([
+                "Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item."
+            ]);
+        } else {
+            setErrors(["Failed to save revenue item. Please check your inputs."]);
+        }
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
+      <div className="flex justify-between items-center mb-1">
+         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
+
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Name *</label>
+          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Source Type</label>
+          <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
+            <option value="sales">Sales</option>
+            <option value="subscription">Subscription</option>
+            <option value="service">Service</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Initial Amount ({currencySymbol}) *
+            <Tooltip content="Initial amount of revenue in Starting Month" />
+          </label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              Cost of Rev (%)
+              <Tooltip content="Cost of revenue percentage." />
+            </label>
+            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Frequency</label>
+          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Start Month *</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+        </div>
+      </div>
+
+      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
+      <VolatilityInputs configs={volatilityConfigs} onChange={setVolatilityConfigs} />
+
+      <div className="flex gap-4">
+        {itemToEdit && (
+            <button 
+                type="button" 
+                onClick={onCancel} 
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1"
+            >
+                Cancel Edit
+            </button>
+        )}
+        <button 
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1"
+        >
+            {itemToEdit ? 'Update Stream' : 'Add Stream'}
+        </button>
+      </div>
+    </form>
+  );
+}
+</file>
+
+<file path='frontend/components/forms/ExpenseForm.tsx'>
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api, ExpenseItem } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
+import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+  itemToEdit?: ExpenseItem | null;
+  onCancel?: () => void;
+  currencySymbol?: string;
+}
+
+export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('opex');
+  const [amount, setAmount] = useState('');
+  const [startMonth, setStartMonth] = useState('1');
+  const [endMonth, setEndMonth] = useState('');
+  const [freq, setFreq] = useState('monthly');
+  const [pctRevenue, setPctRevenue] = useState('');
+
+  // Volatility Configs State
+  const [volatilityConfigs, setVolatilityConfigs] = useState<VolatilityConfig[]>([]);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  // --- POPULATE ON EDIT ---
+  useEffect(() => {
+    if (itemToEdit) {
+      setName(itemToEdit.expense_name);
+      setCategory(itemToEdit.category);
+      setAmount(itemToEdit.initial_amount.toString());
+      setStartMonth(itemToEdit.start_month.toString());
+      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
+      setFreq(itemToEdit.frequency);
+      setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
+      
+      // Map volatility configs safely to match form state expectations
+      const configs = (itemToEdit as any).volatility_configs || [];
+      setVolatilityConfigs(configs.map((c: any) => ({
+        id: c.id,
+        mode_name: c.mode_name,
+        volatility_type: c.volatility_type,
+        low_value: c.low_value !== undefined && c.low_value !== null ? c.low_value.toString() : '',
+        high_value: c.high_value !== undefined && c.high_value !== null ? c.high_value.toString() : '',
+        mean_value: c.mean_value !== undefined && c.mean_value !== null ? c.mean_value.toString() : '',
+        std_dev: c.std_dev !== undefined && c.std_dev !== null ? c.std_dev.toString() : '',
+        degrees_of_freedom: c.degrees_of_freedom !== undefined && c.degrees_of_freedom !== null ? c.degrees_of_freedom.toString() : '',
+      })));
+    } else {
+      clearForm();
+    }
+  }, [itemToEdit]);
+
+  const clearForm = () => {
+    setName('');
+    setCategory('opex');
+    setAmount('');
+    setStartMonth('1');
+    setEndMonth('');
+    setFreq('monthly');
+    setPctRevenue('');
+    setVolatilityConfigs([]);
+    setErrors([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
+
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
+
+    // Strict validation guardrail: cannot submit with empty volatility configs
+    if (!volatilityConfigs || volatilityConfigs.length === 0) {
+        newErrors.push("Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.");
+    }
+
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+
+    try {
+        const payload = {
+            plan_id: planId,
+            expense_name: name,
+            category,
+            initial_amount: String(amount),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
+            frequency: freq,
+            pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
+            volatility_configs: volatilityConfigs
+        };
+
+        if (itemToEdit) {
+            await api.updateExpenseItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createExpenseItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess();
+    } catch (err: any) {
+        console.error(err);
+        const status = err.response?.status;
+        const errMsg = err.response?.data?.message || err.message || '';
+        if (status === 400 || errMsg.toLowerCase().includes('volatility') || errMsg.toLowerCase().includes('empty')) {
+            setErrors([
+                "Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item."
+            ]);
+        } else {
+            setErrors(["Failed to save expense item. Please check your inputs."]);
+        }
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
+      <div className="flex justify-between items-center mb-1">
+         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Expense' : 'Add Expense'}</h3>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
+
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Name *</label>
+          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. Salaries" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Category</label>
+          <select className="w-full border p-2 rounded text-sm" value={category} onChange={e => setCategory(e.target.value)}>
+            <option value="opex">OpEx</option>
+            <option value="capex">CapEx</option>
+            <option value="payroll">Payroll</option>
+            <option value="marketing">Marketing</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Initial Amount ({currencySymbol}) *
+            <Tooltip content="Initial amount of expense in Starting Month" />
+          </label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              % of Revenue
+              <Tooltip content="Percentage of revenue tied to expense." />
+            </label>
+            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={pctRevenue} onChange={e => setPctRevenue(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Frequency</label>
+          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Start Month *</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+        </div>
+      </div>
+
+      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
+      <VolatilityInputs configs={volatilityConfigs} onChange={setVolatilityConfigs} />
+
+      <div className="flex gap-4">
+        {itemToEdit && (
+            <button 
+                type="button" 
+                onClick={onCancel} 
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1"
+            >
+                Cancel Edit
+            </button>
+        )}
+        <button 
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1"
+        >
+            {itemToEdit ? 'Update Expense' : 'Add Expense'}
+        </button>
+      </div>
+    </form>
+  );
+}
+</file>
 

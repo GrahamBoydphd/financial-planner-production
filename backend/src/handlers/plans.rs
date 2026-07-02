@@ -272,8 +272,6 @@ pub async fn get_plan_projection(
             start_month as "start_month!", end_month, 
             initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
             frequency as "frequency!", cost_of_revenue_percent, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
         FROM revenue_items 
         WHERE plan_id = $1 
@@ -294,8 +292,6 @@ pub async fn get_plan_projection(
             start_month as "start_month!", end_month, 
             initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
             frequency as "frequency!", pct_of_revenue, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
         FROM expense_items 
         WHERE plan_id = $1 
@@ -438,26 +434,6 @@ pub async fn get_plan_projection(
     .await.ok().flatten();
     
     let mut errors = Vec::new();
-
-    for item in &revenue_items {
-        if item.volatility_type.as_deref() == Some("nrig") {
-            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Revenue '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.revenue_name, alpha, beta));
-            }
-        }
-    }
-
-    for item in &expense_items {
-        if item.volatility_type.as_deref() == Some("nrig") {
-            let alpha = item.vol_alpha.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            let beta = item.vol_beta.and_then(|d| d.to_f64()).unwrap_or(0.0);
-            if alpha.powi(2) <= beta.powi(2) {
-                errors.push(format!("Expense '{}': NRIG requires alpha^2 > beta^2 (alpha={}, beta={})", item.expense_name, alpha, beta));
-            }
-        }
-    }
 
     if let Some(ref cg) = capital_growth {
         if cg.volatility_type.as_deref() == Some("nrig") {

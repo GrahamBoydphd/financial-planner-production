@@ -112,23 +112,37 @@ pub struct RevenueItem {
     pub growth_rate_percent: Decimal,
     pub frequency: String,
     pub cost_of_revenue_percent: Option<Decimal>,
-    pub volatility_type: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RevenueItemResponse {
+    #[serde(flatten)]
+    pub item: RevenueItem,
+    pub volatility_configs: Vec<RevenueVolatilityPolicy>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct RevenueVolatilityPolicy {
+    pub id: Uuid,
+    pub revenue_item_id: Uuid,
+    pub mode_name: String,
+    pub volatility_type: String,
     pub vol_min: Option<Decimal>,
     pub vol_max: Option<Decimal>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
+    pub vol_mean: Option<Decimal>,
     pub vol_scale: Option<Decimal>,
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
-    pub created_at: DateTime<Utc>,
-    // New Distribution Architecture Fields
     pub target_mean: Option<Decimal>,
     pub vol_mu: Option<Decimal>,
     pub vol_input_mode: Option<String>,
     pub vol_fatness_level: Option<String>,
     pub vol_skew_level: Option<String>,
     pub vol_width_level: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -143,23 +157,37 @@ pub struct ExpenseItem {
     pub growth_rate_percent: Decimal,
     pub frequency: String,
     pub pct_of_revenue: Option<Decimal>,
-    pub volatility_type: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpenseItemResponse {
+    #[serde(flatten)]
+    pub item: ExpenseItem,
+    pub volatility_configs: Vec<ExpenseVolatilityPolicy>,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct ExpenseVolatilityPolicy {
+    pub id: Uuid,
+    pub expense_item_id: Uuid,
+    pub mode_name: String,
+    pub volatility_type: String,
     pub vol_min: Option<Decimal>,
     pub vol_max: Option<Decimal>,
     pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
+    pub vol_mean: Option<Decimal>,
     pub vol_scale: Option<Decimal>,
     pub vol_freedom: Option<Decimal>,
     pub vol_alpha: Option<Decimal>,
     pub vol_beta: Option<Decimal>,
-    pub created_at: DateTime<Utc>,
-    // New Distribution Architecture Fields
     pub target_mean: Option<Decimal>,
     pub vol_mu: Option<Decimal>,
     pub vol_input_mode: Option<String>,
     pub vol_fatness_level: Option<String>,
     pub vol_skew_level: Option<String>,
     pub vol_width_level: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

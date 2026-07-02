@@ -160,646 +160,433 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: Adding support for capital growth rate shocks to the financial engine.
-GOAL: Track and apply temporary beneficial or detrimental interest rate multipliers to the Treasury Investment Gain calculation based on active shocks.
+CONTEXT: UI & STATE REFACTOR - Fix Edit Mode Mapping & Item Cards Summary.
+The backend serves volatility configurations through the strict relational nested `volatility_configs` array. We need to fix the input summaries rendering "risk: " and make sure clicking "Edit" populates the forms correctly.
 
-ACTION:
-1. Update "backend/src/engine/domain.rs":
-   - Inside SimState::step, locate the section labeled "4. Apply Active Shocks" (approx line 192).
-   - Immediately before the for shock in &self.shocks loop, initialize an accumulator variable:
-     let mut capital_growth_mult = 1.0;
-   
-   - Inside the shock loop match block for shock.impact_type.as_str(), add a new match arm to catch capital growth shocks:
-     "capital_growth" | "capital_growth_shock" => {
-         capital_growth_mult *= (1.0 + monthly_raw_pct).max(0.0);
-     },
-   
-   - Locate the section labeled "8. Investment Gain (Treasury)" (approx line 231).
-   - Modify the effective_rate calculation to multiply it by our accumulated capital_growth_mult:
-     let effective_rate = ((policy.growth_rate * 100.0 + rate) / 100.0) * capital_growth_mult;
+OBJECTIVE:
+Update the stream listing view and forms to support relational data loading for both GET initialization and PUT payload delivery.
 
-CONSTRAINTS:
-- Do not alter the existing operational cash flow variables or logic for revenue, expenses, staffing, or cash shocks.
-- Ensure the multiplier is strictly capped at a minimum of 0.0 using .max(0.0) to avoid generating impossible negative interest yields on positive cash reserves.
+INSTRUCTIONS:
+
+1. UPDATE STREAM SUMMARY CARD VIEW ("frontend/app/plan/[planId]/inputs/ClientPage.tsx"):
+   - Locate where the existing revenue and expense streams are mapped and rendered in the list view.
+   - Find the label text string: "risk: ".
+   - Update its data expression to read from the nested array:
+     `risk: {item.volatility_configs && item.volatility_configs.length > 0 ? item.volatility_configs.map(c => c.volatility_type).join(", ") : "none"}`
+     (If preferred, you can also append the mode name like: `c.mode_name === "compounding_growth" ? "Compounding" : "Transient"` for extra clarity).
+
+2. FIX EDIT STATE INITIALIZATION ("frontend/components/forms/RevenueForm.tsx" AND "frontend/components/forms/ExpenseForm.tsx"):
+   - Locate the `useEffect` hook that listens to `itemToEdit`.
+   - Ensure that when an existing item is loaded into edit state, it correctly maps `itemToEdit.volatility_configs` array into the form component state so that the stacked checkboxes/panels populate their respective distribution dropdowns and inputs based on their matching `mode_name` ("compounding_growth" or "transient_noise").
+
+3. MATCH PUT payload DELIVERY ("frontend/components/forms/RevenueForm.tsx" AND "frontend/components/forms/ExpenseForm.tsx"):
+   - In `handleSubmit`, verify that when updating an item via PUT (`itemToEdit` is present), the final request payload structures the outbound properties exactly like the working POST method, passing the full `volatility_configs` array.
+   - Ensure the strict validation guardrail remains alive so the user cannot submit an item with an empty volatility configuration array.
+
 </task_instruction>
 
 <source_code>
---- START FILE: backend/src/engine/domain.rs ---
-use uuid::Uuid;
-use serde::{Serialize, Deserialize};
-pub use crate::distributions::GrowthSampler;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use crate::projection::MonthlyData;
+--- START FILE: frontend/app/plan/[planId]/inputs/ClientPage.tsx ---
+'use client';
+export default function ClientPage({ params }: { params: { planId: string } }) {
+  return <div>Plan Inputs for {params.planId}</div>;
+}
+--- END FILE: frontend/app/plan/[planId]/inputs/ClientPage.tsx ---
 
-// --- STRUCTS (Preserved) ---
+--- START FILE: frontend/components/forms/RevenueForm.tsx ---
+'use client';
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ItemState {
-    pub current_value: f64,
-    pub is_active: bool,
-    pub sampler: GrowthSampler,
+import { useState, useEffect } from 'react';
+import { api, RevenueItem } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
+import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
+
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+  itemToEdit?: RevenueItem | null;
+  onCancel?: () => void;
+  currencySymbol?: string;
 }
 
-impl Default for ItemState {
-    fn default() -> Self {
-        Self { 
-            current_value: 0.0, 
-            is_active: false,
-            sampler: GrowthSampler::default(),
-        }
+export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
+  const [name, setName] = useState('');
+  const [source, setSource] = useState('sales');
+  const [amount, setAmount] = useState('');
+  const [startMonth, setStartMonth] = useState('1');
+  const [endMonth, setEndMonth] = useState('');
+  const [freq, setFreq] = useState('monthly');
+  const [cogsPercent, setCogsPercent] = useState('');
+
+  // Volatility Configs State
+  const [volatilityConfigs, setVolatilityConfigs] = useState<VolatilityConfig[]>([]);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  // --- EFFECT: POPULATE FORM ON EDIT ---
+  useEffect(() => {
+    if (itemToEdit) {
+      setName(itemToEdit.revenue_name);
+      setSource(itemToEdit.source);
+      setAmount(itemToEdit.initial_amount.toString());
+      setStartMonth(itemToEdit.start_month.toString());
+      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
+      setFreq(itemToEdit.frequency);
+      setCogsPercent(itemToEdit.cost_of_revenue_percent ? itemToEdit.cost_of_revenue_percent.toString() : '');
+      setVolatilityConfigs((itemToEdit as any).volatility_configs || []);
+    } else {
+      clearForm();
     }
-}
+  }, [itemToEdit]);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Revenue {
-    pub name: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: f64,
-    pub growth_rate: f64,
-    pub frequency: String,
-    pub cost_of_revenue: f64,
-}
+  const clearForm = () => {
+    setName('');
+    setSource('sales');
+    setAmount('');
+    setStartMonth('1');
+    setEndMonth('');
+    setFreq('monthly');
+    setCogsPercent('');
+    setVolatilityConfigs([]);
+    setErrors([]);
+  };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Expense {
-    pub name: String,
-    pub category: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: f64,
-    pub growth_rate: f64,
-    pub frequency: String,
-    pub pct_of_revenue: Option<f64>,
-}
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Staffing {
-    pub name: String,
-    pub annual_salary: f64,
-    pub start_month: i32,
-    pub target_count: i32,
-    pub hiring_plan: String,
-    pub hiring_rate: Option<i32>,
-    pub annual_increase: f64,
-}
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Shock {
-    pub name: String,
-    pub month: i32,
-    pub impact_type: String,
-    pub impact_value: f64,
-    pub duration_months: Option<i32>,
-    pub target_company_id: Option<Uuid>, // Added for routing stochastic shocks
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapitalInjection {
-    pub name: String,
-    pub amount: f64,
-    pub month: i32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DividendPolicy {
-    pub is_enabled: bool,
-    pub safety_threshold: f64,
-    pub payout_ratio: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreditFacility {
-    pub facility_limit: f64,
-    pub interest_rate: f64,
-    pub is_annual_rate: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValuationAssumption {
-    pub name: String,
-    pub method: String,
-    pub multiplier: f64,
-    pub date_applied: Option<chrono::NaiveDate>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapitalGrowthPolicy {
-    pub growth_rate: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Universe {
-    pub companies: Vec<SimState>,
-}
-
-impl Universe {
-    pub fn new(companies: Vec<SimState>) -> Self {
-        Self { companies }
-    }
-}
-
-fn default_true() -> bool { true }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SimState {
-    pub id: Uuid,
-    pub company_name: String,
-    pub currency: String,
-    pub pooling_fraction: f64,
-    pub current_cash: f64,
-    pub insolvency_threshold: f64,
-    pub is_solvent: bool,
-    #[serde(default = "default_true")]
-    pub stop_on_insolvency: bool,
-    pub cum_external_cap: f64,
-    pub cum_dividends: f64,
-    pub cum_pool_received: f64,
-    pub cap_growth_sampler: Option<GrowthSampler>,
-    
-    // Soft Limit (Friction Tax)
-    pub soft_limit_active: bool,
-    pub soft_limit_threshold: f64,
-    pub soft_limit_fraction: f64,
-
-    pub revenues: Vec<Revenue>,
-    pub expenses: Vec<Expense>,
-    pub staffing: Vec<Staffing>,
-    pub shocks: Vec<Shock>,
-    pub injections: Vec<CapitalInjection>,
-    pub dividend_policy: Option<DividendPolicy>,
-    pub credit_facility: Option<CreditFacility>,
-    pub valuation: Option<ValuationAssumption>,
-    pub capital_growth: Option<CapitalGrowthPolicy>,
-    
-    pub revenue_states: Vec<ItemState>,
-    pub expense_states: Vec<ItemState>,
-    
-    pub history: Vec<MonthlyData>,
-}
-
-impl SimState {
-    pub fn initialize(&mut self) {
-        // 1. Process Month 0 Injections
-        for injection in &self.injections {
-            if injection.month == 0 {
-                self.current_cash += injection.amount;
-                self.cum_external_cap += injection.amount;
-            }
-        }
-
-        let debt = self.current_cash.min(0.0).abs();
-        let exposure = self.cum_external_cap + debt;
-
-        // 2. Record Month 0 History
-        self.history.push(MonthlyData {
-            month_index: 0,
-            date: "Month 0".to_string(),
-            revenue: Decimal::ZERO,
-            cogs: Decimal::ZERO,
-            opex: Decimal::ZERO,
-            gross_profit: Decimal::ZERO,
-            net_income: Decimal::ZERO,
-            treasury_gain: Decimal::ZERO,
-            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-            is_solvent: true,
-            interest_expense: Decimal::ZERO,
-            dividend_paid: Decimal::ZERO,
-            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-            total_companies: 1,
-            solvent_companies: 1,
-            pool_contribution: Decimal::ZERO,
-            pool_received: Decimal::ZERO,
-            contributing_companies: 0,
-            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
-        });
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
     }
 
-    pub fn force_insolvency_state(&mut self) {
-        self.is_solvent = false;
-        // Removed: self.current_cash = 0.0; 
-        // We preserve the debt (negative cash) for Venture Debt visibility.
+    try {
+        const payload = {
+            plan_id: planId,
+            revenue_name: name,
+            source: source.toLowerCase(),
+            initial_amount: String(amount),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
+            frequency: freq.toLowerCase(),
+            cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
+            volatility_configs: volatilityConfigs
+        };
+
+        if (itemToEdit) {
+            await api.updateRevenueItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createRevenueItem(payload as any);
+        }
+
+        clearForm();
+        onSuccess(); 
+    } catch (err: any) {
+        console.error(err);
+        const status = err.response?.status;
+        const errMsg = err.response?.data?.message || err.message || '';
+        if (status === 400 || errMsg.toLowerCase().includes('volatility') || errMsg.toLowerCase().includes('empty')) {
+            setErrors([
+                "Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item."
+            ]);
+        } else {
+            setErrors(["Failed to save revenue item. Please check your inputs."]);
+        }
     }
+  };
 
-    pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
-        // LOGIC A: Handle Insolvency
-        if !self.is_solvent {
-            let debt = self.current_cash.min(0.0).abs();
-            let exposure = self.cum_external_cap + debt;
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
+      <div className="flex justify-between items-center mb-1">
+         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
 
-            // Push "Erasure" (Zero) state but keep debt visible
-            self.history.push(MonthlyData {
-                month_index: month,
-                date: format!("Month {}", month),
-                revenue: Decimal::ZERO,
-                cogs: Decimal::ZERO,
-                opex: Decimal::ZERO,
-                gross_profit: Decimal::ZERO,
-                net_income: Decimal::ZERO,
-                treasury_gain: Decimal::ZERO,
-                // Use actual negative cash
-                cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-                is_solvent: false,
-                interest_expense: Decimal::ZERO,
-                dividend_paid: Decimal::ZERO,
-                cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-                cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-                cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-                // Total value reflects debt
-                total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-                total_companies: 1,
-                solvent_companies: 0,
-                pool_contribution: Decimal::ZERO,
-                pool_received: Decimal::ZERO,
-                contributing_companies: 0,
-                total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
-            });
-            return (0.0, 0.0);
-        }
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
 
-        // LOGIC B: Calculate Pooling Base (Start of active step)
-        let previous_cash_floored = self.current_cash.max(0.0);
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Name *</label>
+          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Source Type</label>
+          <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
+            <option value="sales">Sales</option>
+            <option value="subscription">Subscription</option>
+            <option value="service">Service</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
 
-        // Merge External Shocks (Persist them in state)
-        self.shocks.extend_from_slice(external_shocks);
-        self.shocks.retain(|s| month < s.month + s.duration_months.unwrap_or(1));
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Initial Amount ({currencySymbol}) *
+            <Tooltip content="Initial amount of revenue in Starting Month" />
+          </label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              Cost of Rev (%)
+              <Tooltip content="Cost of revenue percentage." />
+            </label>
+            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} />
+        </div>
+      </div>
 
-        let mut monthly_rev = 0.0;
-        let mut monthly_cogs = 0.0;
-        let mut monthly_opex = 0.0;
-        let mut monthly_interest = 0.0;
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Frequency</label>
+          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Start Month *</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+        </div>
+      </div>
 
-        // 1. Revenue
-        for (i, item) in self.revenues.iter().enumerate() {
-            let s = &mut self.revenue_states[i];
-            
-            if month == item.start_month {
-                s.is_active = true;
-                s.current_value = item.initial_amount;
-            } else if let Some(end) = item.end_month {
-                if month > end { s.is_active = false; }
-            }
+      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
+      <VolatilityInputs configs={volatilityConfigs} onChange={setVolatilityConfigs} />
 
-            if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
-                
-                // Logic: Base Growth + Volatility (Preserved)
-                if month > item.start_month {
-                    let rate = s.sampler.sample(); // Now returns f64 directly
-                    // Formula: Value * (1 + (Base% + Volatility%)/100)
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                }
-                
-                let item_rev = s.current_value;
-                monthly_rev += item_rev;
-                monthly_cogs += item_rev * item.cost_of_revenue;
-            }
-        }
-
-        // 2. Expenses
-        for (i, item) in self.expenses.iter().enumerate() {
-            let s = &mut self.expense_states[i];
-            
-            if month == item.start_month {
-                s.is_active = true;
-                s.current_value = item.initial_amount;
-            } else if let Some(end) = item.end_month {
-                if month > end { s.is_active = false; }
-            }
-
-            if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
-                
-                if month > item.start_month {
-                    let rate = s.sampler.sample();
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
-                }
-                
-                let mut amt = s.current_value;
-                if let Some(pct) = item.pct_of_revenue {
-                    amt += monthly_rev * pct;
-                }
-                monthly_opex += amt;
-            }
-        }
-
-        // 3. Staffing (Preserved Logic)
-        for role in &self.staffing {
-            if month >= role.start_month {
-                let current_headcount = match role.hiring_plan.as_str() {
-                    "monthly_rate" => {
-                        let months_active = month - role.start_month;
-                        let rate = role.hiring_rate.unwrap_or(1).max(1);
-                        let hired = 1 + (months_active / rate);
-                        hired.min(role.target_count)
-                    }
-                    _ => role.target_count,
-                };
-
-                if current_headcount > 0 {
-                    let years_passed = (month - role.start_month) / 12;
-                    let mut current_annual_salary = role.annual_salary;
-                    if years_passed > 0 {
-                        let multiplier = 1.0 + role.annual_increase;
-                        for _ in 0..years_passed {
-                            current_annual_salary *= multiplier;
-                        }
-                    }
-                    let monthly_cost = (current_annual_salary * current_headcount as f64) / 12.0;
-                    monthly_opex += monthly_cost;
-                }
-            }
-        }
-
-        // 4. Apply Active Shocks
-        for shock in &self.shocks {
-            let duration = shock.duration_months.unwrap_or(1);
-            if month >= shock.month && month < shock.month + duration {
-                
-                let monthly_raw_pct = (shock.impact_value / 100.0) / duration as f64;
-                
-                // Updated is_expense check to include "expense_shock"
-                let is_expense = matches!(shock.impact_type.as_str(), "expense" | "opex" | "cogs" | "expense_shock");
-                
-                let mult = if is_expense { 1.0 - monthly_raw_pct } else { 1.0 + monthly_raw_pct };
-                let mult = mult.max(0.0);
-                
-                match shock.impact_type.as_str() {
-                    "revenue" | "revenue_shock" => { 
-                        monthly_rev *= mult; 
-                        monthly_cogs *= mult; 
-                    },
-                    "expense" | "opex" | "expense_shock" => {
-                        monthly_opex *= mult;
-                    },
-                    "cogs" => monthly_cogs *= mult,
-                    "cash" | "cash_shock" => {
-                        // Apply fractionally to absolute cash to avoid debt bailouts
-                        let cash_impact = self.current_cash.abs() * monthly_raw_pct;
-                        if is_expense {
-                            self.current_cash -= cash_impact; // Detrimental: drains cash / increases debt
-                        } else {
-                            self.current_cash += cash_impact; // Beneficial: adds cash / shrinks debt
-                        }
-                    },
-                    "valuation" | "valuation_shock" => {
-                        // Valuation shocks do not affect operational cash flow or cash balance directly.
-                        // They affect the theoretical equity value, which is calculated downstream or in aggregation.
-                    },
-                    _ => {}
-                }
-            }
-        }
-
-        // 5. Interest on Credit Facility (New Logic)
-        if self.current_cash < 0.0 {
-            if let Some(cf) = &self.credit_facility {
-                let debt = self.current_cash.abs();
-                let rate = if cf.is_annual_rate { cf.interest_rate / 12.0 } else { cf.interest_rate };
-                monthly_interest = debt * rate;
-            }
-        }
-
-        // 6. Injections
-        for injection in &self.injections {
-            if month == injection.month {
-                self.current_cash += injection.amount;
-                self.cum_external_cap += injection.amount;
-            }
-        }
-
-        let gross_profit = monthly_rev - monthly_cogs;
-        let total_expenses = monthly_opex + monthly_interest;
-        let operating_profit = gross_profit - total_expenses;
-
-        // 7. Update Cash
-        self.current_cash += operating_profit;
-
-        // 8. Investment Gain (Treasury)
-        let mut investment_gain = 0.0;
-        if self.current_cash > 0.0 {
-            if let Some(policy) = &self.capital_growth {
-                if let Some(sampler) = &mut self.cap_growth_sampler {
-                    let rate = sampler.sample();
-                    let effective_rate = (policy.growth_rate * 100.0 + rate) / 100.0;
-                    investment_gain = self.current_cash * effective_rate;
-                }
-            }
-        }
-        self.current_cash += investment_gain;
-
-        // LOGIC C: Apply Pooling (Ergodicity Correction)
-        // 9. Pooling Contribution (Refined)
-        let total_profit = operating_profit + investment_gain; // Kept for net_income reporting
-        
-        let current_cash_floored = self.current_cash.max(0.0);
-        let poolable_gain = current_cash_floored - previous_cash_floored;
-        
-        let mut contribution = 0.0;
-        // VERIFIED: Uses self.pooling_fraction which is overridden by Orchestrator if ergodicity_correction is set.
-        if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
-            contribution = poolable_gain * self.pooling_fraction;
-            self.current_cash -= contribution;
-        }
-
-        // LOGIC D: Soft Upper Limit (Friction Tax)
-        if self.soft_limit_active && self.current_cash > self.soft_limit_threshold {
-            let excess = self.current_cash - self.soft_limit_threshold;
-            let tax = excess * self.soft_limit_fraction;
-            self.current_cash -= tax;
-        }
-
-        let net_income = total_profit;
-
-        let debt = self.current_cash.min(0.0).abs();
-        let exposure = self.cum_external_cap + debt;
-
-        // Record History
-        self.history.push(MonthlyData {
-            month_index: month,
-            date: format!("Month {}", month),
-            revenue: Decimal::from_f64_retain(monthly_rev).unwrap_or_default(),
-            cogs: Decimal::from_f64_retain(monthly_cogs).unwrap_or_default(),
-            opex: Decimal::from_f64_retain(monthly_opex).unwrap_or_default(),
-            gross_profit: Decimal::from_f64_retain(gross_profit).unwrap_or_default(),
-            net_income: Decimal::from_f64_retain(net_income).unwrap_or_default(),
-            treasury_gain: Decimal::from_f64_retain(investment_gain).unwrap_or_default(),
-            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
-            is_solvent: self.is_solvent,
-            interest_expense: Decimal::from_f64_retain(monthly_interest).unwrap_or_default(),
-            dividend_paid: Decimal::ZERO,
-            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
-            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
-            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
-            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
-            total_companies: 1,
-            solvent_companies: if self.is_solvent { 1 } else { 0 },
-            pool_contribution: Decimal::from_f64_retain(contribution).unwrap_or_default(),
-            pool_received: Decimal::ZERO, // Will be updated by orchestrator if pooling happens
-            contributing_companies: if contribution > 0.0 { 1 } else { 0 },
-            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
-        });
-
-        (net_income, contribution)
-    }
+      <div className="flex gap-4">
+        {itemToEdit && (
+            <button 
+                type="button" 
+                onClick={onCancel} 
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1"
+            >
+                Cancel Edit
+            </button>
+        )}
+        <button 
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1"
+        >
+            {itemToEdit ? 'Update Stream' : 'Add Stream'}
+        </button>
+      </div>
+    </form>
+  );
 }
---- END FILE: backend/src/engine/domain.rs ---
+--- END FILE: frontend/components/forms/RevenueForm.tsx ---
 
---- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
-# Status: UNIVERSAL CONSTITUTION (Read by every agent)
-# Role: Immutable Constraints & Patterns
+--- START FILE: frontend/components/forms/ExpenseForm.tsx ---
+'use client';
 
-## === PROJECT GOAL ===
-**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
-**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
-**Identity:** Username-based.
+import { useState, useEffect } from 'react';
+import { api, ExpenseItem } from '@/lib/api';
+import Tooltip from '@/components/ui/Tooltip';
+import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
 
-# === IMMUTABLE ===
-# Master Architectural Reference: The Fortress Standard (V3.1)
+interface Props {
+  planId: string;
+  onSuccess: () => void;
+  itemToEdit?: ExpenseItem | null;
+  onCancel?: () => void;
+  currencySymbol?: string;
+}
 
-**Status**: Hardened | **Date**: 2026-01-24 | **Target**: Frontend & Backend Architects
-**Core Mission**: To maintain 100% mathematical integrity, structural consistency, and tenant isolation across the Evolutesix Financial Engine.
+export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('opex');
+  const [amount, setAmount] = useState('');
+  const [startMonth, setStartMonth] = useState('1');
+  const [endMonth, setEndMonth] = useState('');
+  const [freq, setFreq] = useState('monthly');
+  const [pctRevenue, setPctRevenue] = useState('');
 
-## 1. TECHNOLOGY STACK (Immutable)
+  // Volatility Configs State
+  const [volatilityConfigs, setVolatilityConfigs] = useState<VolatilityConfig[]>([]);
+  const [errors, setErrors] = useState<string[]>([]);
 
-The stack is selected for institutional-grade precision, type safety, and high-performance simulation execution.
+  // --- POPULATE ON EDIT ---
+  useEffect(() => {
+    if (itemToEdit) {
+      setName(itemToEdit.expense_name);
+      setCategory(itemToEdit.category);
+      setAmount(itemToEdit.initial_amount.toString());
+      setStartMonth(itemToEdit.start_month.toString());
+      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
+      setFreq(itemToEdit.frequency);
+      setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
+      setVolatilityConfigs((itemToEdit as any).volatility_configs || []);
+    } else {
+      clearForm();
+    }
+  }, [itemToEdit]);
 
-* **Backend:**
-    * **Language:** Rust (Edition 2021).
-    * **Web Framework:** `axum` (with `tokio`).
-    * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
-    * **Math:** See Immutable Data Contract below.
-    * **Serialization:** `serde` / `serde_json`.
+  const clearForm = () => {
+    setName('');
+    setCategory('opex');
+    setAmount('');
+    setStartMonth('1');
+    setEndMonth('');
+    setFreq('monthly');
+    setPctRevenue('');
+    setVolatilityConfigs([]);
+    setErrors([]);
+  };
 
-* **Frontend:**
-    * **Framework:** Next.js 14+ (App Router).
-    * **Language:** TypeScript.
-    * **Styling:** Tailwind CSS (Utility classes).
-    * **HTTP Client:** Axios (via `lib/api.ts`).
-    * **Visualization:** Chart.js (`react-chartjs-2`).
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
 
-### **Database & Infrastructure**
-- **Database**: PostgreSQL (Strict Relational).
-- **Infrastructure**: Docker and Docker-Compose for environment parity.
-- **Migrations**: Managed via `sqlx` to ensure schema integrity.
+    const newErrors = [];
+    if (!name.trim()) newErrors.push("Name is required");
+    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
+    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
 
----
+    if (newErrors.length > 0) {
+        setErrors(newErrors);
+        return;
+    }
 
-## 2. THE "IRON LAWS" (Security & Integrity)
+    try {
+        const payload = {
+            plan_id: planId,
+            expense_name: name,
+            category,
+            initial_amount: String(amount),
+            start_month: Number(startMonth),
+            end_month: endMonth ? Number(endMonth) : undefined,
+            frequency: freq,
+            pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
+            volatility_configs: volatilityConfigs
+        };
 
-These rules are non-negotiable.
+        if (itemToEdit) {
+            await api.updateExpenseItem(itemToEdit.id, payload as any);
+        } else {
+            await api.createExpenseItem(payload as any);
+        }
 
-### A. Tenant Isolation & Security
-1.  **Strict Isolation:** Every business entity (Fund, Company) MUST belong to a `tenant_id`.
-2.  **Query Rule:** Every SQL `SELECT`, `UPDATE`, or `DELETE` must explicitly filter `WHERE tenant_id = $1` (derived from JWT), *unless* specifically querying `is_public_template = true` (Library Mode).
-3.  **Demo Guard:** The `guard_public_templates` Database Trigger protects the `is_public_template` flag at the engine level. Only the designated Demo Admin UUID can set this to `true`.
+        clearForm();
+        onSuccess();
+    } catch (err: any) {
+        console.error(err);
+        const status = err.response?.status;
+        const errMsg = err.response?.data?.message || err.message || '';
+        if (status === 400 || errMsg.toLowerCase().includes('volatility') || errMsg.toLowerCase().includes('empty')) {
+            setErrors([
+                "Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item."
+            ]);
+        } else {
+            setErrors(["Failed to save expense item. Please check your inputs."]);
+        }
+    }
+  };
 
-### B. Type Safety
-1.  **Money:** ALWAYS use `rust_decimal::Decimal`. NEVER use `f64` for storage/API.
-2.  **Percents:** ALWAYS use `Decimal` (e.g., 5.0 = 5%).
-3.  **IDs:** ALWAYS use `Uuid`.
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
+      <div className="flex justify-between items-center mb-1">
+         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Expense' : 'Add Expense'}</h3>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
 
-### C. Serialization & API
-1.  **String-Decimal Standard:** All Currency, Decimals, and Percentages MUST be transmitted as **Strings** (e.g., `"1250.50"`, `"3.0"`).
-2.  **Solvency Arrays:** `solvent_counts` arrays (e.g., `p50_solvent_count`) are **MANDATORY** (`Vec<i32>`). They must never be `Option` or `null`.
-3.  **Scoped Naming:** Fields must be scoped (e.g., `role_name`, `expense_name`) and never simply `name`.
+      {errors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{errors.join(", ")}</span>
+        </div>
+      )}
 
----
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Name *</label>
+          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. Salaries" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Category</label>
+          <select className="w-full border p-2 rounded text-sm" value={category} onChange={e => setCategory(e.target.value)}>
+            <option value="opex">OpEx</option>
+            <option value="capex">CapEx</option>
+            <option value="payroll">Payroll</option>
+            <option value="marketing">Marketing</option>
+          </select>
+        </div>
+      </div>
 
-## 3. The Immutable Data Contract
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-gray-500 flex items-center gap-1">
+            Initial Amount ({currencySymbol}) *
+            <Tooltip content="Initial amount of expense in Starting Month" />
+          </label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+            <label className="text-xs text-gray-500 flex items-center gap-1">
+              % of Revenue
+              <Tooltip content="Percentage of revenue tied to expense." />
+            </label>
+            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={pctRevenue} onChange={e => setPctRevenue(e.target.value)} />
+        </div>
+      </div>
 
-| **Layer** | **Type** | **Responsibility** |
-| ----------------- | ---------------------------- | --------------------------------------------- |
-| **Storage / API** | `rust_decimal::Decimal`      | Exactness, no rounding errors in DB.          |
-| **Boundary** | `ToPrimitive::to_f64()`      | One-time conversion with overflow safety.     |
-| **The Hot Path** | `f64`                        | Hardware-level speed for 1,000+ trajectories. |
-| **Aggregator** | `Decimal::from_f64_retain()` | Convert results back for the API response.    |
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-500">Frequency</label>
+          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
+            <option value="monthly">Monthly</option>
+            <option value="one_time">One-time</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Start Month *</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">End Month</label>
+          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
+        </div>
+      </div>
 
-### 潤 Unified Identity Contract
-| **Entity** | **Field** | **Source of Truth** |
-| ------------ | ----------- | ------------------------------------------------------ |
-| **Identity** | `user_id`   | **UUID** (Stored in JWT and returned in AuthResponse)  |
-| **Auth** | `sub`       | **Username** (String, used only for display)           |
-| **Security** | `tenant_id` | **UUID** (The primary filter for ALL database queries) |
+      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
+      <VolatilityInputs configs={volatilityConfigs} onChange={setVolatilityConfigs} />
 
-### The "Solvency Source of Truth"
-- **New Standard:** You must exclusively use `is_solvent: boolean`.
-- **Logic:** If `is_solvent === false`, the Company is dead. All financial fields (Revenue, Cash, Opex) are guaranteed to be `0.00`.
-
----
-
-## 4. DIRECTORY MAP & TOOLING
-* **Backend Structure:**
-    * `backend/src/handlers/` -> All API route logic.
-        * `lifecycle.rs` -> **(New)** Duplicate, Move, Template Cloning.
-        * `fund_simulation.rs` -> The Monte Carlo Engine endpoint.
-    * `backend/src/models.rs` -> Shared Structs and DB schemas. (Reference this for column names).
-    * `backend/src/projection.rs` -> Core Financial Simulation Logic / Structs.
-    * `backend/src/engine/` -> V4 Simulation Kernel (Orchestrator).
-    * `backend/migrations/` -> SQLx migration files (SQL).
-
----
-
-## 5. API PATTERNS (V3.1)
-
-### A. Lifecycle Management
-* `POST /api/lifecycle/plans/:id/duplicate` -> Deep Copy Plan + Children.
-* `POST /api/lifecycle/companies/:id/duplicate` -> Deep Copy Company + Plans.
-* `POST /api/lifecycle/funds/:id/duplicate` -> Deep Copy Fund + Companies.
-* `PUT /api/lifecycle/companies/:id/move` -> Reassign `fund_id` (Same Tenant).
-* `GET /api/lifecycle/templates` -> List Public Demo Funds.
-* `POST /api/lifecycle/templates/:id/clone` -> Copy Demo Fund to User Tenant.
-
-### B. Simulation Output (SimulationResult)
-* **Fan Chart:** `p[0-100]_value` (Decimal Arrays).
-* **Structure:** `p[0-100]_solvent_counts` (Integer Arrays) -> **MANDATORY**.
-* **Table:** `p50_data` (Object Array) -> Detailed Financials for the median run.
-* **Cliff:** `survival_rate` (Decimal Array).
-
-### C. Event Management
-* `GET /api/events?target_ids=uuid1,uuid2` -> Batch retrieve events for specific targets (Plans, Funds, or Companies). Returns empty list if no IDs provided.
-
----
-
-## 6. CORE ENGINE LOGIC (`backend/src/projection.rs`)
-* **Mechanism:** Breadth-First Traversal (Time-step based).
-* **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.
-* **Monte Carlo (Company/Fund):** Runs 1000+ iterations. Calculates percentiles (P5, P50, P95).
-* **Insolvency:** Logic stops simulation trajectory if `cash < -credit_limit`.
-
----
-
-## 7. Simulation & Business Logic
-
-#### 7.1 Statistical Integrity (The Anchored Median)
-- **P50 Trajectory**: The "Median" line represents the fictitious path connecting the **median value of each individual month** across 1,000 simulations (Cross-Sectional).
-- **Metric Alignment**: Runway, Valuation, and Net Value labels must be derived from this specific monthly median trajectory.
-- **Zombie Explanation**: The "Solvent Companies" count may fluctuate (e.g., 2 -> 1 -> 2) on the P50 line because the median run in Month X might be different from the median run in Month Y. This is mathematically correct for a cross-sectional view.
-
-#### 7.2 Fund Level Logic
-- **Relative Time**: The system uses **Integers** for months (e.g., Month 1, Month 12).
-- **Anniversaries**: Annual changes are applied in the anniversary month, calculated as `(m - role.start_month) / 12`.
-- **Hard-Stop Insolvency**: If `is_solvent` becomes false, all flows and cash snap to `0.00`.
-
----
-
-## 8. Recorded Micro-Decisions
-1. **P50 Runway = "Remaining Time"**: If the median trajectory is insolvent, runway explicitly returns `0`.
-2. **Retention of `valuation_name`**: Kept specific semantic naming.
-3. **Staffing "Role Name"**: Scoped naming `role_name`.
-4. **Transactions**: Any "Duplicate" or "Clone" action MUST use `sqlx::Transaction`.
-5. **Naming**: Cloned entities append `(Copy)` to the name.
-6. **Event Nomenclature**: API uses `event_name` and `event_type` exclusively, replacing legacy `shock` terminology.
-
----
-
-# === UNIVERSAL BUILDER PROTOCOL ===
-* **File Operations:**
-    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...
---- END FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
+      <div className="flex gap-4">
+        {itemToEdit && (
+            <button 
+                type="button" 
+                onClick={onCancel} 
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1"
+            >
+                Cancel Edit
+            </button>
+        )}
+        <button 
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1"
+        >
+            {itemToEdit ? 'Update Expense' : 'Add Expense'}
+        </button>
+      </div>
+    </form>
+  );
+}
+--- END FILE: frontend/components/forms/ExpenseForm.tsx ---
 
 </source_code>

@@ -1,9 +1,10 @@
 'use client';
 
+import React from 'react';
 import { ALPHA_OPTIONS, BETA_OPTIONS, SCALE_OPTIONS } from '@/lib/presets';
 import Tooltip from '@/components/ui/Tooltip';
 
-// --- Validation Helper ---
+// --- Legacy Types & Validation Helpers (Retained for Backward Compatibility) ---
 export interface VolatilityValidationParams {
   min?: string;
   max?: string;
@@ -230,226 +231,354 @@ export function validateVolatilityParams(volType: string, volMode: 'simple' | 'a
   return errors;
 }
 
-interface VolatilityInputsProps {
-  volType: string;
-  setVolType: (val: string) => void;
-  
-  // Parameters
-  volMean: string;
-  setVolMean: (val: string) => void;
-  volMin: string;
-  setVolMin: (val: string) => void;
-  volMax: string;
-  setVolMax: (val: string) => void;
-  volIntervals: string;
-  setVolIntervals: (val: string) => void;
-  volScale: string;
-  setVolScale: (val: string) => void;
-  volFreedom: string;
-  setVolFreedom: (val: string) => void;
-  volAlpha: string;
-  setVolAlpha: (val: string) => void;
-  volBeta: string;
-  setVolBeta: (val: string) => void;
+// --- New Dual-Stochastic Volatility Interface & Component ---
 
-  // Hybrid Mode Props
-  volMode: 'simple' | 'advanced';
-  setVolMode: (val: 'simple' | 'advanced') => void;
-  volFatness: string;
-  setVolFatness: (val: string) => void;
-  volSkew: string;
-  setVolSkew: (val: string) => void;
-  volWidth: string;
-  setVolWidth: (val: string) => void;
-
-  // Optional Overrides
-  meanLabel?: string;
-  alwaysShowMean?: boolean;
+export interface VolatilityConfig {
+  mode_name: 'compounding_growth' | 'transient_noise';
+  volatility_type: string;
+  target_mean?: string;
+  vol_input_mode?: 'simple' | 'advanced';
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
 }
 
-export default function VolatilityInputs({
-  volType, setVolType,
-  volMean, setVolMean,
-  volMin, setVolMin,
-  volMax, setVolMax,
-  volIntervals, setVolIntervals,
-  volScale, setVolScale,
-  volFreedom, setVolFreedom,
-  volAlpha, setVolAlpha,
-  volBeta, setVolBeta,
-  volMode, setVolMode,
-  volFatness, setVolFatness,
-  volSkew, setVolSkew,
-  volWidth, setVolWidth,
-  meanLabel,
-  alwaysShowMean
-}: VolatilityInputsProps) {
+interface VolatilityInputsProps {
+  configs: VolatilityConfig[];
+  onChange: (updatedConfigs: VolatilityConfig[]) => void;
+}
 
-  const isAdvanced = volMode === 'advanced';
+export default function VolatilityInputs({ configs, onChange }: VolatilityInputsProps) {
+  
+  const handleToggle = (mode: 'compounding_growth' | 'transient_noise', checked: boolean) => {
+    if (checked) {
+      const newConfig: VolatilityConfig = {
+        mode_name: mode,
+        volatility_type: '', // Empty string to trigger the disabled placeholder initially
+        target_mean: '0.0',
+        vol_input_mode: 'simple',
+        vol_scale: '0.05',
+      };
+      onChange([...configs, newConfig]);
+    } else {
+      onChange(configs.filter(c => c.mode_name !== mode));
+    }
+  };
 
-  // Helper to find description
-  const getAlphaDesc = () => ALPHA_OPTIONS.find(o => o.value === volFatness)?.description;
-  const getBetaDesc = () => BETA_OPTIONS.find(o => o.value === volSkew)?.description;
-  const getScaleDesc = () => SCALE_OPTIONS.find(o => o.value === volWidth)?.description;
+  const handleFieldChange = (mode: 'compounding_growth' | 'transient_noise', field: keyof VolatilityConfig, value: any) => {
+    const updated = configs.map(c => {
+      if (c.mode_name === mode) {
+        return { ...c, [field]: value };
+      }
+      return c;
+    });
+    onChange(updated);
+  };
+
+  const handleTypeChange = (mode: 'compounding_growth' | 'transient_noise', type: string) => {
+    const updated = configs.map(c => {
+      if (c.mode_name === mode) {
+        const base: VolatilityConfig = {
+          mode_name: mode,
+          volatility_type: type,
+          target_mean: c.target_mean || '0.0',
+        };
+        if (type === 'nrig') {
+          base.vol_input_mode = 'simple';
+          base.vol_fatness_level = 'medium';
+          base.vol_skew_level = 'symmetric';
+          base.vol_width_level = 'medium';
+        } else if (type === 'student_t') {
+          base.vol_scale = '0.05';
+          base.vol_freedom = '5.0';
+        } else if (type === 'normal') {
+          base.vol_scale = '0.05';
+        }
+        return base;
+      }
+      return c;
+    });
+    onChange(updated);
+  };
+
+  const panels: { id: 'compounding_growth' | 'transient_noise'; title: string; description: string }[] = [
+    {
+      id: 'compounding_growth',
+      title: 'Compounding Growth Volatility',
+      description: 'Permanently alters the underlying financial trajectory, compounding structurally over time.',
+    },
+    {
+      id: 'transient_noise',
+      title: 'Transient Operational Noise',
+      description: 'Temporary, non-compounding month-to-month fluctuations affecting a specific month reported cash flow only.',
+    },
+  ];
 
   return (
-    <div className="border-t pt-2 mt-2">
-      <div className="flex justify-between items-center mb-1">
-           <label className="text-xs font-bold text-gray-700">Uncertainty / Risk Model</label>
-           {volType === 'nrig' && (
-               <button 
-                  type="button" 
-                  onClick={() => setVolMode(isAdvanced ? 'simple' : 'advanced')} 
-                  className="text-xs text-blue-600 underline"
-               >
-                   {isAdvanced ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
-               </button>
-           )}
+    <div className="space-y-4">
+      {/* User Instruction Text */}
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800 font-medium">
+        Notice: You must select at least one volatility force (Compounding Growth, Transient Noise, or both) to run the simulation engine.
       </div>
-      <div className="space-y-2">
-          <div>
-              <label className="text-xs text-gray-500">Model Type</label>
-              <select className="w-full border p-1 rounded text-xs" value={volType} onChange={e => setVolType(e.target.value)}>
-                  <option value="none" disabled hidden>-- Select Risk Model --</option>
-                  <option value="flat">Simple volatility (min/max)</option>
-                  <option value="nrig">Comprehensive volatility</option>
-                  <option value="student_t">Student's t distribution</option>
-              </select>
-          </div>
-          
-          {volType !== 'none' && (
-            <div className="bg-gray-100 p-2 rounded">
-               
-               {/* SIMPLE MODE DROPDOWNS (NRIG Only) */}
-               {!isAdvanced && volType === 'nrig' && (
-                   <div className="space-y-3">
-                       <div className="text-xs text-gray-600 italic mb-2">
-                          Tier 1: Configure the shape of uncertainty.
-                       </div>
-                       <div>
-                           <label className="text-xs text-gray-500 flex items-center gap-1">
-                              Likelyhood of outliers (tail weight)
+
+      {/* Vertically Stacked Layout */}
+      <div className="space-y-4">
+        {panels.map(panel => {
+          const config = configs.find(c => c.mode_name === panel.id);
+          const isEnabled = !!config;
+
+          return (
+            <div key={panel.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id={`toggle-${panel.id}`}
+                    checked={isEnabled}
+                    onChange={(e) => handleToggle(panel.id, e.target.checked)}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor={`toggle-${panel.id}`} className="text-sm font-bold text-gray-800 cursor-pointer select-none">
+                    {panel.title}
+                  </label>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">{panel.description}</p>
+
+              {isEnabled && (
+                <div className="space-y-3 border-t border-gray-100 pt-3 mt-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Volatility Type</label>
+                    <select
+                      value={config.volatility_type}
+                      onChange={(e) => handleTypeChange(panel.id, e.target.value)}
+                      className="w-full border border-gray-300 p-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="" disabled hidden>-- Choose the distribution --</option>
+                      <option value="flat">Simple volatility (min/max)</option>
+                      <option value="nrig">Comprehensive volatility</option>
+                      <option value="normal">Normal distribution</option>
+                      <option value="student_t">{"Student's t distribution"}</option>
+                    </select>
+                  </div>
+
+                  {/* Render inputs based on volatility_type */}
+                  {config.volatility_type === 'nrig' && (
+                    <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold text-gray-700">NRIG Configuration</span>
+                        <button
+                          type="button"
+                          onClick={() => handleFieldChange(panel.id, 'vol_input_mode', config.vol_input_mode === 'advanced' ? 'simple' : 'advanced')}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          {config.vol_input_mode === 'advanced' ? 'Switch to Simple Mode' : 'Switch to Advanced Mode'}
+                        </button>
+                      </div>
+
+                      {config.vol_input_mode === 'simple' ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                              Likelihood of outliers (tail weight / fatness)
                               <Tooltip content="Controls how often extreme events (white and black swans) occur." />
-                           </label>
-                           <select className="w-full border p-1 rounded text-xs" value={volFatness} onChange={e => setVolFatness(e.target.value)}>
-                               <option value="">-- Select --</option>
-                               {ALPHA_OPTIONS.map(o => (
-                                   <option key={o.value} value={o.value}>{o.label} </option>
-                               ))}
-                           </select>
-                           <p className="text-xs text-gray-400 italic mt-1">{getAlphaDesc()}</p>
-                       </div>
+                            </label>
+                            <select
+                              value={config.vol_fatness_level || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'vol_fatness_level', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                            >
+                              <option value="">-- Select --</option>
+                              {ALPHA_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                            {config.vol_fatness_level && (
+                              <p className="text-[11px] text-gray-400 italic mt-1">
+                                {ALPHA_OPTIONS.find(o => o.value === config.vol_fatness_level)?.description}
+                              </p>
+                            )}
+                          </div>
 
-                       <div>
-                           <label className="text-xs text-gray-500 flex items-center gap-1">
-                              Volatility imbalance (downside / upside)
+                          <div>
+                            <label className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                              Volatility imbalance (downside / upside skew)
                               <Tooltip content="Skewness: Are surprises more likely to be positive or negative?" />
-                           </label>
-                           <select className="w-full border p-1 rounded text-xs" value={volSkew} onChange={e => setVolSkew(e.target.value)}>
-                               <option value="">-- Select --</option>
-                               {BETA_OPTIONS.map(o => (
-                                   <option key={o.value} value={o.value}>{o.label}</option>
-                               ))}
-                           </select>
-                           <p className="text-xs text-gray-400 italic mt-1">{getBetaDesc()}</p>
-                       </div>
+                            </label>
+                            <select
+                              value={config.vol_skew_level || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'vol_skew_level', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                            >
+                              <option value="">-- Select --</option>
+                              {BETA_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                            {config.vol_skew_level && (
+                              <p className="text-[11px] text-gray-400 italic mt-1">
+                                {BETA_OPTIONS.find(o => o.value === config.vol_skew_level)?.description}
+                              </p>
+                            )}
+                          </div>
 
-                       <div>
-                           <label className="text-xs text-gray-500 block">Delta/Scale (Volatility)</label>
-                           <select className="w-full border p-1 rounded text-xs" value={volWidth} onChange={e => setVolWidth(e.target.value)}>
-                               <option value="">-- Select --</option>
-                               {SCALE_OPTIONS.map(o => (
-                                   <option key={o.value} value={o.value}>{o.label}</option>
-                               ))}
-                           </select>
-                           <p className="text-xs text-gray-400 italic mt-1">{getScaleDesc()}</p>
-                       </div>
-                   </div>
-               )}
+                          <div>
+                            <label className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                              Delta/Scale (Volatility width)
+                              <Tooltip content="Controls the overall width of the distribution." />
+                            </label>
+                            <select
+                              value={config.vol_width_level || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'vol_width_level', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                            >
+                              <option value="">-- Select --</option>
+                              {SCALE_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                            {config.vol_width_level && (
+                              <p className="text-[11px] text-gray-400 italic mt-1">
+                                {SCALE_OPTIONS.find(o => o.value === config.vol_width_level)?.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[11px] text-gray-600 mb-1">Alpha (Likelihood)</label>
+                            <input
+                              type="text"
+                              value={config.vol_alpha || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'vol_alpha', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                              placeholder="e.g. 1.5"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-gray-600 mb-1">Beta (Skew)</label>
+                            <input
+                              type="text"
+                              value={config.vol_beta || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'vol_beta', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                              placeholder="e.g. -0.2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-gray-600 mb-1">Scale (Delta)</label>
+                            <input
+                              type="text"
+                              value={config.vol_scale || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'vol_scale', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                              placeholder="e.g. 0.05"
+                            />
+                          </div>
+                        </div>
+                      )}
 
-               {/* ADVANCED INPUTS OR OTHER MODELS */}
-               {/* Hidden if in Simple NRIG mode, unless we need to show the Mean (Capital Growth) */}
-               <div className={`grid grid-cols-3 gap-2 items-end ${(!isAdvanced && volType === 'nrig' && !alwaysShowMean) ? 'hidden' : ''}`}>
-                   
-                   {/* Common Mean */}
-                   {(isAdvanced || alwaysShowMean) && (
-                     <div className="col-span-3">
-                         <label className="text-xs text-gray-400">{meanLabel || "Mean / Drift (Optional Override)"}</label>
-                         <input 
-                            type="number" 
-                            step="any"
-                            placeholder="Default = Growth Rate" 
-                            className="w-full border p-1 text-xs" 
-                            value={volMean} 
-                            onChange={e => setVolMean(e.target.value)} 
-                         />
-                     </div>
-                   )}
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                        <input
+                          type="text"
+                          value={config.target_mean || ''}
+                          onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
+                          className="w-full border border-gray-300 p-2 rounded text-xs"
+                          placeholder="e.g. 0.0"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                   {/* Flat Params */}
-                   {volType === 'flat' && (
-                      <>
-                          <div className="col-span-3 flex items-center gap-2 mb-1 mt-2">
-                              <span className="text-xs font-bold text-gray-500">Range Settings</span>
-                              <Tooltip content="Define a hard minimum and maximum percentage deviation." />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Min %</label>
-                              <input className="w-full border p-1 text-xs" value={volMin} onChange={e => setVolMin(e.target.value)} />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Max %</label>
-                              <input className="w-full border p-1 text-xs" value={volMax} onChange={e => setVolMax(e.target.value)} />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Steps</label>
-                              <input className="w-full border p-1 text-xs" value={volIntervals} onChange={e => setVolIntervals(e.target.value)} />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Average (Calculated)</label>
-                              <input 
-                                  className="w-full border p-1 text-xs bg-gray-100 text-gray-500 cursor-not-allowed" 
-                                  readOnly
-                                  value={((parseFloat(volMin||'0') + parseFloat(volMax||'0')) / 2).toFixed(2) + " %"} 
-                              />
-                          </div>
-                      </>
-                   )}
+                  {config.volatility_type === 'student_t' && (
+                    <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Scale (Volatility)</label>
+                          <input
+                            type="text"
+                            value={config.vol_scale || ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'vol_scale', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 0.05"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Degrees of Freedom</label>
+                          <input
+                            type="text"
+                            value={config.vol_freedom || ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'vol_freedom', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 5.0"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                        <input
+                          type="text"
+                          value={config.target_mean || ''}
+                          onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
+                          className="w-full border border-gray-300 p-2 rounded text-xs"
+                          placeholder="e.g. 0.0"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                   {/* Student-T Params */}
-                   {volType === 'student_t' && (
-                      <>
-                          <div>
-                              <label className="text-xs text-gray-400">Scale (Vol)</label>
-                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Freedom (Deg)</label>
-                              <input className="w-full border p-1 text-xs" value={volFreedom} onChange={e => setVolFreedom(e.target.value)} />
-                          </div>
-                      </>
-                   )}
+                  {config.volatility_type === 'normal' && (
+                    <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Scale (Volatility)</label>
+                          <input
+                            type="text"
+                            value={config.vol_scale || ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'vol_scale', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 0.05"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                          <input
+                            type="text"
+                            value={config.target_mean || ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 0.0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                   {/* NRIG Params (Advanced) */}
-                   {volType === 'nrig' && isAdvanced && (
-                      <>
-                          <div>
-                              <label className="text-xs text-gray-400">Likelyhood (Alpha)</label>
-                              <input className="w-full border p-1 text-xs" value={volAlpha} onChange={e => setVolAlpha(e.target.value)} />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Skew (Imbalance, Beta)</label>
-                              <input className="w-full border p-1 text-xs" value={volBeta} onChange={e => setVolBeta(e.target.value)} />
-                          </div>
-                          <div>
-                              <label className="text-xs text-gray-400">Scale (Delta)</label>
-                              <input className="w-full border p-1 text-xs" value={volScale} onChange={e => setVolScale(e.target.value)} />
-                          </div>
-                      </>
-                   )}
-               </div>
+                  {config.volatility_type === 'flat' && (
+                    <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                        <input
+                          type="text"
+                          value={config.target_mean || ''}
+                          onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
+                          className="w-full border border-gray-300 p-2 rounded text-xs"
+                          placeholder="e.g. 0.0"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          );
+        })}
       </div>
     </div>
   );

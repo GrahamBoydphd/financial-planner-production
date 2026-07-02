@@ -6,24 +6,16 @@ use axum::{
 use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
-use crate::models::{ExpenseItem, Claims};
+use crate::models::{ExpenseItem, ExpenseItemResponse, Claims};
 use crate::errors::AppError;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use std::str::FromStr;
 
 #[derive(Deserialize)]
-pub struct CreateExpenseRequest {
-    pub plan_id: Uuid,
-    pub expense_name: String,
-    pub category: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: String,
-    pub growth_rate_percent: String,
-    pub frequency: String,
-    pub pct_of_revenue: Option<String>,
-    pub volatility_type: Option<String>,
+pub struct VolatilityConfigInput {
+    pub mode_name: String,
+    pub volatility_type: String,
     pub vol_min: Option<String>,
     pub vol_max: Option<String>,
     pub vol_intervals: Option<i32>,
@@ -39,6 +31,20 @@ pub struct CreateExpenseRequest {
 }
 
 #[derive(Deserialize)]
+pub struct CreateExpenseRequest {
+    pub plan_id: Uuid,
+    pub expense_name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: String,
+    pub growth_rate_percent: String,
+    pub frequency: String,
+    pub pct_of_revenue: Option<String>,
+    pub volatility_configs: Vec<VolatilityConfigInput>,
+}
+
+#[derive(Deserialize)]
 pub struct UpdateExpenseRequest {
     pub expense_name: String,
     pub category: String,
@@ -48,19 +54,7 @@ pub struct UpdateExpenseRequest {
     pub growth_rate_percent: String,
     pub frequency: String,
     pub pct_of_revenue: Option<String>,
-    pub volatility_type: Option<String>,
-    pub vol_min: Option<String>,
-    pub vol_max: Option<String>,
-    pub vol_intervals: Option<i32>,
-    pub target_mean: String,
-    pub vol_scale: Option<String>,
-    pub vol_freedom: Option<String>,
-    pub vol_alpha: Option<String>,
-    pub vol_beta: Option<String>,
-    pub vol_input_mode: String,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
+    pub volatility_configs: Vec<VolatilityConfigInput>,
 }
 
 // Helper to calculate NRIG parameters
@@ -169,7 +163,11 @@ pub async fn create_expense_item(
     State(pool): State<Pool<Postgres>>,
     Extension(claims): Extension<Claims>,
     Json(payload): Json<CreateExpenseRequest>,
-) -> Result<Json<ExpenseItem>, AppError> {
+) -> Result<Json<ExpenseItemResponse>, AppError> {
+    if payload.volatility_configs.is_empty() {
+        return Err(AppError::ValidationError("At least one volatility mode must be selected.".to_string()));
+    }
+
     // Length Validation
     if payload.expense_name.len() > 255 {
         return Err(AppError::ValidationError("Name exceeds 255 characters".to_string()));
@@ -190,38 +188,9 @@ pub async fn create_expense_item(
         None => None,
     };
 
-    let vol_min = match &payload.vol_min {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_min".to_string()))?),
-        None => None,
-    };
-
-    let vol_max = match &payload.vol_max {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_max".to_string()))?),
-        None => None,
-    };
-
-    let target_mean = Decimal::from_str(&payload.target_mean)
-        .map_err(|_| AppError::ValidationError("Invalid format for target_mean".to_string()))?;
-
-    let mut vol_scale = match &payload.vol_scale {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_scale".to_string()))?),
-        None => None,
-    };
-
-    let vol_freedom = match &payload.vol_freedom {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_freedom".to_string()))?),
-        None => None,
-    };
-
-    let mut vol_alpha = match &payload.vol_alpha {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_alpha".to_string()))?),
-        None => None,
-    };
-
-    let mut vol_beta = match &payload.vol_beta {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_beta".to_string()))?),
-        None => None,
-    };
+    if initial_amount < Decimal::ZERO {
+        return Err(AppError::ValidationError("Initial amount must be non-negative".to_string()));
+    }
 
     // Verify plan ownership
     let plan_exists: Option<_> = sqlx::query!(
@@ -236,28 +205,78 @@ pub async fn create_expense_item(
         return Err(AppError::NotFound("Financial plan not found or access denied".to_string()));
     }
 
-    if initial_amount < Decimal::ZERO {
-        return Err(AppError::ValidationError("Initial amount must be non-negative".to_string()));
-    }
+    let mut tx = pool.begin().await?;
 
-    // Calculate vol_mu based on distribution type
-    let mut vol_mu = target_mean;
+    let item = sqlx::query_as!(
+        ExpenseItem,
+        r#"
+        INSERT INTO expense_items (
+            plan_id, expense_name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING 
+            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
+            start_month as "start_month!", end_month, 
+            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
+            frequency as "frequency!", pct_of_revenue, 
+            created_at as "created_at!"
+        "#,
+        payload.plan_id, payload.expense_name, payload.category, payload.start_month, payload.end_month, 
+        initial_amount, growth_rate_percent, payload.frequency, pct_of_revenue
+    )
+    .fetch_one(&mut *tx)
+    .await?;
 
-    if let Some(ref vt) = payload.volatility_type {
+    for config in payload.volatility_configs {
+        let vol_min = match &config.vol_min {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_min".to_string()))?),
+            None => None,
+        };
+
+        let vol_max = match &config.vol_max {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_max".to_string()))?),
+            None => None,
+        };
+
+        let target_mean = Decimal::from_str(&config.target_mean)
+            .map_err(|_| AppError::ValidationError("Invalid format for target_mean".to_string()))?;
+
+        let mut vol_scale = match &config.vol_scale {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_scale".to_string()))?),
+            None => None,
+        };
+
+        let vol_freedom = match &config.vol_freedom {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_freedom".to_string()))?),
+            None => None,
+        };
+
+        let mut vol_alpha = match &config.vol_alpha {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_alpha".to_string()))?),
+            None => None,
+        };
+
+        let mut vol_beta = match &config.vol_beta {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_beta".to_string()))?),
+            None => None,
+        };
+
+        let mut vol_mu = target_mean;
+
         let valid_vol_types = ["normal", "student_t", "nrig", "flat"];
-        if !valid_vol_types.contains(&vt.as_str()) {
+        if !valid_vol_types.contains(&config.volatility_type.as_str()) {
             return Err(AppError::ValidationError(format!(
                 "Invalid volatility_type: '{}'. Must be one of: {:?}", 
-                vt, valid_vol_types
+                config.volatility_type, valid_vol_types
             )));
         }
 
-        if vt == "nrig" {
+        if config.volatility_type == "nrig" {
             let (a, b, s, m) = calculate_nrig_params(
-                &payload.vol_input_mode,
-                payload.vol_fatness_level.as_deref(),
-                payload.vol_skew_level.as_deref(),
-                payload.vol_width_level.as_deref(),
+                &config.vol_input_mode,
+                config.vol_fatness_level.as_deref(),
+                config.vol_skew_level.as_deref(),
+                config.vol_width_level.as_deref(),
                 target_mean,
                 vol_alpha,
                 vol_beta,
@@ -268,44 +287,55 @@ pub async fn create_expense_item(
             vol_scale = s;
             vol_mu = m;
         }
+
+        sqlx::query!(
+            r#"
+            INSERT INTO expense_item_volatility_policies (
+                expense_item_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,
+                vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
+                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            "#,
+            item.id, config.mode_name, config.volatility_type, vol_min, vol_max, config.vol_intervals,
+            vol_mu, vol_scale, vol_freedom, vol_alpha, vol_beta,
+            target_mean, vol_mu, config.vol_input_mode, config.vol_fatness_level, config.vol_skew_level, config.vol_width_level
+        )
+        .execute(&mut *tx)
+        .await?;
     }
 
-    let item = sqlx::query_as!(
-        ExpenseItem,
+    tx.commit().await?;
+
+    let policies = sqlx::query_as!(
+        crate::models::ExpenseVolatilityPolicy,
         r#"
-        INSERT INTO expense_items (
-            plan_id, expense_name, category, start_month, end_month, initial_amount, growth_rate_percent, frequency, pct_of_revenue,
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
-        RETURNING 
-            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
-            start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", pct_of_revenue, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+        SELECT 
+            id as "id!", expense_item_id as "expense_item_id!", mode_name as "mode_name!", 
+            volatility_type as "volatility_type!", vol_min, vol_max, vol_intervals,
+            vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
             target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
+        FROM expense_item_volatility_policies
+        WHERE expense_item_id = $1
         "#,
-        payload.plan_id, payload.expense_name, payload.category, payload.start_month, payload.end_month, 
-        initial_amount, growth_rate_percent, payload.frequency, pct_of_revenue,
-        payload.volatility_type, vol_min, vol_max, payload.vol_intervals,
-        vol_mu, // Legacy vol_mean gets the calculated mu
-        vol_scale, vol_freedom, vol_alpha, vol_beta,
-        target_mean, vol_mu, payload.vol_input_mode, payload.vol_fatness_level, payload.vol_skew_level, payload.vol_width_level
+        item.id
     )
-    .fetch_one(&pool)
-    .await?;
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_default();
 
-    Ok(Json(item))
+    Ok(Json(ExpenseItemResponse {
+        item,
+        volatility_configs: policies,
+    }))
 }
 
 pub async fn get_expense_items(
     State(pool): State<Pool<Postgres>>,
     Extension(claims): Extension<Claims>,
     Path(plan_id): Path<Uuid>,
-) -> Result<Json<Vec<ExpenseItem>>, AppError> {
+) -> Result<Json<Vec<ExpenseItemResponse>>, AppError> {
     let items = sqlx::query_as!(
         ExpenseItem,
         r#"
@@ -314,8 +344,6 @@ pub async fn get_expense_items(
             start_month as "start_month!", end_month, 
             initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
             frequency as "frequency!", pct_of_revenue, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
         FROM expense_items 
         WHERE plan_id = $1 
@@ -328,7 +356,43 @@ pub async fn get_expense_items(
     .fetch_all(&pool)
     .await?;
 
-    Ok(Json(items))
+    let mut responses = Vec::new();
+
+    if !items.is_empty() {
+        let item_ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
+        
+        let policies = sqlx::query_as!(
+            crate::models::ExpenseVolatilityPolicy,
+            r#"
+            SELECT 
+                id as "id!", expense_item_id as "expense_item_id!", mode_name as "mode_name!", 
+                volatility_type as "volatility_type!", vol_min, vol_max, vol_intervals,
+                vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
+                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
+                created_at as "created_at!"
+            FROM expense_item_volatility_policies
+            WHERE expense_item_id = ANY($1)
+            "#,
+            &item_ids
+        )
+        .fetch_all(&pool)
+        .await?;
+
+        for item in items {
+            let item_policies = policies
+                .iter()
+                .filter(|p| p.expense_item_id == item.id)
+                .cloned()
+                .collect();
+            
+            responses.push(ExpenseItemResponse {
+                item,
+                volatility_configs: item_policies,
+            });
+        }
+    }
+
+    Ok(Json(responses))
 }
 
 pub async fn update_expense_item(
@@ -336,7 +400,11 @@ pub async fn update_expense_item(
     Extension(claims): Extension<Claims>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateExpenseRequest>,
-) -> Result<Json<ExpenseItem>, AppError> {
+) -> Result<Json<ExpenseItemResponse>, AppError> {
+    if payload.volatility_configs.is_empty() {
+        return Err(AppError::ValidationError("At least one volatility mode must be selected.".to_string()));
+    }
+
     // Length Validation
     if payload.expense_name.len() > 255 {
         return Err(AppError::ValidationError("Name exceeds 255 characters".to_string()));
@@ -357,61 +425,94 @@ pub async fn update_expense_item(
         None => None,
     };
 
-    let vol_min = match &payload.vol_min {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_min".to_string()))?),
-        None => None,
-    };
-
-    let vol_max = match &payload.vol_max {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_max".to_string()))?),
-        None => None,
-    };
-
-    let target_mean = Decimal::from_str(&payload.target_mean)
-        .map_err(|_| AppError::ValidationError("Invalid format for target_mean".to_string()))?;
-
-    let mut vol_scale = match &payload.vol_scale {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_scale".to_string()))?),
-        None => None,
-    };
-
-    let vol_freedom = match &payload.vol_freedom {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_freedom".to_string()))?),
-        None => None,
-    };
-
-    let mut vol_alpha = match &payload.vol_alpha {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_alpha".to_string()))?),
-        None => None,
-    };
-
-    let mut vol_beta = match &payload.vol_beta {
-        Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_beta".to_string()))?),
-        None => None,
-    };
-
     if initial_amount < Decimal::ZERO {
         return Err(AppError::ValidationError("Initial amount must be non-negative".to_string()));
     }
 
-    // Calculate vol_mu based on distribution type
-    let mut vol_mu = target_mean;
+    let mut tx = pool.begin().await?;
 
-    if let Some(ref vt) = payload.volatility_type {
+    let item = sqlx::query_as!(
+        ExpenseItem,
+        r#"
+        UPDATE expense_items SET
+            expense_name = $1, category = $2, start_month = $3, end_month = $4,
+            initial_amount = $5, growth_rate_percent = $6, frequency = $7, pct_of_revenue = $8
+        WHERE id = $9
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $10)
+        RETURNING 
+            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
+            start_month as "start_month!", end_month, 
+            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
+            frequency as "frequency!", pct_of_revenue, 
+            created_at as "created_at!"
+        "#,
+        payload.expense_name, payload.category, payload.start_month, payload.end_month, 
+        initial_amount, growth_rate_percent, payload.frequency, pct_of_revenue,
+        id,
+        claims.tenant_id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    // Delete existing policies
+    sqlx::query!(
+        "DELETE FROM expense_item_volatility_policies WHERE expense_item_id = $1",
+        item.id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    // Insert new policies
+    for config in payload.volatility_configs {
+        let vol_min = match &config.vol_min {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_min".to_string()))?),
+            None => None,
+        };
+
+        let vol_max = match &config.vol_max {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_max".to_string()))?),
+            None => None,
+        };
+
+        let target_mean = Decimal::from_str(&config.target_mean)
+            .map_err(|_| AppError::ValidationError("Invalid format for target_mean".to_string()))?;
+
+        let mut vol_scale = match &config.vol_scale {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_scale".to_string()))?),
+            None => None,
+        };
+
+        let vol_freedom = match &config.vol_freedom {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_freedom".to_string()))?),
+            None => None,
+        };
+
+        let mut vol_alpha = match &config.vol_alpha {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_alpha".to_string()))?),
+            None => None,
+        };
+
+        let mut vol_beta = match &config.vol_beta {
+            Some(v) => Some(Decimal::from_str(v).map_err(|_| AppError::ValidationError("Invalid format for vol_beta".to_string()))?),
+            None => None,
+        };
+
+        let mut vol_mu = target_mean;
+
         let valid_vol_types = ["normal", "student_t", "nrig", "flat"];
-        if !valid_vol_types.contains(&vt.as_str()) {
+        if !valid_vol_types.contains(&config.volatility_type.as_str()) {
             return Err(AppError::ValidationError(format!(
                 "Invalid volatility_type: '{}'. Must be one of: {:?}", 
-                vt, valid_vol_types
+                config.volatility_type, valid_vol_types
             )));
         }
 
-        if vt == "nrig" {
+        if config.volatility_type == "nrig" {
             let (a, b, s, m) = calculate_nrig_params(
-                &payload.vol_input_mode,
-                payload.vol_fatness_level.as_deref(),
-                payload.vol_skew_level.as_deref(),
-                payload.vol_width_level.as_deref(),
+                &config.vol_input_mode,
+                config.vol_fatness_level.as_deref(),
+                config.vol_skew_level.as_deref(),
+                config.vol_width_level.as_deref(),
                 target_mean,
                 vol_alpha,
                 vol_beta,
@@ -422,41 +523,48 @@ pub async fn update_expense_item(
             vol_scale = s;
             vol_mu = m;
         }
+
+        sqlx::query!(
+            r#"
+            INSERT INTO expense_item_volatility_policies (
+                expense_item_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,
+                vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
+                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            "#,
+            item.id, config.mode_name, config.volatility_type, vol_min, vol_max, config.vol_intervals,
+            vol_mu, vol_scale, vol_freedom, vol_alpha, vol_beta,
+            target_mean, vol_mu, config.vol_input_mode, config.vol_fatness_level, config.vol_skew_level, config.vol_width_level
+        )
+        .execute(&mut *tx)
+        .await?;
     }
 
-    let item = sqlx::query_as!(
-        ExpenseItem,
+    tx.commit().await?;
+
+    let policies = sqlx::query_as!(
+        crate::models::ExpenseVolatilityPolicy,
         r#"
-        UPDATE expense_items SET
-            expense_name = $1, category = $2, start_month = $3, end_month = $4,
-            initial_amount = $5, growth_rate_percent = $6, frequency = $7, pct_of_revenue = $8,
-            volatility_type = $9, vol_min = $10, vol_max = $11, vol_intervals = $12,
-            vol_mean = $13, vol_scale = $14, vol_freedom = $15, vol_alpha = $16, vol_beta = $17,
-            target_mean = $18, vol_mu = $19, vol_input_mode = $20, vol_fatness_level = $21, vol_skew_level = $22, vol_width_level = $23
-        WHERE id = $24
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $25)
-        RETURNING 
-            id as "id!", plan_id as "plan_id!", expense_name as "expense_name!", category as "category!", 
-            start_month as "start_month!", end_month, 
-            initial_amount as "initial_amount!", growth_rate_percent as "growth_rate_percent!", 
-            frequency as "frequency!", pct_of_revenue, 
-            volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+        SELECT 
+            id as "id!", expense_item_id as "expense_item_id!", mode_name as "mode_name!", 
+            volatility_type as "volatility_type!", vol_min, vol_max, vol_intervals,
+            vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
             target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
             created_at as "created_at!"
+        FROM expense_item_volatility_policies
+        WHERE expense_item_id = $1
         "#,
-        payload.expense_name, payload.category, payload.start_month, payload.end_month, 
-        initial_amount, growth_rate_percent, payload.frequency, pct_of_revenue,
-        payload.volatility_type, vol_min, vol_max, payload.vol_intervals,
-        vol_mu, // Legacy vol_mean gets the calculated mu
-        vol_scale, vol_freedom, vol_alpha, vol_beta,
-        target_mean, vol_mu, payload.vol_input_mode, payload.vol_fatness_level, payload.vol_skew_level, payload.vol_width_level,
-        id,
-        claims.tenant_id
+        item.id
     )
-    .fetch_one(&pool)
-    .await?;
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_default();
 
-    Ok(Json(item))
+    Ok(Json(ExpenseItemResponse {
+        item,
+        volatility_configs: policies,
+    }))
 }
 
 pub async fn delete_expense_item(

@@ -64,13 +64,25 @@ impl<Mode: SimulationMode> FundOrchestrator<Mode> {
         for state in det_states.iter_mut() {
             // Sanitize Revenue
             for item in state.revenue_states.iter_mut() {
-                let mean = item.sampler.mean();
-                item.sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                if let Some(sampler) = &mut item.compounding_growth_sampler {
+                    let mean = sampler.mean();
+                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                }
+                if let Some(sampler) = &mut item.transient_noise_sampler {
+                    let mean = sampler.mean();
+                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                }
             }
             // Sanitize Expenses
             for item in state.expense_states.iter_mut() {
-                let mean = item.sampler.mean();
-                item.sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                if let Some(sampler) = &mut item.compounding_growth_sampler {
+                    let mean = sampler.mean();
+                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                }
+                if let Some(sampler) = &mut item.transient_noise_sampler {
+                    let mean = sampler.mean();
+                    sampler.set_model(VolatilityModel::None { fixed_rate: mean });
+                }
             }
             // Sanitize Capital Growth Policy
             if let Some(sampler) = &mut state.cap_growth_sampler {

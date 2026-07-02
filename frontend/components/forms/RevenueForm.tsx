@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api, RevenueItem } from '@/lib/api';
 import Tooltip from '@/components/ui/Tooltip';
-import VolatilityInputs, { validateVolatilityParams, getVolatilityPayload, getVolatilityUIState } from '@/components/forms/shared/VolatilityInputs';
+import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -17,30 +17,13 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [name, setName] = useState('');
   const [source, setSource] = useState('sales');
   const [amount, setAmount] = useState('');
-  const [growth, setGrowth] = useState('0');
   const [startMonth, setStartMonth] = useState('1');
   const [endMonth, setEndMonth] = useState('');
   const [freq, setFreq] = useState('monthly');
   const [cogsPercent, setCogsPercent] = useState('');
 
-  // Volatility State
-  const [volType, setVolType] = useState('none');
-  const [volMode, setVolMode] = useState<'simple' | 'advanced'>('simple');
-  
-  // Advanced Params
-  const [volMin, setVolMin] = useState('');
-  const [volMax, setVolMax] = useState('');
-  const [numSteps, setNumSteps] = useState(''); 
-  const [volScale, setVolScale] = useState('');
-  const [volFreedom, setVolFreedom] = useState('');
-  const [volAlpha, setVolAlpha] = useState('');
-  const [volBeta, setVolBeta] = useState('');
-  
-  // Simple Params
-  const [volFatness, setVolFatness] = useState('');
-  const [volSkew, setVolSkew] = useState('');
-  const [volWidth, setVolWidth] = useState('');
-
+  // Volatility Configs State
+  const [volatilityConfigs, setVolatilityConfigs] = useState<VolatilityConfig[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
 
   // --- EFFECT: POPULATE FORM ON EDIT ---
@@ -49,28 +32,23 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       setName(itemToEdit.revenue_name);
       setSource(itemToEdit.source);
       setAmount(itemToEdit.initial_amount.toString());
-      setGrowth(itemToEdit.growth_rate_percent.toString());
       setStartMonth(itemToEdit.start_month.toString());
       setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
       setFreq(itemToEdit.frequency);
       setCogsPercent(itemToEdit.cost_of_revenue_percent ? itemToEdit.cost_of_revenue_percent.toString() : '');
       
-      // Use centralized helper
-      const ui = getVolatilityUIState(itemToEdit);
-      setVolType(ui.volType);
-      setVolMode(ui.volMode);
-      setGrowth(ui.volMean);
-      setVolMin(ui.volMin);
-      setVolMax(ui.volMax);
-      setNumSteps(ui.volIntervals);
-      setVolScale(ui.volScale);
-      setVolFreedom(ui.volFreedom);
-      setVolAlpha(ui.volAlpha);
-      setVolBeta(ui.volBeta);
-      setVolFatness(ui.volFatness);
-      setVolSkew(ui.volSkew);
-      setVolWidth(ui.volWidth);
-
+      // Map volatility configs safely to match form state expectations
+      const configs = (itemToEdit as any).volatility_configs || [];
+      setVolatilityConfigs(configs.map((c: any) => ({
+        id: c.id,
+        mode_name: c.mode_name,
+        volatility_type: c.volatility_type,
+        low_value: c.low_value !== undefined && c.low_value !== null ? c.low_value.toString() : '',
+        high_value: c.high_value !== undefined && c.high_value !== null ? c.high_value.toString() : '',
+        mean_value: c.mean_value !== undefined && c.mean_value !== null ? c.mean_value.toString() : '',
+        std_dev: c.std_dev !== undefined && c.std_dev !== null ? c.std_dev.toString() : '',
+        degrees_of_freedom: c.degrees_of_freedom !== undefined && c.degrees_of_freedom !== null ? c.degrees_of_freedom.toString() : '',
+      })));
     } else {
       clearForm();
     }
@@ -84,22 +62,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     setEndMonth('');
     setFreq('monthly');
     setCogsPercent('');
-    
-    const defaults = getVolatilityUIState(null);
-    setVolType(defaults.volType);
-    setVolMode(defaults.volMode);
-    setGrowth(defaults.volMean);
-    setVolMin(defaults.volMin);
-    setVolMax(defaults.volMax);
-    setNumSteps(defaults.volIntervals);
-    setVolScale(defaults.volScale);
-    setVolFreedom(defaults.volFreedom);
-    setVolAlpha(defaults.volAlpha);
-    setVolBeta(defaults.volBeta);
-    setVolFatness(defaults.volFatness);
-    setVolSkew(defaults.volSkew);
-    setVolWidth(defaults.volWidth);
-
+    setVolatilityConfigs([]);
     setErrors([]);
   };
 
@@ -111,23 +74,11 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     if (!name.trim()) newErrors.push("Name is required");
     if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
     if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
-    if (!volType) newErrors.push("Volatility Model is required");
-    
-    // Centralized Volatility Validation
-    const volErrors = validateVolatilityParams(volType, volMode, {
-        min: volMin,
-        max: volMax,
-        intervals: numSteps,
-        mean: growth,
-        alpha: volAlpha,
-        beta: volBeta,
-        scale: volScale,
-        freedom: volFreedom,
-        fatness: volFatness,
-        skew: volSkew,
-        width: volWidth
-    });
-    newErrors.push(...volErrors);
+
+    // Strict validation guardrail: cannot submit with empty volatility configs
+    if (!volatilityConfigs || volatilityConfigs.length === 0) {
+        newErrors.push("Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.");
+    }
 
     if (newErrors.length > 0) {
         setErrors(newErrors);
@@ -135,21 +86,6 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     }
 
     try {
-        // Use centralized helper to construct volatility payload
-        const volPayload = getVolatilityPayload(volType, {
-            min: volMin,
-            max: volMax,
-            intervals: numSteps,
-            mean: growth,
-            alpha: volAlpha,
-            beta: volBeta,
-            scale: volScale,
-            freedom: volFreedom,
-            fatness: volFatness,
-            skew: volSkew,
-            width: volWidth
-        }, volMode);
-
         const payload = {
             plan_id: planId,
             revenue_name: name,
@@ -159,9 +95,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             end_month: endMonth ? Number(endMonth) : undefined,
             frequency: freq.toLowerCase(),
             cost_of_revenue_percent: cogsPercent ? String(cogsPercent) : undefined,
-            
-            ...volPayload,
-            volatility_type: volPayload.volatility_type as any
+            volatility_configs: volatilityConfigs
         };
 
         if (itemToEdit) {
@@ -172,9 +106,17 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
 
         clearForm();
         onSuccess(); 
-    } catch (err) {
+    } catch (err: any) {
         console.error(err);
-        setErrors(["Failed to save revenue item. Please check your inputs."]);
+        const status = err.response?.status;
+        const errMsg = err.response?.data?.message || err.message || '';
+        if (status === 400 || errMsg.toLowerCase().includes('volatility') || errMsg.toLowerCase().includes('empty')) {
+            setErrors([
+                "Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item."
+            ]);
+        } else {
+            setErrors(["Failed to save revenue item. Please check your inputs."]);
+        }
     }
   };
 
@@ -246,36 +188,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       </div>
 
       {/* UNIFIED GROWTH & VOLATILITY SECTION */}
-      <VolatilityInputs
-        volType={volType}
-        setVolType={setVolType}
-        volMean={growth}
-        setVolMean={setGrowth}
-        volMin={volMin}
-        setVolMin={setVolMin}
-        volMax={volMax}
-        setVolMax={setVolMax}
-        volIntervals={numSteps}
-        setVolIntervals={setNumSteps}
-        volScale={volScale}
-        setVolScale={setVolScale}
-        volFreedom={volFreedom}
-        setVolFreedom={setVolFreedom}
-        volAlpha={volAlpha}
-        setVolAlpha={setVolAlpha}
-        volBeta={volBeta}
-        setVolBeta={setVolBeta}
-        volMode={volMode}
-        setVolMode={setVolMode}
-        volFatness={volFatness}
-        setVolFatness={setVolFatness}
-        volSkew={volSkew}
-        setVolSkew={setVolSkew}
-        volWidth={volWidth}
-        setVolWidth={setVolWidth}
-        meanLabel="Average Growth Rate (Mean)"
-        alwaysShowMean={volType !== "flat"}
-      />
+      <VolatilityInputs configs={volatilityConfigs} onChange={setVolatilityConfigs} />
 
       <div className="flex gap-4">
         {itemToEdit && (

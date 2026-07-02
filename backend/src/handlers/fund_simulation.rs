@@ -32,6 +32,20 @@ pub struct SimParams {
     pub events_active: Option<bool>,
 }
 
+pub struct VolatilityPolicyData {
+    pub item_id: Uuid,
+    pub mode_name: String,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+}
+
 /// NEW: Plan-Centric Simulation Handler
 /// Runs simulation directly from a Fund Plan ID
 #[debug_handler]
@@ -333,11 +347,7 @@ async fn fetch_and_map_company_state(
         SELECT 
             id, plan_id, revenue_name, source, start_month, end_month, 
             initial_amount, growth_rate_percent, frequency, 
-            cost_of_revenue_percent, volatility_type, 
-            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, 
-            vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
-            created_at
+            cost_of_revenue_percent, created_at
         FROM revenue_items
         WHERE plan_id = $1
         "#,
@@ -353,11 +363,7 @@ async fn fetch_and_map_company_state(
         SELECT 
             id, plan_id, expense_name, category, start_month, end_month, 
             initial_amount, growth_rate_percent, frequency, 
-            pct_of_revenue, volatility_type, 
-            vol_min, vol_max, vol_intervals, vol_mean, vol_scale, 
-            vol_freedom, vol_alpha, vol_beta, 
-            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
-            created_at
+            pct_of_revenue, created_at
         FROM expense_items
         WHERE plan_id = $1
         "#,
@@ -365,6 +371,66 @@ async fn fetch_and_map_company_state(
     )
     .fetch_all(pool)
     .await?;
+
+    // Fetch Revenue Policies
+    let revenue_policies = sqlx::query!(
+        r#"
+        SELECT 
+            p.id, p.revenue_item_id, p.mode_name, p.volatility_type, 
+            p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, 
+            p.vol_freedom, p.vol_alpha, p.vol_beta
+        FROM revenue_item_volatility_policies p
+        JOIN revenue_items i ON i.id = p.revenue_item_id
+        WHERE i.plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let rev_policies_data: Vec<VolatilityPolicyData> = revenue_policies.into_iter().map(|p| VolatilityPolicyData {
+        item_id: p.revenue_item_id,
+        mode_name: p.mode_name,
+        volatility_type: Some(p.volatility_type),
+        vol_min: p.vol_min,
+        vol_max: p.vol_max,
+        vol_intervals: p.vol_intervals,
+        vol_mean: p.vol_mean,
+        vol_scale: p.vol_scale,
+        vol_freedom: p.vol_freedom,
+        vol_alpha: p.vol_alpha,
+        vol_beta: p.vol_beta,
+    }).collect();
+
+    // Fetch Expense Policies
+    let expense_policies = sqlx::query!(
+        r#"
+        SELECT 
+            p.id, p.expense_item_id, p.mode_name, p.volatility_type, 
+            p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, 
+            p.vol_freedom, p.vol_alpha, p.vol_beta
+        FROM expense_item_volatility_policies p
+        JOIN expense_items i ON i.id = p.expense_item_id
+        WHERE i.plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let exp_policies_data: Vec<VolatilityPolicyData> = expense_policies.into_iter().map(|p| VolatilityPolicyData {
+        item_id: p.expense_item_id,
+        mode_name: p.mode_name,
+        volatility_type: Some(p.volatility_type),
+        vol_min: p.vol_min,
+        vol_max: p.vol_max,
+        vol_intervals: p.vol_intervals,
+        vol_mean: p.vol_mean,
+        vol_scale: p.vol_scale,
+        vol_freedom: p.vol_freedom,
+        vol_alpha: p.vol_alpha,
+        vol_beta: p.vol_beta,
+    }).collect();
 
     // Fetch Capital Injections
     let capital_injections = sqlx::query_as!(
@@ -483,28 +549,46 @@ async fn fetch_and_map_company_state(
     .fetch_optional(pool)
     .await?;
 
-    // --- NRIG Validation ---
+    // --- NRIG Validation & Policy Check ---
     for r in &revenue_items {
-        if let Some(vt) = &r.volatility_type {
-            if vt == "NRIG" {
-                let alpha = r.vol_alpha.unwrap_or(Decimal::ZERO);
-                let beta = r.vol_beta.unwrap_or(Decimal::ZERO);
-                if alpha * alpha <= beta * beta {
-                    error_log.push(format!("Company '{}': Revenue '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, r.revenue_name));
+        let mut has_policy = false;
+        for p in &rev_policies_data {
+            if p.item_id == r.id {
+                has_policy = true;
+                if let Some(vt) = &p.volatility_type {
+                    if vt == "NRIG" {
+                        let alpha = p.vol_alpha.unwrap_or(Decimal::ZERO);
+                        let beta = p.vol_beta.unwrap_or(Decimal::ZERO);
+                        if alpha * alpha <= beta * beta {
+                            error_log.push(format!("Company '{}': Revenue '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, r.revenue_name));
+                        }
+                    }
                 }
             }
+        }
+        if !has_policy {
+            error_log.push(format!("Stream item {} must have at least one volatility mode selected.", r.revenue_name));
         }
     }
 
     for e in &expense_items {
-        if let Some(vt) = &e.volatility_type {
-            if vt == "NRIG" {
-                let alpha = e.vol_alpha.unwrap_or(Decimal::ZERO);
-                let beta = e.vol_beta.unwrap_or(Decimal::ZERO);
-                if alpha * alpha <= beta * beta {
-                    error_log.push(format!("Company '{}': Expense '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, e.expense_name));
+        let mut has_policy = false;
+        for p in &exp_policies_data {
+            if p.item_id == e.id {
+                has_policy = true;
+                if let Some(vt) = &p.volatility_type {
+                    if vt == "NRIG" {
+                        let alpha = p.vol_alpha.unwrap_or(Decimal::ZERO);
+                        let beta = p.vol_beta.unwrap_or(Decimal::ZERO);
+                        if alpha * alpha <= beta * beta {
+                            error_log.push(format!("Company '{}': Expense '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, e.expense_name));
+                        }
+                    }
                 }
             }
+        }
+        if !has_policy {
+            error_log.push(format!("Stream item {} must have at least one volatility mode selected.", e.expense_name));
         }
     }
 
@@ -528,6 +612,8 @@ async fn fetch_and_map_company_state(
         company_name,
         revenue_items,
         expense_items,
+        rev_policies_data,
+        exp_policies_data,
         capital_injections,
         dividend_policy,
         credit_facility,
@@ -548,6 +634,8 @@ fn map_to_sim_state(
     company_name: String,
     revenue_items: Vec<models::RevenueItem>,
     expense_items: Vec<models::ExpenseItem>,
+    revenue_policies: Vec<VolatilityPolicyData>,
+    expense_policies: Vec<VolatilityPolicyData>,
     capital_injections: Vec<models::CapitalInjection>,
     dividend_policy: Option<models::DividendPolicy>,
     credit_facility: Option<models::CreditFacility>,
@@ -562,24 +650,33 @@ fn map_to_sim_state(
     
     let mut revenue_states = Vec::with_capacity(revenue_items.len());
     let engine_revenues: Vec<domain::Revenue> = revenue_items.into_iter().map(|r| {
-        // Create sampler for this item
-        let sampler = create_sampler_from_db(
-            r.volatility_type,
-            r.vol_mean,
-            r.vol_scale,
-            r.vol_min,
-            r.vol_max,
-            r.vol_intervals,
-            r.vol_freedom,
-            r.vol_alpha,
-            r.vol_beta
-        );
+        let mut compounding_growth_sampler = None;
+        let mut transient_noise_sampler = None;
+
+        for p in revenue_policies.iter().filter(|p| p.item_id == r.id) {
+            let sampler = create_sampler_from_db(
+                p.volatility_type.clone(),
+                p.vol_mean,
+                p.vol_scale,
+                p.vol_min,
+                p.vol_max,
+                p.vol_intervals,
+                p.vol_freedom,
+                p.vol_alpha,
+                p.vol_beta
+            );
+            if p.mode_name == "compounding_growth" {
+                compounding_growth_sampler = Some(sampler);
+            } else if p.mode_name == "transient_noise" {
+                transient_noise_sampler = Some(sampler);
+            }
+        }
         
-        // Initialize state with sampler
         revenue_states.push(ItemState {
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            sampler,
+            compounding_growth_sampler,
+            transient_noise_sampler,
         });
 
         domain::Revenue {
@@ -595,22 +692,33 @@ fn map_to_sim_state(
 
     let mut expense_states = Vec::with_capacity(expense_items.len());
     let engine_expenses: Vec<domain::Expense> = expense_items.into_iter().map(|e| {
-        let sampler = create_sampler_from_db(
-            e.volatility_type,
-            e.vol_mean,
-            e.vol_scale,
-            e.vol_min,
-            e.vol_max,
-            e.vol_intervals,
-            e.vol_freedom,
-            e.vol_alpha,
-            e.vol_beta
-        );
+        let mut compounding_growth_sampler = None;
+        let mut transient_noise_sampler = None;
+
+        for p in expense_policies.iter().filter(|p| p.item_id == e.id) {
+            let sampler = create_sampler_from_db(
+                p.volatility_type.clone(),
+                p.vol_mean,
+                p.vol_scale,
+                p.vol_min,
+                p.vol_max,
+                p.vol_intervals,
+                p.vol_freedom,
+                p.vol_alpha,
+                p.vol_beta
+            );
+            if p.mode_name == "compounding_growth" {
+                compounding_growth_sampler = Some(sampler);
+            } else if p.mode_name == "transient_noise" {
+                transient_noise_sampler = Some(sampler);
+            }
+        }
 
         expense_states.push(ItemState {
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            sampler,
+            compounding_growth_sampler,
+            transient_noise_sampler,
         });
 
         domain::Expense {

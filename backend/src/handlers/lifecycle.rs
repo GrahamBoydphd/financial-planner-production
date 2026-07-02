@@ -67,15 +67,11 @@ async fn copy_plan_internal(
             r#"INSERT INTO revenue_items (
                 id, plan_id, revenue_name, source, start_month, end_month, 
                 initial_amount, growth_rate_percent, frequency, cost_of_revenue_percent,
-                volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,
-                vol_freedom, vol_alpha, vol_beta, created_at,
-                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)"#,
+                created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
             Uuid::new_v4(), new_plan_id, item.revenue_name, item.source, item.start_month, item.end_month,
             item.initial_amount, item.growth_rate_percent, item.frequency, item.cost_of_revenue_percent,
-            item.volatility_type, item.vol_min, item.vol_max, item.vol_intervals, item.vol_mean, item.vol_scale,
-            item.vol_freedom, item.vol_alpha, item.vol_beta, Utc::now(),
-            item.target_mean, item.vol_mu, item.vol_input_mode, item.vol_fatness_level, item.vol_skew_level, item.vol_width_level
+            Utc::now()
         ).execute(&mut **txn).await?;
     }
 
@@ -87,15 +83,11 @@ async fn copy_plan_internal(
             r#"INSERT INTO expense_items (
                 id, plan_id, expense_name, category, start_month, end_month,
                 initial_amount, growth_rate_percent, frequency, pct_of_revenue,
-                volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,
-                vol_freedom, vol_alpha, vol_beta, created_at,
-                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)"#,
+                created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
             Uuid::new_v4(), new_plan_id, item.expense_name, item.category, item.start_month, item.end_month,
             item.initial_amount, item.growth_rate_percent, item.frequency, item.pct_of_revenue,
-            item.volatility_type, item.vol_min, item.vol_max, item.vol_intervals, item.vol_mean, item.vol_scale,
-            item.vol_freedom, item.vol_alpha, item.vol_beta, Utc::now(),
-            item.target_mean, item.vol_mu, item.vol_input_mode, item.vol_fatness_level, item.vol_skew_level, item.vol_width_level
+            Utc::now()
         ).execute(&mut **txn).await?;
     }
 

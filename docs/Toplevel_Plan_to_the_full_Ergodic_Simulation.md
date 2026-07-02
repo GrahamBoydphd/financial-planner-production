@@ -230,9 +230,9 @@ Improve the clean version with better guidance to the user.
 
 ## Ph 4 improvements based on use case with Julia for Tyson
 - [ ] Add the possibility of stochasticity on the absolute amount with zero growth rate rather than on the growth rate itself for costs and revenue.
-- [ ] Add to revenue and costs the option of adding additional components to a given revenue stream. Triggered by either hitting a given revenue / cost item's milestone or reaching a given month. i.e., the ability to add input boxes with the condition so that the backend can do: "If revenue in a given month exceeds Rx; or at month Mx; then shift to these parameters for volatility, growth etc."
+- [ ] Add to revenue and costs the option of adding additional components to a given revenue stream. Triggered by either hitting a given revenue / cost item's value milestone or reaching a given month. i.e., the ability to add input boxes with the condition so that the backend can do: "If revenue in a given month exceeds Rx; or at month Mx; then shift to these parameters for volatility, growth etc." So this means that both the stochasticity model and parameters can change and the cost of revenue (revenue stream) or percent of revenue (expenses stream) can change. Only the initial amount will be from the previous month, and cannot be entered.
 - [ ] Add to staffing the option for a salary bump in a given month. And able to add multiple of these. And add the possibility of an end month. and add the possibility of a promotion, i.e., a change of title and salary increase in a given month Mx or when a given revenue / cost item exeeds a given milestone. 
-- [ ] Switch on currency editing. 
+- [x] Switch on currency editing. 
 
 ### ✅ Confirmation of Aggregation
 

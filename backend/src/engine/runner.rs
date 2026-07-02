@@ -77,22 +77,11 @@ pub fn generate_simulation(
     }).collect();
 
     let revenue_states: Vec<ItemState> = revenue_items.iter().map(|r| {
-        let sampler = create_sampler_from_db(
-            r.volatility_type.as_deref(),
-            r.vol_mean,
-            r.vol_scale,
-            r.vol_min,
-            r.vol_max,
-            r.vol_intervals,
-            r.vol_freedom,
-            r.vol_alpha,
-            r.vol_beta,
-        );
-        
         ItemState {
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            sampler,
+            compounding_growth_sampler: None,
+            transient_noise_sampler: None,
         }
     }).collect();
 
@@ -111,22 +100,11 @@ pub fn generate_simulation(
     }).collect();
 
     let expense_states: Vec<ItemState> = expense_items.iter().map(|e| {
-        let sampler = create_sampler_from_db(
-            e.volatility_type.as_deref(),
-            e.vol_mean,
-            e.vol_scale,
-            e.vol_min,
-            e.vol_max,
-            e.vol_intervals,
-            e.vol_freedom,
-            e.vol_alpha,
-            e.vol_beta,
-        );
-
         ItemState {
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
-            sampler,
+            compounding_growth_sampler: None,
+            transient_noise_sampler: None,
         }
     }).collect();
 

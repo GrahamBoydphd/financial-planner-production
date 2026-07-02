@@ -112,6 +112,20 @@ export interface UpdatePlanRequest {
   soft_limit_fraction?: string;
 }
 
+export interface VolatilityConfig {
+  mode_name: "compounding_growth" | "transient_noise";
+  volatility_type: string;
+  vol_input_mode?: "simple" | "advanced";
+  vol_fatness_level?: string;
+  vol_skew_level?: string;
+  vol_width_level?: string;
+  vol_scale?: string;
+  vol_freedom?: string;
+  vol_alpha?: string;
+  vol_beta?: string;
+  target_mean?: string;
+}
+
 export interface RevenueItem {
   id: string;
   plan_id: string;
@@ -123,21 +137,7 @@ export interface RevenueItem {
   end_month?: number;
   frequency: string;
   cost_of_revenue_percent?: string;
-  volatility_type?: string;
-  target_mean?: string;
-  vol_input_mode?: 'simple' | 'advanced';
-  vol_mode?: 'simple' | 'advanced';
-  vol_fatness_level?: string;
-  vol_skew_level?: string;
-  vol_width_level?: string;
-  vol_min?: string;
-  vol_max?: string;
-  vol_intervals?: number;
-  vol_mean?: string;
-  vol_scale?: string;
-  vol_freedom?: string;
-  vol_alpha?: string;
-  vol_beta?: string;
+  volatility_configs: VolatilityConfig[];
 }
 
 export interface ExpenseItem {
@@ -151,21 +151,7 @@ export interface ExpenseItem {
   end_month?: number;
   frequency: string;
   pct_of_revenue?: string;
-  volatility_type?: string;
-  target_mean?: string;
-  vol_input_mode?: 'simple' | 'advanced';
-  vol_mode?: 'simple' | 'advanced';
-  vol_fatness_level?: string;
-  vol_skew_level?: string;
-  vol_width_level?: string;
-  vol_min?: string;
-  vol_max?: string;
-  vol_intervals?: number;
-  vol_mean?: string;
-  vol_scale?: string;
-  vol_freedom?: string;
-  vol_alpha?: string;
-  vol_beta?: string;
+  volatility_configs: VolatilityConfig[];
 }
 
 export interface CapitalGrowthPolicy {

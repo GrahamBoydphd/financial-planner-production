@@ -11,7 +11,8 @@ use crate::projection::MonthlyData;
 pub struct ItemState {
     pub current_value: f64,
     pub is_active: bool,
-    pub sampler: GrowthSampler,
+    pub compounding_growth_sampler: Option<GrowthSampler>,
+    pub transient_noise_sampler: Option<GrowthSampler>,
 }
 
 impl Default for ItemState {
@@ -19,7 +20,8 @@ impl Default for ItemState {
         Self { 
             current_value: 0.0, 
             is_active: false,
-            sampler: GrowthSampler::default(),
+            compounding_growth_sampler: None,
+            transient_noise_sampler: None,
         }
     }
 }
@@ -260,14 +262,21 @@ impl SimState {
             if s.is_active {
                 if item.frequency == "One-time" && month != item.start_month { continue; }
                 
-                // Logic: Base Growth + Volatility (Preserved)
+                // Logic: Base Growth + Volatility
                 if month > item.start_month {
-                    let rate = s.sampler.sample(); // Now returns f64 directly
-                    // Formula: Value * (1 + (Base% + Volatility%)/100)
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
+                    if let Some(sampler) = &mut s.compounding_growth_sampler {
+                        let rate = sampler.sample();
+                        s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
+                    } else {
+                        s.current_value *= 1.0 + item.growth_rate;
+                    }
                 }
                 
-                let item_rev = s.current_value;
+                let mut item_rev = s.current_value;
+                if let Some(sampler) = &mut s.transient_noise_sampler {
+                    item_rev *= 1.0 + sampler.sample() / 100.0;
+                }
+                
                 monthly_rev += item_rev;
                 monthly_cogs += item_rev * item.cost_of_revenue;
             }
@@ -288,11 +297,19 @@ impl SimState {
                 if item.frequency == "One-time" && month != item.start_month { continue; }
                 
                 if month > item.start_month {
-                    let rate = s.sampler.sample();
-                    s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
+                    if let Some(sampler) = &mut s.compounding_growth_sampler {
+                        let rate = sampler.sample();
+                        s.current_value *= 1.0 + (item.growth_rate * 100.0 + rate) / 100.0;
+                    } else {
+                        s.current_value *= 1.0 + item.growth_rate;
+                    }
                 }
                 
                 let mut amt = s.current_value;
+                if let Some(sampler) = &mut s.transient_noise_sampler {
+                    amt *= 1.0 + sampler.sample() / 100.0;
+                }
+                
                 if let Some(pct) = item.pct_of_revenue {
                     amt += monthly_rev * pct;
                 }
