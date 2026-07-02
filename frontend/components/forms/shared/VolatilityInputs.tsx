@@ -245,6 +245,9 @@ export interface VolatilityConfig {
   vol_beta?: string;
   vol_scale?: string;
   vol_freedom?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
 }
 
 interface VolatilityInputsProps {
@@ -253,55 +256,97 @@ interface VolatilityInputsProps {
 }
 
 export default function VolatilityInputs({ configs, onChange }: VolatilityInputsProps) {
+  // Local state to manage the internal UI representation of the configs
+  const [localConfigs, setLocalConfigs] = React.useState<VolatilityConfig[]>(configs || []);
+
+  // Sync internal state with incoming configs prop (e.g., when loading an item to edit)
+  React.useEffect(() => {
+    if (configs) {
+      setLocalConfigs(configs);
+    } else {
+      setLocalConfigs([]);
+    }
+  }, [configs]);
   
   const handleToggle = (mode: 'compounding_growth' | 'transient_noise', checked: boolean) => {
+    let updated: VolatilityConfig[];
     if (checked) {
-      const newConfig: VolatilityConfig = {
+      // Check if there's already an existing config in the incoming configs prop for this mode to preserve legacy data
+      const existing = configs?.find(c => c.mode_name === mode);
+      const newConfig: VolatilityConfig = existing ? { ...existing } : {
         mode_name: mode,
-        volatility_type: '', // Empty string to trigger the disabled placeholder initially
-        target_mean: '0.0',
+        volatility_type: '', // Requires user selection
         vol_input_mode: 'simple',
-        vol_scale: '0.05',
+        target_mean: '0.0',
+        vol_min: '',
+        vol_max: '',
+        vol_intervals: 0, // Strict integer
+        vol_scale: '',
+        vol_freedom: '',
+        vol_alpha: '',
+        vol_beta: '',
+        vol_fatness_level: '',
+        vol_skew_level: '',
+        vol_width_level: ''
       };
-      onChange([...configs, newConfig]);
+      updated = [...localConfigs, newConfig];
     } else {
-      onChange(configs.filter(c => c.mode_name !== mode));
+      updated = localConfigs.filter(c => c.mode_name !== mode);
     }
+    setLocalConfigs(updated);
+    onChange(updated);
   };
 
   const handleFieldChange = (mode: 'compounding_growth' | 'transient_noise', field: keyof VolatilityConfig, value: any) => {
-    const updated = configs.map(c => {
+    const updated = localConfigs.map(c => {
       if (c.mode_name === mode) {
-        return { ...c, [field]: value };
+        const next = { ...c, [field]: value };
+        if (next.volatility_type === 'flat') {
+          const minStr = next.vol_min !== undefined && next.vol_min !== null ? String(next.vol_min) : '';
+          const maxStr = next.vol_max !== undefined && next.vol_max !== null ? String(next.vol_max) : '';
+          const minVal = parseFloat(minStr);
+          const maxVal = parseFloat(maxStr);
+          if (!isNaN(minVal) && !isNaN(maxVal)) {
+            next.target_mean = ((minVal + maxVal) / 2).toFixed(2);
+          } else {
+            next.target_mean = '';
+          }
+        }
+        return next;
       }
       return c;
     });
+    setLocalConfigs(updated);
     onChange(updated);
   };
 
   const handleTypeChange = (mode: 'compounding_growth' | 'transient_noise', type: string) => {
-    const updated = configs.map(c => {
+    const updated = localConfigs.map(c => {
       if (c.mode_name === mode) {
         const base: VolatilityConfig = {
-          mode_name: mode,
+          ...c,
           volatility_type: type,
-          target_mean: c.target_mean || '0.0',
         };
         if (type === 'nrig') {
-          base.vol_input_mode = 'simple';
-          base.vol_fatness_level = 'medium';
-          base.vol_skew_level = 'symmetric';
-          base.vol_width_level = 'medium';
+          base.vol_input_mode = base.vol_input_mode || 'simple';
+          base.vol_fatness_level = base.vol_fatness_level || 'medium';
+          base.vol_skew_level = base.vol_skew_level || 'symmetric';
+          base.vol_width_level = base.vol_width_level || 'medium';
         } else if (type === 'student_t') {
-          base.vol_scale = '0.05';
-          base.vol_freedom = '5.0';
+          base.vol_scale = base.vol_scale || '0.05';
+          base.vol_freedom = base.vol_freedom || '5.0';
         } else if (type === 'normal') {
-          base.vol_scale = '0.05';
+          base.vol_scale = base.vol_scale || '0.05';
+        } else if (type === 'flat') {
+          base.vol_min = base.vol_min !== undefined && base.vol_min !== null ? String(base.vol_min) : '0.0';
+          base.vol_max = base.vol_max !== undefined && base.vol_max !== null ? String(base.vol_max) : '0.0';
+          base.vol_intervals = base.vol_intervals !== undefined && base.vol_intervals !== null ? Number(base.vol_intervals) : 10;
         }
         return base;
       }
       return c;
     });
+    setLocalConfigs(updated);
     onChange(updated);
   };
 
@@ -328,7 +373,7 @@ export default function VolatilityInputs({ configs, onChange }: VolatilityInputs
       {/* Vertically Stacked Layout */}
       <div className="space-y-4">
         {panels.map(panel => {
-          const config = configs.find(c => c.mode_name === panel.id);
+          const config = localConfigs.find(c => c.mode_name === panel.id);
           const isEnabled = !!config;
 
           return (
@@ -483,16 +528,18 @@ export default function VolatilityInputs({ configs, onChange }: VolatilityInputs
                         </div>
                       )}
 
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
-                        <input
-                          type="text"
-                          value={config.target_mean || ''}
-                          onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
-                          className="w-full border border-gray-300 p-2 rounded text-xs"
-                          placeholder="e.g. 0.0"
-                        />
-                      </div>
+                      {panel.id === 'compounding_growth' && (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                          <input
+                            type="text"
+                            value={config.target_mean || ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 0.0"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -520,32 +567,7 @@ export default function VolatilityInputs({ configs, onChange }: VolatilityInputs
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
-                        <input
-                          type="text"
-                          value={config.target_mean || ''}
-                          onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
-                          className="w-full border border-gray-300 p-2 rounded text-xs"
-                          placeholder="e.g. 0.0"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {config.volatility_type === 'normal' && (
-                    <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Scale (Volatility)</label>
-                          <input
-                            type="text"
-                            value={config.vol_scale || ''}
-                            onChange={(e) => handleFieldChange(panel.id, 'vol_scale', e.target.value)}
-                            className="w-full border border-gray-300 p-2 rounded text-xs"
-                            placeholder="e.g. 0.05"
-                          />
-                        </div>
+                      {panel.id === 'compounding_growth' && (
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
                           <input
@@ -556,21 +578,94 @@ export default function VolatilityInputs({ configs, onChange }: VolatilityInputs
                             placeholder="e.g. 0.0"
                           />
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {config.volatility_type === 'normal' && (
+                    <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
+                      <div className={`grid ${panel.id === 'compounding_growth' ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Scale (Volatility)</label>
+                          <input
+                            type="text"
+                            value={config.vol_scale || ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'vol_scale', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 0.05"
+                          />
+                        </div>
+                        {panel.id === 'compounding_growth' && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                            <input
+                              type="text"
+                              value={config.target_mean || ''}
+                              onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded text-xs"
+                              placeholder="e.g. 0.0"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   {config.volatility_type === 'flat' && (
                     <div className="space-y-3 bg-gray-50 p-3 rounded border border-gray-200">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
-                        <input
-                          type="text"
-                          value={config.target_mean || ''}
-                          onChange={(e) => handleFieldChange(panel.id, 'target_mean', e.target.value)}
-                          className="w-full border border-gray-300 p-2 rounded text-xs"
-                          placeholder="e.g. 0.0"
-                        />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Min %</label>
+                          <input
+                            type="text"
+                            value={config.vol_min !== undefined && config.vol_min !== null ? String(config.vol_min) : ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'vol_min', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. -5.0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Max %</label>
+                          <input
+                            type="text"
+                            value={config.vol_max !== undefined && config.vol_max !== null ? String(config.vol_max) : ''}
+                            onChange={(e) => handleFieldChange(panel.id, 'vol_max', e.target.value)}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 5.0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Steps</label>
+                          <input
+                            type="number"
+                            value={config.vol_intervals !== undefined && config.vol_intervals !== null ? config.vol_intervals : ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              handleFieldChange(panel.id, 'vol_intervals', isNaN(val) ? 0 : val);
+                            }}
+                            className="w-full border border-gray-300 p-2 rounded text-xs"
+                            placeholder="e.g. 10"
+                          />
+                        </div>
+                        {panel.id === 'compounding_growth' && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Average (Calculated)</label>
+                            <input
+                              type="text"
+                              readOnly
+                              value={(() => {
+                                const minStr = config.vol_min !== undefined && config.vol_min !== null ? String(config.vol_min) : '';
+                                const maxStr = config.vol_max !== undefined && config.vol_max !== null ? String(config.vol_max) : '';
+                                if (minStr === '' || maxStr === '') return '';
+                                const minVal = parseFloat(minStr);
+                                const maxVal = parseFloat(maxStr);
+                                if (isNaN(minVal) || isNaN(maxVal)) return '';
+                                return ((minVal + maxVal) / 2).toFixed(2);
+                              })()}
+                              className="w-full border border-gray-300 p-2 rounded text-xs bg-gray-100 cursor-not-allowed"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

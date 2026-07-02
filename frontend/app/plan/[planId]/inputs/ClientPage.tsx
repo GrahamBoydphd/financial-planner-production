@@ -177,21 +177,35 @@ export default function ClientPage({ params }: Props) {
                           <p className="text-xs text-gray-600 mt-1">
                             <span className="font-semibold">risk: </span>
                             {item.volatility_configs && item.volatility_configs.length > 0
-                              ? item.volatility_configs
-                                  .map(
-                                    (c: any) =>
-                                      `${c.volatility_type} (${
-                                        c.mode_name === 'compounding_growth' ? 'Compounding' : 'Transient'
-                                      })`
-                                  )
-                                  .join(', ')
-                              : 'none'}
+                              ? [...item.volatility_configs]
+                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                  .filter((c: any) => c && c.volatility_type)
+                                  .map((c: any) => {
+                                    const type = c.volatility_type;
+                                    if (type === 'flat') return 'Simple';
+                                    if (type === 'nrig') return 'Comprehensive';
+                                    if (type === 'student_t') return 'Student T';
+                                    if (type === 'normal') return 'Normal';
+                                    return type;
+                                  })
+                                  .join(', ') || 'None'
+                              : 'None'}
                           </p>
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900">
                             ${Number(item.initial_amount).toLocaleString()}
                           </span>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {item.volatility_configs && item.volatility_configs.length > 0
+                              ? '+' + [...item.volatility_configs]
+                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                  .filter((c: any) => c && c.volatility_type)
+                                  .map((c: any) => c.target_mean || '0.0')
+                                  .join('%, +') + '% / mo'
+                              : `+${item.growth_rate_percent || '0.0'}% / mo`
+                            }
+                          </p>
                           {item.cost_of_revenue_percent && (
                             <p className="text-xs text-red-500 mt-0.5">
                               COGS: {item.cost_of_revenue_percent}%
@@ -259,21 +273,35 @@ export default function ClientPage({ params }: Props) {
                           <p className="text-xs text-gray-600 mt-1">
                             <span className="font-semibold">risk: </span>
                             {item.volatility_configs && item.volatility_configs.length > 0
-                              ? item.volatility_configs
-                                  .map(
-                                    (c: any) =>
-                                      `${c.volatility_type} (${
-                                        c.mode_name === 'compounding_growth' ? 'Compounding' : 'Transient'
-                                      })`
-                                  )
-                                  .join(', ')
-                              : 'none'}
+                              ? [...item.volatility_configs]
+                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                  .filter((c: any) => c && c.volatility_type)
+                                  .map((c: any) => {
+                                    const type = c.volatility_type;
+                                    if (type === 'flat') return 'Simple';
+                                    if (type === 'nrig') return 'Comprehensive';
+                                    if (type === 'student_t') return 'Student T';
+                                    if (type === 'normal') return 'Normal';
+                                    return type;
+                                  })
+                                  .join(', ') || 'None'
+                              : 'None'}
                           </p>
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900">
                             ${Number(item.initial_amount).toLocaleString()}
                           </span>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {item.volatility_configs && item.volatility_configs.length > 0
+                              ? '+' + [...item.volatility_configs]
+                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                  .filter((c: any) => c && c.volatility_type)
+                                  .map((c: any) => c.target_mean || '0.0')
+                                  .join('%, +') + '% / mo'
+                              : `+${item.growth_rate_percent || '0.0'}% / mo`
+                            }
+                          </p>
                           {item.pct_of_revenue && (
                             <p className="text-xs text-blue-500 mt-0.5">
                               {item.pct_of_revenue}% of Rev

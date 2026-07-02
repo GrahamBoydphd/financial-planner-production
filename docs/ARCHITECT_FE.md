@@ -117,6 +117,16 @@ For example:
     
 - **Negative Input:** requires UI support for **negative bounds** (e.g., `vol_min: "-30.0"`).
 
+Your "fortress standard" relies on strings for numbers to eliminate **IEEE-754 floating-point rounding errors** (which can destroy financial projections over 120-month simulation loops).
+
+- **Monetary/Growth Math (Requires Strings):** Values like `initial_amount`, `growth_rate_percent`, or `vol_scale` represent continuous, arbitrary fractional numbers. Passing them as strings prevents JavaScript/TypeScript from corrupting the decimal precision before it hits the server.
+    
+- **Interval Math (Requires Integers):** `vol_intervals` represents a discrete, whole count of steps (e.g., exactly 1 step, 2 steps, or 5 steps). Because it counts integer partitions for a distribution grid, it can never have a fractional or floating-point component.
+    
+
+> **Summary for the Frontend Team:** Tell the frontend team to handle `vol_intervals` as a standard HTML/TypeScript **`number`** type. When compiling the final payload array, they do not need to wrap it in quotes. Every other numeric value inside `volatility_configs` remains a strict **`string`**
+
+
 ### C. The "Scoped Identifier" Standard
 
 **Rule:** Generic `name` fields are deprecated. You must use entity-specific keys, e.g. the following have already been done.

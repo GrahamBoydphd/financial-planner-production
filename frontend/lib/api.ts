@@ -124,6 +124,9 @@ export interface VolatilityConfig {
   vol_alpha?: string;
   vol_beta?: string;
   target_mean?: string;
+  vol_min?: string;
+  vol_max?: string;
+  vol_intervals?: number;
 }
 
 export interface RevenueItem {

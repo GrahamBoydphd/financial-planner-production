@@ -37,18 +37,8 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       setFreq(itemToEdit.frequency);
       setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
       
-      // Map volatility configs safely to match form state expectations
-      const configs = (itemToEdit as any).volatility_configs || [];
-      setVolatilityConfigs(configs.map((c: any) => ({
-        id: c.id,
-        mode_name: c.mode_name,
-        volatility_type: c.volatility_type,
-        low_value: c.low_value !== undefined && c.low_value !== null ? c.low_value.toString() : '',
-        high_value: c.high_value !== undefined && c.high_value !== null ? c.high_value.toString() : '',
-        mean_value: c.mean_value !== undefined && c.mean_value !== null ? c.mean_value.toString() : '',
-        std_dev: c.std_dev !== undefined && c.std_dev !== null ? c.std_dev.toString() : '',
-        degrees_of_freedom: c.degrees_of_freedom !== undefined && c.degrees_of_freedom !== null ? c.degrees_of_freedom.toString() : '',
-      })));
+      const configs = (itemToEdit as any)?.volatility_configs || [];
+      setVolatilityConfigs(configs);
     } else {
       clearForm();
     }
@@ -80,22 +70,47 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         newErrors.push("Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.");
     }
 
+    if (volatilityConfigs.some(c => !c.volatility_type)) {
+        newErrors.push("Please select a distribution type for all enabled volatility models.");
+    }
+
     if (newErrors.length > 0) {
         setErrors(newErrors);
         return;
     }
 
     try {
+        const compGrowth = volatilityConfigs.find(c => c.mode_name === 'compounding_growth');
+        let rootGrowth = '0.0';
+        if (compGrowth) {
+            if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
+                rootGrowth = ((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2).toString();
+            } else if (compGrowth.target_mean) {
+                rootGrowth = String(compGrowth.target_mean);
+            }
+        }
+
+        const cleanConfigs = volatilityConfigs.map(c => {
+            const cleaned: any = { ...c };
+            Object.keys(cleaned).forEach(key => {
+                if (cleaned[key] === '') {
+                    cleaned[key] = null;
+                }
+            });
+            return cleaned;
+        });
+
         const payload = {
             plan_id: planId,
             expense_name: name,
             category,
             initial_amount: String(amount),
+            growth_rate_percent: rootGrowth,
             start_month: Number(startMonth),
             end_month: endMonth ? Number(endMonth) : undefined,
             frequency: freq,
             pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
-            volatility_configs: volatilityConfigs
+            volatility_configs: cleanConfigs
         };
 
         if (itemToEdit) {
@@ -110,12 +125,10 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         console.error(err);
         const status = err.response?.status;
         const errMsg = err.response?.data?.message || err.message || '';
-        if (status === 400 || errMsg.toLowerCase().includes('volatility') || errMsg.toLowerCase().includes('empty')) {
-            setErrors([
-                "Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item."
-            ]);
+        if (status === 400) {
+            setErrors([errMsg || "Validation Error: Please check your inputs. Ensure all required distribution fields are valid."]);
         } else {
-            setErrors(["Failed to save expense item. Please check your inputs."]);
+            setErrors([errMsg || "Failed to save item. Please check your inputs."]);
         }
     }
   };

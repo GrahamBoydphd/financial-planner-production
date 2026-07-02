@@ -97,3 +97,41 @@ Jules, you are tasked with a **Zero-Defect Audit** of the current repository. 
 1. Run `./scripts/try_build.sh` and resolve any remaining warnings.
     
 2. Execute `cargo sqlx prepare` to lock the metadata.
+
+
+
+## 📐 The Three Mean Variables Explained
+
+- **`target_mean` (The Frontend Input):** This is the user-facing expected average value of the distribution (typically set to `"0.0"` for transient month-to-month noise variations). **The frontend should always bind its UI text inputs strictly to this variable.**
+    
+- **`vol_mu` (The Engine Location Parameter):** This is the actual mathematical parameter ($\mu$) passed to the underlying random number generation functions.
+    
+- **`vol_mean` (The Legacy Field):** This is a deprecated database column name from an older architecture. In the backend handlers, it is safely populated with the exact same value as `vol_mu` purely to maintain backward compatibility with legacy tracking fields.
+    
+
+## 📊 Distribution Mapping Table
+
+When the frontend sends or receives a configuration array, here is how the mean variables behave for each distribution type:
+
+|**Distribution Type**|**What the Frontend Sends (target_mean)**|**Internal Backend Calculation (vol_mu)**|**Mathematical Behavior**|
+|---|---|---|---|
+|**`flat`**|User Input String (e.g., `"0.0"`)|Natively copies `target_mean`|**Symmetrical:** The mathematical center point of the uniform distribution is equal to the target mean.|
+|**`normal`**|User Input String (e.g., `"0.0"`)|Natively copies `target_mean`|**Symmetrical:** The bell curve peak centers directly on the target mean.|
+|**`student_t`**|User Input String (e.g., `"0.0"`)|Natively copies `target_mean`|**Symmetrical:** The heavy-tailed peak centers directly on the target mean.|
+|**`nrig`**|User Input String (e.g., `"0.0"`)|**Calculated via formula**|**Asymmetrical:** The location parameter $\mu$ must be shifted to offset mathematical drift caused by skewness (`vol_beta`) and fatness (`vol_alpha`).|
+
+## 🧠 The NRIG Skewness Drift Equation
+
+For symmetrical distributions, the mathematical location parameter is identical to the target mean ($\mu = \text{Target Mean}$).
+
+However, the Normal-Inverse Gaussian (`nrig`) distribution allows for heavy asymmetric skewness. If a user sets up a heavy downside skew, the random samples would naturally pull the overall average down, missing the user's targeted expectation.
+
+To prevent this error, your backend executes this structural correction formula inside `calculate_nrig_params` before writing to the database:
+
+$$\mu = \text{Target Mean} - \left(\delta \times \frac{\beta}{\sqrt{\alpha^2 - \beta^2}}\right)$$
+
+By calculating this offset drift, the backend generates a custom `vol_mu`. When the parallel Monte Carlo simulation runs over 499 iterations, the resulting random data tracks perfectly to the original `target_mean` requested by the user.
+
+### Golden Rule for the Frontend Developer:
+
+> When building the edit form initialization logic, **always display `target_mean` in the UI input box.** You can safely ignore `vol_mu` and `vol_mean` in the UI layout, as they are read-only artifacts computed by the server's mathematical layer.

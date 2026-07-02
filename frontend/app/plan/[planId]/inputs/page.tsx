@@ -262,15 +262,35 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     <div>
                         <h3 className="font-bold text-gray-900">{item.revenue_name}</h3>
                         <p className="text-sm text-gray-600">{item.source} • {item.frequency}</p>
-                        {item.volatility_type !== 'none' && (
+                        {item.volatility_configs && item.volatility_configs.length > 0 && (
                             <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
-                                Risk: {item.volatility_type}
+                                Risk: {[...item.volatility_configs]
+                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                  .filter((c: any) => c && c.volatility_type)
+                                  .map((c: any) => {
+                                    const type = c.volatility_type;
+                                    if (type === 'flat') return 'Simple';
+                                    if (type === 'nrig') return 'Comprehensive';
+                                    if (type === 'student_t') return 'Student T';
+                                    if (type === 'normal') return 'Normal';
+                                    return type;
+                                  })
+                                  .join(', ')}
                             </span>
                         )}
                     </div>
                     <div className="text-right">
                         <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
-                        <p className="text-xs font-medium text-green-600">+{item.growth_rate_percent}% / mo</p>
+                        <p className="text-xs font-medium text-green-600">
+                          {item.volatility_configs && item.volatility_configs.length > 0
+                            ? '+' + [...item.volatility_configs]
+                                .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                .filter((c: any) => c && c.volatility_type)
+                                .map((c: any) => c.target_mean || '0.0')
+                                .join('%, +') + '% / mo'
+                            : `+${item.growth_rate_percent || '0.0'}% / mo`
+                          }
+                        </p>
                     </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
@@ -322,15 +342,35 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     <div>
                         <h3 className="font-bold text-gray-900">{item.expense_name}</h3>
                         <p className="text-sm text-gray-600">{item.category} • {item.frequency}</p>
-                        {item.volatility_type !== 'none' && (
-                             <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
-                                Risk: {item.volatility_type}
+                        {item.volatility_configs && item.volatility_configs.length > 0 && (
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
+                                Risk: {[...item.volatility_configs]
+                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                  .filter((c: any) => c && c.volatility_type)
+                                  .map((c: any) => {
+                                    const type = c.volatility_type;
+                                    if (type === 'flat') return 'Simple';
+                                    if (type === 'nrig') return 'Comprehensive';
+                                    if (type === 'student_t') return 'Student T';
+                                    if (type === 'normal') return 'Normal';
+                                    return type;
+                                  })
+                                  .join(', ')}
                             </span>
                         )}
                     </div>
                     <div className="text-right">
                         <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
-                        <p className="text-xs font-medium text-red-600">+{item.growth_rate_percent}% / mo</p>
+                        <p className="text-xs font-medium text-red-600">
+                          {item.volatility_configs && item.volatility_configs.length > 0
+                            ? '+' + [...item.volatility_configs]
+                                .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                .filter((c: any) => c && c.volatility_type)
+                                .map((c: any) => c.target_mean || '0.0')
+                                .join('%, +') + '% / mo'
+                            : `+${item.growth_rate_percent || '0.0'}% / mo`
+                          }
+                        </p>
                     </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
