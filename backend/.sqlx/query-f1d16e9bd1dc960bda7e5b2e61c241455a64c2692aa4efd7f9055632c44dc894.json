@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            p.id, p.expense_item_phase_id as \"phase_id!\", p.mode_name, p.volatility_type, \n            p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, \n            p.vol_freedom, p.vol_alpha, p.vol_beta\n        FROM expense_item_volatility_policies p\n        JOIN expense_item_phases ph ON ph.id = p.expense_item_phase_id\n        JOIN expense_items i ON i.id = ph.expense_item_id\n        WHERE i.plan_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "phase_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "mode_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "volatility_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "vol_min",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "vol_max",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "vol_intervals",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "vol_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "vol_scale",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "vol_freedom",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "vol_alpha",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "vol_beta",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "f1d16e9bd1dc960bda7e5b2e61c241455a64c2692aa4efd7f9055632c44dc894"
+}

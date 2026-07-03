@@ -1,0 +1,146 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO expense_item_volatility_policies (\n                    expense_item_phase_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,\n                    vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,\n                    target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level\n                )\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n                RETURNING id, expense_item_phase_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,\n                    vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,\n                    target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level, created_at\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expense_item_phase_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "mode_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "volatility_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "vol_min",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "vol_max",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "vol_intervals",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "vol_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "vol_scale",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "vol_freedom",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "vol_alpha",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "vol_beta",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "target_mean",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "vol_mu",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "vol_input_mode",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "vol_fatness_level",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 16,
+        "name": "vol_skew_level",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 17,
+        "name": "vol_width_level",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 18,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Numeric",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "df68f3fd612231b714e9f95bba90981c6266a7ae0390f2598affe9c22debbc1a"
+}

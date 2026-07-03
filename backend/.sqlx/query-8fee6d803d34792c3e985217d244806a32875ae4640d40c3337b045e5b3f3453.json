@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id as \"id!\", expense_name as \"expense_name!\", category as \"category!\",\n            start_month as \"start_month!\", end_month, \n            initial_amount as \"initial_amount!\", \n            frequency as \"frequency!\",\n            trigger_strategy\n        FROM expense_items \n        WHERE plan_id = $1 \n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ORDER BY start_month ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expense_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "category!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "start_month!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "end_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "initial_amount!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "frequency!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "trigger_strategy",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8fee6d803d34792c3e985217d244806a32875ae4640d40c3337b045e5b3f3453"
+}

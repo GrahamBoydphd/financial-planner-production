@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            p.id as \"id!\", p.revenue_item_id as \"revenue_item_id!\", p.phase_sequence as \"phase_sequence!\", \n            p.trigger_month, p.growth_rate_percent as \"growth_rate_percent!\", \n            p.cost_of_revenue_percent,\n            p.trigger_operator, p.trigger_threshold\n        FROM revenue_item_phases p\n        JOIN revenue_items i ON i.id = p.revenue_item_id\n        WHERE i.plan_id = $1\n        ORDER BY p.phase_sequence ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "revenue_item_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "phase_sequence!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "trigger_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "growth_rate_percent!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "cost_of_revenue_percent",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "trigger_operator",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "trigger_threshold",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "fd225a4c938b2746f0e2e1e21d653975b80a89c1928c816e361d4338d9631ad4"
+}

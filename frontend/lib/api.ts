@@ -113,20 +113,40 @@ export interface UpdatePlanRequest {
 }
 
 export interface VolatilityConfig {
-  mode_name: "compounding_growth" | "transient_noise";
+  id?: string;
+  phase_id?: string;
+  mode_name: 'compounding_growth' | 'transient_noise';
   volatility_type: string;
-  vol_input_mode?: "simple" | "advanced";
-  vol_fatness_level?: string;
-  vol_skew_level?: string;
-  vol_width_level?: string;
-  vol_scale?: string;
-  vol_freedom?: string;
-  vol_alpha?: string;
-  vol_beta?: string;
-  target_mean?: string;
-  vol_min?: string;
-  vol_max?: string;
-  vol_intervals?: number;
+  target_mean?: string | null;
+  vol_input_mode?: 'simple' | 'advanced' | null;
+  vol_fatness_level?: string | null;
+  vol_skew_level?: string | null;
+  vol_width_level?: string | null;
+  vol_alpha?: string | null;
+  vol_beta?: string | null;
+  vol_scale?: string | null;
+  vol_freedom?: string | null;
+  vol_min?: string | null;
+  vol_max?: string | null;
+  vol_intervals?: number | null;
+}
+
+export interface BasePhase {
+  id?: string;
+  phase_sequence: number;
+  trigger_month: number | null;
+  trigger_threshold: string | null;
+  trigger_operator: string | null;
+  growth_rate_percent: string;
+  volatility_configs: VolatilityConfig[];
+}
+
+export interface RevenuePhase extends BasePhase {
+  cost_of_revenue_percent?: string | null;
+}
+
+export interface ExpensePhase extends BasePhase {
+  pct_of_revenue?: string | null;
 }
 
 export interface RevenueItem {
@@ -141,6 +161,8 @@ export interface RevenueItem {
   frequency: string;
   cost_of_revenue_percent?: string;
   volatility_configs: VolatilityConfig[];
+  trigger_strategy: 'time_based' | 'value_based' | null;
+  phases: RevenuePhase[];
 }
 
 export interface ExpenseItem {
@@ -155,6 +177,8 @@ export interface ExpenseItem {
   frequency: string;
   pct_of_revenue?: string;
   volatility_configs: VolatilityConfig[];
+  trigger_strategy: 'time_based' | 'value_based' | null;
+  phases: ExpensePhase[];
 }
 
 export interface CapitalGrowthPolicy {

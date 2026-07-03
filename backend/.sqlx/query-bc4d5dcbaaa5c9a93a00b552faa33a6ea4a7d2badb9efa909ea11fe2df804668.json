@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM expense_item_phases WHERE expense_item_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bc4d5dcbaaa5c9a93a00b552faa33a6ea4a7d2badb9efa909ea11fe2df804668"
+}

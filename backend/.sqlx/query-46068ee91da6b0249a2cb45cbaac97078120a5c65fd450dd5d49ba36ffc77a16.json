@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency FROM expense_items WHERE plan_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expense_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "end_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "initial_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "frequency",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "46068ee91da6b0249a2cb45cbaac97078120a5c65fd450dd5d49ba36ffc77a16"
+}

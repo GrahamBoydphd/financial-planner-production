@@ -289,7 +289,7 @@ pub async fn get_plan_projection(
         r#"
         SELECT 
             p.id as "id!", p.revenue_item_id as "revenue_item_id!", p.phase_sequence as "phase_sequence!", 
-            p.trigger_month as "trigger_month!", p.growth_rate_percent as "growth_rate_percent!", 
+            p.trigger_month, p.growth_rate_percent as "growth_rate_percent!", 
             p.cost_of_revenue_percent,
             p.trigger_operator, p.trigger_threshold
         FROM revenue_item_phases p
@@ -344,7 +344,7 @@ pub async fn get_plan_projection(
         r#"
         SELECT 
             p.id as "id!", p.expense_item_id as "expense_item_id!", p.phase_sequence as "phase_sequence!", 
-            p.trigger_month as "trigger_month!", p.growth_rate_percent as "growth_rate_percent!", 
+            p.trigger_month, p.growth_rate_percent as "growth_rate_percent!", 
             p.pct_of_revenue,
             p.trigger_operator, p.trigger_threshold
         FROM expense_item_phases p

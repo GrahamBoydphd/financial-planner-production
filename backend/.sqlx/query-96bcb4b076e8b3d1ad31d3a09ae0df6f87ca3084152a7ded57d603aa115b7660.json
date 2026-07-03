@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            p.id, p.expense_item_id, p.phase_sequence, \n            p.trigger_month, p.trigger_threshold, p.trigger_operator, \n            p.growth_rate_percent, p.pct_of_revenue\n        FROM expense_item_phases p\n        JOIN expense_items i ON i.id = p.expense_item_id\n        WHERE i.plan_id = $1\n        ORDER BY p.phase_sequence ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expense_item_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "phase_sequence",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "trigger_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "trigger_threshold",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "trigger_operator",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "growth_rate_percent",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "pct_of_revenue",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "96bcb4b076e8b3d1ad31d3a09ae0df6f87ca3084152a7ded57d603aa115b7660"
+}

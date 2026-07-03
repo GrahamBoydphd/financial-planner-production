@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO revenue_items (\n                id, plan_id, revenue_name, source, start_month, end_month, \n                initial_amount, frequency, created_at\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Numeric",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fb3759eb5c269a6106fc3ce3f90ccf97f31bd5bd0f008ff94d62d676bc4d200d"
+}

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id, expense_name, category, start_month, end_month, \n            initial_amount, frequency, trigger_strategy\n        FROM expense_items\n        WHERE plan_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expense_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "start_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "end_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "initial_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "frequency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "trigger_strategy",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9ea480627693b09b87d97b9770e27ab9d6f5fb16ed0ce3b83f8d56740f2bdf56"
+}

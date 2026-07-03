@@ -20,10 +20,23 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [startMonth, setStartMonth] = useState('1');
   const [endMonth, setEndMonth] = useState('');
   const [freq, setFreq] = useState('monthly');
-  const [pctRevenue, setPctRevenue] = useState('');
 
-  // Volatility Configs State
-  const [volatilityConfigs, setVolatilityConfigs] = useState<VolatilityConfig[]>([]);
+  // Global Trigger Strategy State
+  const [triggerStrategy, setTriggerStrategy] = useState<string | null>(null);
+
+  // Ordered Phase Array State
+  const [phases, setPhases] = useState<any[]>([
+    {
+      phase_sequence: 1,
+      trigger_month: null,
+      trigger_threshold: '',
+      trigger_operator: '',
+      growth_rate_percent: '0.0',
+      pct_of_revenue: '',
+      volatility_configs: []
+    }
+  ]);
+
   const [errors, setErrors] = useState<string[]>([]);
 
   // --- POPULATE ON EDIT ---
@@ -35,10 +48,38 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       setStartMonth(itemToEdit.start_month.toString());
       setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
       setFreq(itemToEdit.frequency);
-      setPctRevenue(itemToEdit.pct_of_revenue ? itemToEdit.pct_of_revenue.toString() : '');
       
-      const configs = (itemToEdit as any)?.volatility_configs || [];
-      setVolatilityConfigs(configs);
+      const editItem = itemToEdit as any;
+      const triggerStrat = editItem.trigger_strategy || editItem.triggerStrategy || null;
+      setTriggerStrategy(triggerStrat);
+
+      if (editItem.phases && editItem.phases.length > 0) {
+        setPhases(editItem.phases.map((p: any) => ({
+          id: p.id,
+          phase_sequence: p.phase_sequence,
+          trigger_month: p.trigger_month !== undefined && p.trigger_month !== null ? Number(p.trigger_month) : null,
+          trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
+          trigger_operator: p.trigger_operator || '',
+          growth_rate_percent: String(p.growth_rate_percent || '0.0'),
+          cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
+          pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
+          volatility_configs: p.volatility_configs || []
+        })));
+      } else {
+        // Fallback if legacy item has no phases
+        setPhases([
+          {
+            phase_sequence: 1,
+            trigger_month: null,
+            trigger_threshold: '',
+            trigger_operator: '',
+            growth_rate_percent: editItem.growth_rate_percent?.toString() ?? '0.0',
+            cost_of_revenue_percent: '',
+            pct_of_revenue: editItem.pct_of_revenue ? editItem.pct_of_revenue.toString() : '',
+            volatility_configs: editItem.volatility_configs || []
+          }
+        ]);
+      }
     } else {
       clearForm();
     }
@@ -51,85 +92,170 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     setStartMonth('1');
     setEndMonth('');
     setFreq('monthly');
-    setPctRevenue('');
-    setVolatilityConfigs([]);
+    setTriggerStrategy(null);
+    setPhases([
+      {
+        phase_sequence: 1,
+        trigger_month: null,
+        trigger_threshold: '',
+        trigger_operator: '',
+        growth_rate_percent: '0.0',
+        cost_of_revenue_percent: '',
+        pct_of_revenue: '',
+        volatility_configs: []
+      }
+    ]);
     setErrors([]);
+  };
+
+  const handlePhaseFieldChange = (index: number, field: string, value: any) => {
+    setPhases(prev => prev.map((p, i) => {
+      if (i === index) {
+        return { ...p, [field]: value === '' ? null : value };
+      }
+      return p;
+    }));
+  };
+
+  const handlePhaseConfigsChange = (index: number, updatedConfigs: VolatilityConfig[]) => {
+    setPhases(prev => prev.map((p, idx) => {
+      if (idx === index) {
+        return { ...p, volatility_configs: updatedConfigs };
+      }
+      return p;
+    }));
+  };
+
+  const handleAddPhase = () => {
+    if (phases.length >= 4) return;
+    setPhases(prev => [
+      ...prev,
+      {
+        phase_sequence: prev.length + 1,
+        trigger_month: null,
+        trigger_threshold: '',
+        trigger_operator: '',
+        growth_rate_percent: '0.0',
+        pct_of_revenue: '',
+        volatility_configs: []
+      }
+    ]);
+  };
+
+  const handleRemovePhase = (index: number) => {
+    setPhases(prev => {
+      const filtered = prev.filter((_, idx) => idx !== index);
+      return filtered.map((p, idx) => ({
+        ...p,
+        phase_sequence: idx + 1
+      }));
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors([]);
 
-    const newErrors = [];
+    const newErrors: string[] = [];
     if (!name.trim()) newErrors.push("Name is required");
     if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
     if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
 
-    // Strict validation guardrail: cannot submit with empty volatility configs
-    if (!volatilityConfigs || volatilityConfigs.length === 0) {
-        newErrors.push("Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.");
-    }
-
-    if (volatilityConfigs.some(c => !c.volatility_type)) {
-        newErrors.push("Please select a distribution type for all enabled volatility models.");
-    }
+    // Validate each phase
+    phases.forEach((phase, idx) => {
+      const phaseNum = idx + 1;
+      if (!phase.volatility_configs || phase.volatility_configs.length === 0) {
+        newErrors.push(`Validation Error (Phase ${phaseNum}): The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.`);
+      }
+      if (phase.volatility_configs.some((c: any) => !c.volatility_type)) {
+        newErrors.push(`Please select a distribution type for all enabled volatility models in Phase ${phaseNum}.`);
+      }
+      if (idx > 0) {
+        if (!triggerStrategy) {
+          newErrors.push(`Please select a Global Trigger Strategy for multi-phase configuration.`);
+        } else if (triggerStrategy === 'time_based' && (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '')) {
+          newErrors.push(`Phase ${phaseNum} requires a trigger month.`);
+        } else if (triggerStrategy === 'value_based') {
+          if (!phase.trigger_operator) {
+            newErrors.push(`Phase ${phaseNum} requires a trigger operator.`);
+          }
+          if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
+            newErrors.push(`Phase ${phaseNum} requires a valid trigger threshold.`);
+          }
+        }
+      }
+    });
 
     if (newErrors.length > 0) {
-        setErrors(newErrors);
-        return;
+      setErrors(newErrors);
+      return;
     }
 
     try {
-        const compGrowth = volatilityConfigs.find(c => c.mode_name === 'compounding_growth');
-        let rootGrowth = '0.0';
+      const processedPhases = phases.map((phase, idx) => {
+        // Find compounding growth block inside each phase's volatility configs
+        const compGrowth = phase.volatility_configs.find((c: any) => c.mode_name === 'compounding_growth');
+        let localGrowth = '0.0';
         if (compGrowth) {
-            if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
-                rootGrowth = ((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2).toString();
-            } else if (compGrowth.target_mean) {
-                rootGrowth = String(compGrowth.target_mean);
-            }
+          if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
+            localGrowth = ((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2).toString();
+          } else if (compGrowth.target_mean) {
+            localGrowth = String(compGrowth.target_mean);
+          }
         }
 
-        const cleanConfigs = volatilityConfigs.map(c => {
-            const cleaned: any = { ...c };
-            Object.keys(cleaned).forEach(key => {
-                if (cleaned[key] === '') {
-                    cleaned[key] = null;
-                }
-            });
-            return cleaned;
+        // Safely scrub empty text strings to null
+        const cleanConfigs = phase.volatility_configs.map((c: any) => {
+          const cleaned: any = { ...c };
+          Object.keys(cleaned).forEach(key => {
+            if (cleaned[key] === '') {
+              cleaned[key] = null;
+            }
+          });
+          return cleaned;
         });
 
-        const payload = {
-            plan_id: planId,
-            expense_name: name,
-            category,
-            initial_amount: String(amount),
-            growth_rate_percent: rootGrowth,
-            start_month: Number(startMonth),
-            end_month: endMonth ? Number(endMonth) : undefined,
-            frequency: freq,
-            pct_of_revenue: pctRevenue ? String(pctRevenue) : undefined,
-            volatility_configs: cleanConfigs
+        return {
+          id: phase.id, // Retain ID for safe backend updates
+          phase_sequence: idx + 1,
+          trigger_month: idx > 0 && triggerStrategy === 'time_based' ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
+          trigger_threshold: idx > 0 && triggerStrategy === 'value_based' ? (phase.trigger_threshold !== null && phase.trigger_threshold !== '' ? String(phase.trigger_threshold) : null) : null,
+          trigger_operator: idx > 0 && triggerStrategy === 'value_based' ? (phase.trigger_operator || null) : null,
+          growth_rate_percent: localGrowth,
+          pct_of_revenue: phase.pct_of_revenue ? String(phase.pct_of_revenue) : null,
+          volatility_configs: cleanConfigs
         };
+      });
 
-        if (itemToEdit) {
-            await api.updateExpenseItem(itemToEdit.id, payload as any);
-        } else {
-            await api.createExpenseItem(payload as any);
-        }
+      const payload = {
+        plan_id: planId,
+        expense_name: name,
+        category: category,
+        initial_amount: String(amount),
+        start_month: Number(startMonth),
+        end_month: endMonth ? Number(endMonth) : undefined,
+        frequency: freq.toLowerCase(),
+        trigger_strategy: phases.length > 1 ? triggerStrategy : null,
+        phases: processedPhases
+      };
 
-        clearForm();
-        onSuccess();
+      if (itemToEdit) {
+        await api.updateExpenseItem(itemToEdit.id, payload as any);
+      } else {
+        await api.createExpenseItem(payload as any);
+      }
+
+      clearForm();
+      onSuccess();
     } catch (err: any) {
-        console.error(err);
-        const status = err.response?.status;
-        const errMsg = err.response?.data?.message || err.message || '';
-        if (status === 400) {
-            setErrors([errMsg || "Validation Error: Please check your inputs. Ensure all required distribution fields are valid."]);
-        } else {
-            setErrors([errMsg || "Failed to save item. Please check your inputs."]);
-        }
+      console.error(err);
+      const status = err.response?.status;
+      const errMsg = err.response?.data?.message || err.message || '';
+      if (status === 400) {
+        setErrors([errMsg || "Validation Error: Please check your inputs. Ensure all required distribution fields are valid."]);
+      } else {
+        setErrors([errMsg || "Failed to save item. Please check your inputs."]);
+      }
     }
   };
 
@@ -163,20 +289,13 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1">
             Initial Amount ({currencySymbol}) *
             <Tooltip content="Initial amount of expense in Starting Month" />
           </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
-        </div>
-        <div>
-            <label className="text-xs text-gray-500 flex items-center gap-1">
-              % of Revenue
-              <Tooltip content="Percentage of revenue tied to expense." />
-            </label>
-            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={pctRevenue} onChange={e => setPctRevenue(e.target.value)} />
         </div>
       </div>
 
@@ -200,8 +319,134 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         </div>
       </div>
 
-      {/* UNIFIED GROWTH & VOLATILITY SECTION */}
-      <VolatilityInputs configs={volatilityConfigs} onChange={setVolatilityConfigs} />
+      {/* PROGRESSIVE MULTI-PHASE UI VIEW */}
+      <div className="space-y-6 my-4">
+        {phases.map((phase, index) => {
+          const isFirst = index === 0;
+          return (
+            <div key={index} className="space-y-6">
+              <div className="border border-gray-200 rounded p-4 bg-white shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h4 className="font-bold text-sm text-gray-800">Phase {index + 1} {isFirst ? '(Baseline)' : ''}</h4>
+                  {!isFirst && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhase(index)}
+                      className="text-xs text-red-600 hover:text-red-800 font-semibold"
+                    >
+                      Remove Phase
+                    </button>
+                  )}
+                </div>
+
+                {/* Conditional Trigger Settings for Phase 2, 3, 4 */}
+                {!isFirst && (
+                  <div className="bg-gray-50 p-3 rounded border border-dashed space-y-3">
+                    <p className="text-xs font-semibold text-gray-600">Trigger Conditions</p>
+                    {triggerStrategy === 'time_based' && (
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Trigger Month *</label>
+                        <input
+                          type="number"
+                          className="w-full border p-2 rounded text-sm bg-white"
+                          placeholder="e.g. 12"
+                          value={phases[index]?.trigger_month || ''}
+                          onChange={e => handlePhaseFieldChange(index, 'trigger_month', e.target.value ? Number(e.target.value) : null)}
+                        />
+                      </div>
+                    )}
+                    {triggerStrategy === 'value_based' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Operator *</label>
+                          <select
+                            className="w-full border p-2 rounded text-sm bg-white"
+                            value={phases[index]?.trigger_operator || ''}
+                            onChange={e => handlePhaseFieldChange(index, 'trigger_operator', e.target.value)}
+                          >
+                            <option value="">-- Select Operator --</option>
+                            <option value="greater_than">Greater Than (&gt;)</option>
+                            <option value="less_than">Less Than (&lt;)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Threshold Value *</label>
+                          <input
+                            type="text"
+                            className="w-full border p-2 rounded text-sm bg-white"
+                            placeholder="e.g. 100000"
+                            value={phases[index]?.trigger_threshold || ''}
+                            onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!triggerStrategy && (
+                      <p className="text-xs text-amber-600 italic">Please select a Global Trigger Strategy above to configure this phase's activation trigger.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Growth Parameters */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                      % of Revenue
+                      <Tooltip content="Percentage of revenue tied to expense in this phase." />
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full border p-2 rounded text-sm"
+                      placeholder="Optional"
+                      value={phase.pct_of_revenue ?? ''}
+                      onChange={e => handlePhaseFieldChange(index, 'pct_of_revenue', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Dedicated Phase Volatility Inputs */}
+                <VolatilityInputs
+                  configs={phase.volatility_configs}
+                  onChange={(updated) => handlePhaseConfigsChange(index, updated)}
+                />
+              </div>
+
+              {/* GLOBAL TRIGGER STRATEGY SELECTION placed explicitly between Phase 1 and Phase 2 */}
+              {isFirst && phases.length > 1 && (
+                <div className="bg-blue-50 p-3 rounded border border-blue-200 my-4">
+                  <label className="block text-xs font-bold text-blue-800 mb-1">Global Trigger Strategy *</label>
+                  <select
+                    className="w-full border p-2 rounded text-sm bg-white"
+                    value={triggerStrategy || ''}
+                    onChange={e => setTriggerStrategy(e.target.value || null)}
+                  >
+                    <option value="">-- Select Trigger Strategy --</option>
+                    <option value="time_based">Time-based (Trigger Month)</option>
+                    <option value="value_based">Value-based (Expense Threshold)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Action Button Layout */}
+      <div className="my-4">
+        {phases.length < 4 ? (
+          <button
+            type="button"
+            onClick={handleAddPhase}
+            className="w-full py-2 px-4 border border-dashed border-blue-400 text-blue-600 hover:bg-blue-50 rounded text-sm font-semibold transition-colors"
+          >
+            + Do you want to add another phase?
+          </button>
+        ) : (
+          <div className="w-full py-2 px-4 bg-gray-100 border border-gray-300 text-gray-500 rounded text-sm text-center font-semibold">
+            You have reached the maximum of four phases
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-4">
         {itemToEdit && (

@@ -329,9 +329,9 @@ export default function VolatilityInputs({ configs, onChange }: VolatilityInputs
         };
         if (type === 'nrig') {
           base.vol_input_mode = base.vol_input_mode || 'simple';
-          base.vol_fatness_level = base.vol_fatness_level || 'medium';
-          base.vol_skew_level = base.vol_skew_level || 'symmetric';
-          base.vol_width_level = base.vol_width_level || 'medium';
+          base.vol_fatness_level = base.vol_fatness_level || '';
+          base.vol_skew_level = base.vol_skew_level || '';
+          base.vol_width_level = base.vol_width_level || '';
         } else if (type === 'student_t') {
           base.vol_scale = base.vol_scale || '0.05';
           base.vol_freedom = base.vol_freedom || '5.0';

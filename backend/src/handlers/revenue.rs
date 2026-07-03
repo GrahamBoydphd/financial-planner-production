@@ -55,6 +55,16 @@ impl ToOptionDecimal for Option<Decimal> {
     fn to_option_decimal(&self) -> Option<Decimal> { *self }
 }
 
+trait UnwrapOrTimeBased {
+    fn unwrap_or_time_based(self) -> String;
+}
+impl UnwrapOrTimeBased for String {
+    fn unwrap_or_time_based(self) -> String { self }
+}
+impl UnwrapOrTimeBased for Option<String> {
+    fn unwrap_or_time_based(self) -> String { self.unwrap_or_else(|| "time_based".to_string()) }
+}
+
 #[derive(Deserialize)]
 pub struct VolatilityConfigInput {
     pub mode_name: String,
@@ -76,7 +86,9 @@ pub struct VolatilityConfigInput {
 #[derive(Deserialize)]
 pub struct RevenuePhaseInput {
     pub phase_sequence: i32,
-    pub trigger_month: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub growth_rate_percent: String,
     pub cost_of_revenue_percent: Option<String>,
     pub volatility_configs: Vec<VolatilityConfigInput>,
@@ -91,6 +103,7 @@ pub struct CreateRevenueRequest {
     pub end_month: Option<i32>,
     pub initial_amount: String,
     pub frequency: String,
+    pub trigger_strategy: Option<String>,
     pub phases: Vec<RevenuePhaseInput>,
 }
 
@@ -102,6 +115,7 @@ pub struct UpdateRevenueRequest {
     pub end_month: Option<i32>,
     pub initial_amount: String,
     pub frequency: String,
+    pub trigger_strategy: Option<String>,
     pub phases: Vec<RevenuePhaseInput>,
 }
 
@@ -133,7 +147,9 @@ pub struct RevenuePhaseResponse {
     pub id: Uuid,
     pub revenue_item_id: Uuid,
     pub phase_sequence: i32,
-    pub trigger_month: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub growth_rate_percent: Decimal,
     pub cost_of_revenue_percent: Option<Decimal>,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -150,6 +166,7 @@ pub struct RevenueItemTreeResponse {
     pub end_month: Option<i32>,
     pub initial_amount: Decimal,
     pub frequency: String,
+    pub trigger_strategy: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub phases: Vec<RevenuePhaseResponse>,
 }
@@ -304,20 +321,22 @@ pub async fn create_revenue_item(
 
     let mut tx = pool.begin().await.map_err(|e| AppError::ValidationError(format!("Failed to start transaction: {}", e)))?;
 
+    let trigger_strategy = payload.trigger_strategy.as_deref().unwrap_or("time_based");
+
     let item = sqlx::query!(
         r#"
         INSERT INTO revenue_items (
-            plan_id, revenue_name, source, start_month, end_month, initial_amount, frequency
+            plan_id, revenue_name, source, start_month, end_month, initial_amount, frequency, trigger_strategy
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING 
             id, plan_id, revenue_name, source, 
             start_month, end_month, 
-            initial_amount, frequency, 
+            initial_amount, frequency, trigger_strategy,
             created_at
         "#,
         payload.plan_id, payload.revenue_name, payload.source, payload.start_month, payload.end_month, 
-        initial_amount, payload.frequency
+        initial_amount, payload.frequency, trigger_strategy
     )
     .fetch_one(&mut *tx)
     .await
@@ -340,11 +359,11 @@ pub async fn create_revenue_item(
         let phase = sqlx::query!(
             r#"
             INSERT INTO revenue_item_phases (
-                revenue_item_id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent
-            ) VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, revenue_item_id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent, created_at
+                revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of_revenue_percent
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of_revenue_percent, created_at
             "#,
-            item.id, phase_input.phase_sequence, phase_input.trigger_month, growth_rate_percent_str, cost_of_revenue_percent_str
+            item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_operator, growth_rate_percent_str, cost_of_revenue_percent_str
         )
         .fetch_one(&mut *tx)
         .await
@@ -464,7 +483,9 @@ pub async fn create_revenue_item(
             id: phase.id,
             revenue_item_id: phase.revenue_item_id,
             phase_sequence: phase.phase_sequence.unwrap_or_zero(),
-            trigger_month: phase.trigger_month.unwrap_or_zero(),
+            trigger_month: phase.trigger_month,
+            trigger_threshold: phase.trigger_threshold,
+            trigger_operator: phase.trigger_operator,
             growth_rate_percent: phase.growth_rate_percent.to_decimal(),
             cost_of_revenue_percent: phase.cost_of_revenue_percent.to_option_decimal(),
             created_at: phase.created_at,
@@ -483,6 +504,7 @@ pub async fn create_revenue_item(
         end_month: item.end_month,
         initial_amount: item.initial_amount.to_decimal(),
         frequency: item.frequency,
+        trigger_strategy: item.trigger_strategy.unwrap_or_time_based(),
         created_at: item.created_at,
         phases: phases_resp,
     }))
@@ -498,7 +520,7 @@ pub async fn get_revenue_items(
         SELECT 
             id, plan_id, revenue_name, source, 
             start_month, end_month, 
-            initial_amount, frequency, 
+            initial_amount, frequency, trigger_strategy,
             created_at
         FROM revenue_items 
         WHERE plan_id = $1 
@@ -519,7 +541,7 @@ pub async fn get_revenue_items(
         let phases = sqlx::query!(
             r#"
             SELECT 
-                id, revenue_item_id, phase_sequence, trigger_month, 
+                id, revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,
                 growth_rate_percent, cost_of_revenue_percent, created_at
             FROM revenue_item_phases
             WHERE revenue_item_id = ANY($1)
@@ -577,7 +599,9 @@ pub async fn get_revenue_items(
                     id: phase.id,
                     revenue_item_id: phase.revenue_item_id,
                     phase_sequence: phase.phase_sequence.unwrap_or_zero(),
-                    trigger_month: phase.trigger_month.unwrap_or_zero(),
+                    trigger_month: phase.trigger_month,
+                    trigger_threshold: phase.trigger_threshold.clone(),
+                    trigger_operator: phase.trigger_operator.clone(),
                     growth_rate_percent: phase.growth_rate_percent.to_decimal(),
                     cost_of_revenue_percent: phase.cost_of_revenue_percent.to_option_decimal(),
                     created_at: phase.created_at,
@@ -594,6 +618,7 @@ pub async fn get_revenue_items(
                 end_month: item.end_month,
                 initial_amount: item.initial_amount.to_decimal(),
                 frequency: item.frequency.clone(),
+                trigger_strategy: item.trigger_strategy.clone().unwrap_or_time_based(),
                 created_at: item.created_at,
                 phases: item_phases,
             });
@@ -639,21 +664,23 @@ pub async fn update_revenue_item(
 
     let mut tx = pool.begin().await.map_err(|e| AppError::ValidationError(format!("Failed to start transaction: {}", e)))?;
 
+    let trigger_strategy = payload.trigger_strategy.as_deref().unwrap_or("time_based");
+
     let item = sqlx::query!(
         r#"
         UPDATE revenue_items SET
             revenue_name = $1, source = $2, start_month = $3, end_month = $4,
-            initial_amount = $5, frequency = $6
-        WHERE id = $7
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $8)
+            initial_amount = $5, frequency = $6, trigger_strategy = $7
+        WHERE id = $8
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)
         RETURNING 
             id, plan_id, revenue_name, source, 
             start_month, end_month, 
-            initial_amount, frequency, 
+            initial_amount, frequency, trigger_strategy,
             created_at
         "#,
         payload.revenue_name, payload.source, payload.start_month, payload.end_month, 
-        initial_amount, payload.frequency,
+        initial_amount, payload.frequency, trigger_strategy,
         id,
         claims.tenant_id
     )
@@ -684,11 +711,11 @@ pub async fn update_revenue_item(
         let phase = sqlx::query!(
             r#"
             INSERT INTO revenue_item_phases (
-                revenue_item_id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent
-            ) VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, revenue_item_id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent, created_at
+                revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of_revenue_percent
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of_revenue_percent, created_at
             "#,
-            item.id, phase_input.phase_sequence, phase_input.trigger_month, growth_rate_percent_str, cost_of_revenue_percent_str
+            item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_operator, growth_rate_percent_str, cost_of_revenue_percent_str
         )
         .fetch_one(&mut *tx)
         .await
@@ -808,7 +835,9 @@ pub async fn update_revenue_item(
             id: phase.id,
             revenue_item_id: phase.revenue_item_id,
             phase_sequence: phase.phase_sequence.unwrap_or_zero(),
-            trigger_month: phase.trigger_month.unwrap_or_zero(),
+            trigger_month: phase.trigger_month,
+            trigger_threshold: phase.trigger_threshold,
+            trigger_operator: phase.trigger_operator,
             growth_rate_percent: phase.growth_rate_percent.to_decimal(),
             cost_of_revenue_percent: phase.cost_of_revenue_percent.to_option_decimal(),
             created_at: phase.created_at,
@@ -827,6 +856,7 @@ pub async fn update_revenue_item(
         end_month: item.end_month,
         initial_amount: item.initial_amount.to_decimal(),
         frequency: item.frequency,
+        trigger_strategy: item.trigger_strategy.unwrap_or_time_based(),
         created_at: item.created_at,
         phases: phases_resp,
     }))

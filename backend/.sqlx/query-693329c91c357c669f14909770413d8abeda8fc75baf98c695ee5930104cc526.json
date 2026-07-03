@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, phase_sequence, trigger_month, growth_rate_percent, pct_of_revenue FROM expense_item_phases WHERE expense_item_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "phase_sequence",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "trigger_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "growth_rate_percent",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "pct_of_revenue",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "693329c91c357c669f14909770413d8abeda8fc75baf98c695ee5930104cc526"
+}

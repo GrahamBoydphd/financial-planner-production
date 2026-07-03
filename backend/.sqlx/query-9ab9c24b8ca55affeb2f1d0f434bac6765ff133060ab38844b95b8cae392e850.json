@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO expense_item_phases (\n                expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "expense_item_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "phase_sequence",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "trigger_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "trigger_threshold",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "trigger_operator",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "growth_rate_percent",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "pct_of_revenue",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "9ab9c24b8ca55affeb2f1d0f434bac6765ff133060ab38844b95b8cae392e850"
+}

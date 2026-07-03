@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO expense_item_phases (\n                    id, expense_item_id, phase_sequence, trigger_month, growth_rate_percent, pct_of_revenue, created_at\n                ) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0d70dbc03d1771f24b0d26dea2c1a1d8b3d90a9e55bbe35392e83c292b161d1e"
+}

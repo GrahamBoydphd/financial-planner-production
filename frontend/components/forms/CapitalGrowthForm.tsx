@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import VolatilityInputs, { getVolatilityPayload, validateVolatilityParams, getVolatilityUIState } from '@/components/forms/shared/VolatilityInputs';
+import { getVolatilityPayload, validateVolatilityParams, getVolatilityUIState } from '@/components/forms/shared/VolatilityInputs';
 
 interface Props {
   planId: string;
@@ -155,37 +155,233 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
   };
 
   return (
-    <div className="space-y-3">
-        <VolatilityInputs
-            volType={volType}
-            setVolType={setVolType}
-            volMean={mean}
-            setVolMean={setMean}
-            volMin={volMin}
-            setVolMin={setVolMin}
-            volMax={volMax}
-            setVolMax={setVolMax}
-            volIntervals={volIntervals}
-            setVolIntervals={setVolIntervals}
-            volScale={scale}
-            setVolScale={setScale}
-            volFreedom={freedom}
-            setVolFreedom={setFreedom}
-            volAlpha={alpha}
-            setVolAlpha={setAlpha}
-            volBeta={beta}
-            setVolBeta={setBeta}
-            volMode={volMode}
-            setVolMode={setVolMode}
-            volFatness={volFatness}
-            setVolFatness={setVolFatness}
-            volSkew={volSkew}
-            setVolSkew={setVolSkew}
-            volWidth={volWidth}
-            setVolWidth={setVolWidth}
-            meanLabel='Expected Monthly Return (Mean %)'
-            alwaysShowMean={volType !== "flat"}
-        />
+    <div className="space-y-4">
+        {/* Volatility Type Selector */}
+        <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Volatility Type</label>
+            <select
+                value={volType}
+                onChange={(e) => setVolType(e.target.value)}
+                className="block w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+                <option value="none">Standard (No Volatility)</option>
+                <option value="flat">Flat Range</option>
+                <option value="normal">Normal Distribution</option>
+                <option value="student_t">Student's T Distribution</option>
+                <option value="nrig">Normal-Reciprocal Inverse Gaussian (NRIG)</option>
+            </select>
+        </div>
+
+        {/* Expected Monthly Return (Mean) - Shown for all except 'none' and 'flat' */}
+        {volType !== 'none' && volType !== 'flat' && (
+            <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Expected Monthly Return (Mean %)</label>
+                <input
+                    type="number"
+                    step="any"
+                    value={mean}
+                    onChange={(e) => setMean(e.target.value)}
+                    className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="0.0"
+                />
+            </div>
+        )}
+
+        {/* Flat Range Parameters */}
+        {volType === 'flat' && (
+            <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 rounded border border-gray-200">
+                <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Min %</label>
+                    <input
+                        type="number"
+                        step="any"
+                        value={volMin}
+                        onChange={(e) => setVolMin(e.target.value)}
+                        className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="-10"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Max %</label>
+                    <input
+                        type="number"
+                        step="any"
+                        value={volMax}
+                        onChange={(e) => setVolMax(e.target.value)}
+                        className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="10"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Intervals</label>
+                    <input
+                        type="number"
+                        value={volIntervals}
+                        onChange={(e) => setVolIntervals(e.target.value)}
+                        className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="5"
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* Normal Distribution Parameters */}
+        {volType === 'normal' && (
+            <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Standard Deviation (Scale %)</label>
+                    <input
+                        type="number"
+                        step="any"
+                        value={scale}
+                        onChange={(e) => setScale(e.target.value)}
+                        className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="2.0"
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* Student's T Parameters */}
+        {volType === 'student_t' && (
+            <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded border border-gray-200">
+                <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Scale %</label>
+                    <input
+                        type="number"
+                        step="any"
+                        value={scale}
+                        onChange={(e) => setScale(e.target.value)}
+                        className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="2.0"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Degrees of Freedom</label>
+                    <input
+                        type="number"
+                        step="any"
+                        value={freedom}
+                        onChange={(e) => setFreedom(e.target.value)}
+                        className="block w-full rounded border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                        placeholder="4.0"
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* NRIG Parameters */}
+        {volType === 'nrig' && (
+            <div className="p-3 bg-gray-50 rounded border border-gray-200 space-y-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-700">Input Mode</span>
+                    <div className="flex rounded-md shadow-sm">
+                        <button
+                            type="button"
+                            onClick={() => setVolMode('simple')}
+                            className={`px-3 py-1 text-xs font-medium rounded-l border ${
+                                volMode === 'simple'
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            Simple
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setVolMode('advanced')}
+                            className={`px-3 py-1 text-xs font-medium rounded-r border-t border-b border-r ${
+                                volMode === 'advanced'
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            Advanced
+                        </button>
+                    </div>
+                </div>
+
+                {volMode === 'simple' ? (
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Fatness</label>
+                            <select
+                                value={volFatness}
+                                onChange={(e) => setVolFatness(e.target.value)}
+                                className="block w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value="">Select...</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Skew</label>
+                            <select
+                                value={volSkew}
+                                onChange={(e) => setVolSkew(e.target.value)}
+                                className="block w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value="">Select...</option>
+                                <option value="negative">Negative</option>
+                                <option value="symmetric">Symmetric</option>
+                                <option value="positive">Positive</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Width</label>
+                            <select
+                                value={volWidth}
+                                onChange={(e) => setVolWidth(e.target.value)}
+                                className="block w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value="">Select...</option>
+                                <option value="narrow">Narrow</option>
+                                <option value="normal">Normal</option>
+                                <option value="wide">Wide</option>
+                            </select>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Alpha (α)</label>
+                            <input
+                                type="number"
+                                step="any"
+                                value={alpha}
+                                onChange={(e) => setAlpha(e.target.value)}
+                                className="block w-full rounded border border-gray-300 px-2 py-1 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                                placeholder="1.5"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Beta (β)</label>
+                            <input
+                                type="number"
+                                step="any"
+                                value={beta}
+                                onChange={(e) => setBeta(e.target.value)}
+                                className="block w-full rounded border border-gray-300 px-2 py-1 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                                placeholder="-0.2"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Scale (δ)</label>
+                            <input
+                                type="number"
+                                step="any"
+                                value={scale}
+                                onChange={(e) => setScale(e.target.value)}
+                                className="block w-full rounded border border-gray-300 px-2 py-1 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                                placeholder="1.0"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
 
         {errors.general && <div className="text-red-600 text-xs font-semibold">{errors.general}</div>}
 
@@ -197,7 +393,7 @@ export default function CapitalGrowthForm({ planId, onSuccess }: Props) {
             </div>
         </div>
 
-        <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1 rounded text-sm font-bold">Update Investment Policy</button>
+        <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-1.5 rounded text-sm font-bold hover:bg-indigo-700 transition-colors">Update Investment Policy</button>
     </div>
   );
 }

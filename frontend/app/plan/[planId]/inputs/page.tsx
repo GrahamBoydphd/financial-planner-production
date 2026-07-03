@@ -262,35 +262,38 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     <div>
                         <h3 className="font-bold text-gray-900">{item.revenue_name}</h3>
                         <p className="text-sm text-gray-600">{item.source} • {item.frequency}</p>
-                        {item.volatility_configs && item.volatility_configs.length > 0 && (
-                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
-                                Risk: {[...item.volatility_configs]
-                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
-                                  .filter((c: any) => c && c.volatility_type)
-                                  .map((c: any) => {
-                                    const type = c.volatility_type;
-                                    if (type === 'flat') return 'Simple';
-                                    if (type === 'nrig') return 'Comprehensive';
-                                    if (type === 'student_t') return 'Student T';
-                                    if (type === 'normal') return 'Normal';
-                                    return type;
-                                  })
-                                  .join(', ')}
-                            </span>
-                        )}
+                        
+                        {/* Multi-Phase Summary Block */}
+                        {item.phases?.map((phase: any) => {
+                            const triggerLabel = phase.phase_sequence === 1 
+                                ? "Phase 1 Baseline" 
+                                : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
+                                    ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
+                                    : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
+                            
+                            const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
+                                ? [...phase.volatility_configs]
+                                    .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                    .filter((c: any) => c && c.volatility_type)
+                                    .map((c: any) => {
+                                        if (c.volatility_type === 'flat') return 'Simple';
+                                        if (c.volatility_type === 'nrig') return 'Comprehensive';
+                                        if (c.volatility_type === 'student_t') return 'Student T';
+                                        if (c.volatility_type === 'normal') return 'Normal';
+                                        return c.volatility_type;
+                                    })
+                                    .join(', ') || 'None'
+                                : 'None';
+
+                            return (
+                                <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
+                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
+                                </div>
+                            );
+                        })}
                     </div>
                     <div className="text-right">
                         <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
-                        <p className="text-xs font-medium text-green-600">
-                          {item.volatility_configs && item.volatility_configs.length > 0
-                            ? '+' + [...item.volatility_configs]
-                                .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
-                                .filter((c: any) => c && c.volatility_type)
-                                .map((c: any) => c.target_mean || '0.0')
-                                .join('%, +') + '% / mo'
-                            : `+${item.growth_rate_percent || '0.0'}% / mo`
-                          }
-                        </p>
                     </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
@@ -342,35 +345,38 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     <div>
                         <h3 className="font-bold text-gray-900">{item.expense_name}</h3>
                         <p className="text-sm text-gray-600">{item.category} • {item.frequency}</p>
-                        {item.volatility_configs && item.volatility_configs.length > 0 && (
-                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 mt-2">
-                                Risk: {[...item.volatility_configs]
-                                  .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
-                                  .filter((c: any) => c && c.volatility_type)
-                                  .map((c: any) => {
-                                    const type = c.volatility_type;
-                                    if (type === 'flat') return 'Simple';
-                                    if (type === 'nrig') return 'Comprehensive';
-                                    if (type === 'student_t') return 'Student T';
-                                    if (type === 'normal') return 'Normal';
-                                    return type;
-                                  })
-                                  .join(', ')}
-                            </span>
-                        )}
+                        
+                        {/* Multi-Phase Summary Block */}
+                        {item.phases?.map((phase: any) => {
+                            const triggerLabel = phase.phase_sequence === 1 
+                                ? "Phase 1 Baseline" 
+                                : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
+                                    ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
+                                    : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
+                            
+                            const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
+                                ? [...phase.volatility_configs]
+                                    .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
+                                    .filter((c: any) => c && c.volatility_type)
+                                    .map((c: any) => {
+                                        if (c.volatility_type === 'flat') return 'Simple';
+                                        if (c.volatility_type === 'nrig') return 'Comprehensive';
+                                        if (c.volatility_type === 'student_t') return 'Student T';
+                                        if (c.volatility_type === 'normal') return 'Normal';
+                                        return c.volatility_type;
+                                    })
+                                    .join(', ') || 'None'
+                                : 'None';
+
+                            return (
+                                <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
+                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
+                                </div>
+                            );
+                        })}
                     </div>
                     <div className="text-right">
                         <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
-                        <p className="text-xs font-medium text-red-600">
-                          {item.volatility_configs && item.volatility_configs.length > 0
-                            ? '+' + [...item.volatility_configs]
-                                .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
-                                .filter((c: any) => c && c.volatility_type)
-                                .map((c: any) => c.target_mean || '0.0')
-                                .join('%, +') + '% / mo'
-                            : `+${item.growth_rate_percent || '0.0'}% / mo`
-                          }
-                        </p>
                     </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
