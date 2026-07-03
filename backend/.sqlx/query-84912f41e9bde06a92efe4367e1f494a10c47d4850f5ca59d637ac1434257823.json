@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id as \"id!\", \n            plan_id, \n            fund_ids, \n            company_ids, \n            event_name as \"event_name!\", \n            start_month, \n            event_category, \n            impact_type, \n            impact_value, \n            duration_months, \n            likelihood_annual_pct, \n            magnitude, \n            direction, \n            duration_category, \n            is_counter_cyclic, \n            created_at as \"created_at!\"\n        FROM events \n        WHERE plan_id = $1\n        ",
+  "query": "\n        SELECT \n            id, \n            plan_id, \n            fund_ids, \n            company_ids, \n            event_name, \n            start_month, \n            event_category, \n            impact_type, \n            impact_value, \n            duration_months, \n            likelihood_annual_pct, \n            magnitude, \n            direction, \n            duration_category, \n            is_counter_cyclic, \n            created_at\n        FROM events \n        WHERE plan_id = $1\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id!",
+        "name": "id",
         "type_info": "Uuid"
       },
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "event_name!",
+        "name": "event_name",
         "type_info": "Text"
       },
       {
@@ -80,7 +80,7 @@
       },
       {
         "ordinal": 15,
-        "name": "created_at!",
+        "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
@@ -108,5 +108,5 @@
       false
     ]
   },
-  "hash": "9df9fceca6e09db4f5a559062c90f9169a215d9b54949b67f1b34d44e7d98a76"
+  "hash": "84912f41e9bde06a92efe4367e1f494a10c47d4850f5ca59d637ac1434257823"
 }

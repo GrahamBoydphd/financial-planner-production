@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent FROM revenue_item_phases WHERE revenue_item_id = $1",
+  "query": "SELECT id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, pct_of_revenue FROM expense_item_phases WHERE expense_item_id = $1",
   "describe": {
     "columns": [
       {
@@ -20,12 +20,22 @@
       },
       {
         "ordinal": 3,
-        "name": "growth_rate_percent",
+        "name": "trigger_operator",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
-        "name": "cost_of_revenue_percent",
+        "name": "trigger_threshold",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "growth_rate_percent",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "pct_of_revenue",
         "type_info": "Varchar"
       }
     ],
@@ -38,9 +48,11 @@
       false,
       false,
       true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "f936fda9965dcdc69506ed5bbec5407f641e8ca64abb4ee32b6d5bc2279295d6"
+  "hash": "359bd5d3d0a94fc2d843d61b8170a9b9371a5ec0bdf29d5149f3af075da2b954"
 }

@@ -36,13 +36,13 @@ ssh -i $SSH_KEY $SERVER_HOST << EOF
     docker tag app-frontend:latest app-frontend:pre-upgrade-snapshot || true
     
     echo "🛑 Freezing database and taking application offline..."
-    docker compose -f docker-compose.prod.yml stop backend frontend postgres
+    docker compose -f docker-compose.prod.yml stop backend frontend db
 
     echo "📸 Creating database snapshot archive..."
     sudo tar -czf ~/postgres-predeploy-snapshot.tar.gz -C /var/lib/docker/volumes/app_db_data_prod/_data .
 
     echo "💾 Unfreezing core database engine..."
-    docker compose -f docker-compose.prod.yml start postgres
+    docker compose -f docker-compose.prod.yml start db
     # To here new code to make a backup of the database that we can roll back to
 
     echo "⬇️  Pulling changes from GitHub..."

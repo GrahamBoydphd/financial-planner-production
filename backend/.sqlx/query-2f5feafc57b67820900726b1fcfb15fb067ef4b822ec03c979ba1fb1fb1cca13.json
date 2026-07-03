@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency FROM expense_items WHERE plan_id = $1",
+  "query": "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency, trigger_strategy FROM expense_items WHERE plan_id = $1",
   "describe": {
     "columns": [
       {
@@ -37,6 +37,11 @@
         "ordinal": 6,
         "name": "frequency",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "trigger_strategy",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
@@ -51,8 +56,9 @@
       false,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "46068ee91da6b0249a2cb45cbaac97078120a5c65fd450dd5d49ba36ffc77a16"
+  "hash": "2f5feafc57b67820900726b1fcfb15fb067ef4b822ec03c979ba1fb1fb1cca13"
 }
