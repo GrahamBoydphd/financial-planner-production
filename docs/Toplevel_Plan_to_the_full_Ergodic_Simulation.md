@@ -235,6 +235,8 @@ Improve the clean version with better guidance to the user.
 - [ ] Add this functionality to capital growth (treasury) by checking with the backend first then the frontend removing the patch. 
 - [ ] Add to staffing the option for a salary bump in a given month. And able to add multiple of these. And add the possibility of an end month. and add the possibility of a promotion, i.e., a change of title and salary increase in a given month Mx or when a given revenue / cost item exceeds a given milestone. 
 - [x] Switch on currency editing. 
+- [ ] Check if a running shock blocks the same shock being repeated while it's running.
+- [ ] Add multiple "cost of revenue" cells, and each one to have a name as well. 
 
 ### ✅ Confirmation of Aggregation
 

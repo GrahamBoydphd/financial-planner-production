@@ -50,16 +50,19 @@ Go to:   http://localhost:3000/
 |      |          | `git branch --sort=committerdate`                                                                                                                                                                          | to see a list of branches, with the most recently changed one at the bottom                                                       |     |
 
 
+# See the end for making a rollback version prior to deployment. 
+
 
 ## 2. Debugging (If Deployment Fails)
 **Goal:** Check why the site is down.
 
-| Command                                                       | Location | Purpose                                           |
-| :------------------------------------------------------------ | :------- | :------------------------------------------------ |
-| `ssh -i ~/.ssh/jules_bp_key root@51.15.117.59`                | Laptop   | Log into the server securely.                     |
-| `cd ~/app`                                                    | Server   | Go to project folder.                             |
-| `docker compose -f docker-compose.prod.yml logs -f --tail=50` | Server   | View live logs for all services (Backend/Caddy).  |
-| `docker stats`                                                | Server   | Check if RAM is full (Rust compilation is heavy). |
+| Command                                                                             | Location | Purpose                                           |
+| :---------------------------------------------------------------------------------- | :------- | :------------------------------------------------ |
+| `ssh -i ~/.ssh/jules_bp_key root@51.15.117.59`                                      | Laptop   | Log into the server securely.                     |
+| `cd ~/app`                                                                          | Server   | Go to project folder.                             |
+| `docker compose -f docker-compose.prod.yml logs -f --tail=50`                       | Server   | View live logs for all services (Backend/Caddy).  |
+| `docker stats`                                                                      | Server   | Check if RAM is full (Rust compilation is heavy). |
+| rsync -avzP -e "ssh -i ~/.ssh/jules_bp_key" root@51.15.117.59:~/<file> ~/Downloads/ | Laptop   | To copy a file from the server to my laptop.      |
 
 # Deployment workflow V2
 ### 🛠️ The Deployment Command Registry
@@ -809,4 +812,136 @@ It essentially acts as a free, highly detailed **Code Audit Report** printed rig
 | **Terminal (CLI)** | Backend Executor    | **Gemini 3.1 Pro**      | Absolute maximum reasoning for Rust lifetimes & Monte Carlo math. |
 
 
+# Making a rollback version
+## 📋 The Bulletproof Deployment Blueprint
+
+### 1. Freeze: Activate a Maintenance Page
+
+Before touching anything, completely cut off incoming data from the outside world.
+
+- Temporarily adjust your reverse proxy (Caddy or Nginx) to route all public traffic to a static `maintenance.html` page.
+  NOT needed if you're happy for users trying to access the site just getting an error message
+    
+- Run `docker compose stop backend frontend` to stop your application layers while keeping your `postgres` container running. This shuts down the frontend and backend. Users can no longer access the site, and all writing to the database is instantly blocked.
+    
+- **Why:** This ensures no user can execute a transaction or write new rows mid-migration. Your snapshot becomes an exact, stationary point-in-time reference.
+    
+
+### 2. Snapshot: Capture the Database State
+
+You have two great ways to instantly snapshot your database before running migrations:
+
+- **Option A: The Cloud-Native Snapshot (Scaleway Block Storage)** If your Scaleway instance utilizes Block Storage volumes for your Docker data, go into the Scaleway Console, find your database volume, and click **Create Snapshot**. This creates an immediate, block-level image of your data.
+    
+- **Option B: The Local Volume Archive (Fast & Local)** Stop the Postgres container for 10 seconds (`docker compose stop postgres`) and create a compressed archive of the actual underlying Docker data volume on your host machine:
+    
+    Bash
+    
+    ```
+    sudo tar -czf postgres-predeploy-snapshot.tar.gz -C /var/lib/docker/volumes/<your_db_volume>/_data .
+    ```
+    My correct version. 
+    ```
+    sudo tar -czf ~/postgres-predeploy-snapshot.tar.gz -C /var/lib/docker/volumes/app_db_data_prod/_data .
+    ```
+    
+    Once zipped, turn Postgres back on.
+    
+
+### 3. Tag: Explicitly Pin Your Images
+
+Ensure your `docker-compose.yml` file is not using generic tags like `:latest`. Your current, perfectly working production images should be explicitly tagged in your container history (e.g., `backend:v3.0-stable`, `frontend:v3.0-stable`).
+
+## 🛑 The 60-Second Rollback Playbook (If the Deploy Fails)
+
+If you deploy your new code, execute your major database adjustments, and something breaks, you don't troubleshoot on the fly. You instantly pull the red lever and run your pre-rehearsed rollback playbook:
+
+Bash
+
+```
+# 1. Tear down the failed deployment and wipe the corrupted database volume structures
+docker compose down -v
+
+# 2. Revert the database data back to your snapshot
+# (If using the Local Tar file approach):
+sudo rm -rf /var/lib/docker/volumes/<your_db_volume>/_data/*
+sudo tar -xzf postgres-predeploy-snapshot.tar.gz -C /var/lib/docker/volumes/<your_db_volume>/_data
+
+# (If using the Scaleway Snapshot approach):
+# You would quickly mount a new volume built from your snapshot via the console.
+
+# 3. Swap your docker-compose.yml file back to your previous stable image tags
+
+# 4. Fire the old ecosystem back up
+docker compose up -d
+
+# 5. Point Caddy/Nginx back to the app and turn off the maintenance page
+```
+
+## 📂 Execute in `~/app`, Save Backups to `~`
+
+### 1. Run Docker Commands inside `~/app`
+
+Your `docker-compose.yml`, `.env` file, and application configurations live inside `~/app`. Docker Compose always looks for the `docker-compose.yml` file in your **current working directory** unless you explicitly point it elsewhere.
+
+If you try to run `docker compose down` or `docker compose up` from your top-level home directory (`~`), Docker will throw an error saying it can't find your configuration.
+
+### 2. Stream Backup Files _Out_ to `~`
+
+While you should _run_ the commands from `~/app`, you should save your compressed database `.tar.gz` file up in your top-level home directory (`~`).
+
+**Why:** Your `~/app` folder is a Git repository. If you dump a massive multi-gigabyte database backup file directly into `~/app`, Git will immediately notice it, it will slow down your `git status` commands, and you risk accidentally staging and committing production data into your source control history.
+
+## 🧭 The Exact Terminal Walkthrough
+
+To make this completely fool-proof, here is the exact sequence of commands with the directory shifts built right in:
+
+Bash
+
+```
+# 1. Step into your application root
+cd ~/app
+
+# 2. Stop the application containers 
+docker compose stop backend frontend
+
+# 3. Stop Postgres temporarily to freeze the storage engine
+docker compose stop postgres
+
+# 4. Create the backup BUT save it to the home directory (Note the ~/ prefix on the filename)
+sudo tar -czf ~/postgres-predeploy-snapshot.tar.gz -C /var/lib/docker/volumes/app_postgres_data/_data .
+
+# 5. Bring Postgres back up so you can run your deployment/migrations
+docker compose start postgres
+
+# 6. Proceed with your deployment...
+```
+
+### 💡 Summary Checklist
+
+- **Your current working directory:** Always stay inside `~/app`.
+    
+- **The backup destination:** Path it explicitly to `~/postgres-predeploy-snapshot.tar.gz` to keep your Git tree pristine, light, and secure.
+
+
+
+# Reboot
+To cleanly stop your applications and reboot your remote Ubuntu system safely over SSH, use the following step-by-step workflow.
+
+1. Notify Active Users (Optional) 
+- **Command:** `sudo wall "System is rebooting for maintenance in 5 minutes. Please save your work."`
+1. Stop Managed Applications Cleanly
+- **Web Servers:** `sudo systemctl stop nginx` or `sudo systemctl stop apache2`
+- **Databases:** `sudo systemctl stop mysql` or `sudo systemctl stop postgresql`
+- **Container Services:** `sudo systemctl stop docker`
+1. Check for Leftover Active Processes
+- **View active processes:** `htop` (or `top`)
+- **View active user sessions:** `who`
+1. Commit Cached Data to Disk Force the operating system to write all data currently stored in temporary memory (RAM) cache directly to the hard drive. This minimizes the risk of filesystem corruption. 
+- **Command:** `sync`
+1. Issue the Clean Reboot Command. The standard reboot command triggers Ubuntu's systemd init system. It automatically sends termination signals (`SIGTERM`) to all remaining processes, waits for them to close, unmounts the filesystems, and restarts the machine.
+- **Immediate reboot:** `sudo reboot`
+- **Alternative scheduled reboot (gives 1 minute warning):** `sudo shutdown -r +1` 
+
+Your SSH session will disconnect immediately after running this. Wait 1 to 3 minutes for the hardware to reload and the network services to start back up before trying to log in again.
 

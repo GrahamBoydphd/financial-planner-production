@@ -29,6 +29,22 @@ ssh -i $SSH_KEY $SERVER_HOST << EOF
     echo "📂 Navigating to $SERVER_DIR..."
     cd $SERVER_DIR
 
+    # From here new code to make a backup of the database that we can roll back to
+    echo "📸 Tagging current running code for immediate rollback..."
+    # 🎯 THESE TWO LINES AUTOMATE THE CODE SNAPSHOT
+    docker tag app-backend:latest app-backend:pre-upgrade-snapshot || true
+    docker tag app-frontend:latest app-frontend:pre-upgrade-snapshot || true
+    
+    echo "🛑 Freezing database and taking application offline..."
+    docker compose -f docker-compose.prod.yml stop backend frontend postgres
+
+    echo "📸 Creating database snapshot archive..."
+    sudo tar -czf ~/postgres-predeploy-snapshot.tar.gz -C /var/lib/docker/volumes/app_db_data_prod/_data .
+
+    echo "💾 Unfreezing core database engine..."
+    docker compose -f docker-compose.prod.yml start postgres
+    # To here new code to make a backup of the database that we can roll back to
+
     echo "⬇️  Pulling changes from GitHub..."
     # You mentioned using this branch name earlier
     git pull origin $GIT_BRANCH

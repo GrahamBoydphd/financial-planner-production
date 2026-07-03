@@ -61,7 +61,7 @@ async fn copy_plan_internal(
 
     // Copy Revenue (Items, Phases, Policies)
     let revenues = sqlx::query!(
-        "SELECT id, revenue_name, source, start_month, end_month, initial_amount, frequency FROM revenue_items WHERE plan_id = $1", 
+        "SELECT id, revenue_name, source, start_month, end_month, initial_amount, frequency, trigger_strategy FROM revenue_items WHERE plan_id = $1", 
         source_plan_id
     ).fetch_all(&mut **txn).await?;
     
@@ -70,14 +70,14 @@ async fn copy_plan_internal(
         sqlx::query!(
             r#"INSERT INTO revenue_items (
                 id, plan_id, revenue_name, source, start_month, end_month, 
-                initial_amount, frequency, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+                initial_amount, frequency, trigger_strategy, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
             new_rev_id, new_plan_id, item.revenue_name, item.source, item.start_month, item.end_month,
-            item.initial_amount, item.frequency, Utc::now()
+            item.initial_amount, item.frequency, item.trigger_strategy, Utc::now()
         ).execute(&mut **txn).await?;
 
         let phases = sqlx::query!(
-            "SELECT id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent FROM revenue_item_phases WHERE revenue_item_id = $1",
+            "SELECT id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, cost_of_revenue_percent FROM revenue_item_phases WHERE revenue_item_id = $1",
             item.id
         ).fetch_all(&mut **txn).await?;
 
@@ -85,9 +85,9 @@ async fn copy_plan_internal(
             let new_phase_id = Uuid::new_v4();
             sqlx::query!(
                 r#"INSERT INTO revenue_item_phases (
-                    id, revenue_item_id, phase_sequence, trigger_month, growth_rate_percent, cost_of_revenue_percent, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-                new_phase_id, new_rev_id, phase.phase_sequence, phase.trigger_month, phase.growth_rate_percent, phase.cost_of_revenue_percent, Utc::now()
+                    id, revenue_item_id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, cost_of_revenue_percent, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+                new_phase_id, new_rev_id, phase.phase_sequence, phase.trigger_month, phase.trigger_operator, phase.trigger_threshold, phase.growth_rate_percent, phase.cost_of_revenue_percent, Utc::now()
             ).execute(&mut **txn).await?;
 
             let policies = sqlx::query!(
@@ -112,7 +112,7 @@ async fn copy_plan_internal(
 
     // Copy Expenses (Items, Phases, Policies)
     let expenses = sqlx::query!(
-        "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency FROM expense_items WHERE plan_id = $1", 
+        "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency, trigger_strategy FROM expense_items WHERE plan_id = $1", 
         source_plan_id
     ).fetch_all(&mut **txn).await?;
     
@@ -121,14 +121,14 @@ async fn copy_plan_internal(
         sqlx::query!(
             r#"INSERT INTO expense_items (
                 id, plan_id, expense_name, category, start_month, end_month,
-                initial_amount, frequency, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+                initial_amount, frequency, trigger_strategy, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
             new_exp_id, new_plan_id, item.expense_name, item.category, item.start_month, item.end_month,
-            item.initial_amount, item.frequency, Utc::now()
+            item.initial_amount, item.frequency, item.trigger_strategy, Utc::now()
         ).execute(&mut **txn).await?;
 
         let phases = sqlx::query!(
-            "SELECT id, phase_sequence, trigger_month, growth_rate_percent, pct_of_revenue FROM expense_item_phases WHERE expense_item_id = $1",
+            "SELECT id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, pct_of_revenue FROM expense_item_phases WHERE expense_item_id = $1",
             item.id
         ).fetch_all(&mut **txn).await?;
 
@@ -136,9 +136,9 @@ async fn copy_plan_internal(
             let new_phase_id = Uuid::new_v4();
             sqlx::query!(
                 r#"INSERT INTO expense_item_phases (
-                    id, expense_item_id, phase_sequence, trigger_month, growth_rate_percent, pct_of_revenue, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-                new_phase_id, new_exp_id, phase.phase_sequence, phase.trigger_month, phase.growth_rate_percent, phase.pct_of_revenue, Utc::now()
+                    id, expense_item_id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, pct_of_revenue, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+                new_phase_id, new_exp_id, phase.phase_sequence, phase.trigger_month, phase.trigger_operator, phase.trigger_threshold, phase.growth_rate_percent, phase.pct_of_revenue, Utc::now()
             ).execute(&mut **txn).await?;
 
             let policies = sqlx::query!(
@@ -192,11 +192,11 @@ async fn copy_plan_internal(
         Event,
         r#"
         SELECT 
-            id as "id!", 
+            id, 
             plan_id, 
             fund_ids, 
             company_ids, 
-            event_name as "event_name!", 
+            event_name, 
             start_month, 
             event_category, 
             impact_type, 
@@ -207,7 +207,7 @@ async fn copy_plan_internal(
             direction, 
             duration_category, 
             is_counter_cyclic, 
-            created_at as "created_at!"
+            created_at
         FROM events 
         WHERE plan_id = $1
         "#,
@@ -239,8 +239,8 @@ async fn copy_plan_internal(
     }
 
     // Copy Dividend Policy
-    let dividends = sqlx::query_as!(DividendPolicy, 
-        r#"SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!" 
+    let dividends = sqlx::query!(
+        r#"SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled 
            FROM dividend_policies WHERE plan_id = $1"#, 
         source_plan_id)
         .fetch_optional(&mut **txn).await?;

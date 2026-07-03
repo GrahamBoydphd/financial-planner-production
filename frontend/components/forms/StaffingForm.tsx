@@ -331,7 +331,7 @@ export default function StaffingForm({ planId, initialRoles, currency, onSave, o
               <div className="space-y-2">
                 <label htmlFor="start_month" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                   Start Month <span className="text-red-500">*</span>
-                  <Tooltip content="Month number (1-60) when hiring begins." />
+                  <Tooltip content="Month number (1-240) when hiring begins." />
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
@@ -339,7 +339,7 @@ export default function StaffingForm({ planId, initialRoles, currency, onSave, o
                     id="start_month"
                     type="number"
                     min="1"
-                    max="60"
+                    max="240"
                     className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.start_month ? 'border-red-500' : 'border-gray-300'}`}
                     value={currentRole.start_month || ""}
                     onChange={(e) => setCurrentRole({ ...currentRole, start_month: parseInt(e.target.value) })}
