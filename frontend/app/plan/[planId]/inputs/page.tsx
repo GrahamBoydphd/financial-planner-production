@@ -520,7 +520,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                   Swan Events (Risk Scenarios)
                 </h2>
                 <p className="text-sm text-gray-500">
-                  Define specific risk events (positive or negative) for {company?.company_name || 'this company'}.
+                  Define specific risk events (positive or negative) for {company?.company_name || 'this company'}. Note that events can stack, i.e., a second instance of the same event can occur while the first is still active. 
                 </p>
              </div>
              <EventList 

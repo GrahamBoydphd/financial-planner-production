@@ -52,7 +52,7 @@ pub fn evaluate_active_phase<'a>(
                 if let Some(tm) = phase.trigger_month {
                     current_month >= tm
                 } else {
-                    false
+                    true
                 }
             },
             "value_based" => {
@@ -62,6 +62,8 @@ pub fn evaluate_active_phase<'a>(
                         "less_than" => previous_value < thresh,
                         _ => false,
                     }
+                } else if phase.trigger_threshold.is_none() && phase.trigger_operator.is_none() {
+                    true
                 } else {
                     false
                 }
@@ -95,7 +97,7 @@ pub fn project_item_step(
                 if let Some(tm) = phase.trigger_month {
                     current_month >= tm
                 } else {
-                    false
+                    true
                 }
             },
             "value_based" => {
@@ -105,6 +107,8 @@ pub fn project_item_step(
                         "less_than" => previous_value < thresh,
                         _ => false,
                     }
+                } else if phase.trigger_threshold.is_none() && phase.trigger_operator.is_none() {
+                    true
                 } else {
                     false
                 }

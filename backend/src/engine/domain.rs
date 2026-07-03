@@ -278,7 +278,7 @@ impl SimState {
                             if let Some(tm) = phase.trigger_month {
                                 month >= tm
                             } else {
-                                false
+                                true
                             }
                         },
                         "value_based" => {
@@ -289,7 +289,7 @@ impl SimState {
                                     _ => false,
                                 }
                             } else {
-                                false
+                                phase.trigger_threshold.is_none() && phase.trigger_operator.is_none()
                             }
                         },
                         _ => false,
@@ -350,7 +350,7 @@ impl SimState {
                             if let Some(tm) = phase.trigger_month {
                                 month >= tm
                             } else {
-                                false
+                                true
                             }
                         },
                         "value_based" => {
@@ -361,7 +361,7 @@ impl SimState {
                                     _ => false,
                                 }
                             } else {
-                                false
+                                phase.trigger_threshold.is_none() && phase.trigger_operator.is_none()
                             }
                         },
                         _ => false,

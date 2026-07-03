@@ -84,7 +84,7 @@ export default function EventList({ fundId, companyId, fundName, companies, fund
       <div className="bg-amber-50 px-4 py-3 border-b border-amber-100 flex justify-between items-center">
         <div className="flex items-center gap-2 text-amber-900">
           <Zap size={18} className="text-amber-600" />
-          <h3 className="font-bold">{fundName ? 'Active Swan Events' : 'Active Portfolio Swan Events'}</h3>
+          <h3 className="font-bold">{fundName ? 'Active Swan Events (Events can occur simultaneously)' : 'Active Portfolio Swan Events (Events can occur simultaneously)'}</h3>
           {fundName && (
             <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">
               {fundName}

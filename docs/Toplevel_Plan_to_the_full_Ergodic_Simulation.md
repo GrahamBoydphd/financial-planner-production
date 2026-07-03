@@ -235,7 +235,7 @@ Improve the clean version with better guidance to the user.
 - [ ] Add this functionality to capital growth (treasury) by checking with the backend first then the frontend removing the patch. 
 - [ ] Add to staffing the option for a salary bump in a given month. And able to add multiple of these. And add the possibility of an end month. and add the possibility of a promotion, i.e., a change of title and salary increase in a given month Mx or when a given revenue / cost item exceeds a given milestone. 
 - [x] Switch on currency editing. 
-- [ ] Check if a running shock blocks the same shock being repeated while it's running.
+- [ ] Check if a running swan event blocks the same event being repeated while it's running. Answer: No, the simulation engine strictly implements the **Overlap Model (Stacking)** rather than a state exclusion model. Consider whether this should stay so, or we add in a boolean per event to choose. 
 - [ ] Add multiple "cost of revenue" cells, and each one to have a name as well. 
 
 ### ✅ Confirmation of Aggregation

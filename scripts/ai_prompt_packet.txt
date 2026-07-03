@@ -160,1184 +160,581 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: The compiler reports that the dividend policy boolean fields are already non-optional primitive bool types. ACTION: In lifecycle.rs inside copy_plan_internal, remove the redundant unwrap_or calls on the dividend policy fields such as is_enabled and tracking_enabled. Pass these boolean fields directly into the subsequent insert macro statement as primitives.
+CONTEXT: The hot path in domain.rs has an incorrect phase evaluation logic and suffers from the baseline phase trap. ACTION: Update the match blocks for item.trigger_strategy.as_str() inside the company.step method for both revenues and expenses in domain.rs. Modify time_based to evaluate to true if trigger_month is None. Modify value_based to evaluate to true if both trigger_threshold and trigger_operator are None.
 </task_instruction>
 
 <source_code>
---- START FILE: backend/src/handlers/lifecycle.rs ---
-use axum::{
-    extract::{Path, State},
-    Json, Extension,
-};
-use sqlx::{PgPool, Postgres, Transaction};
+--- START FILE: backend/src/engine/domain.rs ---
 use uuid::Uuid;
-use chrono::Utc;
-use crate::models::{
-    Fund, Company, FinancialPlan, 
-    CapitalInjection, DividendPolicy, CreditFacility, 
-    ValuationAssumption, Event, CapitalGrowthPolicy, StaffingRole,
-    Claims
-};
-use crate::errors::AppError;
-
-// --- Internal Helpers ---
-
-async fn copy_plan_internal(
-    txn: &mut Transaction<'_, Postgres>,
-    source_plan_id: Uuid,
-    target_company_id: Uuid,
-    tenant_id: Uuid,
-    name_suffix: Option<String>,
-) -> Result<Uuid, AppError> {
-    let source_plan = sqlx::query_as!(
-        FinancialPlan,
-        "SELECT * FROM financial_plans WHERE id = $1",
-        source_plan_id
-    )
-    .fetch_one(&mut **txn)
-    .await?;
-
-    let new_plan_id = Uuid::new_v4();
-    let suffix = name_suffix.as_deref().unwrap_or(" (Copy)");
-    let new_name = format!("{}{}", source_plan.plan_name, suffix);
-
-    sqlx::query!(
-        r#"
-        INSERT INTO financial_plans (
-            id, company_id, plan_name, start_month, currency_code, 
-            created_at, updated_at, initial_cash, pooling_fraction, tenant_id, insolvency_threshold,
-            soft_limit_active, soft_limit_threshold, soft_limit_fraction
-        )
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7, $8, $9, $10, $11, $12)
-        "#,
-        new_plan_id,
-        target_company_id,
-        new_name,
-        source_plan.start_month,
-        source_plan.currency_code,
-        source_plan.initial_cash,
-        source_plan.pooling_fraction,
-        tenant_id,
-        source_plan.insolvency_threshold,
-        source_plan.soft_limit_active,
-        source_plan.soft_limit_threshold,
-        source_plan.soft_limit_fraction
-    )
-    .execute(&mut **txn)
-    .await?;
-
-    // Copy Revenue (Items, Phases, Policies)
-    let revenues = sqlx::query!(
-        "SELECT id, revenue_name, source, start_month, end_month, initial_amount, frequency, trigger_strategy FROM revenue_items WHERE plan_id = $1", 
-        source_plan_id
-    ).fetch_all(&mut **txn).await?;
-    
-    for item in revenues {
-        let new_rev_id = Uuid::new_v4();
-        sqlx::query!(
-            r#"INSERT INTO revenue_items (
-                id, plan_id, revenue_name, source, start_month, end_month, 
-                initial_amount, frequency, trigger_strategy, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
-            new_rev_id, new_plan_id, item.revenue_name, item.source, item.start_month, item.end_month,
-            item.initial_amount, item.frequency, item.trigger_strategy, Utc::now()
-        ).execute(&mut **txn).await?;
-
-        let phases = sqlx::query!(
-            "SELECT id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, cost_of_revenue_percent FROM revenue_item_phases WHERE revenue_item_id = $1",
-            item.id
-        ).fetch_all(&mut **txn).await?;
-
-        for phase in phases {
-            let new_phase_id = Uuid::new_v4();
-            sqlx::query!(
-                r#"INSERT INTO revenue_item_phases (
-                    id, revenue_item_id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, cost_of_revenue_percent, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
-                new_phase_id, new_rev_id, phase.phase_sequence, phase.trigger_month, phase.trigger_operator, phase.trigger_threshold, phase.growth_rate_percent, phase.cost_of_revenue_percent, Utc::now()
-            ).execute(&mut **txn).await?;
-
-            let policies = sqlx::query!(
-                "SELECT mode_name, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level FROM revenue_item_volatility_policies WHERE revenue_item_phase_id = $1",
-                phase.id
-            ).fetch_all(&mut **txn).await?;
-
-            for pol in policies {
-                sqlx::query!(
-                    r#"INSERT INTO revenue_item_volatility_policies (
-                        id, revenue_item_phase_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,
-                        vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
-                        target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"#,
-                    Uuid::new_v4(), new_phase_id, pol.mode_name, pol.volatility_type, pol.vol_min, pol.vol_max, pol.vol_intervals,
-                    pol.vol_mean, pol.vol_scale, pol.vol_freedom, pol.vol_alpha, pol.vol_beta,
-                    pol.target_mean, pol.vol_mu, pol.vol_input_mode, pol.vol_fatness_level, pol.vol_skew_level, pol.vol_width_level, Utc::now()
-                ).execute(&mut **txn).await?;
-            }
-        }
-    }
-
-    // Copy Expenses (Items, Phases, Policies)
-    let expenses = sqlx::query!(
-        "SELECT id, expense_name, category, start_month, end_month, initial_amount, frequency, trigger_strategy FROM expense_items WHERE plan_id = $1", 
-        source_plan_id
-    ).fetch_all(&mut **txn).await?;
-    
-    for item in expenses {
-        let new_exp_id = Uuid::new_v4();
-        sqlx::query!(
-            r#"INSERT INTO expense_items (
-                id, plan_id, expense_name, category, start_month, end_month,
-                initial_amount, frequency, trigger_strategy, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
-            new_exp_id, new_plan_id, item.expense_name, item.category, item.start_month, item.end_month,
-            item.initial_amount, item.frequency, item.trigger_strategy, Utc::now()
-        ).execute(&mut **txn).await?;
-
-        let phases = sqlx::query!(
-            "SELECT id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, pct_of_revenue FROM expense_item_phases WHERE expense_item_id = $1",
-            item.id
-        ).fetch_all(&mut **txn).await?;
-
-        for phase in phases {
-            let new_phase_id = Uuid::new_v4();
-            sqlx::query!(
-                r#"INSERT INTO expense_item_phases (
-                    id, expense_item_id, phase_sequence, trigger_month, trigger_operator, trigger_threshold, growth_rate_percent, pct_of_revenue, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
-                new_phase_id, new_exp_id, phase.phase_sequence, phase.trigger_month, phase.trigger_operator, phase.trigger_threshold, phase.growth_rate_percent, phase.pct_of_revenue, Utc::now()
-            ).execute(&mut **txn).await?;
-
-            let policies = sqlx::query!(
-                "SELECT mode_name, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level FROM expense_item_volatility_policies WHERE expense_item_phase_id = $1",
-                phase.id
-            ).fetch_all(&mut **txn).await?;
-
-            for pol in policies {
-                sqlx::query!(
-                    r#"INSERT INTO expense_item_volatility_policies (
-                        id, expense_item_phase_id, mode_name, volatility_type, vol_min, vol_max, vol_intervals,
-                        vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta,
-                        target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"#,
-                    Uuid::new_v4(), new_phase_id, pol.mode_name, pol.volatility_type, pol.vol_min, pol.vol_max, pol.vol_intervals,
-                    pol.vol_mean, pol.vol_scale, pol.vol_freedom, pol.vol_alpha, pol.vol_beta,
-                    pol.target_mean, pol.vol_mu, pol.vol_input_mode, pol.vol_fatness_level, pol.vol_skew_level, pol.vol_width_level, Utc::now()
-                ).execute(&mut **txn).await?;
-            }
-        }
-    }
-
-    // Copy Staffing
-    let staffing = sqlx::query_as!(StaffingRole, "SELECT * FROM staffing_roles WHERE plan_id = $1", source_plan_id)
-        .fetch_all(&mut **txn).await?;
-    for item in staffing {
-        sqlx::query!(
-            r#"INSERT INTO staffing_roles (
-                id, plan_id, role_name, annual_salary, start_month, target_count,
-                hiring_plan, hiring_rate, annual_increase_percent, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
-            Uuid::new_v4(), new_plan_id, item.role_name, item.annual_salary, item.start_month, item.target_count,
-            item.hiring_plan, item.hiring_rate, item.annual_increase_percent, Utc::now()
-        ).execute(&mut **txn).await?;
-    }
-
-    // Copy Capital Injections
-    let injections = sqlx::query_as!(CapitalInjection, "SELECT * FROM capital_injections WHERE plan_id = $1", source_plan_id)
-        .fetch_all(&mut **txn).await?;
-    for item in injections {
-        sqlx::query!(
-            r#"INSERT INTO capital_injections (
-                id, plan_id, injection_name, amount, month, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6)"#,
-            Uuid::new_v4(), new_plan_id, item.injection_name, item.amount, item.month, Utc::now()
-        ).execute(&mut **txn).await?;
-    }
-
-    // Copy Events
-    let events = sqlx::query_as!(
-        Event,
-        r#"
-        SELECT 
-            id, 
-            plan_id, 
-            fund_ids, 
-            company_ids, 
-            event_name, 
-            start_month, 
-            event_category, 
-            impact_type, 
-            impact_value, 
-            duration_months, 
-            likelihood_annual_pct, 
-            magnitude, 
-            direction, 
-            duration_category, 
-            is_counter_cyclic, 
-            created_at
-        FROM events 
-        WHERE plan_id = $1
-        "#,
-        source_plan_id
-    )
-    .fetch_all(&mut **txn)
-    .await?;
-    
-    for item in events {
-        // Ensure the event is strictly linked to the target company.
-        // This prevents copied events from pointing to the old company or being null.
-        let new_company_ids = vec![target_company_id];
-
-        sqlx::query!(
-            r#"INSERT INTO events (
-                id, plan_id, fund_ids, company_ids, event_name, start_month, 
-                event_category, impact_type, impact_value, duration_months, 
-                likelihood_annual_pct, magnitude, direction, duration_category, 
-                is_counter_cyclic, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
-            Uuid::new_v4(), new_plan_id, 
-            item.fund_ids.as_deref(), 
-            &new_company_ids, 
-            item.event_name, item.start_month,
-            item.event_category, item.impact_type, item.impact_value, item.duration_months,
-            item.likelihood_annual_pct, item.magnitude, item.direction, item.duration_category, 
-            item.is_counter_cyclic, Utc::now()
-        ).execute(&mut **txn).await?;
-    }
-
-    // Copy Dividend Policy
-    let dividends = sqlx::query!(
-        r#"SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled 
-           FROM dividend_policies WHERE plan_id = $1"#, 
-        source_plan_id)
-        .fetch_optional(&mut **txn).await?;
-    if let Some(item) = dividends {
-        let is_enabled = item.is_enabled.unwrap_or(false);
-        let tracking_enabled = item.tracking_enabled.unwrap_or(false);
-
-        sqlx::query!(
-            r#"INSERT INTO dividend_policies (
-                id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-            Uuid::new_v4(), new_plan_id, is_enabled, item.safety_threshold, item.payout_ratio, Utc::now(), tracking_enabled
-        ).execute(&mut **txn).await?;
-    }
-
-    // Copy Credit Facility
-    let credit = sqlx::query_as!(CreditFacility, "SELECT * FROM credit_facilities WHERE plan_id = $1", source_plan_id)
-        .fetch_optional(&mut **txn).await?;
-    if let Some(item) = credit {
-        sqlx::query!(
-            r#"INSERT INTO credit_facilities (
-                id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6)"#,
-            Uuid::new_v4(), new_plan_id, item.facility_limit, item.interest_rate, item.is_annual_rate, Utc::now()
-        ).execute(&mut **txn).await?;
-    }
-
-    // Copy Valuation Assumption
-    let valuation = sqlx::query_as!(ValuationAssumption, "SELECT * FROM valuation_assumptions WHERE plan_id = $1", source_plan_id)
-        .fetch_optional(&mut **txn).await?;
-    if let Some(item) = valuation {
-        sqlx::query!(
-            r#"INSERT INTO valuation_assumptions (
-                id, plan_id, valuation_name, method, multiplier, date_applied, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-            Uuid::new_v4(), new_plan_id, item.valuation_name, item.method, item.multiplier, item.date_applied, Utc::now()
-        ).execute(&mut **txn).await?;
-    }
-
-    // Copy Capital Growth Policy
-    let growth = sqlx::query_as!(CapitalGrowthPolicy, "SELECT * FROM capital_growth_policies WHERE plan_id = $1", source_plan_id)
-        .fetch_optional(&mut **txn).await?;
-    if let Some(item) = growth {
-        sqlx::query!(
-            r#"INSERT INTO capital_growth_policies (
-                id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, vol_mean, vol_scale,
-                vol_freedom, vol_alpha, vol_beta, created_at, growth_rate_percent,
-                target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"#,
-            Uuid::new_v4(), new_plan_id, item.volatility_type, item.vol_min, item.vol_max, item.vol_intervals, item.vol_mean, item.vol_scale,
-            item.vol_freedom, item.vol_alpha, item.vol_beta, Utc::now(), item.growth_rate_percent,
-            item.target_mean, item.vol_mu, item.vol_input_mode, item.vol_fatness_level, item.vol_skew_level, item.vol_width_level
-        ).execute(&mut **txn).await?;
-    }
-
-    Ok(new_plan_id)
-}
-
-async fn copy_company_internal(
-    txn: &mut Transaction<'_, Postgres>,
-    source_company_id: Uuid,
-    target_fund_id: Uuid,
-    tenant_id: Uuid,
-    name_suffix: Option<String>,
-) -> Result<Uuid, AppError> {
-    let source_company = sqlx::query_as!(
-        Company,
-        "SELECT * FROM companies WHERE id = $1",
-        source_company_id
-    )
-    .fetch_one(&mut **txn)
-    .await?;
-
-    let new_company_id = Uuid::new_v4();
-    let suffix = name_suffix.as_deref().unwrap_or(" (Copy)");
-    let new_name = format!("{}{}", source_company.company_name, suffix);
-
-    sqlx::query!(
-        r#"
-        INSERT INTO companies (
-            id, fund_id, company_name, currency_code, created_at,
-            industry, business_model, technology, tenant_id
-        )
-        VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8)
-        "#,
-        new_company_id,
-        target_fund_id,
-        new_name,
-        source_company.currency_code,
-        source_company.industry,
-        source_company.business_model,
-        source_company.technology,
-        tenant_id
-    )
-    .execute(&mut **txn)
-    .await?;
-
-    let plans = sqlx::query!(
-        "SELECT id FROM financial_plans WHERE company_id = $1",
-        source_company_id
-    )
-    .fetch_all(&mut **txn)
-    .await?;
-
-    for plan_row in plans {
-        copy_plan_internal(txn, plan_row.id, new_company_id, tenant_id, name_suffix.clone()).await?;
-    }
-
-    // Copy Company-Level Events
-    // We copy events where this company is targeted (in company_ids) and plan_id is NULL.
-    // We re-link them to the new company. fund_ids MUST be NULL so they are not treated as Global/Fund events.
-    sqlx::query!(
-        r#"
-        INSERT INTO events (
-            id, plan_id, fund_ids, company_ids, event_name, start_month, 
-            event_category, impact_type, impact_value, duration_months, 
-            likelihood_annual_pct, magnitude, direction, duration_category, 
-            is_counter_cyclic, created_at
-        )
-        SELECT 
-            gen_random_uuid(), 
-            NULL, 
-            CAST(NULL AS UUID[]), 
-            ARRAY[$2]::uuid[], 
-            event_name, start_month, 
-            event_category, impact_type, impact_value, duration_months, 
-            likelihood_annual_pct, magnitude, direction, duration_category, 
-            is_counter_cyclic, NOW()
-        FROM events
-        WHERE $1 = ANY(company_ids) AND plan_id IS NULL
-        "#,
-        source_company_id,
-        new_company_id
-    )
-    .execute(&mut **txn)
-    .await?;
-
-    Ok(new_company_id)
-}
-
-// --- Handlers ---
-
-pub async fn duplicate_plan_handler(
-    State(pool): State<PgPool>,
-    Extension(claims): Extension<Claims>,
-    Path(plan_id): Path<Uuid>,
-) -> Result<Json<FinancialPlan>, AppError> {
-    let mut txn = pool.begin().await?;
-
-    let source_plan = sqlx::query!(
-        "SELECT company_id FROM financial_plans WHERE id = $1 AND tenant_id = $2",
-        plan_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&mut *txn)
-    .await?;
-
-    let source_plan = match source_plan {
-        Some(p) => p,
-        None => return Err(AppError::NotFound("Plan not found".to_string())),
-    };
-
-    let new_id = copy_plan_internal(&mut txn, plan_id, source_plan.company_id, claims.tenant_id, None).await?;
-
-    txn.commit().await?;
-
-    let new_plan = sqlx::query_as!(
-        FinancialPlan,
-        "SELECT * FROM financial_plans WHERE id = $1",
-        new_id
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(new_plan))
-}
-
-pub async fn duplicate_company_handler(
-    State(pool): State<PgPool>,
-    Extension(claims): Extension<Claims>,
-    Path(company_id): Path<Uuid>,
-) -> Result<Json<Company>, AppError> {
-    let mut txn = pool.begin().await?;
-
-    let source_company = sqlx::query!(
-        "SELECT fund_id FROM companies WHERE id = $1 AND tenant_id = $2",
-        company_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&mut *txn)
-    .await?;
-
-    let source_company = match source_company {
-        Some(c) => c,
-        None => return Err(AppError::NotFound("Company not found".to_string())),
-    };
-
-    let new_id = copy_company_internal(&mut txn, company_id, source_company.fund_id, claims.tenant_id, None).await?;
-
-    txn.commit().await?;
-
-    let new_company = sqlx::query_as!(
-        Company,
-        "SELECT * FROM companies WHERE id = $1",
-        new_id
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(new_company))
-}
-
-pub async fn duplicate_fund_handler(
-    State(pool): State<PgPool>,
-    Extension(claims): Extension<Claims>,
-    Path(fund_id): Path<Uuid>,
-) -> Result<Json<Fund>, AppError> {
-    let mut txn = pool.begin().await?;
-
-    let source_fund = sqlx::query_as!(
-        Fund,
-        "SELECT * FROM funds WHERE id = $1 AND tenant_id = $2",
-        fund_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&mut *txn)
-    .await?;
-
-    let source_fund = match source_fund {
-        Some(f) => f,
-        None => return Err(AppError::NotFound("Fund not found".to_string())),
-    };
-
-    let new_fund_id = Uuid::new_v4();
-    let new_name = format!("{} (Copy)", source_fund.fund_name);
-
-    sqlx::query!(
-        r#"
-        INSERT INTO funds (id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template)
-        VALUES ($1, $2, $3, $4, NOW(), $5, $6)
-        "#,
-        new_fund_id,
-        claims.user_id,
-        new_name,
-        source_fund.currency_code,
-        claims.tenant_id,
-        false
-    )
-    .execute(&mut *txn)
-    .await?;
-
-    let companies = sqlx::query!(
-        "SELECT id FROM companies WHERE fund_id = $1",
-        fund_id
-    )
-    .fetch_all(&mut *txn)
-    .await?;
-
-    let child_suffix = format!(" (copy in {})", new_name);
-
-    for comp in companies {
-        copy_company_internal(&mut txn, comp.id, new_fund_id, claims.tenant_id, Some(child_suffix.clone())).await?;
-    }
-
-    // Copy Fund-Level Events
-    // Events where this fund is targeted, but no specific company or plan.
-    sqlx::query!(
-        r#"
-        INSERT INTO events (
-            id, plan_id, fund_ids, company_ids, event_name, start_month, 
-            event_category, impact_type, impact_value, duration_months, 
-            likelihood_annual_pct, magnitude, direction, duration_category, 
-            is_counter_cyclic, created_at
-        )
-        SELECT 
-            gen_random_uuid(), 
-            NULL, 
-            ARRAY[$2]::uuid[], 
-            NULL, 
-            event_name, start_month, 
-            event_category, impact_type, impact_value, duration_months, 
-            likelihood_annual_pct, magnitude, direction, duration_category, 
-            is_counter_cyclic, NOW()
-        FROM events
-        WHERE $1 = ANY(fund_ids) AND company_ids IS NULL AND plan_id IS NULL
-        "#,
-        fund_id,
-        new_fund_id
-    )
-    .execute(&mut *txn)
-    .await?;
-
-    txn.commit().await?;
-
-    let new_fund = sqlx::query_as!(
-        Fund,
-        "SELECT * FROM funds WHERE id = $1",
-        new_fund_id
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(new_fund))
-}
-
-#[derive(serde::Deserialize)]
-pub struct MoveCompanyRequest {
-    pub target_fund_id: Uuid,
-}
-
-pub async fn move_company_handler(
-    State(pool): State<PgPool>,
-    Extension(claims): Extension<Claims>,
-    Path(company_id): Path<Uuid>,
-    Json(payload): Json<MoveCompanyRequest>,
-) -> Result<Json<Company>, AppError> {
-    let target_exists = sqlx::query!(
-        "SELECT id FROM funds WHERE id = $1 AND tenant_id = $2",
-        payload.target_fund_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    if target_exists.is_none() {
-        return Err(AppError::NotFound("Target fund not found".to_string()));
-    }
-
-    let updated = sqlx::query_as!(
-        Company,
-        "UPDATE companies SET fund_id = $1 WHERE id = $2 AND tenant_id = $3 RETURNING *",
-        payload.target_fund_id,
-        company_id,
-        claims.tenant_id
-    )
-    .fetch_optional(&pool)
-    .await?;
-
-    match updated {
-        Some(c) => Ok(Json(c)),
-        None => Err(AppError::NotFound("Company not found".to_string())),
-    }
-}
-
-pub async fn get_public_templates(
-    State(pool): State<PgPool>,
-) -> Result<Json<Vec<Fund>>, AppError> {
-    let templates = sqlx::query_as!(
-        Fund,
-        "SELECT * FROM funds WHERE is_public_template = true"
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    Ok(Json(templates))
-}
-
-pub async fn clone_template_handler(
-    State(pool): State<PgPool>,
-    Extension(claims): Extension<Claims>,
-    Path(template_id): Path<Uuid>,
-) -> Result<Json<Fund>, AppError> {
-    let mut txn = pool.begin().await?;
-
-    let template = sqlx::query_as!(
-        Fund,
-        "SELECT * FROM funds WHERE id = $1 AND is_public_template = true",
-        template_id
-    )
-    .fetch_optional(&mut *txn)
-    .await?;
-
-    let template = match template {
-        Some(t) => t,
-        None => return Err(AppError::NotFound("Template not found".to_string())),
-    };
-
-    let new_fund_id = Uuid::new_v4();
-    let new_name = format!("{} (Copy)", template.fund_name);
-
-    sqlx::query!(
-        r#"
-        INSERT INTO funds (id, user_id, fund_name, currency_code, created_at, tenant_id, is_public_template)
-        VALUES ($1, $2, $3, $4, NOW(), $5, $6)
-        "#,
-        new_fund_id,
-        claims.user_id,
-        new_name,
-        template.currency_code,
-        claims.tenant_id,
-        false
-    )
-    .execute(&mut *txn)
-    .await?;
-
-    let companies = sqlx::query!(
-        "SELECT id FROM companies WHERE fund_id = $1",
-        template_id
-    )
-    .fetch_all(&mut *txn)
-    .await?;
-
-    for comp in companies {
-        copy_company_internal(&mut txn, comp.id, new_fund_id, claims.tenant_id, Some("".to_string())).await?;
-    }
-
-    // Copy Fund-Level Events (Template Events)
-    sqlx::query!(
-        r#"
-        INSERT INTO events (
-            id, plan_id, fund_ids, company_ids, event_name, start_month, 
-            event_category, impact_type, impact_value, duration_months, 
-            likelihood_annual_pct, magnitude, direction, duration_category, 
-            is_counter_cyclic, created_at
-        )
-        SELECT 
-            gen_random_uuid(), 
-            NULL, 
-            ARRAY[$2]::uuid[], 
-            NULL, 
-            event_name, start_month, 
-            event_category, impact_type, impact_value, duration_months, 
-            likelihood_annual_pct, magnitude, direction, duration_category, 
-            is_counter_cyclic, NOW()
-        FROM events
-        WHERE $1 = ANY(fund_ids) AND company_ids IS NULL AND plan_id IS NULL
-        "#,
-        template_id,
-        new_fund_id
-    )
-    .execute(&mut *txn)
-    .await?;
-
-    txn.commit().await?;
-
-    let new_fund = sqlx::query_as!(
-        Fund,
-        "SELECT * FROM funds WHERE id = $1",
-        new_fund_id
-    )
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(Json(new_fund))
-}
---- END FILE: backend/src/handlers/lifecycle.rs ---
-
---- START FILE: backend/src/models.rs ---
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use uuid::Uuid;
-use chrono::{NaiveDate, DateTime, Utc};
+use serde::{Serialize, Deserialize};
+pub use crate::distributions::GrowthSampler;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+use crate::projection::MonthlyData;
 
-// --- Phase 0: Multi-Tenancy & Auth ---
+// --- STRUCTS ---
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Tenant {
-    pub id: Uuid,
-    pub name: String,
-    pub created_at: DateTime<Utc>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ItemState {
+    pub current_value: f64,
+    pub is_active: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct User {
-    pub id: Uuid,
-    pub username: String,
-    pub email: Option<String>,
-    #[serde(skip_serializing)]
-    pub password_hash: String,
-    pub full_name: String,
-    pub tenant_id: Uuid,
-    pub created_at: DateTime<Utc>,
-}
-
-// --- Phase 3: Portfolio Structure ---
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Fund {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub fund_name: String, // Renamed from name
-    pub description: Option<String>,
-    pub currency_code: String,
-    pub created_at: DateTime<Utc>,
-    pub tenant_id: Uuid,
-    pub is_public_template: Option<bool>,
-    // New Soft Limit Defaults
-    #[serde(default)]
-    pub default_soft_limit_active: bool,
-    #[serde(default)]
-    pub default_soft_limit_threshold: Decimal,
-    #[serde(default)]
-    pub default_soft_limit_fraction: Decimal,
-    // REMOVED: pooling_fraction
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Company {
-    pub id: Uuid,
-    pub fund_id: Uuid,
-    // tenant_id removed from here to fix duplicate field error
-    pub company_name: String, // Renamed from name
-    pub description: Option<String>,
-    pub currency_code: String,
-    pub created_at: DateTime<Utc>,
-    pub industry: Option<String>,
-    pub business_model: Option<String>,
-    pub technology: Option<String>,
-    pub tenant_id: Uuid,
-}
-
-// Add New Struct for Exchange Rates
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ExchangeRate {
-    pub id: Uuid,
-    pub from_currency: String,
-    pub to_currency: String,
-    pub rate: Decimal,
-    pub rate_month: NaiveDate,
-    pub created_at: DateTime<Utc>,
-    pub tenant_id: Uuid,
-}
-
-// --- Phase 1 & 2: Financial Models ---
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct FinancialPlan {
-    pub id: Uuid,
-    pub company_id: Uuid,
-    pub plan_name: String, // Renamed from name
-    pub description: Option<String>,
-    pub start_month: NaiveDate,
-    pub currency_code: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub initial_cash: Decimal,
-    pub pooling_fraction: Decimal, 
-    pub tenant_id: Uuid,
-    pub last_p50_net_value: Option<Decimal>,
-    pub insolvency_threshold: Decimal,
-    // New Soft Limit Settings
-    #[serde(default)]
-    pub soft_limit_active: bool,
-    #[serde(default)]
-    pub soft_limit_threshold: Decimal,
-    #[serde(default)]
-    pub soft_limit_fraction: Decimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct RevenueItem {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub revenue_name: String, // Renamed from name
-    pub source: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: Decimal,
-    pub frequency: String,
-    pub trigger_strategy: String,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct RevenueItemPhase {
-    pub id: Uuid,
-    pub revenue_item_id: Uuid,
-    pub phase_sequence: i32,
-    pub trigger_month: Option<i32>,
-    pub trigger_threshold: Option<String>,
-    pub trigger_operator: Option<String>,
-    pub growth_rate_percent: String,
-    pub cost_of_revenue_percent: Option<String>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RevenueItemResponse {
-    #[serde(flatten)]
-    pub item: RevenueItem,
-    pub volatility_configs: Vec<RevenueVolatilityPolicy>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
-pub struct RevenueVolatilityPolicy {
-    pub id: Uuid,
-    pub revenue_item_phase_id: Uuid,
-    pub mode_name: String,
-    pub volatility_type: String,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
-    pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
-    pub target_mean: Option<Decimal>,
-    pub vol_mu: Option<Decimal>,
-    pub vol_input_mode: Option<String>,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ExpenseItem {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub expense_name: String, // Renamed from name
-    pub category: String,
-    pub start_month: i32,
-    pub end_month: Option<i32>,
-    pub initial_amount: Decimal,
-    pub frequency: String,
-    pub trigger_strategy: String,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ExpenseItemPhase {
-    pub id: Uuid,
-    pub expense_item_id: Uuid,
-    pub phase_sequence: i32,
-    pub trigger_month: Option<i32>,
-    pub trigger_threshold: Option<String>,
-    pub trigger_operator: Option<String>,
-    pub growth_rate_percent: String,
-    pub pct_of_revenue: Option<String>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExpenseItemResponse {
-    #[serde(flatten)]
-    pub item: ExpenseItem,
-    pub volatility_configs: Vec<ExpenseVolatilityPolicy>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
-pub struct ExpenseVolatilityPolicy {
-    pub id: Uuid,
-    pub expense_item_phase_id: Uuid,
-    pub mode_name: String,
-    pub volatility_type: String,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
-    pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>,
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
-    pub target_mean: Option<Decimal>,
-    pub vol_mu: Option<Decimal>,
-    pub vol_input_mode: Option<String>,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CapitalInjection {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub injection_name: String, // Renamed from name
-    pub amount: Decimal,
-    pub month: i32,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct DividendPolicy {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub is_enabled: bool,
-    pub safety_threshold: Decimal,
-    pub payout_ratio: Decimal,
-    pub created_at: DateTime<Utc>,
-    pub tracking_enabled: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CreditFacility {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub facility_limit: Decimal,
-    pub interest_rate: Decimal,
-    pub is_annual_rate: bool,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct ValuationAssumption {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub valuation_name: String,
-    pub method: String,
-    pub multiplier: Decimal,
-    pub date_applied: Option<NaiveDate>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct Event {
-    pub id: Uuid,
-    pub plan_id: Option<Uuid>,
-    pub fund_ids: Option<Vec<Uuid>>, // Changed to Array
-    pub company_ids: Option<Vec<Uuid>>, // Changed to Array
-    pub event_name: String, // Renamed from shock_name
-    pub start_month: Option<i32>, // Renamed from shock_month, Relaxed
-    pub event_category: Option<String>,
-    pub impact_type: Option<String>, // Relaxed
-    pub impact_value: Option<Decimal>, // Relaxed
-    pub duration_months: Option<i32>,
-    pub likelihood_annual_pct: Option<Decimal>,
-    pub magnitude: Option<String>,
-    pub direction: Option<String>,
-    pub duration_category: Option<String>,
-    pub is_counter_cyclic: Option<bool>,
-    pub created_at: DateTime<Utc>,
-}
-
-// Legacy struct for backward compatibility with projection engine
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct EventShock {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub shock_name: String,
-    pub shock_month: i32,
-    pub impact_type: String,
-    pub impact_value: Decimal,
-    pub duration_months: Option<i32>,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CapitalGrowthPolicy {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub volatility_type: Option<String>,
-    pub vol_min: Option<Decimal>,
-    pub vol_max: Option<Decimal>,
-    pub vol_intervals: Option<i32>,
-    pub vol_mean: Option<Decimal>, // Deprecated: Use vol_mu
-    pub vol_scale: Option<Decimal>,
-    pub vol_freedom: Option<Decimal>,
-    pub vol_alpha: Option<Decimal>,
-    pub vol_beta: Option<Decimal>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub growth_rate_percent: Decimal,
-    // New Distribution Architecture Fields
-    pub target_mean: Option<Decimal>,
-    pub vol_mu: Option<Decimal>,
-    pub vol_input_mode: Option<String>,
-    pub vol_fatness_level: Option<String>,
-    pub vol_skew_level: Option<String>,
-    pub vol_width_level: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateFundRequest {
-    pub fund_name: String,
-    pub description: Option<String>,
-    pub currency_code: Option<String>,
-    // REMOVED: pooling_fraction
-}
-
-#[derive(Deserialize, Debug)]
-pub struct UpdateFundRequest {
-    pub fund_name: String,
-    pub description: Option<String>,
-    pub currency_code: String,
-    pub default_soft_limit_active: Option<bool>,
-    pub default_soft_limit_threshold: Option<String>,
-    pub default_soft_limit_fraction: Option<String>,
-    // REMOVED: pooling_fraction
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateCompanyRequest {
-    pub fund_id: Uuid,
-    pub tenant_id: Uuid,
-    pub company_name: String,
-    pub description: Option<String>,
-    pub business_model: Option<String>,
-    pub industry: Option<String>,
-    pub technology: Option<String>,
-    pub currency_code: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct UpdateCompanyRequest {
-    pub company_name: String,
-    pub description: Option<String>,
-    pub business_model: Option<String>,
-    pub industry: Option<String>,
-    pub technology: Option<String>,
-    pub currency_code: String,
-}
-
-// --- Point 9: Staffing & Payroll ---
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
-pub struct StaffingRole {
-    pub id: Uuid,
-    pub plan_id: Uuid,
-    pub role_name: String,
-    pub annual_salary: Decimal,
-    pub start_month: i32,
-    pub target_count: i32, 
-    pub hiring_plan: String, 
-    pub hiring_rate: Option<i32>, 
-    pub annual_increase_percent: Decimal,
-    pub created_at: DateTime<Utc>,
-}
-
-// --- Auth DTOs ---
-
-#[derive(Deserialize, Debug)]
-pub struct RegisterRequest {
-    pub username: String,
-    pub password: String,
-    pub full_name: String,
-    pub email: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct LoginRequest {
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Serialize, Debug)]
-pub struct AuthResponse {
-    pub token: String,
-    pub user_id: Uuid,
-    pub username: String,
-    pub tenant_id: Uuid,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
-    pub sub: String,
-    pub user_id: Uuid,
-    pub tenant_id: Uuid,
-    pub exp: usize,
-}
-
-// --- Fund Plans ---
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct FundPlan {
-    pub id: Uuid,
-    pub fund_id: Uuid,
-    pub tenant_id: Uuid,
-    pub plan_name: String,
-    pub selected_plans: serde_json::Value, // Maps to JSONB
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
-    // ADDED: Pooling Fraction for Scenario Independence
-    #[serde(default)]
-    pub pooling_fraction: Decimal,
+impl Default for ItemState {
+    fn default() -> Self {
+        Self { 
+            current_value: 0.0, 
+            is_active: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateFundPlanRequest {
-    pub plan_name: String,
-    pub selected_plans: serde_json::Value,
-    // ADDED
-    pub pooling_fraction: Option<Decimal>,
+pub struct Phase {
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    // Using f64 for the hot path to maintain hardware-level speed per the Immutable Data Contract
+    pub trigger_threshold: Option<f64>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate: f64,
+    pub variable_pct: Option<f64>,
+    pub compounding_growth_sampler: Option<GrowthSampler>,
+    pub transient_noise_sampler: Option<GrowthSampler>,
 }
 
-// --- Plan Requests ---
-
-#[derive(Deserialize)]
-pub struct CreatePlanRequest {
-    pub company_id: Uuid,
-    pub plan_name: String,
-    pub description: Option<String>,
-    pub start_month: String, // YYYY-MM-01
-    pub currency_code: Option<String>,
-    pub insolvency_threshold: Option<String>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Revenue {
+    pub name: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: f64,
+    pub frequency: String,
+    pub trigger_strategy: String,
+    pub phases: Vec<Phase>,
 }
 
-#[derive(Deserialize)]
-pub struct UpdatePlanRequest {
-    pub plan_name: Option<String>,
-    pub description: Option<String>,
-    pub start_month: Option<String>,
-    pub pooling_fraction: Option<Decimal>,
-    pub initial_cash: Option<String>,
-    pub insolvency_threshold: Option<String>,
-    // New fields for Soft Limit
-    pub soft_limit_active: Option<bool>,
-    pub soft_limit_threshold: Option<String>,
-    pub soft_limit_fraction: Option<String>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Expense {
+    pub name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: f64,
+    pub frequency: String,
+    pub trigger_strategy: String,
+    pub phases: Vec<Phase>,
 }
 
-// --- Event Requests ---
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum EventPayload {
-    Fixed {
-        start_month: i32,
-        impact_value: String,
-        duration_months: Option<i32>,
-    },
-    Stochastic {
-        occurrence_probability: String,
-        magnitude: String,
-        direction: String, // Maps to direction
-        duration: String, // Maps to duration_category
-        is_counter_cyclic: Option<bool>,
-    },
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Staffing {
+    pub name: String,
+    pub annual_salary: f64,
+    pub start_month: i32,
+    pub target_count: i32,
+    pub hiring_plan: String,
+    pub hiring_rate: Option<i32>,
+    pub annual_increase: f64,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct CreateEventRequest {
-    pub scope: String, // "global", "local", "plan"
-    pub target_ids: Vec<Uuid>, // Changed to Array
-    pub event_name: String,
-    pub event_type: String, // Renamed from shock_type
-    #[serde(flatten)]
-    pub data: EventPayload,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Shock {
+    pub name: String,
+    pub month: i32,
+    pub impact_type: String,
+    pub impact_value: f64,
+    pub duration_months: Option<i32>,
+    pub target_company_id: Option<Uuid>, // Added for routing stochastic shocks
 }
---- END FILE: backend/src/models.rs ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapitalInjection {
+    pub name: String,
+    pub amount: f64,
+    pub month: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DividendPolicy {
+    pub is_enabled: bool,
+    pub safety_threshold: f64,
+    pub payout_ratio: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreditFacility {
+    pub facility_limit: f64,
+    pub interest_rate: f64,
+    pub is_annual_rate: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValuationAssumption {
+    pub name: String,
+    pub method: String,
+    pub multiplier: f64,
+    pub date_applied: Option<chrono::NaiveDate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapitalGrowthPolicy {
+    pub growth_rate: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Universe {
+    pub companies: Vec<SimState>,
+}
+
+impl Universe {
+    pub fn new(companies: Vec<SimState>) -> Self {
+        Self { companies }
+    }
+}
+
+fn default_true() -> bool { true }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimState {
+    pub id: Uuid,
+    pub company_name: String,
+    pub currency: String,
+    pub pooling_fraction: f64,
+    pub current_cash: f64,
+    pub insolvency_threshold: f64,
+    pub is_solvent: bool,
+    #[serde(default = "default_true")]
+    pub stop_on_insolvency: bool,
+    pub cum_external_cap: f64,
+    pub cum_dividends: f64,
+    pub cum_pool_received: f64,
+    pub cap_growth_sampler: Option<GrowthSampler>,
+    
+    // Soft Limit (Friction Tax)
+    pub soft_limit_active: bool,
+    pub soft_limit_threshold: f64,
+    pub soft_limit_fraction: f64,
+
+    pub revenues: Vec<Revenue>,
+    pub expenses: Vec<Expense>,
+    pub staffing: Vec<Staffing>,
+    pub shocks: Vec<Shock>,
+    pub injections: Vec<CapitalInjection>,
+    pub dividend_policy: Option<DividendPolicy>,
+    pub credit_facility: Option<CreditFacility>,
+    pub valuation: Option<ValuationAssumption>,
+    pub capital_growth: Option<CapitalGrowthPolicy>,
+    
+    pub revenue_states: Vec<ItemState>,
+    pub expense_states: Vec<ItemState>,
+    
+    pub history: Vec<MonthlyData>,
+}
+
+impl SimState {
+    pub fn initialize(&mut self) {
+        // 1. Process Month 0 Injections
+        for injection in &self.injections {
+            if injection.month == 0 {
+                self.current_cash += injection.amount;
+                self.cum_external_cap += injection.amount;
+            }
+        }
+
+        let debt = self.current_cash.min(0.0).abs();
+        let exposure = self.cum_external_cap + debt;
+
+        // 2. Record Month 0 History
+        self.history.push(MonthlyData {
+            month_index: 0,
+            date: "Month 0".to_string(),
+            revenue: Decimal::ZERO,
+            cogs: Decimal::ZERO,
+            opex: Decimal::ZERO,
+            gross_profit: Decimal::ZERO,
+            net_income: Decimal::ZERO,
+            treasury_gain: Decimal::ZERO,
+            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+            is_solvent: true,
+            interest_expense: Decimal::ZERO,
+            dividend_paid: Decimal::ZERO,
+            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+            total_companies: 1,
+            solvent_companies: 1,
+            pool_contribution: Decimal::ZERO,
+            pool_received: Decimal::ZERO,
+            contributing_companies: 0,
+            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
+        });
+    }
+
+    pub fn force_insolvency_state(&mut self) {
+        self.is_solvent = false;
+        // Removed: self.current_cash = 0.0; 
+        // We preserve the debt (negative cash) for Venture Debt visibility.
+    }
+
+    pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
+        // LOGIC A: Handle Insolvency
+        if !self.is_solvent {
+            let debt = self.current_cash.min(0.0).abs();
+            let exposure = self.cum_external_cap + debt;
+
+            // Push "Erasure" (Zero) state but keep debt visible
+            self.history.push(MonthlyData {
+                month_index: month,
+                date: format!("Month {}", month),
+                revenue: Decimal::ZERO,
+                cogs: Decimal::ZERO,
+                opex: Decimal::ZERO,
+                gross_profit: Decimal::ZERO,
+                net_income: Decimal::ZERO,
+                treasury_gain: Decimal::ZERO,
+                // Use actual negative cash
+                cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+                is_solvent: false,
+                interest_expense: Decimal::ZERO,
+                dividend_paid: Decimal::ZERO,
+                cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+                cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+                cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+                // Total value reflects debt
+                total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+                total_companies: 1,
+                solvent_companies: 0,
+                pool_contribution: Decimal::ZERO,
+                pool_received: Decimal::ZERO,
+                contributing_companies: 0,
+                total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
+            });
+            return (0.0, 0.0);
+        }
+
+        // LOGIC B: Calculate Pooling Base (Start of active step)
+        let previous_cash_floored = self.current_cash.max(0.0);
+
+        // Merge External Shocks (Persist them in state)
+        self.shocks.extend_from_slice(external_shocks);
+        self.shocks.retain(|s| month < s.month + s.duration_months.unwrap_or(1));
+
+        let mut monthly_rev = 0.0;
+        let mut monthly_cogs = 0.0;
+        let mut monthly_opex = 0.0;
+        let mut monthly_interest = 0.0;
+
+        // 1. Revenue
+        for (i, item) in self.revenues.iter_mut().enumerate() {
+            let s = &mut self.revenue_states[i];
+            
+            if month == item.start_month {
+                s.is_active = true;
+                s.current_value = item.initial_amount;
+            } else if let Some(end) = item.end_month {
+                if month > end { s.is_active = false; }
+            }
+
+            if s.is_active {
+                if item.frequency == "One-time" && month != item.start_month { continue; }
+                
+                let mut active_idx: Option<usize> = None;
+                for (p_idx, phase) in item.phases.iter().enumerate() {
+                    let is_active = match item.trigger_strategy.as_str() {
+                        "time_based" => {
+                            if let Some(tm) = phase.trigger_month {
+                                month >= tm
+                            } else {
+                                false
+                            }
+                        },
+                        "value_based" => {
+                            if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                                match op {
+                                    "greater_than" => s.current_value > thresh,
+                                    "less_than" => s.current_value < thresh,
+                                    _ => false,
+                                }
+                            } else {
+                                false
+                            }
+                        },
+                        _ => false,
+                    };
+                    if is_active {
+                        if let Some(curr_idx) = active_idx {
+                            if phase.phase_sequence > item.phases[curr_idx].phase_sequence {
+                                active_idx = Some(p_idx);
+                            }
+                        } else {
+                            active_idx = Some(p_idx);
+                        }
+                    }
+                }
+
+                if let Some(idx) = active_idx {
+                    let phase = &mut item.phases[idx];
+                    
+                    if month > item.start_month {
+                        let mut step_growth = phase.growth_rate;
+                        if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                            step_growth += sampler.sample() / 100.0;
+                        }
+                        s.current_value *= 1.0 + step_growth;
+                    }
+                    
+                    let mut item_rev = s.current_value;
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        item_rev *= 1.0 + sampler.sample() / 100.0;
+                    }
+                    
+                    monthly_rev += item_rev;
+                    monthly_cogs += item_rev * phase.variable_pct.unwrap_or(0.0);
+                } else {
+                    monthly_rev += s.current_value;
+                }
+            }
+        }
+
+        // 2. Expenses
+        for (i, item) in self.expenses.iter_mut().enumerate() {
+            let s = &mut self.expense_states[i];
+            
+            if month == item.start_month {
+                s.is_active = true;
+                s.current_value = item.initial_amount;
+            } else if let Some(end) = item.end_month {
+                if month > end { s.is_active = false; }
+            }
+
+            if s.is_active {
+                if item.frequency == "One-time" && month != item.start_month { continue; }
+                
+                let mut active_idx: Option<usize> = None;
+                for (p_idx, phase) in item.phases.iter().enumerate() {
+                    let is_active = match item.trigger_strategy.as_str() {
+                        "time_based" => {
+                            if let Some(tm) = phase.trigger_month {
+                                month >= tm
+                            } else {
+                                false
+                            }
+                        },
+                        "value_based" => {
+                            if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                                match op {
+                                    "greater_than" => s.current_value > thresh,
+                                    "less_than" => s.current_value < thresh,
+                                    _ => false,
+                                }
+                            } else {
+                                false
+                            }
+                        },
+                        _ => false,
+                    };
+                    if is_active {
+                        if let Some(curr_idx) = active_idx {
+                            if phase.phase_sequence > item.phases[curr_idx].phase_sequence {
+                                active_idx = Some(p_idx);
+                            }
+                        } else {
+                            active_idx = Some(p_idx);
+                        }
+                    }
+                }
+
+                if let Some(idx) = active_idx {
+                    let phase = &mut item.phases[idx];
+                    
+                    if month > item.start_month {
+                        let mut step_growth = phase.growth_rate;
+                        if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                            step_growth += sampler.sample() / 100.0;
+                        }
+                        s.current_value *= 1.0 + step_growth;
+                    }
+                    
+                    let mut amt = s.current_value;
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        amt *= 1.0 + sampler.sample() / 100.0;
+                    }
+                    
+                    if let Some(pct) = phase.variable_pct {
+                        amt += monthly_rev * pct;
+                    }
+                    monthly_opex += amt;
+                } else {
+                    monthly_opex += s.current_value;
+                }
+            }
+        }
+
+        // 3. Staffing (Preserved Logic)
+        for role in &self.staffing {
+            if month >= role.start_month {
+                let current_headcount = match role.hiring_plan.as_str() {
+                    "monthly_rate" => {
+                        let months_active = month - role.start_month;
+                        let rate = role.hiring_rate.unwrap_or(1).max(1);
+                        let hired = 1 + (months_active / rate);
+                        hired.min(role.target_count)
+                    }
+                    _ => role.target_count,
+                };
+
+                if current_headcount > 0 {
+                    let years_passed = (month - role.start_month) / 12;
+                    let mut current_annual_salary = role.annual_salary;
+                    if years_passed > 0 {
+                        let multiplier = 1.0 + role.annual_increase;
+                        for _ in 0..years_passed {
+                            current_annual_salary *= multiplier;
+                        }
+                    }
+                    let monthly_cost = (current_annual_salary * current_headcount as f64) / 12.0;
+                    monthly_opex += monthly_cost;
+                }
+            }
+        }
+
+        // 4. Apply Active Shocks
+        let mut capital_growth_mult = 1.0;
+        for shock in &self.shocks {
+            let duration = shock.duration_months.unwrap_or(1);
+            if month >= shock.month && month < shock.month + duration {
+                
+                let monthly_raw_pct = (shock.impact_value / 100.0) / duration as f64;
+                
+                // Updated is_expense check to include "expense_shock"
+                let is_expense = matches!(shock.impact_type.as_str(), "expense" | "opex" | "cogs" | "expense_shock");
+                
+                let mult = if is_expense { 1.0 - monthly_raw_pct } else { 1.0 + monthly_raw_pct };
+                let mult = mult.max(0.0);
+                
+                match shock.impact_type.as_str() {
+                    "revenue" | "revenue_shock" => { 
+                        monthly_rev *= mult; 
+                        monthly_cogs *= mult; 
+                    },
+                    "expense" | "opex" | "expense_shock" => {
+                        monthly_opex *= mult;
+                    },
+                    "cogs" => monthly_cogs *= mult,
+                    "cash" | "cash_shock" => {
+                        // Apply fractionally to absolute cash to avoid debt bailouts
+                        let cash_impact = self.current_cash.abs() * monthly_raw_pct;
+                        if is_expense {
+                            self.current_cash -= cash_impact; // Detrimental: drains cash / increases debt
+                        } else {
+                            self.current_cash += cash_impact; // Beneficial: adds cash / shrinks debt
+                        }
+                    },
+                    "valuation" | "valuation_shock" => {
+                        // Valuation shocks do not affect operational cash flow or cash balance directly.
+                        // They affect the theoretical equity value, which is calculated downstream or in aggregation.
+                    },
+                    "capital_growth" | "capital_growth_shock" => {
+                        capital_growth_mult *= (1.0 + monthly_raw_pct).max(0.0);
+                    },
+                    _ => {}
+                }
+            }
+        }
+
+        // 5. Interest on Credit Facility (New Logic)
+        if self.current_cash < 0.0 {
+            if let Some(cf) = &self.credit_facility {
+                let debt = self.current_cash.abs();
+                let rate = if cf.is_annual_rate { cf.interest_rate / 12.0 } else { cf.interest_rate };
+                monthly_interest = debt * rate;
+            }
+        }
+
+        // 6. Injections
+        for injection in &self.injections {
+            if month == injection.month {
+                self.current_cash += injection.amount;
+                self.cum_external_cap += injection.amount;
+            }
+        }
+
+        let gross_profit = monthly_rev - monthly_cogs;
+        let total_expenses = monthly_opex + monthly_interest;
+        let operating_profit = gross_profit - total_expenses;
+
+        // 7. Update Cash
+        self.current_cash += operating_profit;
+
+        // 8. Investment Gain (Treasury)
+        let mut investment_gain = 0.0;
+        if self.current_cash > 0.0 {
+            if let Some(policy) = &self.capital_growth {
+                if let Some(sampler) = &mut self.cap_growth_sampler {
+                    let rate = sampler.sample();
+                    let effective_rate = ((policy.growth_rate * 100.0 + rate) / 100.0) * capital_growth_mult;
+                    investment_gain = self.current_cash * effective_rate;
+                }
+            }
+        }
+        self.current_cash += investment_gain;
+
+        // LOGIC C: Apply Pooling (Ergodicity Correction)
+        // 9. Pooling Contribution (Refined)
+        let total_profit = operating_profit + investment_gain; // Kept for net_income reporting
+        
+        let current_cash_floored = self.current_cash.max(0.0);
+        let poolable_gain = current_cash_floored - previous_cash_floored;
+        
+        let mut contribution = 0.0;
+        // VERIFIED: Uses self.pooling_fraction which is overridden by Orchestrator if ergodicity_correction is set.
+        if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
+            contribution = poolable_gain * self.pooling_fraction;
+            self.current_cash -= contribution;
+        }
+
+        // LOGIC D: Soft Upper Limit (Friction Tax)
+        if self.soft_limit_active && self.current_cash > self.soft_limit_threshold {
+            let excess = self.current_cash - self.soft_limit_threshold;
+            let tax = excess * self.soft_limit_fraction;
+            self.current_cash -= tax;
+        }
+
+        let net_income = total_profit;
+
+        let debt = self.current_cash.min(0.0).abs();
+        let exposure = self.cum_external_cap + debt;
+
+        // Record History
+        self.history.push(MonthlyData {
+            month_index: month,
+            date: format!("Month {}", month),
+            revenue: Decimal::from_f64_retain(monthly_rev).unwrap_or_default(),
+            cogs: Decimal::from_f64_retain(monthly_cogs).unwrap_or_default(),
+            opex: Decimal::from_f64_retain(monthly_opex).unwrap_or_default(),
+            gross_profit: Decimal::from_f64_retain(gross_profit).unwrap_or_default(),
+            net_income: Decimal::from_f64_retain(net_income).unwrap_or_default(),
+            treasury_gain: Decimal::from_f64_retain(investment_gain).unwrap_or_default(),
+            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+            is_solvent: self.is_solvent,
+            interest_expense: Decimal::from_f64_retain(monthly_interest).unwrap_or_default(),
+            dividend_paid: Decimal::ZERO,
+            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+            total_companies: 1,
+            solvent_companies: if self.is_solvent { 1 } else { 0 },
+            pool_contribution: Decimal::from_f64_retain(contribution).unwrap_or_default(),
+            pool_received: Decimal::ZERO, // Will be updated by orchestrator if pooling happens
+            contributing_companies: if contribution > 0.0 { 1 } else { 0 },
+            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
+        });
+
+        (net_income, contribution)
+    }
+}
+--- END FILE: backend/src/engine/domain.rs ---
 
 --- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 # Status: UNIVERSAL CONSTITUTION (Read by every agent)
