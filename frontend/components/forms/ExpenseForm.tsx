@@ -29,6 +29,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     {
       phase_sequence: 1,
       trigger_month: null,
+      trigger_offset: '',
       trigger_threshold: '',
       trigger_operator: '',
       growth_rate_percent: '0.0',
@@ -54,23 +55,34 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       setTriggerStrategy(triggerStrat);
 
       if (editItem.phases && editItem.phases.length > 0) {
-        setPhases(editItem.phases.map((p: any) => ({
-          id: p.id,
-          phase_sequence: p.phase_sequence,
-          trigger_month: p.trigger_month !== undefined && p.trigger_month !== null ? Number(p.trigger_month) : null,
-          trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
-          trigger_operator: p.trigger_operator || '',
-          growth_rate_percent: String(p.growth_rate_percent || '0.0'),
-          cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
-          pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
-          volatility_configs: p.volatility_configs || []
-        })));
+        const rootStart = Number(itemToEdit.start_month) || 1;
+        setPhases(editItem.phases.map((p: any, idx: number, arr: any[]) => {
+          const absMonth = p.trigger_month !== undefined && p.trigger_month !== null ? Number(p.trigger_month) : null;
+          let offsetVal = 0;
+          if (idx > 0 && absMonth !== null) {
+            const prevAbs = idx === 1 ? rootStart : (Number(arr[idx - 1].trigger_month) || rootStart);
+            offsetVal = absMonth - prevAbs;
+          }
+          return {
+            id: p.id,
+            phase_sequence: p.phase_sequence,
+            trigger_month: absMonth,
+            trigger_offset: idx > 0 ? offsetVal : "",
+            trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
+            trigger_operator: p.trigger_operator || '',
+            growth_rate_percent: String(p.growth_rate_percent || '0.0'),
+            cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
+            pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
+            volatility_configs: p.volatility_configs || []
+          };
+        }));
       } else {
         // Fallback if legacy item has no phases
         setPhases([
           {
             phase_sequence: 1,
             trigger_month: null,
+            trigger_offset: '',
             trigger_threshold: '',
             trigger_operator: '',
             growth_rate_percent: editItem.growth_rate_percent?.toString() ?? '0.0',
@@ -97,6 +109,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       {
         phase_sequence: 1,
         trigger_month: null,
+        trigger_offset: '',
         trigger_threshold: '',
         trigger_operator: '',
         growth_rate_percent: '0.0',
@@ -117,6 +130,50 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     }));
   };
 
+  const handleTimeFieldChange = (index: number, field: 'trigger_month' | 'trigger_offset', value: string) => {
+    const numVal = value === '' ? 0 : Number(value);
+    setPhases(prev => {
+      const updated = [...prev];
+      const rootStart = Number(startMonth) || 1;
+      
+      updated[index] = { ...updated[index], [field]: value === '' ? '' : numVal };
+      
+      for (let i = 1; i < updated.length; i++) {
+        const prevAbs = i === 1 ? rootStart : (Number(updated[i - 1].trigger_month) || rootStart);
+        if (i === index) {
+          if (field === 'trigger_month') {
+            const abs = value === '' ? prevAbs : numVal;
+            updated[i].trigger_month = value === '' ? null : abs;
+            updated[i].trigger_offset = value === '' ? 0 : abs - prevAbs;
+          } else {
+            const offset = value === '' ? 0 : numVal;
+            updated[i].trigger_offset = value === '' ? '' : offset;
+            updated[i].trigger_month = prevAbs + offset;
+          }
+        } else if (i > index) {
+          const currentOffset = Number(updated[i].trigger_offset) || 0;
+          updated[i].trigger_month = prevAbs + currentOffset;
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleStartMonthChange = (val: string) => {
+    setStartMonth(val);
+    const rootStart = val === '' ? 1 : Number(val);
+    if (isNaN(rootStart)) return;
+    setPhases(prev => {
+      const updated = [...prev];
+      for (let i = 1; i < updated.length; i++) {
+        const prevAbs = i === 1 ? rootStart : (Number(updated[i - 1].trigger_month) || rootStart);
+        const currentOffset = Number(updated[i].trigger_offset) || 0;
+        updated[i].trigger_month = prevAbs + currentOffset;
+      }
+      return updated;
+    });
+  };
+
   const handlePhaseConfigsChange = (index: number, updatedConfigs: VolatilityConfig[]) => {
     setPhases(prev => prev.map((p, idx) => {
       if (idx === index) {
@@ -133,6 +190,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       {
         phase_sequence: prev.length + 1,
         trigger_month: null,
+        trigger_offset: '',
         trigger_threshold: '',
         trigger_operator: '',
         growth_rate_percent: '0.0',
@@ -311,7 +369,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         </div>
         <div>
           <label className="text-xs text-gray-500">Start Month *</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => setStartMonth(e.target.value)} />
+          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => handleStartMonthChange(e.target.value)} />
         </div>
         <div>
           <label className="text-xs text-gray-500">End Month</label>
@@ -344,15 +402,27 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                   <div className="bg-gray-50 p-3 rounded border border-dashed space-y-3">
                     <p className="text-xs font-semibold text-gray-600">Trigger Conditions</p>
                     {triggerStrategy === 'time_based' && (
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Trigger Month *</label>
-                        <input
-                          type="number"
-                          className="w-full border p-2 rounded text-sm bg-white"
-                          placeholder="e.g. 12"
-                          value={phases[index]?.trigger_month || ''}
-                          onChange={e => handlePhaseFieldChange(index, 'trigger_month', e.target.value ? Number(e.target.value) : null)}
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1 font-medium">enter the absolute month *</label>
+                          <input
+                            type="number"
+                            className="w-full border p-2 rounded text-sm bg-white"
+                            placeholder="e.g. 12"
+                            value={phase.trigger_month ?? ''}
+                            onChange={e => handleTimeFieldChange(index, 'trigger_month', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1 font-medium">the offset in months vs the previous phase, and I'll calculate the absolute month *</label>
+                          <input
+                            type="number"
+                            className="w-full border p-2 rounded text-sm bg-white"
+                            placeholder="e.g. 6"
+                            value={phase.trigger_offset ?? ''}
+                            onChange={e => handleTimeFieldChange(index, 'trigger_offset', e.target.value)}
+                          />
+                        </div>
                       </div>
                     )}
                     {triggerStrategy === 'value_based' && (
