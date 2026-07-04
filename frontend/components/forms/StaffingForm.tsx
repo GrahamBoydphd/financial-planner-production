@@ -34,6 +34,7 @@ export default function StaffingForm({ planId, initialRoles, currency, onSave, o
   
   // State uses string for money/percent fields to allow precise editing
   const [currentRole, setCurrentRole] = useState<Partial<StaffingRoleFormState>>({})
+  const [relativeOffset, setRelativeOffset] = useState<number>(0)
   
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -76,21 +77,25 @@ export default function StaffingForm({ planId, initialRoles, currency, onSave, o
   const currencySymbol = getCurrencySymbol();
 
   const handleAddNew = () => {
+    const anchor = roles.length > 0 ? Math.min(...roles.map(r => r.start_month)) : 1;
+    const startMonth = 1;
     setCurrentRole({
       role_name: "",
       annual_salary: "50000",
-      start_month: 1,
+      start_month: startMonth,
       target_count: 1,
       hiring_plan: "fixed_count",
       hiring_rate: 1,
       annual_increase: "3.0"
     })
+    setRelativeOffset(startMonth - anchor)
     setIsEditing(true)
     setGlobalError(null)
     setFieldErrors({})
   }
 
   const handleEdit = (role: StaffingRole) => {
+    const anchor = roles.length > 0 ? Math.min(...roles.map(r => r.start_month)) : role.start_month;
     setCurrentRole({ 
       id: role.id,
       role_name: role.role_name,
@@ -102,9 +107,24 @@ export default function StaffingForm({ planId, initialRoles, currency, onSave, o
       // Use raw percentage directly
       annual_increase: role.annual_increase_percent || "0"
     })
+    setRelativeOffset(role.start_month - anchor)
     setIsEditing(true)
     setGlobalError(null)
     setFieldErrors({})
+  }
+
+  const handleAbsoluteMonthChange = (val: number) => {
+    const anchor = roles.length > 0 ? Math.min(...roles.map(r => r.start_month)) : 1;
+    setCurrentRole(prev => ({ ...prev, start_month: val }));
+    setRelativeOffset(val - anchor);
+  }
+
+  const handleRelativeOffsetChange = (val: number) => {
+    const anchor = roles.length > 0 ? Math.min(...roles.map(r => r.start_month)) : 1;
+    const newAbsolute = anchor + val;
+    const targetAbsolute = Math.max(1, newAbsolute);
+    setCurrentRole(prev => ({ ...prev, start_month: targetAbsolute }));
+    setRelativeOffset(val);
   }
 
   const handleDelete = async (id: string) => {
@@ -328,24 +348,49 @@ export default function StaffingForm({ planId, initialRoles, currency, onSave, o
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label htmlFor="start_month" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Start Month <span className="text-red-500">*</span>
-                  <Tooltip content="Month number (1-240) when hiring begins." />
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                  <input
-                    id="start_month"
-                    type="number"
-                    min="1"
-                    max="240"
-                    className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.start_month ? 'border-red-500' : 'border-gray-300'}`}
-                    value={currentRole.start_month || ""}
-                    onChange={(e) => setCurrentRole({ ...currentRole, start_month: parseInt(e.target.value) })}
-                  />
+              <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="start_month" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    enter the absolute hiring month or ... <span className="text-red-500">*</span>
+                    <Tooltip content="Month number (1-240) when hiring begins." />
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <input
+                      id="start_month"
+                      type="number"
+                      min="1"
+                      max="240"
+                      className={`w-full rounded border p-2 pl-8 text-sm ${fieldErrors.start_month ? 'border-red-500' : 'border-gray-300'}`}
+                      value={currentRole.start_month || ""}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        handleAbsoluteMonthChange(val);
+                      }}
+                    />
+                  </div>
+                  {fieldErrors.start_month && <p className="text-xs text-red-500">{fieldErrors.start_month}</p>}
                 </div>
-                {fieldErrors.start_month && <p className="text-xs text-red-500">{fieldErrors.start_month}</p>}
+
+                <div className="space-y-2">
+                  <label htmlFor="relative_offset" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    ... enter the relative offset in months vs the first hire, and I'll calculate the absolute month
+                    <Tooltip content="Offset relative to the first hire's start month." />
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <input
+                      id="relative_offset"
+                      type="number"
+                      className="w-full rounded border border-gray-300 p-2 pl-8 text-sm"
+                      value={relativeOffset}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        handleRelativeOffsetChange(val);
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
