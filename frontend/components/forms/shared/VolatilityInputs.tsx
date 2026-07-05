@@ -530,7 +530,8 @@ export default function VolatilityInputs({ configs, onChange }: VolatilityInputs
 
                       {panel.id === 'compounding_growth' && (
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Target Mean / Drift</label>
+                          <label className="block text-xs text-gray-600 mb-1">Target Mean growth rate / Drift</label>
+                          <Tooltip content="Growth rate in percent, i.e., 0.0 gives fluctuation around a constant value, 1 gives a 1% growth rate each interval." />
                           <input
                             type="text"
                             value={config.target_mean || ''}

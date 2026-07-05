@@ -309,11 +309,19 @@ impl SimState {
                     let phase = &mut item.phases[idx];
                     
                     if month > item.start_month {
-                        let mut step_growth = phase.growth_rate;
-                        if let Some(sampler) = &mut phase.compounding_growth_sampler {
-                            step_growth += sampler.sample() / 100.0;
+                        let should_grow = match item.frequency.as_str() {
+                            "monthly" | "Monthly" => true,
+                            "quarterly" | "Quarterly" => (month - item.start_month) % 3 == 0,
+                            "annually" | "Annually" | "annual" | "Annual" => (month - item.start_month) % 12 == 0,
+                            _ => true,
+                        };
+                        if should_grow {
+                            let mut step_growth = phase.growth_rate;
+                            if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                                step_growth += sampler.sample() / 100.0;
+                            }
+                            s.current_value *= 1.0 + step_growth;
                         }
-                        s.current_value *= 1.0 + step_growth;
                     }
                     
                     let mut item_rev = s.current_value;
@@ -381,11 +389,19 @@ impl SimState {
                     let phase = &mut item.phases[idx];
                     
                     if month > item.start_month {
-                        let mut step_growth = phase.growth_rate;
-                        if let Some(sampler) = &mut phase.compounding_growth_sampler {
-                            step_growth += sampler.sample() / 100.0;
+                        let should_grow = match item.frequency.as_str() {
+                            "monthly" | "Monthly" => true,
+                            "quarterly" | "Quarterly" => (month - item.start_month) % 3 == 0,
+                            "annually" | "Annually" | "annual" | "Annual" => (month - item.start_month) % 12 == 0,
+                            _ => true,
+                        };
+                        if should_grow {
+                            let mut step_growth = phase.growth_rate;
+                            if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                                step_growth += sampler.sample() / 100.0;
+                            }
+                            s.current_value *= 1.0 + step_growth;
                         }
-                        s.current_value *= 1.0 + step_growth;
                     }
                     
                     let mut amt = s.current_value;

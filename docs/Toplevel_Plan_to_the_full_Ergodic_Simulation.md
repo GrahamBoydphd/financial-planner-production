@@ -237,6 +237,10 @@ Improve the clean version with better guidance to the user.
 - [x] Switch on currency editing. 
 - [ ] Check if a running swan event blocks the same event being repeated while it's running. Answer: No, the simulation engine strictly implements the **Overlap Model (Stacking)** rather than a state exclusion model. Consider whether this should stay so, or we add in a boolean per event to choose. 
 - [ ] Add multiple "cost of revenue" cells, and each one to have a name as well. 
+- [ ] Consider adding a linear / additive growth option for revenue and expenses. 
+- [x] Check what backend is doing for quarterly and annual growth, and once-off.
+- [x] Check if transient mu should be 0.0 or 1.0? - shoud be 0, because the backend is using it as the growth rate in percent, i.e., the number to add to 1.0
+- [ ] 
 
 ### ✅ Confirmation of Aggregation
 
