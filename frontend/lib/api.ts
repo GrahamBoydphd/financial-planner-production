@@ -515,6 +515,8 @@ export const api = {
     (await apiClient.get<CapitalInjection[]>(`/api/plans/${planId}/capital`)).data,
   createCapitalInjection: async (item: Omit<CapitalInjection, 'id'>) => 
     (await apiClient.post<CapitalInjection>('/api/capital', item)).data,
+  updateCapitalInjection: async (id: string, item: Partial<CapitalInjection>) => 
+    (await apiClient.put<CapitalInjection>(`/api/capital/${id}`, item)).data,
   deleteCapitalInjection: async (id: string) => 
     (await apiClient.delete(`/api/capital/${id}`)),
 

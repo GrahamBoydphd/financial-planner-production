@@ -18,6 +18,13 @@ pub struct CreateCapitalRequest {
     pub month: i32,
 }
 
+#[derive(Deserialize)]
+pub struct UpdateCapitalRequest {
+    pub injection_name: String,
+    pub amount: Decimal,
+    pub month: i32,
+}
+
 pub async fn create_capital_injection(
     State(pool): State<Pool<Postgres>>,
     Extension(claims): Extension<Claims>,
@@ -108,4 +115,38 @@ pub async fn delete_capital_injection(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn update_capital_injection(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdateCapitalRequest>,
+) -> Result<Json<CapitalInjection>, AppError> {
+    if payload.injection_name.len() > 255 {
+        return Err(AppError::ValidationError("Name exceeds 255 characters".to_string()));
+    }
+    
+    let item = sqlx::query_as!(
+        CapitalInjection,
+        r#"
+        UPDATE capital_injections 
+        SET injection_name = $1, amount = $2, month = $3 
+        WHERE id = $4 
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $5)
+        RETURNING 
+            id as "id!", plan_id as "plan_id!", injection_name as "injection_name!", 
+            amount as "amount!", month as "month!", created_at as "created_at!"
+        "#,
+        payload.injection_name,
+        payload.amount,
+        payload.month,
+        id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Capital injection not found or unauthorized".to_string()))?;
+    
+    Ok(Json(item))
 }

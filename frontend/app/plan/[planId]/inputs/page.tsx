@@ -43,6 +43,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
   // Edit State
   const [editingRevenue, setEditingRevenue] = useState<RevenueItem | null>(null);
   const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
+  const [editingCapital, setEditingCapital] = useState<any | null>(null);
 
   // Derived Currency Symbol
   const currencySymbol = plan ? getCurrencySymbol(plan.currency_code) : "$";
@@ -96,6 +97,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
 
       setEditingRevenue(null);
       setEditingExpense(null);
+      setEditingCapital(null);
 
     } catch (error) {
       console.error("Unexpected error loading inputs", error);
@@ -457,10 +459,10 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     </div>
 
                     {/* INPUT FORM */}
-                    <CapitalForm planId={planId} onSuccess={fetchData} currencySymbol={currencySymbol} />
+                    <CapitalForm planId={planId} onSuccess={fetchData} itemToEdit={editingCapital} onCancel={() => setEditingCapital(null)} currencySymbol={currencySymbol} />
 
                     {/* LIST OF ITEMS */}
-                    <CapitalList items={capitalItems} onDelete={fetchData} />
+                    <CapitalList items={capitalItems} onDelete={fetchData} onEdit={(item: any) => setEditingCapital(item)} currencySymbol={currencySymbol} />
                 </Card>
             </section>
 

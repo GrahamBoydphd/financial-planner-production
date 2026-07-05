@@ -15,9 +15,11 @@ export interface CapitalItem {
 interface Props {
   items: CapitalItem[];
   onDelete: () => void; // Trigger data refresh after deletion
+  onEdit: (item: CapitalItem) => void;
+  currencySymbol?: string;
 }
 
-export default function CapitalList({ items, onDelete }: Props) {
+export default function CapitalList({ items, onDelete, onEdit, currencySymbol = '$' }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -55,12 +57,20 @@ export default function CapitalList({ items, onDelete }: Props) {
             <p className="text-xs text-gray-500">Deposited in Month {item.month}</p>
           </div>
 
-          {/* Right: Amount and Delete */}
+          {/* Right: Amount, Edit, and Delete */}
           <div className="flex items-center gap-4">
             <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded text-sm">
-              +${Number(item.amount).toLocaleString()}
+              +{currencySymbol}{Number(item.amount).toLocaleString()}
             </span>
             
+            <button 
+              onClick={() => onEdit(item)} 
+              className="text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors" 
+              type="button"
+            >
+              Edit
+            </button>
+
             <DeleteButton 
               onDelete={() => handleDelete(item.id)}
               disabled={deletingId === item.id}

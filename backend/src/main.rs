@@ -82,7 +82,7 @@ async fn main() {
         // Capital
         .route("/api/capital", post(handlers::capital::create_capital_injection))
         .route("/api/plans/:id/capital", get(handlers::capital::get_capital_injections))
-        .route("/api/capital/:id", delete(handlers::capital::delete_capital_injection))
+        .route("/api/capital/:id", put(handlers::capital::update_capital_injection).delete(handlers::capital::delete_capital_injection))
 
         // Dividends
         .route("/api/dividends", post(handlers::dividends::upsert_dividend_policy))
