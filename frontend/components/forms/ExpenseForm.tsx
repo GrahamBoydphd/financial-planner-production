@@ -492,7 +492,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                   >
                     <option value="">-- Select Trigger Strategy --</option>
                     <option value="time_based">Time-based (Trigger Month)</option>
-                    <option value="value_based">Value-based (Expense Threshold)</option>
+                    <option value="value_based">Value-based (Monthly Revenue Threshold)</option>
                   </select>
                 </div>
               )}

@@ -160,656 +160,749 @@ These rules are non-negotiable.
 </architectural_guidelines>
 
 <task_instruction>
-CONTEXT: SYSTEM UI UNIFORMITY - Dynamic Currency Symbols for Capital Lists.
-The user noticed that the capital injections display list uses a hardcoded dollar sign ($) instead of adapting to the active corporate currency tracking settings. We must update the component hierarchy to flow the dynamic currencySymbol string all the way down to the item row layout.
-
-OBJECTIVE:
-Modify page.tsx to pass the current currency symbol prop down, and refactor CapitalList.tsx to receive and utilize it dynamically.
-
-INSTRUCTIONS:
-1. UPDATE THE PARENT CONTROLLER INGESTION LAYOUT:
-   - OPEN the file: frontend/app/plan/[planId]/inputs/page.tsx
-   - LOCATE where the CapitalList component element wrapper is rendered within the layout JSX structure tree.
-   - ADD the currencySymbol property attribute to its props signature mapping, passing down the local layout state variable currencySymbol directly. For example: currencySymbol={currencySymbol}
-
-2. EXPAND THE CAPITAL LIST INTERFACE TYPE SCHEMAS:
-   - OPEN the file: frontend/components/forms/CapitalList.tsx
-   - LOCATE the component parameter Props interface type boundary definition block.
-   - INJECT an optional property parameter named currencySymbol of type string to the properties block.
-   - DECONSTRUCT currencySymbol from the function argument properties array list near items, onDelete, and onEdit, providing a fallback default value assignment of a dollar sign string if it happens to be undefined.
-
-3. SUBSTITUTE THE HARDCODED INTERFACE LABELS:
-   - LOCATE the JSX layout code inside CapitalList.tsx where the capital injection amount is printed or rendered out to the grid screen list.
-   - REMOVE any static hardcoded dollar sign characters or text nodes from that text wrapper display block.
-   - REPLACE them cleanly with the dynamic variable reference expression string mapping placeholder instead. For example, change static dollar markers to use curly bracket currencySymbol injections.
+CONTEXT: Expenses value-based trigger evaluates the individual expense item value instead of company total revenue. ACTION: Inside the SimState step function, locate the Expenses loop (Step 2). In the value_based match arm, change s.current_value to monthly_rev for both greater_than and less_than evaluations. CONSTRAINTS: Leave the Revenue loop value_based triggers untouched.
 </task_instruction>
 
 <source_code>
---- START FILE: frontend/app/plan/[planId]/inputs/page.tsx ---
-'use client';
+--- START FILE: backend/src/engine/domain.rs ---
+use uuid::Uuid;
+use serde::{Serialize, Deserialize};
+pub use crate::distributions::GrowthSampler;
+use rust_decimal::Decimal;
+use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+use crate::projection::MonthlyData;
 
-import { useEffect, useState } from 'react';
-import Layout from '@/components/Layout';
-import Card from '@/components/ui/Card';
-import DeleteButton from '@/components/ui/DeleteButton';
-import { api, RevenueItem, ExpenseItem, FinancialPlan, CapitalInjection, StaffingRole, Company } from '@/lib/api';
-import { getCurrencySymbol } from '@/lib/currency';
+// --- STRUCTS ---
 
-// IMPORT ALL FORMS
-import RevenueForm from '@/components/forms/RevenueForm';
-import ExpenseForm from '@/components/forms/ExpenseForm';
-import CapitalGrowthForm from '@/components/forms/CapitalGrowthForm';
-import CapitalForm from '@/components/forms/CapitalForm';
-import CapitalList from '@/components/forms/CapitalList'; 
-import DividendForm from '@/components/forms/DividendForm';
-import CreditForm from '@/components/forms/CreditForm';
-import ValuationForm from '@/components/forms/ValuationForm';
-import StaffingForm from '@/components/forms/StaffingForm';
-import EventList from '@/components/EventList';
-import SuccessTaxForm from '@/components/forms/SuccessTaxForm';
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ItemState {
+    pub current_value: f64,
+    pub is_active: bool,
+}
 
-type TabType = 'operations' | 'capital' | 'settings' | 'events';
+impl Default for ItemState {
+    fn default() -> Self {
+        Self { 
+            current_value: 0.0, 
+            is_active: false,
+        }
+    }
+}
 
-export default function InputsPage({ params }: { params: { planId: string } }) {
-  const { planId } = params;
-  const [plan, setPlan] = useState<FinancialPlan | null>(null);
-  const [company, setCompany] = useState<Company | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('operations');
-  
-  // Lists Data
-  const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
-  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
-  const [capitalItems, setCapitalItems] = useState<CapitalInjection[]>([]);
-  const [staffingRoles, setStaffingRoles] = useState<StaffingRole[]>([]);
-  
-  // New State for Opening Balance
-  const [initialCash, setInitialCash] = useState("0");
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Phase {
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    // Using f64 for the hot path to maintain hardware-level speed per the Immutable Data Contract
+    pub trigger_threshold: Option<f64>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate: f64,
+    pub variable_pct: Option<f64>,
+    pub compounding_growth_sampler: Option<GrowthSampler>,
+    pub transient_noise_sampler: Option<GrowthSampler>,
+}
 
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Revenue {
+    pub name: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: f64,
+    pub frequency: String,
+    pub trigger_strategy: String,
+    pub phases: Vec<Phase>,
+}
 
-  // Edit State
-  const [editingRevenue, setEditingRevenue] = useState<RevenueItem | null>(null);
-  const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
-  const [editingCapital, setEditingCapital] = useState<any | null>(null);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Expense {
+    pub name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: f64,
+    pub frequency: String,
+    pub trigger_strategy: String,
+    pub phases: Vec<Phase>,
+}
 
-  // Derived Currency Symbol
-  const currencySymbol = plan ? getCurrencySymbol(plan.currency_code) : "$";
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Staffing {
+    pub name: String,
+    pub annual_salary: f64,
+    pub start_month: i32,
+    pub target_count: i32,
+    pub hiring_plan: String,
+    pub hiring_rate: Option<i32>,
+    pub annual_increase: f64,
+}
 
-  const fetchData = async () => {
-    // Note: We don't set loading=true here to avoid full page flicker on updates
-    // only initial load sets it.
-    try {
-      // 1. Fetch Plan (Critical) - Only if not already loaded or explicit refresh needed
-      if (!plan) {
-        try {
-            const p = await api.getPlan(planId);
-            setPlan(p);
-            // Ensure we handle potential number/string mismatch safely
-            setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Shock {
+    pub name: String,
+    pub month: i32,
+    pub impact_type: String,
+    pub impact_value: f64,
+    pub duration_months: Option<i32>,
+    pub target_company_id: Option<Uuid>, // Added for routing stochastic shocks
+}
 
-            if (p.company_id) {
-                try {
-                    const c = await api.getCompany(p.company_id);
-                    setCompany(c);
-                } catch (e) {
-                    console.error("Failed to fetch company", e);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapitalInjection {
+    pub name: String,
+    pub amount: f64,
+    pub month: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DividendPolicy {
+    pub is_enabled: bool,
+    pub safety_threshold: f64,
+    pub payout_ratio: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreditFacility {
+    pub facility_limit: f64,
+    pub interest_rate: f64,
+    pub is_annual_rate: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValuationAssumption {
+    pub name: String,
+    pub method: String,
+    pub multiplier: f64,
+    pub date_applied: Option<chrono::NaiveDate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapitalGrowthPolicy {
+    pub growth_rate: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Universe {
+    pub companies: Vec<SimState>,
+}
+
+impl Universe {
+    pub fn new(companies: Vec<SimState>) -> Self {
+        Self { companies }
+    }
+}
+
+fn default_true() -> bool { true }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimState {
+    pub id: Uuid,
+    pub company_name: String,
+    pub currency: String,
+    pub pooling_fraction: f64,
+    pub current_cash: f64,
+    pub insolvency_threshold: f64,
+    pub is_solvent: bool,
+    #[serde(default = "default_true")]
+    pub stop_on_insolvency: bool,
+    pub cum_external_cap: f64,
+    pub cum_dividends: f64,
+    pub cum_pool_received: f64,
+    pub cap_growth_sampler: Option<GrowthSampler>,
+    
+    // Soft Limit (Friction Tax)
+    pub soft_limit_active: bool,
+    pub soft_limit_threshold: f64,
+    pub soft_limit_fraction: f64,
+
+    pub revenues: Vec<Revenue>,
+    pub expenses: Vec<Expense>,
+    pub staffing: Vec<Staffing>,
+    pub shocks: Vec<Shock>,
+    pub injections: Vec<CapitalInjection>,
+    pub dividend_policy: Option<DividendPolicy>,
+    pub credit_facility: Option<CreditFacility>,
+    pub valuation: Option<ValuationAssumption>,
+    pub capital_growth: Option<CapitalGrowthPolicy>,
+    
+    pub revenue_states: Vec<ItemState>,
+    pub expense_states: Vec<ItemState>,
+    
+    pub history: Vec<MonthlyData>,
+}
+
+impl SimState {
+    pub fn initialize(&mut self) {
+        // 1. Process Month 0 Injections
+        for injection in &self.injections {
+            if injection.month == 0 {
+                self.current_cash += injection.amount;
+                self.cum_external_cap += injection.amount;
+            }
+        }
+
+        let debt = self.current_cash.min(0.0).abs();
+        let exposure = self.cum_external_cap + debt;
+
+        // 2. Record Month 0 History
+        self.history.push(MonthlyData {
+            month_index: 0,
+            date: "Month 0".to_string(),
+            revenue: Decimal::ZERO,
+            cogs: Decimal::ZERO,
+            opex: Decimal::ZERO,
+            gross_profit: Decimal::ZERO,
+            net_income: Decimal::ZERO,
+            treasury_gain: Decimal::ZERO,
+            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+            is_solvent: true,
+            interest_expense: Decimal::ZERO,
+            dividend_paid: Decimal::ZERO,
+            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+            total_companies: 1,
+            solvent_companies: 1,
+            pool_contribution: Decimal::ZERO,
+            pool_received: Decimal::ZERO,
+            contributing_companies: 0,
+            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
+        });
+    }
+
+    pub fn force_insolvency_state(&mut self) {
+        self.is_solvent = false;
+        // Removed: self.current_cash = 0.0; 
+        // We preserve the debt (negative cash) for Venture Debt visibility.
+    }
+
+    pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
+        // LOGIC A: Handle Insolvency
+        if !self.is_solvent {
+            let debt = self.current_cash.min(0.0).abs();
+            let exposure = self.cum_external_cap + debt;
+
+            // Push "Erasure" (Zero) state but keep debt visible
+            self.history.push(MonthlyData {
+                month_index: month,
+                date: format!("Month {}", month),
+                revenue: Decimal::ZERO,
+                cogs: Decimal::ZERO,
+                opex: Decimal::ZERO,
+                gross_profit: Decimal::ZERO,
+                net_income: Decimal::ZERO,
+                treasury_gain: Decimal::ZERO,
+                // Use actual negative cash
+                cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+                is_solvent: false,
+                interest_expense: Decimal::ZERO,
+                dividend_paid: Decimal::ZERO,
+                cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+                cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+                cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+                // Total value reflects debt
+                total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+                total_companies: 1,
+                solvent_companies: 0,
+                pool_contribution: Decimal::ZERO,
+                pool_received: Decimal::ZERO,
+                contributing_companies: 0,
+                total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
+            });
+            return (0.0, 0.0);
+        }
+
+        // LOGIC B: Calculate Pooling Base (Start of active step)
+        let previous_cash_floored = self.current_cash.max(0.0);
+
+        // Merge External Shocks (Persist them in state)
+        self.shocks.extend_from_slice(external_shocks);
+        self.shocks.retain(|s| month < s.month + s.duration_months.unwrap_or(1));
+
+        let mut monthly_rev = 0.0;
+        let mut monthly_cogs = 0.0;
+        let mut monthly_opex = 0.0;
+        let mut monthly_interest = 0.0;
+
+        // 1. Revenue
+        for (i, item) in self.revenues.iter_mut().enumerate() {
+            let s = &mut self.revenue_states[i];
+            
+            if month == item.start_month {
+                s.is_active = true;
+                s.current_value = item.initial_amount;
+            } else if let Some(end) = item.end_month {
+                if month > end { s.is_active = false; }
+            }
+
+            if s.is_active {
+                if item.frequency == "One-time" && month != item.start_month { continue; }
+                
+                let mut active_idx: Option<usize> = None;
+                for (p_idx, phase) in item.phases.iter().enumerate() {
+                    let is_active = match item.trigger_strategy.as_str() {
+                        "time_based" => {
+                            if let Some(tm) = phase.trigger_month {
+                                month >= tm
+                            } else {
+                                true
+                            }
+                        },
+                        "value_based" => {
+                            if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                                match op {
+                                    "greater_than" => s.current_value > thresh,
+                                    "less_than" => s.current_value < thresh,
+                                    _ => false,
+                                }
+                            } else {
+                                phase.trigger_threshold.is_none() && phase.trigger_operator.is_none()
+                            }
+                        },
+                        _ => false,
+                    };
+                    if is_active {
+                        if let Some(curr_idx) = active_idx {
+                            if phase.phase_sequence > item.phases[curr_idx].phase_sequence {
+                                active_idx = Some(p_idx);
+                            }
+                        } else {
+                            active_idx = Some(p_idx);
+                        }
+                    }
+                }
+
+                if let Some(idx) = active_idx {
+                    let phase = &mut item.phases[idx];
+                    
+                    if month > item.start_month {
+                        let should_grow = match item.frequency.as_str() {
+                            "monthly" | "Monthly" => true,
+                            "quarterly" | "Quarterly" => (month - item.start_month) % 3 == 0,
+                            "annually" | "Annually" | "annual" | "Annual" => (month - item.start_month) % 12 == 0,
+                            _ => true,
+                        };
+                        if should_grow {
+                            let mut step_growth = phase.growth_rate;
+                            if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                                step_growth += sampler.sample() / 100.0;
+                            }
+                            s.current_value *= 1.0 + step_growth;
+                        }
+                    }
+                    
+                    let mut item_rev = s.current_value;
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        item_rev *= 1.0 + sampler.sample() / 100.0;
+                    }
+                    
+                    monthly_rev += item_rev;
+                    monthly_cogs += item_rev * phase.variable_pct.unwrap_or(0.0);
+                } else {
+                    monthly_rev += s.current_value;
                 }
             }
-        } catch (e) {
-            console.error("Failed to load plan", e);
-            setErrorMsg("Plan not found or API error");
-            setLoading(false);
-            return;
         }
-      }
 
-      // 2. Fetch Other Data (Non-Critical or Partial)
-      const results = await Promise.allSettled([
-        api.getRevenueItems(planId),
-        api.getExpenseItems(planId),
-        api.getCapitalInjections(planId),
-        api.getStaffingRoles(planId)
-      ]);
-
-      // Handle Results
-      if (results[0].status === 'fulfilled') setRevenueItems(results[0].value);
-      if (results[1].status === 'fulfilled') setExpenseItems(results[1].value);
-      if (results[2].status === 'fulfilled') setCapitalItems(results[2].value);
-      
-      if (results[3].status === 'fulfilled') {
-          setStaffingRoles(results[3].value);
-      } else {
-          console.error("Failed to load staffing roles", results[3].reason);
-      }
-
-      setEditingRevenue(null);
-      setEditingExpense(null);
-      setEditingCapital(null);
-
-    } catch (error) {
-      console.error("Unexpected error loading inputs", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [planId]);
-
-  // Handlers for StaffingForm
-  const handleSaveRole = async (roleData: Omit<StaffingRole, "id" | "plan_id"> & { id?: string }) => {
-    try {
-        if (roleData.id) {
-           // Update
-           await api.updateStaffingRole({ 
-               ...roleData, 
-               id: roleData.id, 
-               plan_id: planId 
-           } as StaffingRole);
-        } else {
-           // Create
-           await api.createStaffingRole({ 
-               ...roleData, 
-               plan_id: planId 
-           });
-        }
-        await fetchData(); // Refresh data
-    } catch (err) {
-        console.error("Error saving role:", err);
-        throw err; // Let form handle error display
-    }
-  };
-
-  const handleDeleteRole = async (id: string) => {
-    try {
-        await api.deleteStaffingRole(id);
-        await fetchData();
-    } catch (err) {
-        console.error("Error deleting role:", err);
-        throw err;
-    }
-  };
-
-  // Handler for Initial Cash
-  const handleSaveInitialCash = async () => {
-    try {
-        console.log("Saving Initial Cash Payload:", { initial_cash: initialCash });
-        
-        // Update the plan with the new initial_cash value
-        // Ensure strictly string to match API requirements
-        await api.updatePlan(planId, { initial_cash: String(initialCash) });
-        
-        window.alert("Opening Balance Saved");
-
-        // Refresh the plan data to ensure sync
-        const p = await api.getPlan(planId);
-        setPlan(p);
-        setInitialCash(p.initial_cash ? String(p.initial_cash) : "0");
-
-        await fetchData();
-    } catch (err) {
-        console.error("Error saving initial cash:", err);
-        window.alert("Failed to save");
-    }
-  };
-
-  if (loading) return <Layout>Loading...</Layout>;
-  if (errorMsg || !plan) return <Layout>{errorMsg || "Plan not found"}</Layout>;
-
-  return (
-    <Layout>
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            Plan {plan.plan_name} <span className="text-gray-500 font-normal">for {company?.company_name}</span>
-            <span className="text-gray-400 text-sm">[{plan.currency_code}]</span>
-          </h1>
-          <p className="text-gray-500 text-sm">Plan ID: {plan.id}</p>
-        </div>
-        <a 
-          href={`/plan/${planId}/results`}
-          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-medium shadow-sm transition-colors"
-        >
-          View Projections &rarr;
-        </a>
-      </div>
-
-      {/* TABS NAVIGATION */}
-      <div className="border-b border-gray-200 mb-8">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          <button
-            onClick={() => setActiveTab('operations')}
-            className={`${
-              activeTab === 'operations'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Operations (P&L)
-          </button>
-
-          <button
-            onClick={() => setActiveTab('capital')}
-            className={`${
-              activeTab === 'capital'
-                ? 'border-green-500 text-green-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Capital Structure
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`${
-              activeTab === 'settings'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Treasury & Valuation
-          </button>
-
-          <button
-            onClick={() => setActiveTab('events')}
-            className={`${
-              activeTab === 'events'
-                ? 'border-amber-500 text-amber-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Swan Events
-          </button>
-        </nav>
-      </div>
-
-      {/* --- TAB CONTENT: OPERATIONS --- */}
-      {activeTab === 'operations' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
-          
-          {/* REVENUE COLUMN */}
-          <section className="space-y-6">
-            <Card id="revenue-form">
-                <h2 className="text-xl font-bold mb-4 text-blue-600 flex items-center gap-2">
-                    Revenue Streams
-                </h2>
-                <RevenueForm 
-                    planId={planId} 
-                    onSuccess={fetchData} 
-                    itemToEdit={editingRevenue}
-                    onCancel={() => setEditingRevenue(null)}
-                    currencySymbol={currencySymbol}
-                />
-            </Card>
+        // 2. Expenses
+        for (i, item) in self.expenses.iter_mut().enumerate() {
+            let s = &mut self.expense_states[i];
             
-            <div className="space-y-4">
-                {revenueItems.map((item) => (
-                <Card key={item.id} className={`border-l-4 transition-all ${editingRevenue?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-blue-500 hover:shadow-md'}`}>
-                    <div className="flex justify-between items-start">
-                    <div>
-                        <h3 className="font-bold text-gray-900">{item.revenue_name}</h3>
-                        <p className="text-sm text-gray-600">{item.source} • {item.frequency}</p>
-                        
-                        {/* Multi-Phase Summary Block */}
-                        {item.phases?.map((phase: any) => {
-                            const triggerLabel = phase.phase_sequence === 1 
-                                ? "Phase 1 Baseline" 
-                                : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
-                                    ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
-                                    : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
-                            
-                            const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
-                                ? [...phase.volatility_configs]
-                                    .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
-                                    .filter((c: any) => c && c.volatility_type)
-                                    .map((c: any) => {
-                                        if (c.volatility_type === 'flat') return 'Simple';
-                                        if (c.volatility_type === 'nrig') return 'Comprehensive';
-                                        if (c.volatility_type === 'student_t') return 'Student T';
-                                        if (c.volatility_type === 'normal') return 'Normal';
-                                        return c.volatility_type;
-                                    })
-                                    .join(', ') || 'None'
-                                : 'None';
+            if month == item.start_month {
+                s.is_active = true;
+                s.current_value = item.initial_amount;
+            } else if let Some(end) = item.end_month {
+                if month > end { s.is_active = false; }
+            }
 
-                            return (
-                                <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="text-right">
-                        <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
-                    </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-                    <span>Starts Month: {item.start_month}</span>
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={() => {
-                                setEditingRevenue(item);
-                                document.getElementById('revenue-form')?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                            className="text-blue-600 hover:text-blue-800 font-semibold"
-                        >
-                            Edit
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <DeleteButton onDelete={async () => {
-                            await api.deleteRevenueItem(item.id);
-                            fetchData();
-                        }} />
-                    </div>
-                    </div>
-                </Card>
-                ))}
-                {revenueItems.length === 0 && (
-                    <div className="text-center p-8 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                        No revenue streams added yet.
-                    </div>
-                )}
-            </div>
-          </section>
+            if s.is_active {
+                if item.frequency == "One-time" && month != item.start_month { continue; }
+                
+                let mut active_idx: Option<usize> = None;
+                for (p_idx, phase) in item.phases.iter().enumerate() {
+                    let is_active = match item.trigger_strategy.as_str() {
+                        "time_based" => {
+                            if let Some(tm) = phase.trigger_month {
+                                month >= tm
+                            } else {
+                                true
+                            }
+                        },
+                        "value_based" => {
+                            if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
+                                match op {
+                                    "greater_than" => s.current_value > thresh,
+                                    "less_than" => s.current_value < thresh,
+                                    _ => false,
+                                }
+                            } else {
+                                phase.trigger_threshold.is_none() && phase.trigger_operator.is_none()
+                            }
+                        },
+                        _ => false,
+                    };
+                    if is_active {
+                        if let Some(curr_idx) = active_idx {
+                            if phase.phase_sequence > item.phases[curr_idx].phase_sequence {
+                                active_idx = Some(p_idx);
+                            }
+                        } else {
+                            active_idx = Some(p_idx);
+                        }
+                    }
+                }
 
-          {/* EXPENSES COLUMN */}
-          <section className="space-y-6">
-            <Card id="expense-form">
-                <h2 className="text-xl font-bold mb-4 text-red-600">Expenses</h2>
-                <ExpenseForm 
-                    planId={planId} 
-                    onSuccess={fetchData} 
-                    itemToEdit={editingExpense}
-                    onCancel={() => setEditingExpense(null)}
-                    currencySymbol={currencySymbol}
-                />
-            </Card>
-
-            <div className="space-y-4">
-                {expenseItems.map((item) => (
-                <Card key={item.id} className={`border-l-4 transition-all ${editingExpense?.id === item.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : 'border-red-500 hover:shadow-md'}`}>
-                    <div className="flex justify-between items-start">
-                    <div>
-                        <h3 className="font-bold text-gray-900">{item.expense_name}</h3>
-                        <p className="text-sm text-gray-600">{item.category} • {item.frequency}</p>
-                        
-                        {/* Multi-Phase Summary Block */}
-                        {item.phases?.map((phase: any) => {
-                            const triggerLabel = phase.phase_sequence === 1 
-                                ? "Phase 1 Baseline" 
-                                : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
-                                    ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
-                                    : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
-                            
-                            const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
-                                ? [...phase.volatility_configs]
-                                    .sort((a: any, b: any) => a.mode_name === 'compounding_growth' ? -1 : (b.mode_name === 'compounding_growth' ? 1 : 0))
-                                    .filter((c: any) => c && c.volatility_type)
-                                    .map((c: any) => {
-                                        if (c.volatility_type === 'flat') return 'Simple';
-                                        if (c.volatility_type === 'nrig') return 'Comprehensive';
-                                        if (c.volatility_type === 'student_t') return 'Student T';
-                                        if (c.volatility_type === 'normal') return 'Normal';
-                                        return c.volatility_type;
-                                    })
-                                    .join(', ') || 'None'
-                                : 'None';
-
-                            return (
-                                <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="text-right">
-                        <p className="font-bold text-lg">{currencySymbol}{Number(item.initial_amount).toLocaleString()}</p>
-                    </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-                    <span>Starts Month: {item.start_month}</span>
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={() => {
-                                setEditingExpense(item);
-                                document.getElementById('expense-form')?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                            className="text-blue-600 hover:text-blue-800 font-semibold"
-                        >
-                            Edit
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <DeleteButton onDelete={async () => {
-                            await api.deleteExpenseItem(item.id);
-                            fetchData();
-                        }} />
-                    </div>
-                    </div>
-                </Card>
-                ))}
-                 {expenseItems.length === 0 && (
-                    <div className="text-center p-8 text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                        No expenses added yet.
-                    </div>
-                )}
-            </div>
-          </section>
-
-          {/* STAFFING COLUMN (Full Width) */}
-          <div className="col-span-1 lg:col-span-2 mt-8">
-                <StaffingForm 
-                    planId={planId} 
-                    initialRoles={staffingRoles}
-                    currency={plan?.currency_code || "USD"}
-                    onSave={handleSaveRole}
-                    onDelete={handleDeleteRole}
-                />
-            </div>
-        </div>
-      )}
-
-      {/* --- TAB CONTENT: CAPITAL STRUCTURE --- */}
-      {activeTab === 'capital' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
-            
-            {/* EQUITY / CAPITAL INJECTIONS */}
-            <section className="space-y-6">
-                <Card>
-                    <h2 className="text-xl font-bold mb-4 text-green-600">Equity & Capital Injections</h2>
-                    <p className="text-sm text-gray-500 mb-6">Add one-time cash injections (e.g. Seed rounds, Owner contributions).</p>
+                if let Some(idx) = active_idx {
+                    let phase = &mut item.phases[idx];
                     
-                    {/* OPENING BALANCE INPUT */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Opening Cash Balance ({currencySymbol})
-                        </label>
-                        <div className="flex gap-2">
-                            <input 
-                                type="number" 
-                                value={initialCash}
-                                onChange={(e) => setInitialCash(e.target.value)}
-                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border"
-                                placeholder="0.00"
-                            />
-                            <button
-                                onClick={handleSaveInitialCash}
-                                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium"
-                            >
-                                Save
-                            </button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                            Starting cash on hand at Month 0.
-                        </p>
-                    </div>
+                    if month > item.start_month {
+                        let should_grow = match item.frequency.as_str() {
+                            "monthly" | "Monthly" => true,
+                            "quarterly" | "Quarterly" => (month - item.start_month) % 3 == 0,
+                            "annually" | "Annually" | "annual" | "Annual" => (month - item.start_month) % 12 == 0,
+                            _ => true,
+                        };
+                        if should_grow {
+                            let mut step_growth = phase.growth_rate;
+                            if let Some(sampler) = &mut phase.compounding_growth_sampler {
+                                step_growth += sampler.sample() / 100.0;
+                            }
+                            s.current_value *= 1.0 + step_growth;
+                        }
+                    }
+                    
+                    let mut amt = s.current_value;
+                    if let Some(sampler) = &mut phase.transient_noise_sampler {
+                        amt *= 1.0 + sampler.sample() / 100.0;
+                    }
+                    
+                    if let Some(pct) = phase.variable_pct {
+                        amt += monthly_rev * pct;
+                    }
+                    monthly_opex += amt;
+                } else {
+                    monthly_opex += s.current_value;
+                }
+            }
+        }
 
-                    {/* INPUT FORM */}
-                    <CapitalForm planId={planId} onSuccess={fetchData} itemToEdit={editingCapital} onCancel={() => setEditingCapital(null)} currencySymbol={currencySymbol} />
+        // 3. Staffing (Preserved Logic)
+        for role in &self.staffing {
+            if month >= role.start_month {
+                let current_headcount = match role.hiring_plan.as_str() {
+                    "monthly_rate" => {
+                        let months_active = month - role.start_month;
+                        let rate = role.hiring_rate.unwrap_or(1).max(1);
+                        let hired = 1 + (months_active / rate);
+                        hired.min(role.target_count)
+                    }
+                    _ => role.target_count,
+                };
 
-                    {/* LIST OF ITEMS */}
-                    <CapitalList items={capitalItems} onDelete={fetchData} onEdit={(item: any) => setEditingCapital(item)} />
-                </Card>
-            </section>
+                if current_headcount > 0 {
+                    let years_passed = (month - role.start_month) / 12;
+                    let mut current_annual_salary = role.annual_salary;
+                    if years_passed > 0 {
+                        let multiplier = 1.0 + role.annual_increase;
+                        for _ in 0..years_passed {
+                            current_annual_salary *= multiplier;
+                        }
+                    }
+                    let monthly_cost = (current_annual_salary * current_headcount as f64) / 12.0;
+                    monthly_opex += monthly_cost;
+                }
+            }
+        }
 
-            {/* DEBT & DIVIDENDS */}
-            <section className="space-y-6">
-                <Card>
-                    <h2 className="text-xl font-bold mb-4 text-orange-600">Debt & Credit Facilities</h2>
-                     <p className="text-sm text-gray-500 mb-6">Manage lines of credit, interest rates, and loan terms.</p>
-                    <CreditForm planId={planId} currencySymbol={currencySymbol} />
-                </Card>
+        // 4. Apply Active Shocks
+        let mut capital_growth_mult = 1.0;
+        for shock in &self.shocks {
+            let duration = shock.duration_months.unwrap_or(1);
+            if month >= shock.month && month < shock.month + duration {
+                
+                let monthly_raw_pct = (shock.impact_value / 100.0) / duration as f64;
+                
+                // Updated is_expense check to include "expense_shock"
+                let is_expense = matches!(shock.impact_type.as_str(), "expense" | "opex" | "cogs" | "expense_shock");
+                
+                let mult = if is_expense { 1.0 - monthly_raw_pct } else { 1.0 + monthly_raw_pct };
+                let mult = mult.max(0.0);
+                
+                match shock.impact_type.as_str() {
+                    "revenue" | "revenue_shock" => { 
+                        monthly_rev *= mult; 
+                        monthly_cogs *= mult; 
+                    },
+                    "expense" | "opex" | "expense_shock" => {
+                        monthly_opex *= mult;
+                    },
+                    "cogs" => monthly_cogs *= mult,
+                    "cash" | "cash_shock" => {
+                        // Apply fractionally to absolute cash to avoid debt bailouts
+                        let cash_impact = self.current_cash.abs() * monthly_raw_pct;
+                        if is_expense {
+                            self.current_cash -= cash_impact; // Detrimental: drains cash / increases debt
+                        } else {
+                            self.current_cash += cash_impact; // Beneficial: adds cash / shrinks debt
+                        }
+                    },
+                    "valuation" | "valuation_shock" => {
+                        // Valuation shocks do not affect operational cash flow or cash balance directly.
+                        // They affect the theoretical equity value, which is calculated downstream or in aggregation.
+                    },
+                    "capital_growth" | "capital_growth_shock" => {
+                        capital_growth_mult *= (1.0 + monthly_raw_pct).max(0.0);
+                    },
+                    _ => {}
+                }
+            }
+        }
 
-                <Card>
-                    <h2 className="text-xl font-bold mb-4 text-cyan-600">Dividends</h2>
-                    <p className="text-sm text-gray-500 mb-6">Set rules for profit distribution to shareholders.</p>
-                    <DividendForm planId={planId} currencySymbol={currencySymbol} />
-                </Card>
-            </section>
-        </div>
-      )}
+        // 5. Interest on Credit Facility (New Logic)
+        if self.current_cash < 0.0 {
+            if let Some(cf) = &self.credit_facility {
+                let debt = self.current_cash.abs();
+                let rate = if cf.is_annual_rate { cf.interest_rate / 12.0 } else { cf.interest_rate };
+                monthly_interest = debt * rate;
+            }
+        }
 
-      {/* --- TAB CONTENT: SETTINGS & TREASURY --- */}
-      {activeTab === 'settings' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
-             {/* TREASURY */}
-             <section>
-                 <Card>
-                    <h2 className="text-xl font-bold mb-4 text-indigo-600">Treasury Management</h2>
-                    <p className="text-sm text-gray-500 mb-6">
-                        Configure how idle cash is invested. Set a minimum cash buffer and an interest yield for surplus cash.
-                    </p>
-                    <CapitalGrowthForm planId={planId} onSuccess={fetchData} />
-                 </Card>
-            </section>
+        // 6. Injections
+        for injection in &self.injections {
+            if month == injection.month {
+                self.current_cash += injection.amount;
+                self.cum_external_cap += injection.amount;
+            }
+        }
 
-             {/* VALUATION & SUCCESS TAX */}
-             <section className="space-y-6">
-                 <Card>
-                    <h2 className="text-xl font-bold mb-4 text-purple-600">Valuation Settings</h2>
-                    <p className="text-sm text-gray-500 mb-6">
-                        Define the multiples (Revenue/EBITDA) used to estimate your company's value over time.
-                    </p>
-                    <ValuationForm planId={planId} onSuccess={fetchData} />
-                 </Card>
+        let gross_profit = monthly_rev - monthly_cogs;
+        let total_expenses = monthly_opex + monthly_interest;
+        let operating_profit = gross_profit - total_expenses;
 
-                 {/* SUCCESS TAX FORM */}
-                 {plan && <SuccessTaxForm plan={plan} onSuccess={fetchData} />}
-            </section>
-        </div>
-      )}
+        // 7. Update Cash
+        self.current_cash += operating_profit;
 
-      {/* --- TAB CONTENT: SWAN EVENTS --- */}
-      {activeTab === 'events' && (
-        <div className="animate-in fade-in duration-300">
-          <Card>
-             <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  Swan Events (Risk Scenarios)
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Define specific risk events (positive or negative) for {company?.company_name || 'this company'}. Note that events can stack, i.e., a second instance of the same event can occur while the first is still active. 
-                </p>
-             </div>
-             <EventList 
-               fundId={null} 
-               companies={company ? [company] : []} 
-               funds={[]} 
-               companyId={company?.id}
-             />
-          </Card>
-        </div>
-      )}
-    </Layout>
-  );
-}
---- END FILE: frontend/app/plan/[planId]/inputs/page.tsx ---
+        // 8. Investment Gain (Treasury)
+        let mut investment_gain = 0.0;
+        if self.current_cash > 0.0 {
+            if let Some(policy) = &self.capital_growth {
+                if let Some(sampler) = &mut self.cap_growth_sampler {
+                    let rate = sampler.sample();
+                    let effective_rate = ((policy.growth_rate * 100.0 + rate) / 100.0) * capital_growth_mult;
+                    investment_gain = self.current_cash * effective_rate;
+                }
+            }
+        }
+        self.current_cash += investment_gain;
 
---- START FILE: frontend/components/forms/CapitalList.tsx ---
-'use client';
+        // LOGIC C: Apply Pooling (Ergodicity Correction)
+        // 9. Pooling Contribution (Refined)
+        let total_profit = operating_profit + investment_gain; // Kept for net_income reporting
+        
+        let current_cash_floored = self.current_cash.max(0.0);
+        let poolable_gain = current_cash_floored - previous_cash_floored;
+        
+        let mut contribution = 0.0;
+        // VERIFIED: Uses self.pooling_fraction which is overridden by Orchestrator if ergodicity_correction is set.
+        if self.pooling_fraction > 0.0 && poolable_gain > 0.0 {
+            contribution = poolable_gain * self.pooling_fraction;
+            self.current_cash -= contribution;
+        }
 
-import { useState } from 'react';
-import { api } from '@/lib/api';
-import DeleteButton from '@/components/ui/DeleteButton';
+        // LOGIC D: Soft Upper Limit (Friction Tax)
+        if self.soft_limit_active && self.current_cash > self.soft_limit_threshold {
+            let excess = self.current_cash - self.soft_limit_threshold;
+            let tax = excess * self.soft_limit_fraction;
+            self.current_cash -= tax;
+        }
 
-// Define the shape of a Capital Item based on your backend response
-export interface CapitalItem {
-  id: string;
-  injection_name: string; // Updated to match API V3 (Scoped Naming)
-  amount: string; // Strict Type: String from backend (Decimal)
-  month: number;
-}
+        let net_income = total_profit;
 
-interface Props {
-  items: CapitalItem[];
-  onDelete: () => void; // Trigger data refresh after deletion
-  onEdit: (item: CapitalItem) => void;
-}
+        let debt = self.current_cash.min(0.0).abs();
+        let exposure = self.cum_external_cap + debt;
 
-export default function CapitalList({ items, onDelete, onEdit }: Props) {
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+        // Record History
+        self.history.push(MonthlyData {
+            month_index: month,
+            date: format!("Month {}", month),
+            revenue: Decimal::from_f64_retain(monthly_rev).unwrap_or_default(),
+            cogs: Decimal::from_f64_retain(monthly_cogs).unwrap_or_default(),
+            opex: Decimal::from_f64_retain(monthly_opex).unwrap_or_default(),
+            gross_profit: Decimal::from_f64_retain(gross_profit).unwrap_or_default(),
+            net_income: Decimal::from_f64_retain(net_income).unwrap_or_default(),
+            treasury_gain: Decimal::from_f64_retain(investment_gain).unwrap_or_default(),
+            cash_balance: Decimal::from_f64_retain(self.current_cash).unwrap_or_default(),
+            is_solvent: self.is_solvent,
+            interest_expense: Decimal::from_f64_retain(monthly_interest).unwrap_or_default(),
+            dividend_paid: Decimal::ZERO,
+            cumulative_dividends: Decimal::from_f64_retain(self.cum_dividends).unwrap_or_default(),
+            cumulative_external_capital: Decimal::from_f64_retain(self.cum_external_cap).unwrap_or_default(),
+            cumulative_pool_received: Decimal::from_f64_retain(self.cum_pool_received).unwrap_or_default(),
+            total_value: Decimal::from_f64_retain(self.current_cash + self.cum_dividends).unwrap_or_default(),
+            total_companies: 1,
+            solvent_companies: if self.is_solvent { 1 } else { 0 },
+            pool_contribution: Decimal::from_f64_retain(contribution).unwrap_or_default(),
+            pool_received: Decimal::ZERO, // Will be updated by orchestrator if pooling happens
+            contributing_companies: if contribution > 0.0 { 1 } else { 0 },
+            total_exposure: Decimal::from_f64_retain(exposure).unwrap_or_default(),
+        });
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    try {
-      await api.deleteCapitalInjection(id);
-      onDelete(); // Refresh parent data
-    } catch (error) {
-      console.error("Failed to delete injection", error);
-    } finally {
-      setDeletingId(null);
+        (net_income, contribution)
     }
-  };
-
-  if (items.length === 0) {
-    return (
-      <div className="text-center p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
-        <p className="text-gray-400 italic text-sm">
-          No capital injections recorded yet.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 mt-4">
-      {items.map((item) => (
-        <div 
-          key={item.id} 
-          className="flex justify-between items-center border border-gray-200 p-3 rounded-lg bg-white hover:border-green-300 transition-colors shadow-sm"
-        >
-          {/* Left: Name and Month */}
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">{item.injection_name}</p>
-            <p className="text-xs text-gray-500">Deposited in Month {item.month}</p>
-          </div>
-
-          {/* Right: Amount, Edit, and Delete */}
-          <div className="flex items-center gap-4">
-            <span className="font-bold text-green-700 bg-green-50 px-2 py-1 rounded text-sm">
-              +${Number(item.amount).toLocaleString()}
-            </span>
-            
-            <button 
-              onClick={() => onEdit(item)} 
-              className="text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors" 
-              type="button"
-            >
-              Edit
-            </button>
-
-            <DeleteButton 
-              onDelete={() => handleDelete(item.id)}
-              disabled={deletingId === item.id}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
---- END FILE: frontend/components/forms/CapitalList.tsx ---
+--- END FILE: backend/src/engine/domain.rs ---
+
+--- START FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
+# Status: UNIVERSAL CONSTITUTION (Read by every agent)
+# Role: Immutable Constraints & Patterns
+
+## === PROJECT GOAL ===
+**Objective:** Build an enterprise-grade financial simulation engine (Monte Carlo) for startups and investors.
+**Core Philosophy:** "Correctness over Convenience." We model non-ergodic path dependence. Simulate path-dependent volatility using specific distributions (Normal, Student's T, NRIG).
+**Identity:** Username-based.
+
+# === IMMUTABLE ===
+# Master Architectural Reference: The Fortress Standard (V3.1)
+
+**Status**: Hardened | **Date**: 2026-01-24 | **Target**: Frontend & Backend Architects
+**Core Mission**: To maintain 100% mathematical integrity, structural consistency, and tenant isolation across the Evolutesix Financial Engine.
+
+## 1. TECHNOLOGY STACK (Immutable)
+
+The stack is selected for institutional-grade precision, type safety, and high-performance simulation execution.
+
+* **Backend:**
+    * **Language:** Rust (Edition 2021).
+    * **Web Framework:** `axum` (with `tokio`).
+    * **Database:** PostgreSQL via `sqlx` (Compile-time checked queries).
+    * **Math:** See Immutable Data Contract below.
+    * **Serialization:** `serde` / `serde_json`.
+
+* **Frontend:**
+    * **Framework:** Next.js 14+ (App Router).
+    * **Language:** TypeScript.
+    * **Styling:** Tailwind CSS (Utility classes).
+    * **HTTP Client:** Axios (via `lib/api.ts`).
+    * **Visualization:** Chart.js (`react-chartjs-2`).
+
+### **Database & Infrastructure**
+- **Database**: PostgreSQL (Strict Relational).
+- **Infrastructure**: Docker and Docker-Compose for environment parity.
+- **Migrations**: Managed via `sqlx` to ensure schema integrity.
+
+---
+
+## 2. THE "IRON LAWS" (Security & Integrity)
+
+These rules are non-negotiable.
+
+### A. Tenant Isolation & Security
+1.  **Strict Isolation:** Every business entity (Fund, Company) MUST belong to a `tenant_id`.
+2.  **Query Rule:** Every SQL `SELECT`, `UPDATE`, or `DELETE` must explicitly filter `WHERE tenant_id = $1` (derived from JWT), *unless* specifically querying `is_public_template = true` (Library Mode).
+3.  **Demo Guard:** The `guard_public_templates` Database Trigger protects the `is_public_template` flag at the engine level. Only the designated Demo Admin UUID can set this to `true`.
+
+### B. Type Safety
+1.  **Money:** ALWAYS use `rust_decimal::Decimal`. NEVER use `f64` for storage/API.
+2.  **Percents:** ALWAYS use `Decimal` (e.g., 5.0 = 5%).
+3.  **IDs:** ALWAYS use `Uuid`.
+
+### C. Serialization & API
+1.  **String-Decimal Standard:** All Currency, Decimals, and Percentages MUST be transmitted as **Strings** (e.g., `"1250.50"`, `"3.0"`).
+2.  **Solvency Arrays:** `solvent_counts` arrays (e.g., `p50_solvent_count`) are **MANDATORY** (`Vec<i32>`). They must never be `Option` or `null`.
+3.  **Scoped Naming:** Fields must be scoped (e.g., `role_name`, `expense_name`) and never simply `name`.
+
+---
+
+## 3. The Immutable Data Contract
+
+| **Layer** | **Type** | **Responsibility** |
+| ----------------- | ---------------------------- | --------------------------------------------- |
+| **Storage / API** | `rust_decimal::Decimal`      | Exactness, no rounding errors in DB.          |
+| **Boundary** | `ToPrimitive::to_f64()`      | One-time conversion with overflow safety.     |
+| **The Hot Path** | `f64`                        | Hardware-level speed for 1,000+ trajectories. |
+| **Aggregator** | `Decimal::from_f64_retain()` | Convert results back for the API response.    |
+
+### 潤 Unified Identity Contract
+| **Entity** | **Field** | **Source of Truth** |
+| ------------ | ----------- | ------------------------------------------------------ |
+| **Identity** | `user_id`   | **UUID** (Stored in JWT and returned in AuthResponse)  |
+| **Auth** | `sub`       | **Username** (String, used only for display)           |
+| **Security** | `tenant_id` | **UUID** (The primary filter for ALL database queries) |
+
+### The "Solvency Source of Truth"
+- **New Standard:** You must exclusively use `is_solvent: boolean`.
+- **Logic:** If `is_solvent === false`, the Company is dead. All financial fields (Revenue, Cash, Opex) are guaranteed to be `0.00`.
+
+---
+
+## 4. DIRECTORY MAP & TOOLING
+* **Backend Structure:**
+    * `backend/src/handlers/` -> All API route logic.
+        * `lifecycle.rs` -> **(New)** Duplicate, Move, Template Cloning.
+        * `fund_simulation.rs` -> The Monte Carlo Engine endpoint.
+    * `backend/src/models.rs` -> Shared Structs and DB schemas. (Reference this for column names).
+    * `backend/src/projection.rs` -> Core Financial Simulation Logic / Structs.
+    * `backend/src/engine/` -> V4 Simulation Kernel (Orchestrator).
+    * `backend/migrations/` -> SQLx migration files (SQL).
+
+---
+
+## 5. API PATTERNS (V3.1)
+
+### A. Lifecycle Management
+* `POST /api/lifecycle/plans/:id/duplicate` -> Deep Copy Plan + Children.
+* `POST /api/lifecycle/companies/:id/duplicate` -> Deep Copy Company + Plans.
+* `POST /api/lifecycle/funds/:id/duplicate` -> Deep Copy Fund + Companies.
+* `PUT /api/lifecycle/companies/:id/move` -> Reassign `fund_id` (Same Tenant).
+* `GET /api/lifecycle/templates` -> List Public Demo Funds.
+* `POST /api/lifecycle/templates/:id/clone` -> Copy Demo Fund to User Tenant.
+
+### B. Simulation Output (SimulationResult)
+* **Fan Chart:** `p[0-100]_value` (Decimal Arrays).
+* **Structure:** `p[0-100]_solvent_counts` (Integer Arrays) -> **MANDATORY**.
+* **Table:** `p50_data` (Object Array) -> Detailed Financials for the median run.
+* **Cliff:** `survival_rate` (Decimal Array).
+
+### C. Event Management
+* `GET /api/events?target_ids=uuid1,uuid2` -> Batch retrieve events for specific targets (Plans, Funds, or Companies). Returns empty list if no IDs provided.
+
+---
+
+## 6. CORE ENGINE LOGIC (`backend/src/projection.rs`)
+* **Mechanism:** Breadth-First Traversal (Time-step based).
+* **Scope:** Handles Revenue, COGS, OpEx, Capital Injections, Dividends, Credit Facilities.
+* **Monte Carlo (Company/Fund):** Runs 1000+ iterations. Calculates percentiles (P5, P50, P95).
+* **Insolvency:** Logic stops simulation trajectory if `cash < -credit_limit`.
+
+---
+
+## 7. Simulation & Business Logic
+
+#### 7.1 Statistical Integrity (The Anchored Median)
+- **P50 Trajectory**: The "Median" line represents the fictitious path connecting the **median value of each individual month** across 1,000 simulations (Cross-Sectional).
+- **Metric Alignment**: Runway, Valuation, and Net Value labels must be derived from this specific monthly median trajectory.
+- **Zombie Explanation**: The "Solvent Companies" count may fluctuate (e.g., 2 -> 1 -> 2) on the P50 line because the median run in Month X might be different from the median run in Month Y. This is mathematically correct for a cross-sectional view.
+
+#### 7.2 Fund Level Logic
+- **Relative Time**: The system uses **Integers** for months (e.g., Month 1, Month 12).
+- **Anniversaries**: Annual changes are applied in the anniversary month, calculated as `(m - role.start_month) / 12`.
+- **Hard-Stop Insolvency**: If `is_solvent` becomes false, all flows and cash snap to `0.00`.
+
+---
+
+## 8. Recorded Micro-Decisions
+1. **P50 Runway = "Remaining Time"**: If the median trajectory is insolvent, runway explicitly returns `0`.
+2. **Retention of `valuation_name`**: Kept specific semantic naming.
+3. **Staffing "Role Name"**: Scoped naming `role_name`.
+4. **Transactions**: Any "Duplicate" or "Clone" action MUST use `sqlx::Transaction`.
+5. **Naming**: Cloned entities append `(Copy)` to the name.
+6. **Event Nomenclature**: API uses `event_name` and `event_type` exclusively, replacing legacy `shock` terminology.
+
+---
+
+# === UNIVERSAL BUILDER PROTOCOL ===
+* **File Operations:**
+    * You are a CLI tool. When asked to edit a file, output the **FULL FILE** content inside XML tags `<file path="...">...
+--- END FILE: docs/ARCHITECTURAL_CONTEXT_CLI.md ---
 
 </source_code>

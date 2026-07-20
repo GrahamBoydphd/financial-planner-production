@@ -364,8 +364,8 @@ impl SimState {
                         "value_based" => {
                             if let (Some(thresh), Some(op)) = (phase.trigger_threshold, phase.trigger_operator.as_deref()) {
                                 match op {
-                                    "greater_than" => s.current_value > thresh,
-                                    "less_than" => s.current_value < thresh,
+                                    "greater_than" => monthly_rev > thresh,
+                                    "less_than" => monthly_rev < thresh,
                                     _ => false,
                                 }
                             } else {
