@@ -617,7 +617,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 value={years}
                 onChange={(e) => setYears(Number(e.target.value))}
               >
-                {[1, 2, 3, 5, 10, 20].map(y => <option key={y} value={y}>{y} Years</option>)}
+                {[1, 2, 3, 5, 10, 15, 20].map(y => <option key={y} value={y}>{y} Years</option>)}
               </select>
 
               <div className="flex items-center gap-2 border-l pl-4">

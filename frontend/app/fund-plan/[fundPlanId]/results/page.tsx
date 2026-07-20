@@ -9,7 +9,7 @@ import { api, Fund, SimulationResult } from '@/lib/api';
 import FundChart, { FanData } from '@/components/FundChart';
 import FundKPICards from '@/components/display/FundKPICards';
 
-const YEAR_OPTIONS = [1, 2, 3, 5, 10, 20];
+const YEAR_OPTIONS = [1, 2, 3, 5, 10, 15, 20];
 
 type ViewMode = 'standard' | 'single' | 'monte_carlo';
 
