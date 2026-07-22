@@ -21,17 +21,16 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [endMonth, setEndMonth] = useState('');
   const [freq, setFreq] = useState('monthly');
 
-  // Global Trigger Strategy State
-  const [triggerStrategy, setTriggerStrategy] = useState<string | null>(null);
-
   // Ordered Phase Array State
   const [phases, setPhases] = useState<any[]>([
     {
       phase_sequence: 1,
+      trigger_strategy: 'time_based',
       trigger_month: null,
       trigger_offset: '',
       trigger_threshold: '',
-      trigger_operator: '',
+      trigger_metric_basis: 'monthly',
+      trigger_comparison_operator: '',
       growth_rate_percent: '0.0',
       cost_of_revenue_percent: '',
       pct_of_revenue: '',
@@ -50,9 +49,6 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       setStartMonth(itemToEdit.start_month.toString());
       setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
       setFreq(itemToEdit.frequency);
-      
-      const triggerStrat = (itemToEdit as any).trigger_strategy || (itemToEdit as any).triggerStrategy || null;
-      setTriggerStrategy(triggerStrat);
 
       if ((itemToEdit as any).phases && (itemToEdit as any).phases.length > 0) {
         const rootStart = Number(itemToEdit.start_month) || 1;
@@ -63,13 +59,27 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             const prevAbs = idx === 1 ? rootStart : (Number(arr[idx - 1].trigger_month) || rootStart);
             offsetVal = absMonth - prevAbs;
           }
+          
+          const hasThreshold = p.trigger_threshold !== undefined && p.trigger_threshold !== null && p.trigger_threshold !== '';
+          const hasOperator = p.trigger_operator && p.trigger_operator !== '';
+          const phaseStrategy = (hasThreshold || hasOperator) ? 'value_based' : 'time_based';
+
+          let metricBasis = 'monthly';
+          let compOp = p.trigger_operator || '';
+          if (compOp.startsWith('ytd_revenue_')) {
+            metricBasis = 'ytd';
+            compOp = compOp.replace('ytd_revenue_', '');
+          }
+
           return {
             id: p.id,
             phase_sequence: p.phase_sequence,
+            trigger_strategy: phaseStrategy,
             trigger_month: absMonth,
             trigger_offset: idx > 0 ? offsetVal : "",
-            trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
-            trigger_operator: p.trigger_operator || '',
+            trigger_threshold: hasThreshold ? String(p.trigger_threshold) : '',
+            trigger_metric_basis: metricBasis,
+            trigger_comparison_operator: compOp,
             growth_rate_percent: String(p.growth_rate_percent || '0.0'),
             cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
             pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
@@ -81,10 +91,12 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         setPhases([
           {
             phase_sequence: 1,
+            trigger_strategy: 'time_based',
             trigger_month: null,
             trigger_offset: '',
             trigger_threshold: '',
-            trigger_operator: '',
+            trigger_metric_basis: 'monthly',
+            trigger_comparison_operator: '',
             growth_rate_percent: '0.0',
             cost_of_revenue_percent: '',
             pct_of_revenue: '',
@@ -104,14 +116,15 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     setStartMonth('1');
     setEndMonth('');
     setFreq('monthly');
-    setTriggerStrategy(null);
     setPhases([
       {
         phase_sequence: 1,
+        trigger_strategy: 'time_based',
         trigger_month: null,
         trigger_offset: '',
         trigger_threshold: '',
-        trigger_operator: '',
+        trigger_metric_basis: 'monthly',
+        trigger_comparison_operator: '',
         growth_rate_percent: '0.0',
         cost_of_revenue_percent: '',
         pct_of_revenue: '',
@@ -127,10 +140,12 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       ...prev,
       {
         phase_sequence: prev.length + 1,
+        trigger_strategy: 'time_based',
         trigger_month: null,
         trigger_offset: '',
         trigger_threshold: '',
-        trigger_operator: '',
+        trigger_metric_basis: 'monthly',
+        trigger_comparison_operator: '',
         growth_rate_percent: '0.0',
         cost_of_revenue_percent: '',
         volatility_configs: []
@@ -219,29 +234,20 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
     if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
 
-    // Multi-phase validation
-    if (phases.length > 1) {
-      if (!triggerStrategy) {
-        newErrors.push("Please select a global Trigger Strategy for multi-phase streams.");
-      } else {
-        phases.forEach((phase, idx) => {
-          if (idx > 0) {
-            if (triggerStrategy === 'time_based') {
-              if (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '' || isNaN(Number(phase.trigger_month))) {
-                newErrors.push(`Phase ${idx + 1}: Valid trigger month is required for time-based strategy.`);
-              }
-            } else if (triggerStrategy === 'value_based') {
-              if (!phase.trigger_operator) {
-                newErrors.push(`Phase ${idx + 1}: Trigger operator is required for value-based strategy.`);
-              }
-              if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
-                newErrors.push(`Phase ${idx + 1}: Valid trigger threshold is required for value-based strategy.`);
-              }
-            }
-          }
-        });
+    phases.forEach((phase, idx) => {
+      if (phase.trigger_strategy === 'time_based' && idx > 0) {
+        if (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '' || isNaN(Number(phase.trigger_month))) {
+          newErrors.push(`Phase ${idx + 1}: Valid trigger month is required for time-based strategy.`);
+        }
+      } else if (phase.trigger_strategy === 'value_based') {
+        if (!phase.trigger_comparison_operator) {
+          newErrors.push(`Phase ${idx + 1}: Comparison operator is required for value-based strategy.`);
+        }
+        if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
+          newErrors.push(`Phase ${idx + 1}: Valid trigger threshold is required for value-based strategy.`);
+        }
       }
-    }
+    });
 
     // Strict validation guardrail: cannot submit with empty volatility configs in any phase
     phases.forEach((phase, idx) => {
@@ -281,17 +287,38 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           return cleaned;
         });
 
+        const isTimeBased = phase.trigger_strategy === 'time_based';
+        const isValueBased = phase.trigger_strategy === 'value_based';
+
+        // Cast threshold value to a strict decimal string with two decimal places
+        let formattedThreshold = null;
+        if (isValueBased && phase.trigger_threshold !== null && phase.trigger_threshold !== undefined && phase.trigger_threshold !== '') {
+          const parsed = parseFloat(phase.trigger_threshold);
+          if (!isNaN(parsed)) {
+            formattedThreshold = parsed.toFixed(2);
+          }
+        }
+
+        let finalOperator = null;
+        if (isValueBased && phase.trigger_comparison_operator) {
+          finalOperator = (phase.trigger_metric_basis === 'ytd' ? 'ytd_revenue_' : '') + phase.trigger_comparison_operator.toLowerCase();
+        }
+
         return {
           id: phase.id,
           phase_sequence: phase.phase_sequence,
-          trigger_month: idx > 0 && triggerStrategy === 'time_based' ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
-          trigger_threshold: idx > 0 && triggerStrategy === 'value_based' ? (phase.trigger_threshold !== null && phase.trigger_threshold !== '' ? String(phase.trigger_threshold) : null) : null,
-          trigger_operator: idx > 0 && triggerStrategy === 'value_based' ? (phase.trigger_operator || null) : null,
+          // Enforce strict null constraints based on selected strategy
+          trigger_month: (isTimeBased && idx > 0) ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
+          trigger_threshold: isValueBased ? formattedThreshold : null,
+          trigger_operator: finalOperator,
+          trigger_offset: null, // Explicitly null for clean payload
           growth_rate_percent: rootGrowth,
           cost_of_revenue_percent: phase.cost_of_revenue_percent ? String(phase.cost_of_revenue_percent) : null,
           volatility_configs: cleanConfigs
         };
       });
+
+      const rootTriggerStrategy = phases.some(p => p.trigger_strategy === 'value_based') ? 'value_based' : 'time_based';
 
       const payload = {
         plan_id: planId,
@@ -301,7 +328,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         start_month: Number(startMonth),
         end_month: endMonth ? Number(endMonth) : null,
         frequency: freq.toLowerCase(),
-        trigger_strategy: phases.length > 1 ? triggerStrategy : null,
+        trigger_strategy: rootTriggerStrategy,
         phases: formattedPhases
       };
 
@@ -374,7 +401,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             <label className="text-xs text-gray-500 font-medium">Frequency</label>
             <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
               <option value="monthly">Monthly</option>
-              <option value="one_time">One-time</option>
+              <option value="one-time">One-time</option>
               <option value="quarterly">Quarterly</option>
               <option value="annually">Annually</option>
             </select>
@@ -411,65 +438,94 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
                 )}
               </div>
 
-              {/* Trigger Settings for Phase > 1 */}
-              {index > 0 && (
-                <div className="bg-gray-50 p-3 rounded border space-y-3">
-                  <p className="text-xs font-semibold text-gray-600">Phase Trigger Condition</p>
-                  {triggerStrategy === 'time_based' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1 font-medium">enter the absolute month *</label>
-                        <input
-                          type="number"
-                          className="w-full border p-2 rounded text-sm bg-white"
-                          placeholder="e.g. 12"
-                          value={phase.trigger_month ?? ''}
-                          onChange={e => handleTimeFieldChange(index, 'trigger_month', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1 font-medium">the offset in months vs the previous phase, and I'll calculate the absolute month *</label>
-                        <input
-                          type="number"
-                          className="w-full border p-2 rounded text-sm bg-white"
-                          placeholder="e.g. 6"
-                          value={phase.trigger_offset ?? ''}
-                          onChange={e => handleTimeFieldChange(index, 'trigger_offset', e.target.value)}
-                        />
-                      </div>
+              {/* Trigger Strategy Selection for EVERY phase */}
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded space-y-2 mb-4">
+                <label className="text-xs font-bold text-blue-800 flex items-center gap-1">
+                  Trigger Strategy
+                  <Tooltip content="Select how this phase is triggered (by month or by a financial threshold)." />
+                </label>
+                <select
+                  className="w-full border border-blue-300 p-2 rounded text-sm bg-white"
+                  value={phase.trigger_strategy || 'time_based'}
+                  onChange={e => handlePhaseFieldChange(index, 'trigger_strategy', e.target.value)}
+                >
+                  <option value="time_based">Time-Based (Month Count)</option>
+                  <option value="value_based">Value-Based (Threshold Operator)</option>
+                </select>
+              </div>
+
+              {/* Trigger Settings based on selected strategy */}
+              <div className="bg-gray-50 p-3 rounded border space-y-3">
+                <p className="text-xs font-semibold text-gray-600">Phase Trigger Condition</p>
+                
+                {phase.trigger_strategy === 'time_based' && index === 0 && (
+                  <p className="text-xs text-gray-500 italic">Phase 1 begins at the root Start Month.</p>
+                )}
+
+                {phase.trigger_strategy === 'time_based' && index > 0 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1 font-medium">enter the absolute month *</label>
+                      <input
+                        type="number"
+                        className="w-full border p-2 rounded text-sm bg-white"
+                        placeholder="e.g. 12"
+                        value={phase.trigger_month ?? ''}
+                        onChange={e => handleTimeFieldChange(index, 'trigger_month', e.target.value)}
+                      />
                     </div>
-                  )}
-                  {triggerStrategy === 'value_based' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Operator *</label>
-                        <select
-                          className="w-full border p-2 rounded text-sm"
-                          value={phases[index]?.trigger_operator || ''}
-                          onChange={e => handlePhaseFieldChange(index, 'trigger_operator', e.target.value)}
-                        >
-                          <option value="">Select Operator</option>
-                          <option value="greater_than">Greater Than (&gt;)</option>
-                          <option value="less_than">Less Than (&lt;)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Threshold Value *</label>
-                        <input
-                          type="text"
-                          className="w-full border p-2 rounded text-sm"
-                          placeholder="e.g. 50000"
-                          value={phases[index]?.trigger_threshold || ''}
-                          onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
-                        />
-                      </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1 font-medium">the offset in months vs the previous phase, and I'll calculate the absolute month *</label>
+                      <input
+                        type="number"
+                        className="w-full border p-2 rounded text-sm bg-white"
+                        placeholder="e.g. 6"
+                        value={phase.trigger_offset ?? ''}
+                        onChange={e => handleTimeFieldChange(index, 'trigger_offset', e.target.value)}
+                      />
                     </div>
-                  )}
-                  {!triggerStrategy && (
-                    <p className="text-xs text-amber-600">Please select a global Trigger Strategy above to configure this phase's trigger.</p>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+
+                {phase.trigger_strategy === 'value_based' && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1 font-medium">Metric Basis *</label>
+                      <select
+                        className="w-full border p-2 rounded text-sm bg-white"
+                        value={phase.trigger_metric_basis || 'monthly'}
+                        onChange={e => handlePhaseFieldChange(index, 'trigger_metric_basis', e.target.value)}
+                      >
+                        <option value="monthly">Monthly Revenue</option>
+                        <option value="ytd">Calendar YTD Revenue</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1 font-medium">Comparison Operator *</label>
+                      <select
+                        className="w-full border p-2 rounded text-sm bg-white"
+                        value={phase.trigger_comparison_operator || ''}
+                        onChange={e => handlePhaseFieldChange(index, 'trigger_comparison_operator', e.target.value)}
+                      >
+                        <option value="">Select Operator</option>
+                        <option value="greater_than">Greater than (&gt;)</option>
+                        <option value="less_than">Less than (&lt;)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1 font-medium">Threshold Amount *</label>
+                      <input
+                        type="number"
+                        step="any"
+                        className="w-full border p-2 rounded text-sm bg-white"
+                        placeholder="e.g. 50000.00"
+                        value={phase.trigger_threshold || ''}
+                        onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Growth & Cost Parameters */}
               <div className="grid grid-cols-1 gap-4">
@@ -494,25 +550,6 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
                 onChange={(updated) => handlePhaseConfigsChange(index, updated)}
               />
             </div>
-
-            {/* Global Trigger Strategy Selection placed explicitly between Phase 1 and Phase 2 */}
-            {index === 0 && phases.length > 1 && (
-              <div className="bg-blue-50 border border-blue-200 p-4 rounded space-y-2 my-4">
-                <label className="text-xs font-bold text-blue-800 flex items-center gap-1">
-                  Global Trigger Strategy *
-                  <Tooltip content="Select how subsequent phases are triggered (by month or by a financial threshold)." />
-                </label>
-                <select
-                  className="w-full border border-blue-300 p-2 rounded text-sm bg-white"
-                  value={triggerStrategy || ''}
-                  onChange={e => setTriggerStrategy(e.target.value || null)}
-                >
-                  <option value="">-- Select Strategy --</option>
-                  <option value="time_based">Time-Based (Month Count)</option>
-                  <option value="value_based">Value-Based (Threshold Operator)</option>
-                </select>
-              </div>
-            )}
           </div>
         ))}
       </div>

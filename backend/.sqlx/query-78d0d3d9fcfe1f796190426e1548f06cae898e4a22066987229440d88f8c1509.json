@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id, plan_id, revenue_name, source, \n            start_month, end_month, \n            initial_amount, frequency, trigger_strategy,\n            created_at\n        FROM revenue_items \n        WHERE plan_id = $1 \n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ORDER BY start_month ASC\n        ",
+  "query": "\n        SELECT \n            id, plan_id, revenue_name, source, \n            start_month, end_month, \n            initial_amount, frequency, trigger_strategy,\n            trigger_threshold, trigger_operator,\n            created_at\n        FROM revenue_items \n        WHERE plan_id = $1 \n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)\n        ORDER BY start_month ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -50,6 +50,16 @@
       },
       {
         "ordinal": 9,
+        "name": "trigger_threshold",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "trigger_operator",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -70,8 +80,10 @@
       false,
       false,
       false,
+      true,
+      true,
       false
     ]
   },
-  "hash": "a450a7ed049e094037ae143436524c134c23fd83d136abed5b3718c0f4560cb7"
+  "hash": "78d0d3d9fcfe1f796190426e1548f06cae898e4a22066987229440d88f8c1509"
 }

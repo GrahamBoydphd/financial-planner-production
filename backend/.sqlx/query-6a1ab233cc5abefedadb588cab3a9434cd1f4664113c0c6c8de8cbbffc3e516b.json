@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO expense_items (\n            plan_id, expense_name, category, start_month, end_month, initial_amount, frequency, trigger_strategy\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n        RETURNING \n            id, plan_id, expense_name, category, \n            start_month, end_month, \n            initial_amount, frequency, trigger_strategy,\n            created_at\n        ",
+  "query": "\n        UPDATE expense_items SET\n            expense_name = $1, category = $2, start_month = $3, end_month = $4,\n            initial_amount = $5, frequency = $6, trigger_strategy = $7,\n            trigger_threshold = $8, trigger_operator = $9\n        WHERE id = $10\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $11)\n        RETURNING \n            id, plan_id, expense_name, category, \n            start_month, end_month, \n            initial_amount, frequency, trigger_strategy,\n            trigger_threshold, trigger_operator,\n            created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -50,20 +50,33 @@
       },
       {
         "ordinal": 9,
+        "name": "trigger_threshold",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "trigger_operator",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Text",
         "Text",
         "Int4",
         "Int4",
         "Numeric",
         "Text",
-        "Varchar"
+        "Varchar",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -76,8 +89,10 @@
       false,
       false,
       false,
+      true,
+      true,
       false
     ]
   },
-  "hash": "7d46b4b9d9a3759c1abdf477c4ba7940f85829f61dd1b4110ae276a0f488058b"
+  "hash": "6a1ab233cc5abefedadb588cab3a9434cd1f4664113c0c6c8de8cbbffc3e516b"
 }

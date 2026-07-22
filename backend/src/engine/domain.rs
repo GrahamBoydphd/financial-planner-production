@@ -2,7 +2,6 @@ use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 pub use crate::distributions::GrowthSampler;
 use rust_decimal::Decimal;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use crate::projection::MonthlyData;
 
 // --- STRUCTS ---
@@ -11,6 +10,7 @@ use crate::projection::MonthlyData;
 pub struct ItemState {
     pub current_value: f64,
     pub is_active: bool,
+    pub has_fired: bool,
 }
 
 impl Default for ItemState {
@@ -18,6 +18,7 @@ impl Default for ItemState {
         Self { 
             current_value: 0.0, 
             is_active: false,
+            has_fired: false,
         }
     }
 }
@@ -43,6 +44,8 @@ pub struct Revenue {
     pub initial_amount: f64,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<f64>,
+    pub trigger_operator: Option<String>,
     pub phases: Vec<Phase>,
 }
 
@@ -55,6 +58,8 @@ pub struct Expense {
     pub initial_amount: f64,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<f64>,
+    pub trigger_operator: Option<String>,
     pub phases: Vec<Phase>,
 }
 
@@ -141,6 +146,8 @@ pub struct SimState {
     pub cum_dividends: f64,
     pub cum_pool_received: f64,
     pub cap_growth_sampler: Option<GrowthSampler>,
+    
+    pub ytd_revenue: f64,
     
     // Soft Limit (Friction Tax)
     pub soft_limit_active: bool,
@@ -248,6 +255,10 @@ impl SimState {
         // LOGIC B: Calculate Pooling Base (Start of active step)
         let previous_cash_floored = self.current_cash.max(0.0);
 
+        if (month - 1) % 12 == 0 {
+            self.ytd_revenue = 0.0;
+        }
+
         // Merge External Shocks (Persist them in state)
         self.shocks.extend_from_slice(external_shocks);
         self.shocks.retain(|s| month < s.month + s.duration_months.unwrap_or(1));
@@ -269,7 +280,8 @@ impl SimState {
             }
 
             if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
+                let is_one_time = item.frequency.eq_ignore_ascii_case("one_time") || item.frequency.eq_ignore_ascii_case("one-time");
+                if is_one_time && s.has_fired { continue; }
                 
                 let mut active_idx: Option<usize> = None;
                 for (p_idx, phase) in item.phases.iter().enumerate() {
@@ -331,11 +343,20 @@ impl SimState {
                     
                     monthly_rev += item_rev;
                     monthly_cogs += item_rev * phase.variable_pct.unwrap_or(0.0);
-                } else {
+                    
+                    if is_one_time {
+                        s.has_fired = true;
+                    }
+                } else if item.phases.is_empty() {
                     monthly_rev += s.current_value;
+                    if is_one_time {
+                        s.has_fired = true;
+                    }
                 }
             }
         }
+
+        self.ytd_revenue += monthly_rev;
 
         // 2. Expenses
         for (i, item) in self.expenses.iter_mut().enumerate() {
@@ -349,7 +370,8 @@ impl SimState {
             }
 
             if s.is_active {
-                if item.frequency == "One-time" && month != item.start_month { continue; }
+                let is_one_time = item.frequency.eq_ignore_ascii_case("one_time") || item.frequency.eq_ignore_ascii_case("one-time");
+                if is_one_time && s.has_fired { continue; }
                 
                 let mut active_idx: Option<usize> = None;
                 for (p_idx, phase) in item.phases.iter().enumerate() {
@@ -366,6 +388,7 @@ impl SimState {
                                 match op {
                                     "greater_than" => monthly_rev > thresh,
                                     "less_than" => monthly_rev < thresh,
+                                    "ytd_revenue_greater_than" => self.ytd_revenue > thresh,
                                     _ => false,
                                 }
                             } else {
@@ -413,8 +436,15 @@ impl SimState {
                         amt += monthly_rev * pct;
                     }
                     monthly_opex += amt;
-                } else {
+                    
+                    if is_one_time {
+                        s.has_fired = true;
+                    }
+                } else if item.phases.is_empty() {
                     monthly_opex += s.current_value;
+                    if is_one_time {
+                        s.has_fired = true;
+                    }
                 }
             }
         }

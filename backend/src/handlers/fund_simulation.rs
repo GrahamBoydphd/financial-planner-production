@@ -56,6 +56,8 @@ pub struct DbRevenueItem {
     pub initial_amount: Decimal,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +82,8 @@ pub struct DbExpenseItem {
     pub initial_amount: Decimal,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -394,7 +398,8 @@ async fn fetch_and_map_company_state(
         r#"
         SELECT 
             id, revenue_name, start_month, end_month, 
-            initial_amount, frequency, trigger_strategy
+            initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator
         FROM revenue_items
         WHERE plan_id = $1
         "#,
@@ -427,7 +432,8 @@ async fn fetch_and_map_company_state(
         r#"
         SELECT 
             id, expense_name, category, start_month, end_month, 
-            initial_amount, frequency, trigger_strategy
+            initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator
         FROM expense_items
         WHERE plan_id = $1
         "#,
@@ -781,6 +787,7 @@ fn map_to_sim_state(
         revenue_states.push(ItemState {
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
+            has_fired: false,
         });
 
         domain::Revenue {
@@ -790,6 +797,8 @@ fn map_to_sim_state(
             initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
             frequency: r.frequency,
             trigger_strategy: r.trigger_strategy,
+            trigger_threshold: r.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+            trigger_operator: r.trigger_operator,
             phases: item_phases,
         }
     }).collect();
@@ -837,6 +846,7 @@ fn map_to_sim_state(
         expense_states.push(ItemState {
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
+            has_fired: false,
         });
 
         domain::Expense {
@@ -847,6 +857,8 @@ fn map_to_sim_state(
             initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
             frequency: e.frequency,
             trigger_strategy: e.trigger_strategy,
+            trigger_threshold: e.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+            trigger_operator: e.trigger_operator,
             phases: item_phases,
         }
     }).collect();
@@ -959,6 +971,7 @@ fn map_to_sim_state(
         revenue_states,
         expense_states,
         history: Vec::new(),
+        ytd_revenue: 0.0,
     }
 }
 

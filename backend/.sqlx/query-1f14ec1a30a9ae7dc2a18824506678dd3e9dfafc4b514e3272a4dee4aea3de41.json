@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE expense_items SET\n            expense_name = $1, category = $2, start_month = $3, end_month = $4,\n            initial_amount = $5, frequency = $6, trigger_strategy = $7\n        WHERE id = $8\n        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)\n        RETURNING \n            id, plan_id, expense_name, category, \n            start_month, end_month, \n            initial_amount, frequency, trigger_strategy,\n            created_at\n        ",
+  "query": "\n        INSERT INTO revenue_items (\n            plan_id, revenue_name, source, start_month, end_month, initial_amount, frequency, trigger_strategy, trigger_threshold, trigger_operator\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n        RETURNING \n            id, plan_id, revenue_name, source, \n            start_month, end_month, \n            initial_amount, frequency, trigger_strategy,\n            trigger_threshold, trigger_operator,\n            created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -15,12 +15,12 @@
       },
       {
         "ordinal": 2,
-        "name": "expense_name",
+        "name": "revenue_name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "category",
+        "name": "source",
         "type_info": "Text"
       },
       {
@@ -50,12 +50,23 @@
       },
       {
         "ordinal": 9,
+        "name": "trigger_threshold",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "trigger_operator",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Text",
         "Text",
         "Int4",
@@ -63,8 +74,8 @@
         "Numeric",
         "Text",
         "Varchar",
-        "Uuid",
-        "Uuid"
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -77,8 +88,10 @@
       false,
       false,
       false,
+      true,
+      true,
       false
     ]
   },
-  "hash": "f829efb7310f105c918dca05a7a7e35098692c6f54a03fcacb680449d2bcffad"
+  "hash": "1f14ec1a30a9ae7dc2a18824506678dd3e9dfafc4b514e3272a4dee4aea3de41"
 }

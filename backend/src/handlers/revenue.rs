@@ -104,6 +104,8 @@ pub struct CreateRevenueRequest {
     pub initial_amount: String,
     pub frequency: String,
     pub trigger_strategy: Option<String>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub phases: Vec<RevenuePhaseInput>,
 }
 
@@ -116,6 +118,8 @@ pub struct UpdateRevenueRequest {
     pub initial_amount: String,
     pub frequency: String,
     pub trigger_strategy: Option<String>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub phases: Vec<RevenuePhaseInput>,
 }
 
@@ -167,6 +171,8 @@ pub struct RevenueItemTreeResponse {
     pub initial_amount: Decimal,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub phases: Vec<RevenuePhaseResponse>,
 }
@@ -326,17 +332,18 @@ pub async fn create_revenue_item(
     let item = sqlx::query!(
         r#"
         INSERT INTO revenue_items (
-            plan_id, revenue_name, source, start_month, end_month, initial_amount, frequency, trigger_strategy
+            plan_id, revenue_name, source, start_month, end_month, initial_amount, frequency, trigger_strategy, trigger_threshold, trigger_operator
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING 
             id, plan_id, revenue_name, source, 
             start_month, end_month, 
             initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator,
             created_at
         "#,
         payload.plan_id, payload.revenue_name, payload.source, payload.start_month, payload.end_month, 
-        initial_amount, payload.frequency, trigger_strategy
+        initial_amount, payload.frequency, trigger_strategy, payload.trigger_threshold, payload.trigger_operator
     )
     .fetch_one(&mut *tx)
     .await
@@ -505,6 +512,8 @@ pub async fn create_revenue_item(
         initial_amount: item.initial_amount.to_decimal(),
         frequency: item.frequency,
         trigger_strategy: item.trigger_strategy.unwrap_or_time_based(),
+        trigger_threshold: item.trigger_threshold,
+        trigger_operator: item.trigger_operator,
         created_at: item.created_at,
         phases: phases_resp,
     }))
@@ -521,6 +530,7 @@ pub async fn get_revenue_items(
             id, plan_id, revenue_name, source, 
             start_month, end_month, 
             initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator,
             created_at
         FROM revenue_items 
         WHERE plan_id = $1 
@@ -619,6 +629,8 @@ pub async fn get_revenue_items(
                 initial_amount: item.initial_amount.to_decimal(),
                 frequency: item.frequency.clone(),
                 trigger_strategy: item.trigger_strategy.clone().unwrap_or_time_based(),
+                trigger_threshold: item.trigger_threshold.clone(),
+                trigger_operator: item.trigger_operator.clone(),
                 created_at: item.created_at,
                 phases: item_phases,
             });
@@ -670,17 +682,20 @@ pub async fn update_revenue_item(
         r#"
         UPDATE revenue_items SET
             revenue_name = $1, source = $2, start_month = $3, end_month = $4,
-            initial_amount = $5, frequency = $6, trigger_strategy = $7
-        WHERE id = $8
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)
+            initial_amount = $5, frequency = $6, trigger_strategy = $7,
+            trigger_threshold = $8, trigger_operator = $9
+        WHERE id = $10
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $11)
         RETURNING 
             id, plan_id, revenue_name, source, 
             start_month, end_month, 
             initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator,
             created_at
         "#,
         payload.revenue_name, payload.source, payload.start_month, payload.end_month, 
         initial_amount, payload.frequency, trigger_strategy,
+        payload.trigger_threshold, payload.trigger_operator,
         id,
         claims.tenant_id
     )
@@ -857,6 +872,8 @@ pub async fn update_revenue_item(
         initial_amount: item.initial_amount.to_decimal(),
         frequency: item.frequency,
         trigger_strategy: item.trigger_strategy.unwrap_or_time_based(),
+        trigger_threshold: item.trigger_threshold,
+        trigger_operator: item.trigger_operator,
         created_at: item.created_at,
         phases: phases_resp,
     }))

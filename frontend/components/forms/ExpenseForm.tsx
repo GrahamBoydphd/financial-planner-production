@@ -21,17 +21,16 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
   const [endMonth, setEndMonth] = useState('');
   const [freq, setFreq] = useState('monthly');
 
-  // Global Trigger Strategy State
-  const [triggerStrategy, setTriggerStrategy] = useState<string | null>(null);
-
   // Ordered Phase Array State
   const [phases, setPhases] = useState<any[]>([
     {
       phase_sequence: 1,
+      trigger_strategy: 'time_based',
       trigger_month: null,
       trigger_offset: '',
       trigger_threshold: '',
-      trigger_operator: '',
+      trigger_metric_basis: 'monthly',
+      trigger_comparison_operator: 'greater_than',
       growth_rate_percent: '0.0',
       pct_of_revenue: '',
       volatility_configs: []
@@ -51,8 +50,6 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       setFreq(itemToEdit.frequency);
       
       const editItem = itemToEdit as any;
-      const triggerStrat = editItem.trigger_strategy || editItem.triggerStrategy || null;
-      setTriggerStrategy(triggerStrat);
 
       if (editItem.phases && editItem.phases.length > 0) {
         const rootStart = Number(itemToEdit.start_month) || 1;
@@ -63,13 +60,25 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
             const prevAbs = idx === 1 ? rootStart : (Number(arr[idx - 1].trigger_month) || rootStart);
             offsetVal = absMonth - prevAbs;
           }
+          
+          const hasValueTrigger = (p.trigger_threshold !== undefined && p.trigger_threshold !== null) || (p.trigger_operator && p.trigger_operator !== '');
+          
+          let metricBasis = 'monthly';
+          let compOp = p.trigger_operator || 'greater_than';
+          if (p.trigger_operator && p.trigger_operator.startsWith('ytd_revenue_')) {
+            metricBasis = 'ytd';
+            compOp = p.trigger_operator.replace('ytd_revenue_', '');
+          }
+
           return {
             id: p.id,
             phase_sequence: p.phase_sequence,
+            trigger_strategy: hasValueTrigger ? 'value_based' : 'time_based',
             trigger_month: absMonth,
             trigger_offset: idx > 0 ? offsetVal : "",
             trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
-            trigger_operator: p.trigger_operator || '',
+            trigger_metric_basis: metricBasis,
+            trigger_comparison_operator: compOp,
             growth_rate_percent: String(p.growth_rate_percent || '0.0'),
             cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
             pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
@@ -81,10 +90,12 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         setPhases([
           {
             phase_sequence: 1,
+            trigger_strategy: 'time_based',
             trigger_month: null,
             trigger_offset: '',
             trigger_threshold: '',
-            trigger_operator: '',
+            trigger_metric_basis: 'monthly',
+            trigger_comparison_operator: 'greater_than',
             growth_rate_percent: editItem.growth_rate_percent?.toString() ?? '0.0',
             cost_of_revenue_percent: '',
             pct_of_revenue: editItem.pct_of_revenue ? editItem.pct_of_revenue.toString() : '',
@@ -104,14 +115,15 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
     setStartMonth('1');
     setEndMonth('');
     setFreq('monthly');
-    setTriggerStrategy(null);
     setPhases([
       {
         phase_sequence: 1,
+        trigger_strategy: 'time_based',
         trigger_month: null,
         trigger_offset: '',
         trigger_threshold: '',
-        trigger_operator: '',
+        trigger_metric_basis: 'monthly',
+        trigger_comparison_operator: 'greater_than',
         growth_rate_percent: '0.0',
         cost_of_revenue_percent: '',
         pct_of_revenue: '',
@@ -189,10 +201,12 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       ...prev,
       {
         phase_sequence: prev.length + 1,
+        trigger_strategy: 'time_based',
         trigger_month: null,
         trigger_offset: '',
         trigger_threshold: '',
-        trigger_operator: '',
+        trigger_metric_basis: 'monthly',
+        trigger_comparison_operator: 'greater_than',
         growth_rate_percent: '0.0',
         pct_of_revenue: '',
         volatility_configs: []
@@ -228,18 +242,17 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       if (phase.volatility_configs.some((c: any) => !c.volatility_type)) {
         newErrors.push(`Please select a distribution type for all enabled volatility models in Phase ${phaseNum}.`);
       }
-      if (idx > 0) {
-        if (!triggerStrategy) {
-          newErrors.push(`Please select a Global Trigger Strategy for multi-phase configuration.`);
-        } else if (triggerStrategy === 'time_based' && (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '')) {
+      
+      if (phase.trigger_strategy === 'time_based' && idx > 0) {
+        if (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '') {
           newErrors.push(`Phase ${phaseNum} requires a trigger month.`);
-        } else if (triggerStrategy === 'value_based') {
-          if (!phase.trigger_operator) {
-            newErrors.push(`Phase ${phaseNum} requires a trigger operator.`);
-          }
-          if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
-            newErrors.push(`Phase ${phaseNum} requires a valid trigger threshold.`);
-          }
+        }
+      } else if (phase.trigger_strategy === 'value_based') {
+        if (!phase.trigger_comparison_operator) {
+          newErrors.push(`Phase ${phaseNum} requires a comparison operator.`);
+        }
+        if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
+          newErrors.push(`Phase ${phaseNum} requires a valid trigger threshold.`);
         }
       }
     });
@@ -273,17 +286,24 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
           return cleaned;
         });
 
+        const isValueBased = phase.trigger_strategy === 'value_based';
+        const composedOperator = phase.trigger_metric_basis === 'ytd' 
+          ? `ytd_revenue_${phase.trigger_comparison_operator}` 
+          : phase.trigger_comparison_operator;
+
         return {
           id: phase.id, // Retain ID for safe backend updates
           phase_sequence: idx + 1,
-          trigger_month: idx > 0 && triggerStrategy === 'time_based' ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
-          trigger_threshold: idx > 0 && triggerStrategy === 'value_based' ? (phase.trigger_threshold !== null && phase.trigger_threshold !== '' ? String(phase.trigger_threshold) : null) : null,
-          trigger_operator: idx > 0 && triggerStrategy === 'value_based' ? (phase.trigger_operator || null) : null,
+          trigger_month: (!isValueBased && idx > 0) ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
+          trigger_threshold: isValueBased ? (phase.trigger_threshold !== null && phase.trigger_threshold !== '' ? parseFloat(phase.trigger_threshold).toFixed(2) : null) : null,
+          trigger_operator: isValueBased ? (composedOperator ? String(composedOperator).toLowerCase() : null) : null,
           growth_rate_percent: localGrowth,
           pct_of_revenue: phase.pct_of_revenue ? String(phase.pct_of_revenue) : null,
           volatility_configs: cleanConfigs
         };
       });
+
+      const parentTriggerStrategy = phases.some(p => p.trigger_strategy === 'value_based') ? 'value_based' : 'time_based';
 
       const payload = {
         plan_id: planId,
@@ -293,7 +313,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         start_month: Number(startMonth),
         end_month: endMonth ? Number(endMonth) : undefined,
         frequency: freq.toLowerCase(),
-        trigger_strategy: phases.length > 1 ? triggerStrategy : null,
+        trigger_strategy: parentTriggerStrategy,
         phases: processedPhases
       };
 
@@ -362,7 +382,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
           <label className="text-xs text-gray-500">Frequency</label>
           <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
             <option value="monthly">Monthly</option>
-            <option value="one_time">One-time</option>
+            <option value="one-time">One-time</option>
             <option value="quarterly">Quarterly</option>
             <option value="annually">Annually</option>
           </select>
@@ -397,11 +417,26 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                   )}
                 </div>
 
-                {/* Conditional Trigger Settings for Phase 2, 3, 4 */}
-                {!isFirst && (
-                  <div className="bg-gray-50 p-3 rounded border border-dashed space-y-3">
-                    <p className="text-xs font-semibold text-gray-600">Trigger Conditions</p>
-                    {triggerStrategy === 'time_based' && (
+                {/* Trigger Conditions Block */}
+                <div className="bg-gray-50 p-3 rounded border border-dashed space-y-3">
+                  <p className="text-xs font-semibold text-gray-600">Trigger Conditions</p>
+                  
+                  <div className="mb-3">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Trigger Strategy *</label>
+                    <select
+                      className="w-full border p-2 rounded text-sm bg-white"
+                      value={phase.trigger_strategy || 'time_based'}
+                      onChange={e => handlePhaseFieldChange(index, 'trigger_strategy', e.target.value)}
+                    >
+                      <option value="time_based">Time-based</option>
+                      <option value="value_based">Value-based</option>
+                    </select>
+                  </div>
+
+                  {phase.trigger_strategy === 'time_based' && (
+                    isFirst ? (
+                      <p className="text-xs text-gray-500 italic">Activation uses the root Start Month.</p>
+                    ) : (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs text-gray-500 block mb-1 font-medium">enter the absolute month *</label>
@@ -424,38 +459,47 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                           />
                         </div>
                       </div>
-                    )}
-                    {triggerStrategy === 'value_based' && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs text-gray-500 block mb-1">Operator *</label>
-                          <select
-                            className="w-full border p-2 rounded text-sm bg-white"
-                            value={phases[index]?.trigger_operator || ''}
-                            onChange={e => handlePhaseFieldChange(index, 'trigger_operator', e.target.value)}
-                          >
-                            <option value="">-- Select Operator --</option>
-                            <option value="greater_than">Greater Than (&gt;)</option>
-                            <option value="less_than">Less Than (&lt;)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-500 block mb-1">Threshold Value *</label>
-                          <input
-                            type="text"
-                            className="w-full border p-2 rounded text-sm bg-white"
-                            placeholder="e.g. 100000"
-                            value={phases[index]?.trigger_threshold || ''}
-                            onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
-                          />
-                        </div>
+                    )
+                  )}
+
+                  {phase.trigger_strategy === 'value_based' && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Metric Basis *</label>
+                        <select
+                          className="w-full border p-2 rounded text-sm bg-white"
+                          value={phase.trigger_metric_basis || 'monthly'}
+                          onChange={e => handlePhaseFieldChange(index, 'trigger_metric_basis', e.target.value)}
+                        >
+                          <option value="monthly">Monthly Revenue</option>
+                          <option value="ytd">Calendar YTD Revenue</option>
+                        </select>
                       </div>
-                    )}
-                    {!triggerStrategy && (
-                      <p className="text-xs text-amber-600 italic">Please select a Global Trigger Strategy above to configure this phase's activation trigger.</p>
-                    )}
-                  </div>
-                )}
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Comparison Operator *</label>
+                        <select
+                          className="w-full border p-2 rounded text-sm bg-white"
+                          value={phase.trigger_comparison_operator || 'greater_than'}
+                          onChange={e => handlePhaseFieldChange(index, 'trigger_comparison_operator', e.target.value)}
+                        >
+                          <option value="greater_than">Greater than (&gt;)</option>
+                          <option value="less_than">Less than (&lt;)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Threshold Amount *</label>
+                        <input
+                          type="number"
+                          step="any"
+                          className="w-full border p-2 rounded text-sm bg-white"
+                          placeholder="e.g. 100000"
+                          value={phase.trigger_threshold || ''}
+                          onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Growth Parameters */}
                 <div className="grid grid-cols-1 gap-4">
@@ -480,22 +524,6 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                   onChange={(updated) => handlePhaseConfigsChange(index, updated)}
                 />
               </div>
-
-              {/* GLOBAL TRIGGER STRATEGY SELECTION placed explicitly between Phase 1 and Phase 2 */}
-              {isFirst && phases.length > 1 && (
-                <div className="bg-blue-50 p-3 rounded border border-blue-200 my-4">
-                  <label className="block text-xs font-bold text-blue-800 mb-1">Global Trigger Strategy *</label>
-                  <select
-                    className="w-full border p-2 rounded text-sm bg-white"
-                    value={triggerStrategy || ''}
-                    onChange={e => setTriggerStrategy(e.target.value || null)}
-                  >
-                    <option value="">-- Select Trigger Strategy --</option>
-                    <option value="time_based">Time-based (Trigger Month)</option>
-                    <option value="value_based">Value-based (Monthly Revenue Threshold)</option>
-                  </select>
-                </div>
-              )}
             </div>
           );
         })}

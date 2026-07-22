@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use rust_decimal::Decimal;
-use rust_decimal::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MonthlyData {

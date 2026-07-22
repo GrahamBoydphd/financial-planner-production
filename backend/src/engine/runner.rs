@@ -226,6 +226,8 @@ pub fn generate_simulation(
             initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
             frequency: r.frequency.clone(),
             trigger_strategy: r.trigger_strategy.clone(),
+            trigger_threshold: None,
+            trigger_operator: None,
             phases: item_phases,
         }
     }).collect();
@@ -234,6 +236,7 @@ pub fn generate_simulation(
         ItemState {
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
+            has_fired: false,
         }
     }).collect();
 
@@ -284,6 +287,8 @@ pub fn generate_simulation(
             initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
             frequency: e.frequency.clone(),
             trigger_strategy: e.trigger_strategy.clone(),
+            trigger_threshold: None,
+            trigger_operator: None,
             phases: item_phases,
         }
     }).collect();
@@ -292,6 +297,7 @@ pub fn generate_simulation(
         ItemState {
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
+            has_fired: false,
         }
     }).collect();
 
@@ -397,6 +403,8 @@ pub fn generate_simulation(
         cum_dividends: 0.0,
         cum_pool_received: 0.0,
         cap_growth_sampler,
+        
+        ytd_revenue: 0.0,
         
         // Soft Limit (Friction Tax)
         soft_limit_active,

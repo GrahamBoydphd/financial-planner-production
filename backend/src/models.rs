@@ -111,6 +111,8 @@ pub struct RevenueItem {
     pub initial_amount: Decimal,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -168,6 +170,8 @@ pub struct ExpenseItem {
     pub initial_amount: Decimal,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 

@@ -272,7 +272,8 @@ pub async fn get_plan_projection(
             start_month as "start_month!", end_month, 
             initial_amount as "initial_amount!", 
             frequency as "frequency!",
-            trigger_strategy
+            trigger_strategy,
+            trigger_threshold, trigger_operator
         FROM revenue_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)
@@ -327,7 +328,8 @@ pub async fn get_plan_projection(
             start_month as "start_month!", end_month, 
             initial_amount as "initial_amount!", 
             frequency as "frequency!",
-            trigger_strategy
+            trigger_strategy,
+            trigger_threshold, trigger_operator
         FROM expense_items 
         WHERE plan_id = $1 
         AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $2)

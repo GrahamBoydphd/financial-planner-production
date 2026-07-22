@@ -7,7 +7,7 @@ use uuid::Uuid;
 use chrono::Utc;
 use crate::models::{
     Fund, Company, FinancialPlan, 
-    CapitalInjection, DividendPolicy, CreditFacility, 
+    CapitalInjection, CreditFacility, 
     ValuationAssumption, Event, CapitalGrowthPolicy, StaffingRole,
     Claims
 };

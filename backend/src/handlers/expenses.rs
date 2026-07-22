@@ -103,6 +103,8 @@ pub struct CreateExpenseRequest {
     pub initial_amount: String,
     pub frequency: String,
     pub trigger_strategy: Option<String>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub phases: Vec<ExpensePhaseInput>,
 }
 
@@ -115,6 +117,8 @@ pub struct UpdateExpenseRequest {
     pub initial_amount: String,
     pub frequency: String,
     pub trigger_strategy: Option<String>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub phases: Vec<ExpensePhaseInput>,
 }
 
@@ -166,6 +170,8 @@ pub struct ExpenseItemTreeResponse {
     pub initial_amount: Decimal,
     pub frequency: String,
     pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub phases: Vec<ExpensePhaseResponse>,
 }
@@ -317,17 +323,18 @@ pub async fn create_expense_item(
     let item = sqlx::query!(
         r#"
         INSERT INTO expense_items (
-            plan_id, expense_name, category, start_month, end_month, initial_amount, frequency, trigger_strategy
+            plan_id, expense_name, category, start_month, end_month, initial_amount, frequency, trigger_strategy, trigger_threshold, trigger_operator
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING 
             id, plan_id, expense_name, category, 
             start_month, end_month, 
             initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator,
             created_at
         "#,
         payload.plan_id, payload.expense_name, payload.category, payload.start_month, payload.end_month, 
-        initial_amount, payload.frequency, trigger_strategy
+        initial_amount, payload.frequency, trigger_strategy, payload.trigger_threshold, payload.trigger_operator
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -489,6 +496,8 @@ pub async fn create_expense_item(
         initial_amount: item.initial_amount.to_decimal(),
         frequency: item.frequency,
         trigger_strategy: item.trigger_strategy.unwrap_or_time_based(),
+        trigger_threshold: item.trigger_threshold,
+        trigger_operator: item.trigger_operator,
         created_at: item.created_at,
         phases: phases_resp,
     }))
@@ -505,6 +514,7 @@ pub async fn get_expense_items(
             id, plan_id, expense_name, category, 
             start_month, end_month, 
             initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator,
             created_at
         FROM expense_items 
         WHERE plan_id = $1 
@@ -603,6 +613,8 @@ pub async fn get_expense_items(
                 initial_amount: item.initial_amount.to_decimal(),
                 frequency: item.frequency.clone(),
                 trigger_strategy: item.trigger_strategy.clone().unwrap_or_time_based(),
+                trigger_threshold: item.trigger_threshold.clone(),
+                trigger_operator: item.trigger_operator.clone(),
                 created_at: item.created_at,
                 phases: item_phases,
             });
@@ -646,17 +658,20 @@ pub async fn update_expense_item(
         r#"
         UPDATE expense_items SET
             expense_name = $1, category = $2, start_month = $3, end_month = $4,
-            initial_amount = $5, frequency = $6, trigger_strategy = $7
-        WHERE id = $8
-        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $9)
+            initial_amount = $5, frequency = $6, trigger_strategy = $7,
+            trigger_threshold = $8, trigger_operator = $9
+        WHERE id = $10
+        AND plan_id IN (SELECT id FROM financial_plans WHERE tenant_id = $11)
         RETURNING 
             id, plan_id, expense_name, category, 
             start_month, end_month, 
             initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator,
             created_at
         "#,
         payload.expense_name, payload.category, payload.start_month, payload.end_month, 
         initial_amount, payload.frequency, trigger_strategy,
+        payload.trigger_threshold, payload.trigger_operator,
         id,
         claims.tenant_id
     )
@@ -826,6 +841,8 @@ pub async fn update_expense_item(
         initial_amount: item.initial_amount.to_decimal(),
         frequency: item.frequency,
         trigger_strategy: item.trigger_strategy.unwrap_or_time_based(),
+        trigger_threshold: item.trigger_threshold,
+        trigger_operator: item.trigger_operator,
         created_at: item.created_at,
         phases: phases_resp,
     }))
