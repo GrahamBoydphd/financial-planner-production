@@ -123,7 +123,7 @@ export default function FundForm({ onSuccess, initialData, onCancel }: FundFormP
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            disabled
+            
             className="w-full p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
           >
             <option value="USD">USD</option>
