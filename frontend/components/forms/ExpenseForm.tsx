@@ -5,6 +5,13 @@ import { api, ExpenseItem } from '@/lib/api';
 import Tooltip from '@/components/ui/Tooltip';
 import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
 
+const getOperatorSymbol = (op: string | null | undefined): string => {
+  if (!op) return '>';
+  if (op.includes('greater_than')) return '>';
+  if (op.includes('less_than')) return '<';
+  return '>';
+};
+
 interface Props {
   planId: string;
   onSuccess: () => void;
@@ -31,7 +38,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       trigger_threshold: '',
       trigger_metric_basis: 'monthly',
       trigger_comparison_operator: 'greater_than',
-      growth_rate_percent: '0.0',
+      growth_rate_percent: '0.00',
       pct_of_revenue: '',
       volatility_configs: []
     }
@@ -64,10 +71,16 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
           const hasValueTrigger = (p.trigger_threshold !== undefined && p.trigger_threshold !== null) || (p.trigger_operator && p.trigger_operator !== '');
           
           let metricBasis = 'monthly';
-          let compOp = p.trigger_operator || 'greater_than';
-          if (p.trigger_operator && p.trigger_operator.startsWith('ytd_revenue_')) {
-            metricBasis = 'ytd';
-            compOp = p.trigger_operator.replace('ytd_revenue_', '');
+          let compOp = 'greater_than';
+          if (p.trigger_operator) {
+            if (p.trigger_operator.includes('ytd_revenue_')) {
+              metricBasis = 'ytd';
+            }
+            if (p.trigger_operator.includes('less_than')) {
+              compOp = 'less_than';
+            } else if (p.trigger_operator.includes('greater_than')) {
+              compOp = 'greater_than';
+            }
           }
 
           return {
@@ -79,10 +92,18 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
             trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
             trigger_metric_basis: metricBasis,
             trigger_comparison_operator: compOp,
-            growth_rate_percent: String(p.growth_rate_percent || '0.0'),
+            growth_rate_percent: (p.growth_rate_percent !== null && p.growth_rate_percent !== undefined) ? parseFloat(p.growth_rate_percent).toFixed(2) : '0.00',
             cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
             pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
-            volatility_configs: p.volatility_configs || []
+            volatility_configs: p.volatility_configs?.map((c: any) => {
+              const clamped = { ...c };
+              ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
+                if (clamped[key] !== null && clamped[key] !== undefined && clamped[key] !== '') {
+                  clamped[key] = parseFloat(clamped[key]).toFixed(2);
+                }
+              });
+              return clamped;
+            }) || []
           };
         }));
       } else {
@@ -96,10 +117,18 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
             trigger_threshold: '',
             trigger_metric_basis: 'monthly',
             trigger_comparison_operator: 'greater_than',
-            growth_rate_percent: editItem.growth_rate_percent?.toString() ?? '0.0',
+            growth_rate_percent: (editItem.growth_rate_percent !== null && editItem.growth_rate_percent !== undefined) ? parseFloat(editItem.growth_rate_percent).toFixed(2) : '0.00',
             cost_of_revenue_percent: '',
             pct_of_revenue: editItem.pct_of_revenue ? editItem.pct_of_revenue.toString() : '',
-            volatility_configs: editItem.volatility_configs || []
+            volatility_configs: editItem.volatility_configs?.map((c: any) => {
+              const clamped = { ...c };
+              ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
+                if (clamped[key] !== null && clamped[key] !== undefined && clamped[key] !== '') {
+                  clamped[key] = parseFloat(clamped[key]).toFixed(2);
+                }
+              });
+              return clamped;
+            }) || []
           }
         ]);
       }
@@ -124,7 +153,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         trigger_threshold: '',
         trigger_metric_basis: 'monthly',
         trigger_comparison_operator: 'greater_than',
-        growth_rate_percent: '0.0',
+        growth_rate_percent: '0.00',
         cost_of_revenue_percent: '',
         pct_of_revenue: '',
         volatility_configs: []
@@ -207,7 +236,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         trigger_threshold: '',
         trigger_metric_basis: 'monthly',
         trigger_comparison_operator: 'greater_than',
-        growth_rate_percent: '0.0',
+        growth_rate_percent: '0.00',
         pct_of_revenue: '',
         volatility_configs: []
       }
@@ -266,21 +295,23 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       const processedPhases = phases.map((phase, idx) => {
         // Find compounding growth block inside each phase's volatility configs
         const compGrowth = phase.volatility_configs.find((c: any) => c.mode_name === 'compounding_growth');
-        let localGrowth = '0.0';
+        let localGrowth = '0.00';
         if (compGrowth) {
           if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
-            localGrowth = ((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2).toString();
+            localGrowth = parseFloat(String((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2)).toFixed(2);
           } else if (compGrowth.target_mean) {
-            localGrowth = String(compGrowth.target_mean);
+            localGrowth = parseFloat(compGrowth.target_mean).toFixed(2);
           }
         }
 
-        // Safely scrub empty text strings to null
+        // Safely scrub empty text strings to null and clamp variance percentages
         const cleanConfigs = phase.volatility_configs.map((c: any) => {
           const cleaned: any = { ...c };
           Object.keys(cleaned).forEach(key => {
             if (cleaned[key] === '') {
               cleaned[key] = null;
+            } else if (['vol_min', 'vol_max', 'target_mean', 'std_dev'].includes(key) && cleaned[key] !== null) {
+              cleaned[key] = parseFloat(cleaned[key]).toFixed(2);
             }
           });
           return cleaned;
@@ -401,11 +432,31 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       <div className="space-y-6 my-4">
         {phases.map((phase, index) => {
           const isFirst = index === 0;
+          
+          let phaseSummary = '';
+          if (isFirst) {
+            phaseSummary = '(Baseline)';
+          } else {
+            if (phase.trigger_strategy === 'time_based') {
+              if (phase.trigger_month) {
+                phaseSummary = `(Month ${phase.trigger_month})`;
+              }
+            } else if (phase.trigger_strategy === 'value_based') {
+              if (phase.trigger_threshold) {
+                const opSymbol = getOperatorSymbol(phase.trigger_comparison_operator);
+                const isYtd = phase.trigger_metric_basis === 'ytd';
+                const prefix = isYtd ? 'YTD ' : '';
+                const formattedThreshold = Number(phase.trigger_threshold).toLocaleString(undefined, { maximumFractionDigits: 0 });
+                phaseSummary = `(${prefix}${opSymbol} ${currencySymbol}${formattedThreshold})`;
+              }
+            }
+          }
+
           return (
             <div key={index} className="space-y-6">
               <div className="border border-gray-200 rounded p-4 bg-white shadow-sm space-y-4">
                 <div className="flex justify-between items-center border-b pb-2">
-                  <h4 className="font-bold text-sm text-gray-800">Phase {index + 1} {isFirst ? '(Baseline)' : ''}</h4>
+                  <h4 className="font-bold text-sm text-gray-800">Phase {index + 1} {phaseSummary}</h4>
                   {!isFirst && (
                     <button
                       type="button"
@@ -487,7 +538,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Threshold Amount *</label>
+                        <label className="text-xs text-gray-500 block mb-1">Threshold Amount ({currencySymbol}) *</label>
                         <input
                           type="number"
                           step="any"

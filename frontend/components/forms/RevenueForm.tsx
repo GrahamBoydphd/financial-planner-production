@@ -5,6 +5,13 @@ import { api, RevenueItem } from '@/lib/api';
 import Tooltip from '@/components/ui/Tooltip';
 import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
 
+const getOperatorSymbol = (op: string | null | undefined): string => {
+  if (!op) return '>';
+  if (op.includes('greater_than')) return '>';
+  if (op.includes('less_than')) return '<';
+  return '>';
+};
+
 interface Props {
   planId: string;
   onSuccess: () => void;
@@ -30,8 +37,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       trigger_offset: '',
       trigger_threshold: '',
       trigger_metric_basis: 'monthly',
-      trigger_comparison_operator: '',
-      growth_rate_percent: '0.0',
+      trigger_comparison_operator: 'greater_than',
+      growth_rate_percent: '0.00',
       cost_of_revenue_percent: '',
       pct_of_revenue: '',
       volatility_configs: []
@@ -65,10 +72,16 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           const phaseStrategy = (hasThreshold || hasOperator) ? 'value_based' : 'time_based';
 
           let metricBasis = 'monthly';
-          let compOp = p.trigger_operator || '';
-          if (compOp.startsWith('ytd_revenue_')) {
-            metricBasis = 'ytd';
-            compOp = compOp.replace('ytd_revenue_', '');
+          let compOp = 'greater_than';
+          if (p.trigger_operator) {
+            if (p.trigger_operator.includes('ytd_revenue_')) {
+              metricBasis = 'ytd';
+            }
+            if (p.trigger_operator.includes('less_than')) {
+              compOp = 'less_than';
+            } else if (p.trigger_operator.includes('greater_than')) {
+              compOp = 'greater_than';
+            }
           }
 
           return {
@@ -80,10 +93,18 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             trigger_threshold: hasThreshold ? String(p.trigger_threshold) : '',
             trigger_metric_basis: metricBasis,
             trigger_comparison_operator: compOp,
-            growth_rate_percent: String(p.growth_rate_percent || '0.0'),
+            growth_rate_percent: (p.growth_rate_percent !== null && p.growth_rate_percent !== undefined) ? parseFloat(p.growth_rate_percent).toFixed(2) : '0.00',
             cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
             pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
-            volatility_configs: p.volatility_configs || []
+            volatility_configs: p.volatility_configs?.map((c: any) => {
+              const clamped = { ...c };
+              ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
+                if (clamped[key] !== null && clamped[key] !== undefined && clamped[key] !== '') {
+                  clamped[key] = parseFloat(clamped[key]).toFixed(2);
+                }
+              });
+              return clamped;
+            }) || []
           };
         }));
       } else {
@@ -96,8 +117,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             trigger_offset: '',
             trigger_threshold: '',
             trigger_metric_basis: 'monthly',
-            trigger_comparison_operator: '',
-            growth_rate_percent: '0.0',
+            trigger_comparison_operator: 'greater_than',
+            growth_rate_percent: '0.00',
             cost_of_revenue_percent: '',
             pct_of_revenue: '',
             volatility_configs: []
@@ -124,8 +145,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         trigger_offset: '',
         trigger_threshold: '',
         trigger_metric_basis: 'monthly',
-        trigger_comparison_operator: '',
-        growth_rate_percent: '0.0',
+        trigger_comparison_operator: 'greater_than',
+        growth_rate_percent: '0.00',
         cost_of_revenue_percent: '',
         pct_of_revenue: '',
         volatility_configs: []
@@ -145,8 +166,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         trigger_offset: '',
         trigger_threshold: '',
         trigger_metric_basis: 'monthly',
-        trigger_comparison_operator: '',
-        growth_rate_percent: '0.0',
+        trigger_comparison_operator: 'greater_than',
+        growth_rate_percent: '0.00',
         cost_of_revenue_percent: '',
         volatility_configs: []
       }
@@ -268,12 +289,12 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       // Map across all active phases to cleanly format parameters per-phase
       const formattedPhases = phases.map((phase, idx) => {
         const compGrowth = phase.volatility_configs.find((c: any) => c.mode_name === 'compounding_growth');
-        let rootGrowth = '0.0';
+        let rootGrowth = '0.00';
         if (compGrowth) {
           if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
-            rootGrowth = ((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2).toString();
+            rootGrowth = parseFloat(String((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2)).toFixed(2);
           } else if (compGrowth.target_mean) {
-            rootGrowth = String(compGrowth.target_mean);
+            rootGrowth = parseFloat(compGrowth.target_mean).toFixed(2);
           }
         }
 
@@ -282,6 +303,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           Object.keys(cleaned).forEach(key => {
             if (cleaned[key] === '') {
               cleaned[key] = null;
+            } else if (['vol_min', 'vol_max', 'target_mean', 'std_dev'].includes(key) && cleaned[key] !== null) {
+              cleaned[key] = parseFloat(cleaned[key]).toFixed(2);
             }
           });
           return cleaned;
@@ -422,11 +445,33 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
 
       {/* Progressive Multi-Phase UI View */}
       <div className="space-y-4">
-        {phases.map((phase, index) => (
+        {phases.map((phase, index) => {
+          const isFirst = index === 0;
+          
+          let phaseSummary = '';
+          if (isFirst) {
+            phaseSummary = '(Baseline)';
+          } else {
+            if (phase.trigger_strategy === 'time_based') {
+              if (phase.trigger_month) {
+                phaseSummary = `(Month ${phase.trigger_month})`;
+              }
+            } else if (phase.trigger_strategy === 'value_based') {
+              if (phase.trigger_threshold) {
+                const opSymbol = getOperatorSymbol(phase.trigger_comparison_operator);
+                const isYtd = phase.trigger_metric_basis === 'ytd';
+                const prefix = isYtd ? 'YTD ' : '';
+                const formattedThreshold = Number(phase.trigger_threshold).toLocaleString(undefined, { maximumFractionDigits: 0 });
+                phaseSummary = `(${prefix}${opSymbol} ${currencySymbol}${formattedThreshold})`;
+              }
+            }
+          }
+
+          return (
           <div key={index} className="space-y-4">
             <div className="border border-gray-200 rounded p-4 bg-white space-y-4 shadow-sm">
               <div className="flex justify-between items-center border-b pb-2">
-                <h4 className="font-bold text-sm text-gray-700">Phase {phase.phase_sequence} {index === 0 ? '(Baseline)' : ''}</h4>
+                <h4 className="font-bold text-sm text-gray-700">Phase {phase.phase_sequence} {phaseSummary}</h4>
                 {index > 0 && (
                   <button
                     type="button"
@@ -504,16 +549,15 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
                       <label className="text-xs text-gray-500 block mb-1 font-medium">Comparison Operator *</label>
                       <select
                         className="w-full border p-2 rounded text-sm bg-white"
-                        value={phase.trigger_comparison_operator || ''}
+                        value={phase.trigger_comparison_operator || 'greater_than'}
                         onChange={e => handlePhaseFieldChange(index, 'trigger_comparison_operator', e.target.value)}
                       >
-                        <option value="">Select Operator</option>
                         <option value="greater_than">Greater than (&gt;)</option>
                         <option value="less_than">Less than (&lt;)</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-1 font-medium">Threshold Amount *</label>
+                      <label className="text-xs text-gray-500 block mb-1 font-medium">Threshold Amount ({currencySymbol}) *</label>
                       <input
                         type="number"
                         step="any"
@@ -551,7 +595,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
               />
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Action Button Layout */}

@@ -267,11 +267,17 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                         
                         {/* Multi-Phase Summary Block */}
                         {item.phases?.map((phase: any) => {
+                            const op = phase.trigger_operator || '';
+                            const opSymbol = op.includes('greater_than') ? '>' : (op.includes('less_than') ? '<' : '');
+                            const isYtd = op.includes('ytd') || phase.metric_basis === 'ytd';
+                            const ytdPrefix = isYtd ? 'YTD ' : '';
+                            const thresholdStr = phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0';
+
                             const triggerLabel = phase.phase_sequence === 1 
                                 ? "Phase 1 Baseline" 
                                 : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
                                     ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
-                                    : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
+                                    : `Phase ${phase.phase_sequence} (${ytdPrefix}${opSymbol} ${currencySymbol}${thresholdStr})`;
                             
                             const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
                                 ? [...phase.volatility_configs]
@@ -289,7 +295,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
 
                             return (
                                 <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
+                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{parseFloat(phase.growth_rate_percent || '0').toFixed(2)}% / mo)
                                 </div>
                             );
                         })}
@@ -350,11 +356,17 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                         
                         {/* Multi-Phase Summary Block */}
                         {item.phases?.map((phase: any) => {
+                            const op = phase.trigger_operator || '';
+                            const opSymbol = op.includes('greater_than') ? '>' : (op.includes('less_than') ? '<' : '');
+                            const isYtd = op.includes('ytd') || phase.metric_basis === 'ytd';
+                            const ytdPrefix = isYtd ? 'YTD ' : '';
+                            const thresholdStr = phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0';
+
                             const triggerLabel = phase.phase_sequence === 1 
                                 ? "Phase 1 Baseline" 
                                 : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
                                     ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
-                                    : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
+                                    : `Phase ${phase.phase_sequence} (${ytdPrefix}${opSymbol} ${currencySymbol}${thresholdStr})`;
                             
                             const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
                                 ? [...phase.volatility_configs]
@@ -372,7 +384,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
 
                             return (
                                 <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
+                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{parseFloat(phase.growth_rate_percent || '0').toFixed(2)}% / mo)
                                 </div>
                             );
                         })}

@@ -12,6 +12,13 @@ interface Props {
   };
 }
 
+const getOperatorSymbol = (op?: string) => {
+  if (!op) return '';
+  if (op.includes('greater_than')) return '>';
+  if (op.includes('less_than')) return '<';
+  return op;
+};
+
 export default function ClientPage({ params }: Props) {
   const { planId } = params;
   const [revenueItems, setRevenueItems] = useState<RevenueItem[]>([]);
@@ -22,6 +29,8 @@ export default function ClientPage({ params }: Props) {
   // Edit States
   const [revenueToEdit, setRevenueToEdit] = useState<RevenueItem | null>(null);
   const [expenseToEdit, setExpenseToEdit] = useState<ExpenseItem | null>(null);
+
+  const currencySymbol = '$';
 
   const fetchData = async () => {
     setLoading(true);
@@ -181,7 +190,7 @@ export default function ClientPage({ params }: Props) {
                                   ? "Phase 1 Baseline" 
                                   : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
                                       ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
-                                      : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
+                                      : `Phase ${phase.phase_sequence} (YTD ${getOperatorSymbol(phase.trigger_operator)} ${currencySymbol}${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
                               
                               const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
                                   ? [...phase.volatility_configs]
@@ -197,16 +206,20 @@ export default function ClientPage({ params }: Props) {
                                       .join(', ') || 'None'
                                   : 'None';
 
+                              const growthRate = parseFloat(phase.growth_rate_percent || '0');
+                              const growthSign = growthRate >= 0 ? '+' : '';
+                              const formattedGrowth = `${growthSign}${growthRate.toFixed(2)}`;
+
                               return (
                                   <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
+                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} ({formattedGrowth}% / mo)
                                   </div>
                               );
                           })}
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900">
-                            ${Number(item.initial_amount).toLocaleString()}
+                            {currencySymbol}{Number(item.initial_amount).toLocaleString()}
                           </span>
                           {item.cost_of_revenue_percent && (
                             <p className="text-xs text-red-500 mt-0.5">
@@ -279,7 +292,7 @@ export default function ClientPage({ params }: Props) {
                                   ? "Phase 1 Baseline" 
                                   : (phase.trigger_month !== null && phase.trigger_month !== undefined && phase.trigger_month !== '')
                                       ? `Phase ${phase.phase_sequence} (Month ${phase.trigger_month})`
-                                      : `Phase ${phase.phase_sequence} (${phase.trigger_operator === 'greater_than' ? '>' : '<'} £${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
+                                      : `Phase ${phase.phase_sequence} (YTD ${getOperatorSymbol(phase.trigger_operator)} ${currencySymbol}${phase.trigger_threshold && !isNaN(Number(phase.trigger_threshold)) ? Number(phase.trigger_threshold).toLocaleString() : '0'})`;
                               
                               const riskLabels = phase.volatility_configs && phase.volatility_configs.length > 0
                                   ? [...phase.volatility_configs]
@@ -295,16 +308,20 @@ export default function ClientPage({ params }: Props) {
                                       .join(', ') || 'None'
                                   : 'None';
 
+                              const growthRate = parseFloat(phase.growth_rate_percent || '0');
+                              const growthSign = growthRate >= 0 ? '+' : '';
+                              const formattedGrowth = `${growthSign}${growthRate.toFixed(2)}`;
+
                               return (
                                   <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{phase.growth_rate_percent}% / mo)
+                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} ({formattedGrowth}% / mo)
                                   </div>
                               );
                           })}
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900">
-                            ${Number(item.initial_amount).toLocaleString()}
+                            {currencySymbol}{Number(item.initial_amount).toLocaleString()}
                           </span>
                           {item.pct_of_revenue && (
                             <p className="text-xs text-blue-500 mt-0.5">
