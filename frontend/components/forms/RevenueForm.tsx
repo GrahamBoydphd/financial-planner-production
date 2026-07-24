@@ -415,13 +415,13 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-              Initial Amount ({currencySymbol}) *
-              <Tooltip content="Initial amount of revenue in Starting Month" />
+              Initial Monthly Amount ({currencySymbol}) *
+              <Tooltip content="Initial amount of monthly revenue in Starting Month" />
             </label>
             <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs text-gray-500 font-medium">Frequency</label>
+            <label className="text-xs text-gray-500 font-medium">Frequency of Volatility</label>
             <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
               <option value="monthly">Monthly</option>
               <option value="one-time">One-time</option>

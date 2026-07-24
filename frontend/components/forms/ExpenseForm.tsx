@@ -401,8 +401,8 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
       <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1">
-            Initial Amount ({currencySymbol}) *
-            <Tooltip content="Initial amount of expense in Starting Month" />
+            Initial Monthly Amount ({currencySymbol}) *
+            <Tooltip content="Initial amount of monthly expense in Starting Month" />
           </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
         </div>
@@ -410,7 +410,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="text-xs text-gray-500">Frequency</label>
+          <label className="text-xs text-gray-500">Frequency of Volatility</label>
           <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
             <option value="monthly">Monthly</option>
             <option value="one-time">One-time</option>

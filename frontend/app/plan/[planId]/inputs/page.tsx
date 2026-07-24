@@ -305,7 +305,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-                    <span>Starts Month: {item.start_month}</span>
+                    <span>Starts Month: {item.start_month} | Ends Month: {item.end_month ? item.end_month : 'Ongoing'}</span>
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={() => {
@@ -394,7 +394,7 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                     </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-                    <span>Starts Month: {item.start_month}</span>
+                    <span>Starts Month: {item.start_month} | Ends Month: {item.end_month ? item.end_month : 'Ongoing'}</span>
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={() => {

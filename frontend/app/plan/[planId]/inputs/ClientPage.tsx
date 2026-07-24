@@ -181,7 +181,7 @@ export default function ClientPage({ params }: Props) {
                             Type: <span className="capitalize">{item.source}</span> | Freq: <span className="capitalize">{item.frequency}</span>
                           </p>
                           <p className="text-xs text-gray-500">
-                            Months: {item.start_month} to {item.end_month || 'End'}
+                            Starts Month: {item.start_month} | Ends Month: {item.end_month ? item.end_month : 'Ongoing'}
                           </p>
                           
                           {/* Multi-Phase Summary Block */}
@@ -283,7 +283,7 @@ export default function ClientPage({ params }: Props) {
                             Category: <span className="capitalize">{item.category}</span> | Freq: <span className="capitalize">{item.frequency}</span>
                           </p>
                           <p className="text-xs text-gray-500">
-                            Months: {item.start_month} to {item.end_month || 'End'}
+                            Starts Month: {item.start_month} | Ends Month: {item.end_month ? item.end_month : 'Ongoing'}
                           </p>
                           
                           {/* Multi-Phase Summary Block */}
