@@ -213,6 +213,7 @@ pub fn generate_simulation(
                 trigger_operator: ph.trigger_operator.clone(),
                 growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
                 variable_pct: ph.cost_of_revenue_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                baseline_increment: ph.baseline_increment.and_then(|d| d.to_f64()),
                 compounding_growth_sampler,
                 transient_noise_sampler,
             });
@@ -237,6 +238,7 @@ pub fn generate_simulation(
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
             has_fired: false,
+            active_phase_idx: None,
         }
     }).collect();
 
@@ -273,6 +275,7 @@ pub fn generate_simulation(
                 trigger_operator: ph.trigger_operator.clone(),
                 growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
                 variable_pct: ph.pct_of_revenue.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                baseline_increment: ph.baseline_increment.and_then(|d| d.to_f64()),
                 compounding_growth_sampler,
                 transient_noise_sampler,
             });
@@ -298,6 +301,7 @@ pub fn generate_simulation(
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
             has_fired: false,
+            active_phase_idx: None,
         }
     }).collect();
 

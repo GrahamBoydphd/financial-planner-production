@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            p.id, p.expense_item_id, p.phase_sequence, \n            p.trigger_month, p.trigger_threshold, p.trigger_operator, \n            p.growth_rate_percent, p.pct_of_revenue\n        FROM expense_item_phases p\n        JOIN expense_items i ON i.id = p.expense_item_id\n        WHERE i.plan_id = $1\n        ORDER BY p.phase_sequence ASC\n        ",
+  "query": "\n            SELECT \n                id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,\n                growth_rate_percent, pct_of_revenue, baseline_increment, created_at\n            FROM expense_item_phases\n            WHERE expense_item_id = ANY($1)\n            ORDER BY phase_sequence ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -42,11 +42,21 @@
         "ordinal": 7,
         "name": "pct_of_revenue",
         "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "baseline_increment",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "UuidArray"
       ]
     },
     "nullable": [
@@ -57,8 +67,10 @@
       true,
       true,
       false,
-      true
+      true,
+      true,
+      false
     ]
   },
-  "hash": "96bcb4b076e8b3d1ad31d3a09ae0df6f87ca3084152a7ded57d603aa115b7660"
+  "hash": "ce488272355f8d770197adf975748e6d7d30175e699b3965745da6527adca065"
 }

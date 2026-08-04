@@ -1,0 +1,358 @@
+work@graham-ThinkPad-T480s:~/3_Evolutesix/Research/Jules-BP/current/backend$ cargo check
+    Checking backend v0.1.0 (/home/work/3_Evolutesix/Research/Jules-BP/current/backend)
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/plans.rs:288:81
+    |
+288 |       let revenue_phases: Vec<crate::handlers::fund_simulation::DbRevenuePhase> = sqlx::query_as!(
+    |  _________________________________________________________________________________^
+289 | |         crate::handlers::fund_simulation::DbRevenuePhase,
+290 | |         r#"
+291 | |         SELECT 
+...   |
+302 | |         id
+303 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/plans.rs:345:81
+    |
+345 |       let expense_phases: Vec<crate::handlers::fund_simulation::DbExpensePhase> = sqlx::query_as!(
+    |  _________________________________________________________________________________^
+346 | |         crate::handlers::fund_simulation::DbExpensePhase,
+347 | |         r#"
+348 | |         SELECT 
+...   |
+359 | |         id
+360 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "revenue_item_phases" does not exist
+   --> src/handlers/revenue.rs:368:21
+    |
+368 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+369 | | ...       r#"
+370 | | ...       INSERT INTO revenue_item_phases (
+371 | | ...           revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of...
+...   |
+375 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+376 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" does not exist
+   --> src/handlers/revenue.rs:554:22
+    |
+554 |           let phases = sqlx::query!(
+    |  ______________________^
+555 | |             r#"
+556 | |             SELECT 
+557 | |                 id, revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,
+...   |
+563 | |             &item_ids
+564 | |         )
+    | |_________^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "revenue_item_phases" does not exist
+   --> src/handlers/revenue.rs:730:21
+    |
+730 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+731 | | ...       r#"
+732 | | ...       INSERT INTO revenue_item_phases (
+733 | | ...           revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of...
+...   |
+737 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+738 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "expense_item_phases" does not exist
+   --> src/handlers/expenses.rs:358:21
+    |
+358 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+359 | | ...       r#"
+360 | | ...       INSERT INTO expense_item_phases (
+361 | | ...           expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_...
+...   |
+365 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+366 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" does not exist
+   --> src/handlers/expenses.rs:538:22
+    |
+538 |           let phases = sqlx::query!(
+    |  ______________________^
+539 | |             r#"
+540 | |             SELECT 
+541 | |                 id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,
+...   |
+547 | |             &item_ids
+548 | |         )
+    | |_________^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "expense_item_phases" does not exist
+   --> src/handlers/expenses.rs:705:21
+    |
+705 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+706 | | ...       r#"
+707 | | ...       INSERT INTO expense_item_phases (
+708 | | ...           expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_...
+...   |
+712 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+713 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/fund_simulation.rs:414:26
+    |
+414 |       let revenue_phases = sqlx::query_as!(
+    |  __________________________^
+415 | |         DbRevenuePhase,
+416 | |         r#"
+417 | |         SELECT 
+...   |
+427 | |         plan.id
+428 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/fund_simulation.rs:449:26
+    |
+449 |       let expense_phases = sqlx::query_as!(
+    |  __________________________^
+450 | |         DbExpensePhase,
+451 | |         r#"
+452 | |         SELECT 
+...   |
+462 | |         plan.id
+463 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0063]: missing field `baseline_increment` in initializer of `Phase`
+   --> src/engine/runner.rs:209:30
+    |
+209 |             item_phases.push(domain::Phase {
+    |                              ^^^^^^^^^^^^^ missing `baseline_increment`
+
+error[E0063]: missing field `active_phase_idx` in initializer of `ItemState`
+   --> src/engine/runner.rs:236:9
+    |
+236 |         ItemState {
+    |         ^^^^^^^^^ missing `active_phase_idx`
+
+error[E0063]: missing field `baseline_increment` in initializer of `Phase`
+   --> src/engine/runner.rs:269:30
+    |
+269 |             item_phases.push(domain::Phase {
+    |                              ^^^^^^^^^^^^^ missing `baseline_increment`
+
+error[E0063]: missing field `active_phase_idx` in initializer of `ItemState`
+   --> src/engine/runner.rs:297:9
+    |
+297 |         ItemState {
+    |         ^^^^^^^^^ missing `active_phase_idx`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `backend` (bin "backend") due to 14 previous errors
+work@graham-ThinkPad-T480s:~/3_Evolutesix/Research/Jules-BP/current/backend$ cargo sqlx prepare
+    Checking backend v0.1.0 (/home/work/3_Evolutesix/Research/Jules-BP/current/backend)
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/plans.rs:288:81
+    |
+288 |       let revenue_phases: Vec<crate::handlers::fund_simulation::DbRevenuePhase> = sqlx::query_as!(
+    |  _________________________________________________________________________________^
+289 | |         crate::handlers::fund_simulation::DbRevenuePhase,
+290 | |         r#"
+291 | |         SELECT 
+...   |
+302 | |         id
+303 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/plans.rs:345:81
+    |
+345 |       let expense_phases: Vec<crate::handlers::fund_simulation::DbExpensePhase> = sqlx::query_as!(
+    |  _________________________________________________________________________________^
+346 | |         crate::handlers::fund_simulation::DbExpensePhase,
+347 | |         r#"
+348 | |         SELECT 
+...   |
+359 | |         id
+360 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "revenue_item_phases" does not exist
+   --> src/handlers/revenue.rs:368:21
+    |
+368 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+369 | | ...       r#"
+370 | | ...       INSERT INTO revenue_item_phases (
+371 | | ...           revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of...
+...   |
+375 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+376 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" does not exist
+   --> src/handlers/revenue.rs:554:22
+    |
+554 |           let phases = sqlx::query!(
+    |  ______________________^
+555 | |             r#"
+556 | |             SELECT 
+557 | |                 id, revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,
+...   |
+563 | |             &item_ids
+564 | |         )
+    | |_________^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "revenue_item_phases" does not exist
+   --> src/handlers/revenue.rs:730:21
+    |
+730 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+731 | | ...       r#"
+732 | | ...       INSERT INTO revenue_item_phases (
+733 | | ...           revenue_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, cost_of...
+...   |
+737 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+738 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "expense_item_phases" does not exist
+   --> src/handlers/expenses.rs:358:21
+    |
+358 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+359 | | ...       r#"
+360 | | ...       INSERT INTO expense_item_phases (
+361 | | ...           expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_...
+...   |
+365 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+366 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" does not exist
+   --> src/handlers/expenses.rs:538:22
+    |
+538 |           let phases = sqlx::query!(
+    |  ______________________^
+539 | |             r#"
+540 | |             SELECT 
+541 | |                 id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,
+...   |
+547 | |             &item_ids
+548 | |         )
+    | |_________^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column "baseline_increment" of relation "expense_item_phases" does not exist
+   --> src/handlers/expenses.rs:705:21
+    |
+705 |   ...   let phase = sqlx::query!(
+    |  ___________________^
+706 | | ...       r#"
+707 | | ...       INSERT INTO expense_item_phases (
+708 | | ...           expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_...
+...   |
+712 | | ...       item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_op...
+713 | | ...   )
+    | |_______^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/fund_simulation.rs:414:26
+    |
+414 |       let revenue_phases = sqlx::query_as!(
+    |  __________________________^
+415 | |         DbRevenuePhase,
+416 | |         r#"
+417 | |         SELECT 
+...   |
+427 | |         plan.id
+428 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: column p.baseline_increment does not exist
+   --> src/handlers/fund_simulation.rs:449:26
+    |
+449 |       let expense_phases = sqlx::query_as!(
+    |  __________________________^
+450 | |         DbExpensePhase,
+451 | |         r#"
+452 | |         SELECT 
+...   |
+462 | |         plan.id
+463 | |     )
+    | |_____^
+    |
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0063]: missing field `baseline_increment` in initializer of `Phase`
+   --> src/engine/runner.rs:209:30
+    |
+209 |             item_phases.push(domain::Phase {
+    |                              ^^^^^^^^^^^^^ missing `baseline_increment`
+
+error[E0063]: missing field `active_phase_idx` in initializer of `ItemState`
+   --> src/engine/runner.rs:236:9
+    |
+236 |         ItemState {
+    |         ^^^^^^^^^ missing `active_phase_idx`
+
+error[E0063]: missing field `baseline_increment` in initializer of `Phase`
+   --> src/engine/runner.rs:269:30
+    |
+269 |             item_phases.push(domain::Phase {
+    |                              ^^^^^^^^^^^^^ missing `baseline_increment`
+
+error[E0063]: missing field `active_phase_idx` in initializer of `ItemState`
+   --> src/engine/runner.rs:297:9
+    |
+297 |         ItemState {
+    |         ^^^^^^^^^ missing `active_phase_idx`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `backend` (bin "backend") due to 14 previous errors
+error: `cargo check` failed with status: exit status: 101
+

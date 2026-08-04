@@ -637,7 +637,7 @@ export default function ResultsPage({ params }: { params: { planId: string } }) 
                 >
                   <option value="standard">Standard (Average)</option>
                   <option value="single">Single Path (Volatile)</option>
-                  <option value="monte_carlo">Likely real-world outcomes (499 Runs)</option>
+                  <option value="monte_carlo">Likely real-world outcomes (500 Runs)</option>
                 </select>
               </div>
 

@@ -210,9 +210,14 @@ export default function ClientPage({ params }: Props) {
                               const growthSign = growthRate >= 0 ? '+' : '';
                               const formattedGrowth = `${growthSign}${growthRate.toFixed(2)}`;
 
+                              const baselineIncrement = parseFloat(phase.baseline_increment || '0');
+                              const stepBadge = baselineIncrement !== 0 
+                                  ? ` [Step: ${baselineIncrement > 0 ? '+' : '-'}${currencySymbol}${Math.abs(baselineIncrement).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]` 
+                                  : '';
+
                               return (
                                   <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} ({formattedGrowth}% / mo)
+                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} ({formattedGrowth}% / mo){stepBadge}
                                   </div>
                               );
                           })}
@@ -312,9 +317,14 @@ export default function ClientPage({ params }: Props) {
                               const growthSign = growthRate >= 0 ? '+' : '';
                               const formattedGrowth = `${growthSign}${growthRate.toFixed(2)}`;
 
+                              const baselineIncrement = parseFloat(phase.baseline_increment || '0');
+                              const stepBadge = baselineIncrement !== 0 
+                                  ? ` [Step: ${baselineIncrement > 0 ? '+' : '-'}${currencySymbol}${Math.abs(baselineIncrement).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]` 
+                                  : '';
+
                               return (
                                   <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} ({formattedGrowth}% / mo)
+                                      <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} ({formattedGrowth}% / mo){stepBadge}
                                   </div>
                               );
                           })}

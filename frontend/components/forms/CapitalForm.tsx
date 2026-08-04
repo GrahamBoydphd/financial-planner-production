@@ -292,7 +292,7 @@ export default function CapitalForm({
           <input 
             type="number" 
             min="0"
-            max="120"
+            max="240"
             className={`w-full border p-2 rounded text-sm focus:ring-2 outline-none transition ${
               errors.month 
                 ? 'border-red-500 focus:ring-red-200' 

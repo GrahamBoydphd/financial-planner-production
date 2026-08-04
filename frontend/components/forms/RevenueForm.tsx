@@ -41,6 +41,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       growth_rate_percent: '0.00',
       cost_of_revenue_percent: '',
       pct_of_revenue: '',
+      baseline_increment: '',
+      is_fixed_stream: false,
       volatility_configs: []
     }
   ]);
@@ -96,6 +98,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             growth_rate_percent: (p.growth_rate_percent !== null && p.growth_rate_percent !== undefined) ? parseFloat(p.growth_rate_percent).toFixed(2) : '0.00',
             cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
             pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
+            baseline_increment: (p.baseline_increment !== null && p.baseline_increment !== undefined) ? String(p.baseline_increment) : '',
+            is_fixed_stream: !p.volatility_configs || p.volatility_configs.length === 0,
             volatility_configs: p.volatility_configs?.map((c: any) => {
               const clamped = { ...c };
               ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
@@ -121,6 +125,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
             growth_rate_percent: '0.00',
             cost_of_revenue_percent: '',
             pct_of_revenue: '',
+            baseline_increment: '',
+            is_fixed_stream: false,
             volatility_configs: []
           }
         ]);
@@ -149,6 +155,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         growth_rate_percent: '0.00',
         cost_of_revenue_percent: '',
         pct_of_revenue: '',
+        baseline_increment: '',
+        is_fixed_stream: false,
         volatility_configs: []
       }
     ]);
@@ -169,6 +177,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
         trigger_comparison_operator: 'greater_than',
         growth_rate_percent: '0.00',
         cost_of_revenue_percent: '',
+        baseline_increment: '',
+        is_fixed_stream: false,
         volatility_configs: []
       }
     ]);
@@ -270,13 +280,15 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
       }
     });
 
-    // Strict validation guardrail: cannot submit with empty volatility configs in any phase
+    // Strict validation guardrail: cannot submit with empty volatility configs in any phase unless fixed stream is selected
     phases.forEach((phase, idx) => {
-      if (!phase.volatility_configs || phase.volatility_configs.length === 0) {
-        newErrors.push(`Phase ${idx + 1} Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.`);
-      }
-      if (phase.volatility_configs.some((c: any) => !c.volatility_type)) {
-        newErrors.push(`Phase ${idx + 1}: Please select a distribution type for all enabled volatility models.`);
+      if (!phase.is_fixed_stream) {
+        if (!phase.volatility_configs || phase.volatility_configs.length === 0) {
+          newErrors.push(`Phase ${idx + 1} Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.`);
+        }
+        if (phase.volatility_configs && phase.volatility_configs.some((c: any) => !c.volatility_type)) {
+          newErrors.push(`Phase ${idx + 1}: Please select a distribution type for all enabled volatility models.`);
+        }
       }
     });
 
@@ -288,7 +300,8 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
     try {
       // Map across all active phases to cleanly format parameters per-phase
       const formattedPhases = phases.map((phase, idx) => {
-        const compGrowth = phase.volatility_configs.find((c: any) => c.mode_name === 'compounding_growth');
+        const activeConfigs = phase.is_fixed_stream ? [] : (phase.volatility_configs || []);
+        const compGrowth = activeConfigs.find((c: any) => c.mode_name === 'compounding_growth');
         let rootGrowth = '0.00';
         if (compGrowth) {
           if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
@@ -298,7 +311,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           }
         }
 
-        const cleanConfigs = phase.volatility_configs.map((c: any) => {
+        const cleanConfigs = activeConfigs.map((c: any) => {
           const cleaned: any = { ...c };
           Object.keys(cleaned).forEach(key => {
             if (cleaned[key] === '') {
@@ -327,6 +340,14 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           finalOperator = (phase.trigger_metric_basis === 'ytd' ? 'ytd_revenue_' : '') + phase.trigger_comparison_operator.toLowerCase();
         }
 
+        let formattedIncrement = null;
+        if (phase.baseline_increment !== null && phase.baseline_increment !== undefined && phase.baseline_increment !== '') {
+          const parsedInc = parseFloat(phase.baseline_increment);
+          if (!isNaN(parsedInc)) {
+            formattedIncrement = parsedInc.toFixed(2);
+          }
+        }
+
         return {
           id: phase.id,
           phase_sequence: phase.phase_sequence,
@@ -337,6 +358,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           trigger_offset: null, // Explicitly null for clean payload
           growth_rate_percent: rootGrowth,
           cost_of_revenue_percent: phase.cost_of_revenue_percent ? String(phase.cost_of_revenue_percent) : null,
+          baseline_increment: formattedIncrement,
           volatility_configs: cleanConfigs
         };
       });
@@ -572,7 +594,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
               </div>
 
               {/* Growth & Cost Parameters */}
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                     Cost of Rev (%)
@@ -586,13 +608,49 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
                     onChange={e => handlePhaseFieldChange(index, 'cost_of_revenue_percent', e.target.value)}
                   />
                 </div>
+                <div>
+                  <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                    Baseline Increment / Structural Jump
+                    <Tooltip content="Optional fixed amount to add or subtract from the baseline when this phase triggers." />
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="w-full border p-2 rounded text-sm"
+                    placeholder="e.g. 5000.00 or -1500.00"
+                    value={phase.baseline_increment || ''}
+                    onChange={e => handlePhaseFieldChange(index, 'baseline_increment', e.target.value)}
+                  />
+                </div>
               </div>
 
               {/* Volatility Inputs for this Phase */}
-              <VolatilityInputs
-                configs={phase.volatility_configs}
-                onChange={(updated) => handlePhaseConfigsChange(index, updated)}
-              />
+              <div className="mt-4 space-y-4">
+                <div className="flex items-start gap-2 bg-gray-50 p-3 rounded border">
+                  <input
+                    type="checkbox"
+                    id={`fixed-stream-rev-${index}`}
+                    checked={phase.is_fixed_stream || false}
+                    onChange={e => handlePhaseFieldChange(index, 'is_fixed_stream', e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <label htmlFor={`fixed-stream-rev-${index}`} className="text-sm font-bold text-gray-700 cursor-pointer">
+                      Fixed Stream (No Volatility)
+                    </label>
+                    <p className="text-xs text-gray-500">
+                      Only choose this if you are certain that there cannot be any volatility.
+                    </p>
+                  </div>
+                </div>
+
+                {!phase.is_fixed_stream && (
+                  <VolatilityInputs
+                    configs={phase.volatility_configs}
+                    onChange={(updated) => handlePhaseConfigsChange(index, updated)}
+                  />
+                )}
+              </div>
             </div>
           </div>
           );

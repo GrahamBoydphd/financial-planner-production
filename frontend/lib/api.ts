@@ -138,6 +138,7 @@ export interface BasePhase {
   trigger_threshold: string | null;
   trigger_operator: string | null;
   growth_rate_percent: string;
+  baseline_increment?: string | null;
   volatility_configs: VolatilityConfig[];
 }
 

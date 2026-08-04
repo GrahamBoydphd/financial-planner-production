@@ -11,6 +11,7 @@ pub struct ItemState {
     pub current_value: f64,
     pub is_active: bool,
     pub has_fired: bool,
+    pub active_phase_idx: Option<usize>,
 }
 
 impl Default for ItemState {
@@ -19,6 +20,7 @@ impl Default for ItemState {
             current_value: 0.0, 
             is_active: false,
             has_fired: false,
+            active_phase_idx: None,
         }
     }
 }
@@ -34,6 +36,7 @@ pub struct Phase {
     pub variable_pct: Option<f64>,
     pub compounding_growth_sampler: Option<GrowthSampler>,
     pub transient_noise_sampler: Option<GrowthSampler>,
+    pub baseline_increment: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,7 +221,7 @@ impl SimState {
 
     pub fn step(&mut self, month: i32, external_shocks: &[Shock]) -> (f64, f64) {
         // LOGIC A: Handle Insolvency
-        if !self.is_solvent {
+        if self.is_solvent == false {
             let debt = self.current_cash.min(0.0).abs();
             let exposure = self.cum_external_cap + debt;
 
@@ -320,6 +323,12 @@ impl SimState {
                 if let Some(idx) = active_idx {
                     let phase = &mut item.phases[idx];
                     
+                    if s.active_phase_idx == Some(idx) {
+                    } else {
+                        s.current_value += phase.baseline_increment.unwrap_or(0.0);
+                        s.active_phase_idx = Some(idx);
+                    }
+                    
                     if month > item.start_month {
                         let should_grow = match item.frequency.as_str() {
                             "monthly" | "Monthly" => true,
@@ -410,6 +419,12 @@ impl SimState {
 
                 if let Some(idx) = active_idx {
                     let phase = &mut item.phases[idx];
+                    
+                    if s.active_phase_idx == Some(idx) {
+                    } else {
+                        s.current_value += phase.baseline_increment.unwrap_or(0.0);
+                        s.active_phase_idx = Some(idx);
+                    }
                     
                     if month > item.start_month {
                         let should_grow = match item.frequency.as_str() {

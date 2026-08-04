@@ -70,6 +70,7 @@ pub struct DbRevenuePhase {
     pub trigger_operator: Option<String>,
     pub growth_rate_percent: Option<String>,
     pub cost_of_revenue_percent: Option<String>,
+    pub baseline_increment: Option<Decimal>,
 }
 
 #[derive(Debug, Clone)]
@@ -96,6 +97,7 @@ pub struct DbExpensePhase {
     pub trigger_operator: Option<String>,
     pub growth_rate_percent: Option<String>,
     pub pct_of_revenue: Option<String>,
+    pub baseline_increment: Option<Decimal>,
 }
 
 /// NEW: Plan-Centric Simulation Handler
@@ -415,7 +417,8 @@ async fn fetch_and_map_company_state(
         SELECT 
             p.id, p.revenue_item_id, p.phase_sequence, 
             p.trigger_month, p.trigger_threshold, p.trigger_operator, 
-            p.growth_rate_percent, p.cost_of_revenue_percent
+            p.growth_rate_percent, p.cost_of_revenue_percent,
+            p.baseline_increment
         FROM revenue_item_phases p
         JOIN revenue_items i ON i.id = p.revenue_item_id
         WHERE i.plan_id = $1
@@ -449,7 +452,8 @@ async fn fetch_and_map_company_state(
         SELECT 
             p.id, p.expense_item_id, p.phase_sequence, 
             p.trigger_month, p.trigger_threshold, p.trigger_operator, 
-            p.growth_rate_percent, p.pct_of_revenue
+            p.growth_rate_percent, p.pct_of_revenue,
+            p.baseline_increment
         FROM expense_item_phases p
         JOIN expense_items i ON i.id = p.expense_item_id
         WHERE i.plan_id = $1
@@ -777,6 +781,7 @@ fn map_to_sim_state(
                 trigger_operator: ph.trigger_operator.clone(),
                 growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
                 variable_pct: ph.cost_of_revenue_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                baseline_increment: ph.baseline_increment.and_then(|d| d.to_f64()),
                 compounding_growth_sampler,
                 transient_noise_sampler,
             });
@@ -788,6 +793,7 @@ fn map_to_sim_state(
             current_value: r.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
             has_fired: false,
+            active_phase_idx: None,
         });
 
         domain::Revenue {
@@ -836,6 +842,7 @@ fn map_to_sim_state(
                 trigger_operator: ph.trigger_operator.clone(),
                 growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
                 variable_pct: ph.pct_of_revenue.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                baseline_increment: ph.baseline_increment.and_then(|d| d.to_f64()),
                 compounding_growth_sampler,
                 transient_noise_sampler,
             });
@@ -847,6 +854,7 @@ fn map_to_sim_state(
             current_value: e.initial_amount.to_f64().unwrap_or(0.0),
             is_active: false,
             has_fired: false,
+            active_phase_idx: None,
         });
 
         domain::Expense {

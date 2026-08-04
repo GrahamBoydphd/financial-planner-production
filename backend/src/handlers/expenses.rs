@@ -90,6 +90,7 @@ pub struct ExpensePhaseInput {
     pub trigger_operator: Option<String>,
     pub growth_rate_percent: String,
     pub pct_of_revenue: Option<String>,
+    pub baseline_increment: Option<String>,
     pub volatility_configs: Vec<VolatilityConfigInput>,
 }
 
@@ -155,6 +156,7 @@ pub struct ExpensePhaseResponse {
     pub trigger_operator: Option<String>,
     pub growth_rate_percent: Decimal,
     pub pct_of_revenue: Option<Decimal>,
+    pub baseline_increment: Option<Decimal>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub volatility_configs: Vec<ExpensePolicyResponse>,
 }
@@ -352,15 +354,16 @@ pub async fn create_expense_item(
 
         let growth_rate_percent_str = growth_rate_percent.to_string();
         let pct_of_revenue_str = pct_of_revenue.as_ref().map(|v| v.to_string());
+        let baseline_increment_dec = phase_input.baseline_increment.to_option_decimal();
 
         let phase = sqlx::query!(
             r#"
             INSERT INTO expense_item_phases (
-                expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, created_at
+                expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, baseline_increment
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, baseline_increment, created_at
             "#,
-            item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_operator, growth_rate_percent_str, pct_of_revenue_str
+            item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_operator, growth_rate_percent_str, pct_of_revenue_str, baseline_increment_dec
         )
         .fetch_one(&mut *tx)
         .await?;
@@ -479,6 +482,7 @@ pub async fn create_expense_item(
             trigger_operator: phase.trigger_operator,
             growth_rate_percent: phase.growth_rate_percent.to_decimal(),
             pct_of_revenue: phase.pct_of_revenue.to_option_decimal(),
+            baseline_increment: phase.baseline_increment.to_option_decimal(),
             created_at: phase.created_at,
             volatility_configs: policies_resp,
         });
@@ -536,7 +540,7 @@ pub async fn get_expense_items(
             r#"
             SELECT 
                 id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator,
-                growth_rate_percent, pct_of_revenue, created_at
+                growth_rate_percent, pct_of_revenue, baseline_increment, created_at
             FROM expense_item_phases
             WHERE expense_item_id = ANY($1)
             ORDER BY phase_sequence ASC
@@ -598,6 +602,7 @@ pub async fn get_expense_items(
                     trigger_operator: phase.trigger_operator.clone(),
                     growth_rate_percent: phase.growth_rate_percent.to_decimal(),
                     pct_of_revenue: phase.pct_of_revenue.to_option_decimal(),
+                    baseline_increment: phase.baseline_increment.to_option_decimal(),
                     created_at: phase.created_at,
                     volatility_configs: phase_policies,
                 });
@@ -697,15 +702,16 @@ pub async fn update_expense_item(
 
         let growth_rate_percent_str = growth_rate_percent.to_string();
         let pct_of_revenue_str = pct_of_revenue.as_ref().map(|v| v.to_string());
+        let baseline_increment_dec = phase_input.baseline_increment.to_option_decimal();
 
         let phase = sqlx::query!(
             r#"
             INSERT INTO expense_item_phases (
-                expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, created_at
+                expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, baseline_increment
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, expense_item_id, phase_sequence, trigger_month, trigger_threshold, trigger_operator, growth_rate_percent, pct_of_revenue, baseline_increment, created_at
             "#,
-            item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_operator, growth_rate_percent_str, pct_of_revenue_str
+            item.id, phase_input.phase_sequence, phase_input.trigger_month, phase_input.trigger_threshold, phase_input.trigger_operator, growth_rate_percent_str, pct_of_revenue_str, baseline_increment_dec
         )
         .fetch_one(&mut *tx)
         .await?;
@@ -824,6 +830,7 @@ pub async fn update_expense_item(
             trigger_operator: phase.trigger_operator,
             growth_rate_percent: phase.growth_rate_percent.to_decimal(),
             pct_of_revenue: phase.pct_of_revenue.to_option_decimal(),
+            baseline_increment: phase.baseline_increment.to_option_decimal(),
             created_at: phase.created_at,
             volatility_configs: policies_resp,
         });

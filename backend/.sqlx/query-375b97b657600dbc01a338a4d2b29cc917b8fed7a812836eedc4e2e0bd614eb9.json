@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            p.id as \"id!\", p.revenue_item_id as \"revenue_item_id!\", p.phase_sequence as \"phase_sequence!\", \n            p.trigger_month, p.growth_rate_percent as \"growth_rate_percent!\", \n            p.cost_of_revenue_percent,\n            p.trigger_operator, p.trigger_threshold\n        FROM revenue_item_phases p\n        JOIN revenue_items i ON i.id = p.revenue_item_id\n        WHERE i.plan_id = $1\n        ORDER BY p.phase_sequence ASC\n        ",
+  "query": "\n        SELECT \n            p.id as \"id!\", p.revenue_item_id as \"revenue_item_id!\", p.phase_sequence as \"phase_sequence!\", \n            p.trigger_month, p.growth_rate_percent as \"growth_rate_percent!\", \n            p.cost_of_revenue_percent,\n            p.trigger_operator, p.trigger_threshold,\n            p.baseline_increment\n        FROM revenue_item_phases p\n        JOIN revenue_items i ON i.id = p.revenue_item_id\n        WHERE i.plan_id = $1\n        ORDER BY p.phase_sequence ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -42,6 +42,11 @@
         "ordinal": 7,
         "name": "trigger_threshold",
         "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "baseline_increment",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -57,8 +62,9 @@
       false,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "fd225a4c938b2746f0e2e1e21d653975b80a89c1928c816e361d4338d9631ad4"
+  "hash": "375b97b657600dbc01a338a4d2b29cc917b8fed7a812836eedc4e2e0bd614eb9"
 }

@@ -293,9 +293,14 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                                     .join(', ') || 'None'
                                 : 'None';
 
+                            const baselineIncrement = parseFloat(phase.baseline_increment || '0');
+                            const stepBadge = baselineIncrement !== 0 
+                                ? ` [Step: ${baselineIncrement > 0 ? '+' : '-'}${currencySymbol}${Math.abs(baselineIncrement).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]` 
+                                : '';
+
                             return (
                                 <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{parseFloat(phase.growth_rate_percent || '0').toFixed(2)}% / mo)
+                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{parseFloat(phase.growth_rate_percent || '0').toFixed(2)}% / mo){stepBadge}
                                 </div>
                             );
                         })}
@@ -382,9 +387,14 @@ export default function InputsPage({ params }: { params: { planId: string } }) {
                                     .join(', ') || 'None'
                                 : 'None';
 
+                            const baselineIncrement = parseFloat(phase.baseline_increment || '0');
+                            const stepBadge = baselineIncrement !== 0 
+                                ? ` [Step: ${baselineIncrement > 0 ? '+' : '-'}${currencySymbol}${Math.abs(baselineIncrement).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]` 
+                                : '';
+
                             return (
                                 <div key={phase.phase_sequence} className="text-xs text-gray-600 mt-1 border-l-2 border-purple-200 pl-2">
-                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{parseFloat(phase.growth_rate_percent || '0').toFixed(2)}% / mo)
+                                    <span className="font-semibold text-purple-700">{triggerLabel}:</span> Risk: {riskLabels} (+{parseFloat(phase.growth_rate_percent || '0').toFixed(2)}% / mo){stepBadge}
                                 </div>
                             );
                         })}
