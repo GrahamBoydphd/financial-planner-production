@@ -164,7 +164,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
   };
 
   const handleAddPhase = () => {
-    if (phases.length >= 4) return;
+    if (phases.length >= 6) return;
     setPhases(prev => [
       ...prev,
       {

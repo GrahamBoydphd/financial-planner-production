@@ -233,7 +233,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
   };
 
   const handleAddPhase = () => {
-    if (phases.length >= 4) return;
+    if (phases.length >= 6) return;
     setPhases(prev => [
       ...prev,
       {
