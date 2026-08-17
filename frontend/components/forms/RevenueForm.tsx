@@ -659,7 +659,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
 
       {/* Action Button Layout */}
       <div className="mt-4">
-        {phases.length < 4 ? (
+        {phases.length < 6 ? (
           <button
             type="button"
             onClick={handleAddPhase}
@@ -669,7 +669,7 @@ export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, c
           </button>
         ) : (
           <div className="w-full py-2 px-4 bg-gray-100 border border-gray-300 text-gray-500 rounded text-sm text-center font-medium">
-            You have reached the maximum of four phases
+            You have reached the maximum of six phases
           </div>
         )}
       </div>
