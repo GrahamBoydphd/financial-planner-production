@@ -645,11 +645,9 @@ async fn fetch_and_map_company_state(
 
     // --- NRIG Validation & Policy Check ---
     for r in &revenue_items {
-        let mut has_policy = false;
         let item_phase_ids: Vec<Uuid> = revenue_phases.iter().filter(|ph| ph.revenue_item_id == r.id).map(|ph| ph.id).collect();
         for p in &rev_policies_data {
             if item_phase_ids.contains(&p.phase_id) {
-                has_policy = true;
                 if let Some(vt) = &p.volatility_type {
                     if vt == "NRIG" {
                         let alpha = p.vol_alpha.unwrap_or(Decimal::ZERO);
@@ -661,17 +659,12 @@ async fn fetch_and_map_company_state(
                 }
             }
         }
-        if !has_policy {
-            error_log.push(format!("Stream item {} must have at least one volatility mode selected across its phases.", r.revenue_name));
-        }
     }
 
     for e in &expense_items {
-        let mut has_policy = false;
         let item_phase_ids: Vec<Uuid> = expense_phases.iter().filter(|ph| ph.expense_item_id == e.id).map(|ph| ph.id).collect();
         for p in &exp_policies_data {
             if item_phase_ids.contains(&p.phase_id) {
-                has_policy = true;
                 if let Some(vt) = &p.volatility_type {
                     if vt == "NRIG" {
                         let alpha = p.vol_alpha.unwrap_or(Decimal::ZERO);
@@ -682,9 +675,6 @@ async fn fetch_and_map_company_state(
                     }
                 }
             }
-        }
-        if !has_policy {
-            error_log.push(format!("Stream item {} must have at least one volatility mode selected across its phases.", e.expense_name));
         }
     }
 
@@ -745,7 +735,7 @@ fn map_to_sim_state(
     capital_growth_policy: Option<models::CapitalGrowthPolicy>,
     stop_insolvency: bool,
     include_init: bool,
-    pooling_rate_override: Decimal,
+    fund_pooling_rate: Decimal,
 ) -> SimState {
     
     let mut revenue_states = Vec::with_capacity(revenue_items.len());
@@ -952,7 +942,7 @@ fn map_to_sim_state(
         id: company_id,
         company_name,
         currency: plan.currency_code,
-        pooling_fraction: pooling_rate_override.to_f64().unwrap_or(0.0),
+        pooling_fraction: fund_pooling_rate.to_f64().unwrap_or(0.0),
         current_cash: plan.initial_cash.to_f64().unwrap_or(0.0),
         insolvency_threshold: plan.insolvency_threshold.to_f64().unwrap_or(100.0),
         is_solvent: true,

@@ -1,0 +1,170 @@
+### ������ New Daily Summary  
+  
+**Meeting Requests & Time Offers**  
+No relevant emails.  
+  
+**Requests for Paid Services**  
+No relevant emails.  
+  
+**Investment Offers & Inquiries**  
+No relevant emails.  
+  
+**Other Action Items**  
+- [ ] Follow up with Bernd Ankenbrand early next week regarding his review of the follow-up material.  
+- [ ] Complete onboarding for the European Ethical Bank Project by logging into the partner platform using the provided link.  
+  
+---  
+  
+### ������️ Older Outstanding Actions  
+- [ ] Review the forwarded paper from Chris and Steve's note on power and AI in preparation for the Peak/Island Power meeting.  
+- [ ] Schedule a joint introductory call with David McManus and Stuart.  
+- [ ] Review the shared 'Prospects & Contacts' folder and add any personal contacts you want Julia to upload to Odoo.  
+- [ ] Request David to investigate the EU-Inc dream meets reality topic.  
+- [ ] RSVP (Register or Decline) for the Systemic Investing Summit 2027 in Quebec.  
+- [ ] Reply to Phil Engelhorn to confirm a meeting time for early November and share the SCHEMA documentation with your team.  
+- [ ] Follow the Companies House instructions to verify the identity of people with significant control for DOJO4LIFE LIMITED.  
+- [ ] Review the LinkedIn post shared by Carl Pitchford.  
+- [ ] Review the relevant paper sent by Julia Gross and Fenna Blomsma regarding value capture.  
+- [ ] Coordinate or prepare for the ENFA Global Structure meeting being arranged by Nilu.  
+- [ ] Follow up on Marie-Nicole Schuster's update after her meeting with ChangeNOW.  
+- [ ] Review the American Express termination notice for the account ending in 91001.  
+- [ ] Prepare for the upcoming partnership meeting with Steve Savides regarding AI models and African innovation hubs.  
+- [ ] Review and provide feedback on Marie-Nicole's proposed statistic updates for slide 15 of the pitch deck.  
+- [ ] Reply to Iris Lubitch to discuss and finalize the proposed fundraising fee structure and engagement details.  
+- [ ] RSVP to the calendar invitation from Marie-Nicole Schuster for the IP-E6-PT meeting on Oct 15th.  
+- [ ] Reply to Niladri Roy to confirm the upcoming call on the 15th and share any thoughts or feedback on the pitch.  
+- [ ] Reply to Thibault Verbiest to schedule an exploratory collaboration call regarding Ethicracy and Evolutesix.  
+- [ ] Fill out the IFI membership survey.  
+- [ ] Review the ENFA Global Structure draft to prepare for the upcoming meeting with Nilu.  
+- [ ] Review and accept the updated calendar invite for the meeting with Emilie and Julia.  
+- [ ] Review the previous Daily Priority Briefing and complete any outstanding tasks.  
+- [ ] Email Abbas Shapuri to confirm once the £1,260 invoice has been paid in full.  
+- [ ] Review Julia Gross's proposal for the Q4 fundraising sprint and weekly check-ins.  
+- [ ] Save the Zoom details and attend the Rethinking Business Performance WG policy seminar.  
+- [ ] Acknowledge the updated calendar invite for the meeting with Tanuja Prasad on Oct 28.  
+- [ ] Decide whether to accept Elena Orlando's request to connect regarding sustainable economic models.  
+- [ ] Reply to Lucy Bowen to schedule a networking call following Eugene Kirpichov's introduction.  
+- [ ] Review the meeting recap with Steve, Marcus, and Niladri, and share the transcript to refine unified messaging.  
+- [ ] Review the FIP document from Dr. Abdul Manaff attached by Carl Pitchford.  
+- [ ] RSVP to the TWIST Onboarding Call scheduled for October 14 at 15:00 CEST.  
+- [ ] RSVP to the TWIST Onboarding Call scheduled for October 14 at 10:00 CEST.  
+- [ ] RSVP to the rescheduled 'Synergies' meeting with Tania and Phil on October 14.  
+- [ ] RSVP to the rescheduled calendar invitation for the meeting with Emilie and Julia on October 13.  
+- [ ] Confirm Phil Engelhorn's availability and finalize the meeting for October 14.  
+- [ ] Review the LinkedIn post link forwarded by Carl Pitchford.  
+- [ ] Reply to Carl Pitchford regarding whether you know Cordell Jacks.  
+- [ ] Pay invoice RE-26-14420 to Smart Genossenschaft.  
+- [ ] Register for the TWIST Workstream Zoom meeting scheduled for October 19.  
+- [ ] Decide whether to join the Vidonary private investor presentation on October 1st.  
+- [ ] Join the FIAT Journalist Outreach Campaign Zoom meeting at 1:00 PM ET.  
+- [ ] Review and resolve the malware and phishing security risks flagged in your Google Workspace Admin Console.  
+- [ ] Reply to Adam Wallin by Thursday regarding joining the new campaign and request the updated concept note.  
+- [ ] RSVP to the ENFA Pan-African Meetup scheduled for Friday, Sept 25.  
+- [ ] Schedule a meeting with David McManus for next week after reviewing the V2 document.  
+- [ ] Reply to Ursula Clidière to coordinate and connect your work on the Adaptive Way Guidebook.  
+- [ ] Review the draft reading materials provided for the upcoming Corporate Governance Forum.  
+- [ ] Review the background information and LinkedIn link for Dr. Abdul Manaff regarding First Holdings sent by Carl.  
+- [ ] Download and save your certificate of participation from the LEAP Conference.  
+- [ ] Reshare the link to the German community grid with Niladri Roy.  
+- [ ] Review the updated calendar invitation for the TWIST Bioregional Working Group (Session 6).  
+- [ ] Review Accumeo as a potential alternative to JP Jenkins based on Carl Pitchford's email recommendation.  
+- [ ] Review and sign the Dojo4Life final accounts and representations letter via the provided HelloSign link.  
+- [ ] Review the letter from Jay and Kami regarding Calabash Farms and FairShares to prepare a joint response.  
+- [ ] Add the October 20th FIAT Steering Committee meeting to your calendar and review the request to sign the FIAT statement.  
+- [ ] Review the Odoo Demo recording shared by Hendrik.  
+- [ ] Review and edit the 'IPI Academy - CVC + AI uncertainty' proposed training document shared by Marie-Nicole.  
+- [ ] Reply to Hendrik at Odoo regarding your go-live timeline to determine if you should be transitioned to the UK support team.  
+- [ ] Reply to Sarah Rozenthuler with written materials so she can prepare questions for your podcast recording session.  
+- [ ] Reply to Abbas Shapuri confirming if there are formal loan agreements in place.  
+- [ ] Reply to Mike Wistow concerning his call with Gareth and review the WFTT website he mentioned.  
+- [ ] RSVP to the calendar invitation for the Global Unity Wisdom Council Q3 Call on September 18.  
+- [ ] Evaluate Jan De Visch's invitation to the 'Dynamisch Samenwerken' program.  
+- [ ] Check LinkedIn and respond to your 7 unread messages.  
+- [ ] RSVP to the TBLI CONNECT virtual event scheduled for September 25.  
+- [ ] Respond to Felipe Witchger's invitation to the CST & Investing Summit.  
+- [ ] Reply to Graham Boyd to coordinate and schedule a 1-1 meeting.  
+- [ ] Attend the FIAT Journalist Outreach Campaign Zoom meeting at 1:00 PM ET.  
+- [ ] Review the blog post draft attached by Menno Lammers and provide your feedback.  
+- [ ] Reply to Norman Wolfe confirming you have posted an online review for his book.  
+- [ ] Provide the address for account representative Nikyta Guleria to Stripe for Waitlistr to unpause payouts.  
+- [ ] Provide business phone number and account representative address to Stripe for Dojo4Life to unpause payouts.  
+- [ ] Review the attached Portuguese translations and update Carl Pitchford on the status of Avi in Turkey.  
+- [ ] Transfer €22.15 to Tomas Veloz to cover the LEAP dinner and drinks expenses.  
+- [ ] RSVP to the 'Odoo Follow' calendar invitation for September 14.  
+- [ ] Access the secure Hushmail portal to read the encrypted message from Josh Sens.  
+- [ ] Post your endorsement of Norman Wolfe's book as a review on Amazon on September 1st.  
+- [ ] Reply to Lennard Bogs with an update regarding the recent leads and contacts.  
+- [ ] Provide a representative address in Stripe for Waitlistr to resume bank payouts.  
+- [ ] Provide a business phone number and representative address in Stripe for Dojo4Life to resume payouts.  
+- [ ] Review the invitation from Della Duncan to join the September Capra Course to meet Fritjof.  
+- [ ] Follow up with Valérie Denis in October regarding the project.  
+- [ ] Review the joint op-ed draft and interview transcripts provided by Emanuele Di Francesco.  
+- [ ] Accept the Odoo test database invitation forwarded by Julia.  
+- [ ] Process the bank information provided by Steve Waddell.  
+- [ ] Reply to the Capra Course Admin to clarify the intention of your previous email.  
+- [ ] Update your domain contact information on Namecheap.  
+- [ ] Reply to Robert Rubinstein regarding whether you wish to remain in the TBLI network.  
+- [ ] Follow up with Andy Wilkins regarding the introduction from Gareth Thompson to discuss bringing Regenerative thinking into healthcare.  
+- [ ] Submit an address for Nikyta Guleria in the Waitlistr Stripe dashboard to restore bank payouts.  
+- [ ] Update the Dojo4Life Stripe account with a business phone number, Nikyta Guleria's address, and Graham's verification to unpause bank payouts.  
+- [ ] Respond to Marie to confirm if you will attend the virtual masterclass tomorrow at 8pm.  
+- [ ] Review and edit the draft document sent by Manish Koirala.  
+- [ ] Review the attached Evolutesix materials and prepare for the follow-on collaboration meeting once Graham shares his availability.  
+- [ ] Add Jess Hackett to the calendar appointment for the combined call next Thursday from 17:00 to 18:00.  
+- [ ] Note the upcoming FIAT Steering Committee meeting on Sept 22nd and consider signing the FIAT statement.  
+- [ ] Create a continuum slide showing different models in the kada.bio-2-roads Google Slides presentation.  
+- [ ] Register for the TBLI Connect August event using the provided voucher code or decline the invite.  
+- [ ] Review the 'Deep Brand' paper and other reference materials sent by Angus Jenkinson.  
+- [ ] Review and reply to Carl Miller's proposal regarding the $25,000 engagement fee and 5.5% success fee.  
+- [ ] Review the attached PowerPoint presentation from Stephen Curran regarding the NPC Catalysis Hubs talk.  
+- [ ] Follow up with Marie and Julia regarding Graham's requests to integrate governance materials and evaluate investment benefits.  
+- [ ] Reply to Goran Jeras to discuss potential collaboration and coordinate a future meeting in Italy.  
+- [ ] Review Carl Pitchford's research on Irish investment funds and message him on Signal or WhatsApp with any initial questions.  
+- [ ] Test the new Vizard Agent and reply to Gary Zhang with your feedback.  
+- [ ] Complete the TWIST Research Templates by providing examples of systems change investing projects and your personal reflections.  
+- [ ] Review the carbon removal contacts sent by Lennard Bogs and reply to him regarding any potential developments.  
+- [ ] Add the July 23 ProSocial World New Paradigm Coalition meeting to your calendar.  
+- [ ] Review and share your thoughts on Gregory Fisher's research line regarding non-ergodicity.  
+- [ ] Reply to Carl Pitchford regarding whether you will submit to the ECMI Call for Papers with Julia.  
+- [ ] Log into the Google Workspace Admin Console to review and resolve the identified security risks.  
+- [ ] Propose specific meeting times to Ina Gjikondi for the week of August 24th (excluding the 27th).  
+- [ ] Review and provide feedback on Roger's summary and explanation documents regarding a Christian Equitable Company.  
+- [ ] Review the FIAT information provided by Lora Woodward to integrate it into your AI agent.  
+- [ ] Share a proposal for FIAT website integration and book a meeting on George's calendar.  
+- [ ] Update your NordVPN payment information before the subscription expires.  
+- [ ] Review Maria's adjusted survey language and confirm if her drafted blurb can be added to your TWIST community email.  
+- [ ] Follow up with Angela to coordinate and schedule the one-hour meeting you offered.  
+- [ ] Review the Regenerative Bonds article and PDF forwarded by Carl Pitchford.  
+- [ ] Read the papers on Mutual Credit and MTCS shared by Paolo Dini.  
+- [ ] Review the monetary leverage investing one-pager and decide if you will attend the November symposium.  
+- [ ] Coordinate a brainstorming session with Paolo Dini regarding optimal branding and methodologies.  
+- [ ] Review the list of German fusion and renewable energy contacts provided by Lennard Bogs.  
+- [ ] Decide whether to add the Global Renewables Alliance to the agenda for your Thursday meeting.  
+- [ ] Log in to American Express to view and process your latest Business Platinum statement.  
+- [ ] Reply to Lennard Bogs' check-in regarding potential contacts for the ecosystem.  
+- [ ] Review the revised SAFE template and HoldCo model shared by Marie-Nicole for Raif.  
+- [ ] Watch the recorded meeting between Marie and James Arnott to provide her with feedback on her conversation handling and partner engagement.  
+- [ ] Address Marie-Nicole Schuster's comment inside the Sorenson Impact Institute LOI Google Document.  
+- [ ] Review and respond to Paul van Katwijk's business concept input concerning ION and Miss T.  
+- [ ] Test the ION Knowledge Assistant prototype and provide David with semantic validation feedback.  
+- [ ] Acknowledge Paul's suggestion for a 4-person academic grounding call and coordinate scheduling once the AI is ready.  
+- [ ] Review Nikki Neff's marketing brief, leave comments, and propose times to regroup.  
+- [ ] Approve or reject Paul van Katwijk's request to add the Field Investing PDF to the AI corpus.  
+- [ ] Review the SPAC investor templates provided by Carl Pitchford in preparation for the next meeting.  
+- [ ] Follow up with Paul van Katwijk and Saskia regarding your strategy paper and potential small events.  
+- [ ] Confirm whether the introductory call with Karin was successfully delayed to 15:00.  
+- [ ] Ship copies of your books to the physical address in France provided by Nikki Neff.  
+- [ ] Review and process the Belgian tax declaration notification from MyMinfin.  
+- [ ] Reply to Giulia Galera with more details about your work and confirm if you would like to receive her reports.  
+- [ ] Provide Jess Price with your availability for a meeting next month to continue discussions.  
+- [ ] Click the activation link in the email to opt into the Companies House eReminder service for FAIRSHARES ASSOCIATION LTD.  
+- [ ] View your new monthly statement for the Business Platinum Charge Card from American Express.  
+- [ ] Decide on claiming the Book Excellence Awards free category before the deadline.  
+- [ ] Send the upcoming webinar link and information to Olayinka Fagbayi.  
+- [ ] Send a screenshot of the account validation issue to Altaf Qadir at Revolut.  
+- [ ] Confirm the recent login request on your Revolut Business account.  
+- [ ] Review Florent Durieux's comments on the Transeo Conference PowerPoint presentation.  
+- [ ] Review the Manukura document stack regarding the Esengo and RTS projects.  
+- [ ] RSVP to the EE Concept - Leadership & Culture Dev Session meeting.  
+- [ ] Review the provided meeting prep notes ahead of the ERA Town Hall Meeting.  
+- [ ] Reply to Alasdair Brown regarding your upcoming travel plans and to discuss Evolutesix.

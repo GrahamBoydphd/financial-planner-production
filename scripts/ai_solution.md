@@ -1,1381 +1,1002 @@
 🤖 Generating standard response via gemini-3.1-pro-preview...
-```xml
-<file path='frontend/components/forms/RevenueForm.tsx'>
-'use client';
-
-import { useState, useEffect } from 'react';
-import { api, RevenueItem } from '@/lib/api';
-import Tooltip from '@/components/ui/Tooltip';
-import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
-
-const getOperatorSymbol = (op: string | null | undefined): string => {
-  if (!op) return '>';
-  if (op.includes('greater_than')) return '>';
-  if (op.includes('less_than')) return '<';
-  return '>';
+<file path='backend/src/handlers/fund_simulation.rs'>use axum::{
+    extract::{Path, State, Extension, Query},
+    Json,
+    debug_handler,
+};
+use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::Decimal;
+use std::str::FromStr;
+use serde::Deserialize;
+use std::collections::HashMap;
+use crate::{
+    models,
+    engine::{
+        domain::{self, SimState, GrowthSampler, ItemState},
+        orchestrator::{FundOrchestrator, PortfolioMode},
+    },
+    projection::SimulationResult, // STRICT IMPORT: Use the projection struct
+    errors::AppError,
+    distributions,
 };
 
-interface Props {
-  planId: string;
-  onSuccess: () => void;
-  itemToEdit?: RevenueItem | null;
-  onCancel?: () => void;
-  currencySymbol?: string;
+#[derive(Deserialize)]
+pub struct SimParams {
+    pub fund_plan_id: Option<Uuid>,
+    pub months: Option<i32>,
+    pub stop_insolvency: Option<bool>,
+    pub include_initial_capital: Option<bool>,
+    pub fund_pooling_fraction: Option<String>,
+    pub ergodicity_correction: Option<String>, // NEW: Frontend slider override
+    pub events_active: Option<bool>,
 }
 
-export default function RevenueForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
-  const [name, setName] = useState('');
-  const [source, setSource] = useState('sales');
-  const [amount, setAmount] = useState('');
-  const [startMonth, setStartMonth] = useState('1');
-  const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('monthly');
+#[derive(Debug, Clone)]
+pub struct VolatilityPolicyData {
+    pub phase_id: Uuid,
+    pub mode_name: String,
+    pub volatility_type: Option<String>,
+    pub vol_min: Option<Decimal>,
+    pub vol_max: Option<Decimal>,
+    pub vol_intervals: Option<i32>,
+    pub vol_mean: Option<Decimal>,
+    pub vol_scale: Option<Decimal>,
+    pub vol_freedom: Option<Decimal>,
+    pub vol_alpha: Option<Decimal>,
+    pub vol_beta: Option<Decimal>,
+}
 
-  // Ordered Phase Array State
-  const [phases, setPhases] = useState<any[]>([
-    {
-      phase_sequence: 1,
-      trigger_strategy: 'time_based',
-      trigger_month: null,
-      trigger_offset: '',
-      trigger_threshold: '',
-      trigger_metric_basis: 'monthly',
-      trigger_comparison_operator: 'greater_than',
-      growth_rate_percent: '0.00',
-      cost_of_revenue_percent: '',
-      pct_of_revenue: '',
-      baseline_increment: '',
-      is_fixed_stream: false,
-      volatility_configs: []
-    }
-  ]);
+#[derive(Debug, Clone)]
+pub struct DbRevenueItem {
+    pub id: Uuid,
+    pub revenue_name: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub frequency: String,
+    pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+}
 
-  const [errors, setErrors] = useState<string[]>([]);
+#[derive(Debug, Clone)]
+pub struct DbRevenuePhase {
+    pub id: Uuid,
+    pub revenue_item_id: Uuid,
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate_percent: Option<String>,
+    pub cost_of_revenue_percent: Option<String>,
+    pub baseline_increment: Option<Decimal>,
+}
 
-  // --- EFFECT: POPULATE FORM ON EDIT ---
-  useEffect(() => {
-    if (itemToEdit) {
-      setName(itemToEdit.revenue_name);
-      setSource(itemToEdit.source);
-      setAmount(itemToEdit.initial_amount.toString());
-      setStartMonth(itemToEdit.start_month.toString());
-      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
-      setFreq(itemToEdit.frequency);
+#[derive(Debug, Clone)]
+pub struct DbExpenseItem {
+    pub id: Uuid,
+    pub expense_name: String,
+    pub category: String,
+    pub start_month: i32,
+    pub end_month: Option<i32>,
+    pub initial_amount: Decimal,
+    pub frequency: String,
+    pub trigger_strategy: String,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+}
 
-      if ((itemToEdit as any).phases && (itemToEdit as any).phases.length > 0) {
-        const rootStart = Number(itemToEdit.start_month) || 1;
-        setPhases((itemToEdit as any).phases.map((p: any, idx: number, arr: any[]) => {
-          const absMonth = p.trigger_month !== undefined && p.trigger_month !== null ? Number(p.trigger_month) : null;
-          let offsetVal = 0;
-          if (idx > 0 && absMonth !== null) {
-            const prevAbs = idx === 1 ? rootStart : (Number(arr[idx - 1].trigger_month) || rootStart);
-            offsetVal = absMonth - prevAbs;
-          }
-          
-          const hasThreshold = p.trigger_threshold !== undefined && p.trigger_threshold !== null && p.trigger_threshold !== '';
-          const hasOperator = p.trigger_operator && p.trigger_operator !== '';
-          const phaseStrategy = (hasThreshold || hasOperator) ? 'value_based' : 'time_based';
+#[derive(Debug, Clone)]
+pub struct DbExpensePhase {
+    pub id: Uuid,
+    pub expense_item_id: Uuid,
+    pub phase_sequence: i32,
+    pub trigger_month: Option<i32>,
+    pub trigger_threshold: Option<String>,
+    pub trigger_operator: Option<String>,
+    pub growth_rate_percent: Option<String>,
+    pub pct_of_revenue: Option<String>,
+    pub baseline_increment: Option<Decimal>,
+}
 
-          let metricBasis = 'monthly';
-          let compOp = 'greater_than';
-          if (p.trigger_operator) {
-            if (p.trigger_operator.includes('ytd_revenue_')) {
-              metricBasis = 'ytd';
-            }
-            if (p.trigger_operator.includes('less_than')) {
-              compOp = 'less_than';
-            } else if (p.trigger_operator.includes('greater_than')) {
-              compOp = 'greater_than';
-            }
-          }
+/// NEW: Plan-Centric Simulation Handler
+/// Runs simulation directly from a Fund Plan ID
+#[debug_handler]
+pub async fn run_fund_plan_simulation(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<models::Claims>,
+    Path(plan_id): Path<Uuid>,
+    Query(params): Query<SimParams>,
+) -> Result<Json<SimulationResult>, AppError> {
+    // 1. Fetch Fund Plan
+    let fund_plan = sqlx::query!(
+        r#"
+        SELECT fund_id, selected_plans, pooling_fraction
+        FROM fund_plans
+        WHERE id = $1 AND tenant_id = $2
+        "#,
+        plan_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("Fund Plan not found: {}", plan_id)))?;
 
-          return {
-            id: p.id,
-            phase_sequence: p.phase_sequence,
-            trigger_strategy: phaseStrategy,
-            trigger_month: absMonth,
-            trigger_offset: idx > 0 ? offsetVal : "",
-            trigger_threshold: hasThreshold ? String(p.trigger_threshold) : '',
-            trigger_metric_basis: metricBasis,
-            trigger_comparison_operator: compOp,
-            growth_rate_percent: (p.growth_rate_percent !== null && p.growth_rate_percent !== undefined) ? parseFloat(p.growth_rate_percent).toFixed(2) : '0.00',
-            cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
-            pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
-            baseline_increment: (p.baseline_increment !== null && p.baseline_increment !== undefined) ? String(p.baseline_increment) : '',
-            is_fixed_stream: !p.volatility_configs || p.volatility_configs.length === 0,
-            volatility_configs: p.volatility_configs?.map((c: any) => {
-              const clamped = { ...c };
-              ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
-                if (clamped[key] !== null && clamped[key] !== undefined && clamped[key] !== '') {
-                  clamped[key] = parseFloat(clamped[key]).toFixed(2);
-                }
-              });
-              return clamped;
-            }) || []
-          };
-        }));
-      } else {
-        // Fallback if no phases exist on the edited item
-        setPhases([
-          {
-            phase_sequence: 1,
-            trigger_strategy: 'time_based',
-            trigger_month: null,
-            trigger_offset: '',
-            trigger_threshold: '',
-            trigger_metric_basis: 'monthly',
-            trigger_comparison_operator: 'greater_than',
-            growth_rate_percent: '0.00',
-            cost_of_revenue_percent: '',
-            pct_of_revenue: '',
-            baseline_increment: '',
-            is_fixed_stream: false,
-            volatility_configs: []
-          }
-        ]);
-      }
+    let selected_plans_map: HashMap<String, Uuid> = serde_json::from_value(fund_plan.selected_plans)
+        .unwrap_or_default();
+
+    // Determine Pooling for Orchestrator (Slider Override > Plan Value)
+    let pooling_for_orchestrator = if let Some(ref s) = params.ergodicity_correction {
+        Some(Decimal::from_str(s).unwrap_or(Decimal::ZERO))
     } else {
-      clearForm();
-    }
-  }, [itemToEdit]);
-
-  const clearForm = () => {
-    setName('');
-    setSource('sales');
-    setAmount('');
-    setStartMonth('1');
-    setEndMonth('');
-    setFreq('monthly');
-    setPhases([
-      {
-        phase_sequence: 1,
-        trigger_strategy: 'time_based',
-        trigger_month: null,
-        trigger_offset: '',
-        trigger_threshold: '',
-        trigger_metric_basis: 'monthly',
-        trigger_comparison_operator: 'greater_than',
-        growth_rate_percent: '0.00',
-        cost_of_revenue_percent: '',
-        pct_of_revenue: '',
-        baseline_increment: '',
-        is_fixed_stream: false,
-        volatility_configs: []
-      }
-    ]);
-    setErrors([]);
-  };
-
-  const handleAddPhase = () => {
-    if (phases.length >= 4) return;
-    setPhases(prev => [
-      ...prev,
-      {
-        phase_sequence: prev.length + 1,
-        trigger_strategy: 'time_based',
-        trigger_month: null,
-        trigger_offset: '',
-        trigger_threshold: '',
-        trigger_metric_basis: 'monthly',
-        trigger_comparison_operator: 'greater_than',
-        growth_rate_percent: '0.00',
-        cost_of_revenue_percent: '',
-        baseline_increment: '',
-        is_fixed_stream: false,
-        volatility_configs: []
-      }
-    ]);
-  };
-
-  const handleRemovePhase = (indexToRemove: number) => {
-    const updated = phases
-      .filter((_, idx) => idx !== indexToRemove)
-      .map((phase, idx) => ({
-        ...phase,
-        phase_sequence: idx + 1
-      }));
-    setPhases(updated);
-  };
-
-  const handlePhaseFieldChange = (index: number, field: string, value: any) => {
-    setPhases(prev => prev.map((p, i) => {
-      if (i === index) {
-        return { ...p, [field]: value === '' ? null : value };
-      }
-      return p;
-    }));
-  };
-
-  const handleTimeFieldChange = (index: number, field: 'trigger_month' | 'trigger_offset', value: string) => {
-    const numVal = value === '' ? 0 : Number(value);
-    setPhases(prev => {
-      const updated = [...prev];
-      const rootStart = Number(startMonth) || 1;
-      
-      updated[index] = { ...updated[index], [field]: value === '' ? '' : numVal };
-      
-      for (let i = 1; i < updated.length; i++) {
-        const prevAbs = i === 1 ? rootStart : (Number(updated[i - 1].trigger_month) || rootStart);
-        if (i === index) {
-          if (field === 'trigger_month') {
-            const abs = value === '' ? prevAbs : numVal;
-            updated[i].trigger_month = value === '' ? null : abs;
-            updated[i].trigger_offset = value === '' ? 0 : abs - prevAbs;
-          } else {
-            const offset = value === '' ? 0 : numVal;
-            updated[i].trigger_offset = value === '' ? '' : offset;
-            updated[i].trigger_month = prevAbs + offset;
-          }
-        } else if (i > index) {
-          const currentOffset = Number(updated[i].trigger_offset) || 0;
-          updated[i].trigger_month = prevAbs + currentOffset;
-        }
-      }
-      return updated;
-    });
-  };
-
-  const handleStartMonthChange = (val: string) => {
-    setStartMonth(val);
-    const rootStart = val === '' ? 1 : Number(val);
-    if (isNaN(rootStart)) return;
-    setPhases(prev => {
-      const updated = [...prev];
-      for (let i = 1; i < updated.length; i++) {
-        const prevAbs = i === 1 ? rootStart : (Number(updated[i - 1].trigger_month) || rootStart);
-        const currentOffset = Number(updated[i].trigger_offset) || 0;
-        updated[i].trigger_month = prevAbs + currentOffset;
-      }
-      return updated;
-    });
-  };
-
-  const handlePhaseConfigsChange = (index: number, updatedConfigs: VolatilityConfig[]) => {
-    const updated = [...phases];
-    updated[index] = {
-      ...updated[index],
-      volatility_configs: updatedConfigs
+        Some(fund_plan.pooling_fraction)
     };
-    setPhases(updated);
-  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors([]);
-
-    const newErrors = [];
-    if (!name.trim()) newErrors.push("Name is required");
-    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
-    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
-
-    phases.forEach((phase, idx) => {
-      if (phase.trigger_strategy === 'time_based' && idx > 0) {
-        if (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '' || isNaN(Number(phase.trigger_month))) {
-          newErrors.push(`Phase ${idx + 1}: Valid trigger month is required for time-based strategy.`);
-        }
-      } else if (phase.trigger_strategy === 'value_based') {
-        if (!phase.trigger_comparison_operator) {
-          newErrors.push(`Phase ${idx + 1}: Comparison operator is required for value-based strategy.`);
-        }
-        if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
-          newErrors.push(`Phase ${idx + 1}: Valid trigger threshold is required for value-based strategy.`);
-        }
-      }
-    });
-
-    // Strict validation guardrail: cannot submit with empty volatility configs in any phase unless fixed stream is selected
-    phases.forEach((phase, idx) => {
-      if (!phase.is_fixed_stream) {
-        if (!phase.volatility_configs || phase.volatility_configs.length === 0) {
-          newErrors.push(`Phase ${idx + 1} Validation Error: The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.`);
-        }
-        if (phase.volatility_configs && phase.volatility_configs.some((c: any) => !c.volatility_type)) {
-          newErrors.push(`Phase ${idx + 1}: Please select a distribution type for all enabled volatility models.`);
-        }
-      }
-    });
-
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    try {
-      // Map across all active phases to cleanly format parameters per-phase
-      const formattedPhases = phases.map((phase, idx) => {
-        const activeConfigs = phase.is_fixed_stream ? [] : (phase.volatility_configs || []);
-        const compGrowth = activeConfigs.find((c: any) => c.mode_name === 'compounding_growth');
-        let rootGrowth = '0.00';
-        if (compGrowth) {
-          if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
-            rootGrowth = parseFloat(String((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2)).toFixed(2);
-          } else if (compGrowth.target_mean) {
-            rootGrowth = parseFloat(compGrowth.target_mean).toFixed(2);
-          }
-        }
-
-        const cleanConfigs = activeConfigs.map((c: any) => {
-          const cleaned: any = { ...c };
-          Object.keys(cleaned).forEach(key => {
-            if (cleaned[key] === '') {
-              cleaned[key] = null;
-            } else if (['vol_min', 'vol_max', 'target_mean', 'std_dev'].includes(key) && cleaned[key] !== null) {
-              cleaned[key] = parseFloat(cleaned[key]).toFixed(2);
-            }
-          });
-          return cleaned;
-        });
-
-        const isTimeBased = phase.trigger_strategy === 'time_based';
-        const isValueBased = phase.trigger_strategy === 'value_based';
-
-        // Cast threshold value to a strict decimal string with two decimal places
-        let formattedThreshold = null;
-        if (isValueBased && phase.trigger_threshold !== null && phase.trigger_threshold !== undefined && phase.trigger_threshold !== '') {
-          const parsed = parseFloat(phase.trigger_threshold);
-          if (!isNaN(parsed)) {
-            formattedThreshold = parsed.toFixed(2);
-          }
-        }
-
-        let finalOperator = null;
-        if (isValueBased && phase.trigger_comparison_operator) {
-          finalOperator = (phase.trigger_metric_basis === 'ytd' ? 'ytd_revenue_' : '') + phase.trigger_comparison_operator.toLowerCase();
-        }
-
-        let formattedIncrement = null;
-        if (phase.baseline_increment !== null && phase.baseline_increment !== undefined && phase.baseline_increment !== '') {
-          const parsedInc = parseFloat(phase.baseline_increment);
-          if (!isNaN(parsedInc)) {
-            formattedIncrement = parsedInc.toFixed(2);
-          }
-        }
-
-        return {
-          id: phase.id,
-          phase_sequence: phase.phase_sequence,
-          // Enforce strict null constraints based on selected strategy
-          trigger_month: (isTimeBased && idx > 0) ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
-          trigger_threshold: isValueBased ? formattedThreshold : null,
-          trigger_operator: finalOperator,
-          trigger_offset: null, // Explicitly null for clean payload
-          growth_rate_percent: rootGrowth,
-          cost_of_revenue_percent: phase.cost_of_revenue_percent ? String(phase.cost_of_revenue_percent) : null,
-          baseline_increment: formattedIncrement,
-          volatility_configs: cleanConfigs
-        };
-      });
-
-      const rootTriggerStrategy = phases.some(p => p.trigger_strategy === 'value_based') ? 'value_based' : 'time_based';
-
-      const payload = {
-        plan_id: planId,
-        revenue_name: name,
-        source: source.toLowerCase(),
-        initial_amount: String(amount),
-        start_month: Number(startMonth),
-        end_month: endMonth ? Number(endMonth) : null,
-        frequency: freq.toLowerCase(),
-        trigger_strategy: rootTriggerStrategy,
-        phases: formattedPhases
-      };
-
-      if (itemToEdit) {
-        await api.updateRevenueItem(itemToEdit.id, payload as any);
-      } else {
-        await api.createRevenueItem(payload as any);
-      }
-
-      clearForm();
-      onSuccess(); 
-    } catch (err: any) {
-      console.error(err);
-      const status = err.response?.status;
-      const errMsg = err.response?.data?.message || err.message || '';
-      if (status === 400) {
-        setErrors([errMsg || "Validation Error: Please check your inputs. Ensure all required distribution fields are valid."]);
-      } else {
-        setErrors([errMsg || "Failed to save item. Please check your inputs."]);
-      }
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-gray-50 p-5 rounded border shadow-sm">
-      <div className="flex justify-between items-center mb-1">
-         <h3 className="font-bold text-gray-800 text-lg">{itemToEdit ? 'Edit Revenue Stream' : 'Add Revenue Stream'}</h3>
-      </div>
-      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
-
-      {errors.length > 0 && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm space-y-1">
-          <strong className="font-bold block">Validation Errors:</strong>
-          <ul className="list-disc pl-5 space-y-1">
-            {errors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Root Stream Parameters */}
-      <div className="bg-white p-4 rounded border space-y-4">
-        <h4 className="font-semibold text-sm text-gray-700 border-b pb-2">Stream Configuration</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 font-medium">Name *</label>
-            <input className="w-full border p-2 rounded text-sm" placeholder="e.g. SaaS Subs" value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 font-medium">Source Type</label>
-            <select className="w-full border p-2 rounded text-sm" value={source} onChange={e => setSource(e.target.value)}>
-              <option value="sales">Sales</option>
-              <option value="subscription">Subscription</option>
-              <option value="service">Service</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-              Initial Monthly Amount ({currencySymbol}) *
-              <Tooltip content="Initial amount of monthly revenue in Starting Month" />
-            </label>
-            <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 font-medium">Frequency of Volatility</label>
-            <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-              <option value="monthly">Monthly</option>
-              <option value="one-time">One-time</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="annually">Annually</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 font-medium">Start Month *</label>
-            <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => handleStartMonthChange(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 font-medium">End Month</label>
-            <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
-          </div>
-        </div>
-      </div>
-
-      {/* Progressive Multi-Phase UI View */}
-      <div className="space-y-4">
-        {phases.map((phase, index) => {
-          const isFirst = index === 0;
-          
-          let phaseSummary = '';
-          if (isFirst) {
-            phaseSummary = '(Baseline)';
-          } else {
-            if (phase.trigger_strategy === 'time_based') {
-              if (phase.trigger_month) {
-                phaseSummary = `(Month ${phase.trigger_month})`;
-              }
-            } else if (phase.trigger_strategy === 'value_based') {
-              if (phase.trigger_threshold) {
-                const opSymbol = getOperatorSymbol(phase.trigger_comparison_operator);
-                const isYtd = phase.trigger_metric_basis === 'ytd';
-                const prefix = isYtd ? 'YTD ' : '';
-                const formattedThreshold = Number(phase.trigger_threshold).toLocaleString(undefined, { maximumFractionDigits: 0 });
-                phaseSummary = `(${prefix}${opSymbol} ${currencySymbol}${formattedThreshold})`;
-              }
-            }
-          }
-
-          return (
-          <div key={index} className="space-y-4">
-            <div className="border border-gray-200 rounded p-4 bg-white space-y-4 shadow-sm">
-              <div className="flex justify-between items-center border-b pb-2">
-                <h4 className="font-bold text-sm text-gray-700">Phase {phase.phase_sequence} {phaseSummary}</h4>
-                {index > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePhase(index)}
-                    className="text-xs text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Remove Phase
-                  </button>
-                )}
-              </div>
-
-              {/* Trigger Strategy Selection for EVERY phase */}
-              <div className="bg-blue-50 border border-blue-200 p-3 rounded space-y-2 mb-4">
-                <label className="text-xs font-bold text-blue-800 flex items-center gap-1">
-                  Trigger Strategy
-                  <Tooltip content="Select how this phase is triggered (by month or by a financial threshold)." />
-                </label>
-                <select
-                  className="w-full border border-blue-300 p-2 rounded text-sm bg-white"
-                  value={phase.trigger_strategy || 'time_based'}
-                  onChange={e => handlePhaseFieldChange(index, 'trigger_strategy', e.target.value)}
-                >
-                  <option value="time_based">Time-Based (Month Count)</option>
-                  <option value="value_based">Value-Based (Threshold Operator)</option>
-                </select>
-              </div>
-
-              {/* Trigger Settings based on selected strategy */}
-              <div className="bg-gray-50 p-3 rounded border space-y-3">
-                <p className="text-xs font-semibold text-gray-600">Phase Trigger Condition</p>
-                
-                {phase.trigger_strategy === 'time_based' && index === 0 && (
-                  <p className="text-xs text-gray-500 italic">Phase 1 begins at the root Start Month.</p>
-                )}
-
-                {phase.trigger_strategy === 'time_based' && index > 0 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1 font-medium">enter the absolute month *</label>
-                      <input
-                        type="number"
-                        className="w-full border p-2 rounded text-sm bg-white"
-                        placeholder="e.g. 12"
-                        value={phase.trigger_month ?? ''}
-                        onChange={e => handleTimeFieldChange(index, 'trigger_month', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1 font-medium">the offset in months vs the previous phase, and I'll calculate the absolute month *</label>
-                      <input
-                        type="number"
-                        className="w-full border p-2 rounded text-sm bg-white"
-                        placeholder="e.g. 6"
-                        value={phase.trigger_offset ?? ''}
-                        onChange={e => handleTimeFieldChange(index, 'trigger_offset', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {phase.trigger_strategy === 'value_based' && (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1 font-medium">Metric Basis *</label>
-                      <select
-                        className="w-full border p-2 rounded text-sm bg-white"
-                        value={phase.trigger_metric_basis || 'monthly'}
-                        onChange={e => handlePhaseFieldChange(index, 'trigger_metric_basis', e.target.value)}
-                      >
-                        <option value="monthly">Monthly Revenue</option>
-                        <option value="ytd">Calendar YTD Revenue</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1 font-medium">Comparison Operator *</label>
-                      <select
-                        className="w-full border p-2 rounded text-sm bg-white"
-                        value={phase.trigger_comparison_operator || 'greater_than'}
-                        onChange={e => handlePhaseFieldChange(index, 'trigger_comparison_operator', e.target.value)}
-                      >
-                        <option value="greater_than">Greater than (&gt;)</option>
-                        <option value="less_than">Less than (&lt;)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1 font-medium">Threshold Amount ({currencySymbol}) *</label>
-                      <input
-                        type="number"
-                        step="any"
-                        className="w-full border p-2 rounded text-sm bg-white"
-                        placeholder="e.g. 50000.00"
-                        value={phase.trigger_threshold || ''}
-                        onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Growth & Cost Parameters */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-                    Cost of Rev (%)
-                    <Tooltip content="Cost of revenue percentage for this specific phase." />
-                  </label>
-                  <input
-                    type="number"
-                    className="w-full border p-2 rounded text-sm"
-                    placeholder="Optional"
-                    value={phase.cost_of_revenue_percent || ''}
-                    onChange={e => handlePhaseFieldChange(index, 'cost_of_revenue_percent', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-                    Baseline Increment / Structural Jump
-                    <Tooltip content="Optional fixed amount to add or subtract from the baseline when this phase triggers." />
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    className="w-full border p-2 rounded text-sm"
-                    placeholder="e.g. 5000.00 or -1500.00"
-                    value={phase.baseline_increment || ''}
-                    onChange={e => handlePhaseFieldChange(index, 'baseline_increment', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Volatility Inputs for this Phase */}
-              <div className="mt-4 space-y-4">
-                <div className="flex items-start gap-2 bg-gray-50 p-3 rounded border">
-                  <input
-                    type="checkbox"
-                    id={`fixed-stream-rev-${index}`}
-                    checked={phase.is_fixed_stream || false}
-                    onChange={e => handlePhaseFieldChange(index, 'is_fixed_stream', e.target.checked)}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <label htmlFor={`fixed-stream-rev-${index}`} className="text-sm font-bold text-gray-700 cursor-pointer">
-                      Fixed Stream (No Volatility)
-                    </label>
-                    <p className="text-xs text-gray-500">
-                      Only choose this if you are certain that there cannot be any volatility.
-                    </p>
-                  </div>
-                </div>
-
-                {!phase.is_fixed_stream && (
-                  <VolatilityInputs
-                    configs={phase.volatility_configs}
-                    onChange={(updated) => handlePhaseConfigsChange(index, updated)}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-          );
-        })}
-      </div>
-
-      {/* Action Button Layout */}
-      <div className="mt-4">
-        {phases.length < 4 ? (
-          <button
-            type="button"
-            onClick={handleAddPhase}
-            className="w-full py-2 px-4 border border-dashed border-blue-400 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium transition-colors"
-          >
-            + Do you want to add another phase?
-          </button>
-        ) : (
-          <div className="w-full py-2 px-4 bg-gray-100 border border-gray-300 text-gray-500 rounded text-sm text-center font-medium">
-            You have reached the maximum of four phases
-          </div>
-        )}
-      </div>
-
-      <div className="flex gap-4 pt-4 border-t">
-        {itemToEdit && (
-          <button 
-            type="button" 
-            onClick={onCancel} 
-            className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1 transition-colors"
-          >
-            Cancel Edit
-          </button>
-        )}
-        <button 
-          type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1 transition-colors"
-        >
-          {itemToEdit ? 'Update Stream' : 'Add Stream'}
-        </button>
-      </div>
-    </form>
-  );
-}
-</file>
-<file path='frontend/components/forms/ExpenseForm.tsx'>
-'use client';
-
-import { useState, useEffect } from 'react';
-import { api, ExpenseItem } from '@/lib/api';
-import Tooltip from '@/components/ui/Tooltip';
-import VolatilityInputs, { VolatilityConfig } from '@/components/forms/shared/VolatilityInputs';
-
-const getOperatorSymbol = (op: string | null | undefined): string => {
-  if (!op) return '>';
-  if (op.includes('greater_than')) return '>';
-  if (op.includes('less_than')) return '<';
-  return '>';
-};
-
-interface Props {
-  planId: string;
-  onSuccess: () => void;
-  itemToEdit?: ExpenseItem | null;
-  onCancel?: () => void;
-  currencySymbol?: string;
-}
-
-export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, currencySymbol = '$' }: Props) {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('opex');
-  const [amount, setAmount] = useState('');
-  const [startMonth, setStartMonth] = useState('1');
-  const [endMonth, setEndMonth] = useState('');
-  const [freq, setFreq] = useState('monthly');
-
-  // Ordered Phase Array State
-  const [phases, setPhases] = useState<any[]>([
-    {
-      phase_sequence: 1,
-      trigger_strategy: 'time_based',
-      trigger_month: null,
-      trigger_offset: '',
-      trigger_threshold: '',
-      trigger_metric_basis: 'monthly',
-      trigger_comparison_operator: 'greater_than',
-      growth_rate_percent: '0.00',
-      pct_of_revenue: '',
-      baseline_increment: '',
-      is_fixed_stream: false,
-      volatility_configs: []
-    }
-  ]);
-
-  const [errors, setErrors] = useState<string[]>([]);
-
-  // --- POPULATE ON EDIT ---
-  useEffect(() => {
-    if (itemToEdit) {
-      setName(itemToEdit.expense_name);
-      setCategory(itemToEdit.category);
-      setAmount(itemToEdit.initial_amount.toString());
-      setStartMonth(itemToEdit.start_month.toString());
-      setEndMonth(itemToEdit.end_month ? itemToEdit.end_month.toString() : '');
-      setFreq(itemToEdit.frequency);
-      
-      const editItem = itemToEdit as any;
-
-      if (editItem.phases && editItem.phases.length > 0) {
-        const rootStart = Number(itemToEdit.start_month) || 1;
-        setPhases(editItem.phases.map((p: any, idx: number, arr: any[]) => {
-          const absMonth = p.trigger_month !== undefined && p.trigger_month !== null ? Number(p.trigger_month) : null;
-          let offsetVal = 0;
-          if (idx > 0 && absMonth !== null) {
-            const prevAbs = idx === 1 ? rootStart : (Number(arr[idx - 1].trigger_month) || rootStart);
-            offsetVal = absMonth - prevAbs;
-          }
-          
-          const hasValueTrigger = (p.trigger_threshold !== undefined && p.trigger_threshold !== null) || (p.trigger_operator && p.trigger_operator !== '');
-          
-          let metricBasis = 'monthly';
-          let compOp = 'greater_than';
-          if (p.trigger_operator) {
-            if (p.trigger_operator.includes('ytd_revenue_')) {
-              metricBasis = 'ytd';
-            }
-            if (p.trigger_operator.includes('less_than')) {
-              compOp = 'less_than';
-            } else if (p.trigger_operator.includes('greater_than')) {
-              compOp = 'greater_than';
-            }
-          }
-
-          return {
-            id: p.id,
-            phase_sequence: p.phase_sequence,
-            trigger_strategy: hasValueTrigger ? 'value_based' : 'time_based',
-            trigger_month: absMonth,
-            trigger_offset: idx > 0 ? offsetVal : "",
-            trigger_threshold: p.trigger_threshold !== undefined && p.trigger_threshold !== null ? String(p.trigger_threshold) : '',
-            trigger_metric_basis: metricBasis,
-            trigger_comparison_operator: compOp,
-            growth_rate_percent: (p.growth_rate_percent !== null && p.growth_rate_percent !== undefined) ? parseFloat(p.growth_rate_percent).toFixed(2) : '0.00',
-            cost_of_revenue_percent: p.cost_of_revenue_percent ? String(p.cost_of_revenue_percent) : '',
-            pct_of_revenue: p.pct_of_revenue ? String(p.pct_of_revenue) : '',
-            baseline_increment: (p.baseline_increment !== null && p.baseline_increment !== undefined) ? String(p.baseline_increment) : '',
-            is_fixed_stream: !p.volatility_configs || p.volatility_configs.length === 0,
-            volatility_configs: p.volatility_configs?.map((c: any) => {
-              const clamped = { ...c };
-              ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
-                if (clamped[key] !== null && clamped[key] !== undefined && clamped[key] !== '') {
-                  clamped[key] = parseFloat(clamped[key]).toFixed(2);
-                }
-              });
-              return clamped;
-            }) || []
-          };
-        }));
-      } else {
-        // Fallback if legacy item has no phases
-        setPhases([
-          {
-            phase_sequence: 1,
-            trigger_strategy: 'time_based',
-            trigger_month: null,
-            trigger_offset: '',
-            trigger_threshold: '',
-            trigger_metric_basis: 'monthly',
-            trigger_comparison_operator: 'greater_than',
-            growth_rate_percent: (editItem.growth_rate_percent !== null && editItem.growth_rate_percent !== undefined) ? parseFloat(editItem.growth_rate_percent).toFixed(2) : '0.00',
-            cost_of_revenue_percent: '',
-            pct_of_revenue: editItem.pct_of_revenue ? editItem.pct_of_revenue.toString() : '',
-            baseline_increment: '',
-            is_fixed_stream: !editItem.volatility_configs || editItem.volatility_configs.length === 0,
-            volatility_configs: editItem.volatility_configs?.map((c: any) => {
-              const clamped = { ...c };
-              ['vol_min', 'vol_max', 'target_mean', 'std_dev'].forEach(key => {
-                if (clamped[key] !== null && clamped[key] !== undefined && clamped[key] !== '') {
-                  clamped[key] = parseFloat(clamped[key]).toFixed(2);
-                }
-              });
-              return clamped;
-            }) || []
-          }
-        ]);
-      }
+    // Determine Pooling for SimState (Plan Value as default, unless legacy param overrides)
+    let pooling_for_sim_state = if let Some(ref s) = params.fund_pooling_fraction {
+        Decimal::from_str(s).unwrap_or(Decimal::ZERO) / Decimal::from(100)
     } else {
-      clearForm();
-    }
-  }, [itemToEdit]);
+        fund_plan.pooling_fraction
+    };
 
-  const clearForm = () => {
-    setName('');
-    setCategory('opex');
-    setAmount('');
-    setStartMonth('1');
-    setEndMonth('');
-    setFreq('monthly');
-    setPhases([
-      {
-        phase_sequence: 1,
-        trigger_strategy: 'time_based',
-        trigger_month: null,
-        trigger_offset: '',
-        trigger_threshold: '',
-        trigger_metric_basis: 'monthly',
-        trigger_comparison_operator: 'greater_than',
-        growth_rate_percent: '0.00',
-        cost_of_revenue_percent: '',
-        pct_of_revenue: '',
-        baseline_increment: '',
-        is_fixed_stream: false,
-        volatility_configs: []
-      }
-    ]);
-    setErrors([]);
-  };
+    internal_run_simulation(
+        &pool,
+        claims.tenant_id,
+        fund_plan.fund_id,
+        selected_plans_map,
+        pooling_for_orchestrator,
+        pooling_for_sim_state,
+        params
+    ).await
+}
 
-  const handlePhaseFieldChange = (index: number, field: string, value: any) => {
-    setPhases(prev => prev.map((p, i) => {
-      if (i === index) {
-        return { ...p, [field]: value === '' ? null : value };
-      }
-      return p;
-    }));
-  };
+/// EXISTING: Fund-Centric Simulation Handler
+/// Runs simulation from a Fund ID, optionally taking a plan_id in query params
+#[debug_handler]
+pub async fn run_fund_simulation(
+    State(pool): State<Pool<Postgres>>,
+    Extension(claims): Extension<models::Claims>,
+    Path(fund_id): Path<Uuid>,
+    Query(params): Query<SimParams>,
+) -> Result<Json<SimulationResult>, AppError> {
+    // 1. Check Fund Exists
+    let _fund = sqlx::query!(
+        "SELECT id FROM funds WHERE id = $1 AND tenant_id = $2",
+        fund_id,
+        claims.tenant_id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("Fund not found: {}", fund_id)))?;
 
-  const handleTimeFieldChange = (index: number, field: 'trigger_month' | 'trigger_offset', value: string) => {
-    const numVal = value === '' ? 0 : Number(value);
-    setPhases(prev => {
-      const updated = [...prev];
-      const rootStart = Number(startMonth) || 1;
-      
-      updated[index] = { ...updated[index], [field]: value === '' ? '' : numVal };
-      
-      for (let i = 1; i < updated.length; i++) {
-        const prevAbs = i === 1 ? rootStart : (Number(updated[i - 1].trigger_month) || rootStart);
-        if (i === index) {
-          if (field === 'trigger_month') {
-            const abs = value === '' ? prevAbs : numVal;
-            updated[i].trigger_month = value === '' ? null : abs;
-            updated[i].trigger_offset = value === '' ? 0 : abs - prevAbs;
-          } else {
-            const offset = value === '' ? 0 : numVal;
-            updated[i].trigger_offset = value === '' ? '' : offset;
-            updated[i].trigger_month = prevAbs + offset;
-          }
-        } else if (i > index) {
-          const currentOffset = Number(updated[i].trigger_offset) || 0;
-          updated[i].trigger_month = prevAbs + currentOffset;
+    // 2. Handle Fund Plan Selection & Pooling Fraction
+    let mut selected_plans_map: HashMap<String, Uuid> = HashMap::new();
+    let mut fund_plan_pooling = Decimal::ZERO;
+
+    if let Some(fp_id) = params.fund_plan_id {
+        let record = sqlx::query!(
+            r#"
+            SELECT selected_plans, pooling_fraction
+            FROM fund_plans
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+            fp_id,
+            claims.tenant_id
+        )
+        .fetch_optional(&pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Fund Plan not found: {}", fp_id)))?;
+
+        if let Ok(map) = serde_json::from_value::<HashMap<String, Uuid>>(record.selected_plans) {
+            selected_plans_map = map;
         }
-      }
-      return updated;
-    });
-  };
-
-  const handleStartMonthChange = (val: string) => {
-    setStartMonth(val);
-    const rootStart = val === '' ? 1 : Number(val);
-    if (isNaN(rootStart)) return;
-    setPhases(prev => {
-      const updated = [...prev];
-      for (let i = 1; i < updated.length; i++) {
-        const prevAbs = i === 1 ? rootStart : (Number(updated[i - 1].trigger_month) || rootStart);
-        const currentOffset = Number(updated[i].trigger_offset) || 0;
-        updated[i].trigger_month = prevAbs + currentOffset;
-      }
-      return updated;
-    });
-  };
-
-  const handlePhaseConfigsChange = (index: number, updatedConfigs: VolatilityConfig[]) => {
-    setPhases(prev => prev.map((p, idx) => {
-      if (idx === index) {
-        return { ...p, volatility_configs: updatedConfigs };
-      }
-      return p;
-    }));
-  };
-
-  const handleAddPhase = () => {
-    if (phases.length >= 4) return;
-    setPhases(prev => [
-      ...prev,
-      {
-        phase_sequence: prev.length + 1,
-        trigger_strategy: 'time_based',
-        trigger_month: null,
-        trigger_offset: '',
-        trigger_threshold: '',
-        trigger_metric_basis: 'monthly',
-        trigger_comparison_operator: 'greater_than',
-        growth_rate_percent: '0.00',
-        pct_of_revenue: '',
-        baseline_increment: '',
-        is_fixed_stream: false,
-        volatility_configs: []
-      }
-    ]);
-  };
-
-  const handleRemovePhase = (index: number) => {
-    setPhases(prev => {
-      const filtered = prev.filter((_, idx) => idx !== index);
-      return filtered.map((p, idx) => ({
-        ...p,
-        phase_sequence: idx + 1
-      }));
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors([]);
-
-    const newErrors: string[] = [];
-    if (!name.trim()) newErrors.push("Name is required");
-    if (!amount || isNaN(Number(amount))) newErrors.push("Valid initial amount is required");
-    if (!startMonth || isNaN(Number(startMonth))) newErrors.push("Start month is required");
-
-    // Validate each phase
-    phases.forEach((phase, idx) => {
-      const phaseNum = idx + 1;
-      if (!phase.is_fixed_stream) {
-        if (!phase.volatility_configs || phase.volatility_configs.length === 0) {
-          newErrors.push(`Validation Error (Phase ${phaseNum}): The simulation engine requires a financial stream to have an active variance profile. Please enable at least one volatility force (Compounding Growth and/or Transient Operational Noise) before saving this item.`);
-        }
-        if (phase.volatility_configs && phase.volatility_configs.some((c: any) => !c.volatility_type)) {
-          newErrors.push(`Please select a distribution type for all enabled volatility models in Phase ${phaseNum}.`);
-        }
-      }
-      
-      if (phase.trigger_strategy === 'time_based' && idx > 0) {
-        if (phase.trigger_month === null || phase.trigger_month === undefined || phase.trigger_month === '') {
-          newErrors.push(`Phase ${phaseNum} requires a trigger month.`);
-        }
-      } else if (phase.trigger_strategy === 'value_based') {
-        if (!phase.trigger_comparison_operator) {
-          newErrors.push(`Phase ${phaseNum} requires a comparison operator.`);
-        }
-        if (phase.trigger_threshold === null || phase.trigger_threshold === undefined || phase.trigger_threshold === '' || isNaN(Number(phase.trigger_threshold))) {
-          newErrors.push(`Phase ${phaseNum} requires a valid trigger threshold.`);
-        }
-      }
-    });
-
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
-      return;
+        fund_plan_pooling = record.pooling_fraction;
     }
 
-    try {
-      const processedPhases = phases.map((phase, idx) => {
-        const activeConfigs = phase.is_fixed_stream ? [] : (phase.volatility_configs || []);
-        // Find compounding growth block inside each phase's volatility configs
-        const compGrowth = activeConfigs.find((c: any) => c.mode_name === 'compounding_growth');
-        let localGrowth = '0.00';
-        if (compGrowth) {
-          if (compGrowth.volatility_type === 'flat' && compGrowth.vol_min && compGrowth.vol_max) {
-            localGrowth = parseFloat(String((parseFloat(compGrowth.vol_min) + parseFloat(compGrowth.vol_max)) / 2)).toFixed(2);
-          } else if (compGrowth.target_mean) {
-            localGrowth = parseFloat(compGrowth.target_mean).toFixed(2);
-          }
-        }
+    // Determine Pooling for Orchestrator (Slider Override > Plan Value > 0)
+    let pooling_for_orchestrator = if let Some(ref s) = params.ergodicity_correction {
+        Some(Decimal::from_str(s).unwrap_or(Decimal::ZERO))
+    } else {
+        Some(fund_plan_pooling)
+    };
 
-        // Safely scrub empty text strings to null and clamp variance percentages
-        const cleanConfigs = activeConfigs.map((c: any) => {
-          const cleaned: any = { ...c };
-          Object.keys(cleaned).forEach(key => {
-            if (cleaned[key] === '') {
-              cleaned[key] = null;
-            } else if (['vol_min', 'vol_max', 'target_mean', 'std_dev'].includes(key) && cleaned[key] !== null) {
-              cleaned[key] = parseFloat(cleaned[key]).toFixed(2);
+    // Determine Pooling for SimState (Legacy Param > 0)
+    let pooling_for_sim_state = if let Some(ref s) = params.fund_pooling_fraction {
+        Decimal::from_str(s).unwrap_or(Decimal::ZERO) / Decimal::from(100)
+    } else {
+        Decimal::ZERO
+    };
+
+    internal_run_simulation(
+        &pool,
+        claims.tenant_id,
+        fund_id,
+        selected_plans_map,
+        pooling_for_orchestrator,
+        pooling_for_sim_state,
+        params
+    ).await
+}
+
+/// Shared Internal Simulation Logic
+async fn internal_run_simulation(
+    pool: &Pool<Postgres>,
+    tenant_id: Uuid,
+    fund_id: Uuid,
+    selected_plans_map: HashMap<String, Uuid>,
+    pooling_for_orchestrator: Option<Decimal>,
+    pooling_for_sim_state: Decimal,
+    params: SimParams,
+) -> Result<Json<SimulationResult>, AppError> {
+    
+    // 1. Fetch Companies
+    let companies = sqlx::query_as!(
+        models::Company,
+        r#"
+        SELECT 
+            id, fund_id, company_name, description, currency_code, created_at, 
+            industry, business_model, technology, tenant_id
+        FROM companies
+        WHERE fund_id = $1 AND tenant_id = $2
+        "#,
+        fund_id,
+        tenant_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Capture company IDs for event filtering later
+    let company_ids: Vec<Uuid> = companies.iter().map(|c| c.id).collect();
+
+    // Extract simulation parameters
+    let stop_insolvency = params.stop_insolvency.unwrap_or(true);
+    let include_init = params.include_initial_capital.unwrap_or(false);
+    let events_active = params.events_active.unwrap_or(true);
+
+    let mut sim_states: Vec<SimState> = Vec::new();
+    let mut error_log: Vec<String> = Vec::new();
+
+    // 2. Build SimState for each Company
+    for company in companies {
+        // Determine if we have a specific plan override
+        let specific_plan_id = selected_plans_map.get(&company.id.to_string()).copied();
+
+        let plan = if let Some(plan_id) = specific_plan_id {
+            // Fetch specific plan
+            sqlx::query_as!(
+                models::FinancialPlan,
+                r#"
+                SELECT 
+                    id, company_id, plan_name, description, start_month, currency_code, 
+                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
+                    insolvency_threshold,
+                    soft_limit_active, soft_limit_threshold, soft_limit_fraction
+                FROM financial_plans
+                WHERE id = $1 AND tenant_id = $2
+                "#,
+                plan_id,
+                tenant_id
+            )
+            .fetch_optional(pool)
+            .await?
+        } else {
+            // Fetch latest plan (Default)
+            sqlx::query_as!(
+                models::FinancialPlan,
+                r#"
+                SELECT 
+                    id, company_id, plan_name, description, start_month, currency_code, 
+                    created_at, updated_at, initial_cash, pooling_fraction, tenant_id, last_p50_net_value,
+                    insolvency_threshold,
+                    soft_limit_active, soft_limit_threshold, soft_limit_fraction
+                FROM financial_plans
+                WHERE company_id = $1 AND tenant_id = $2
+                ORDER BY created_at DESC
+                LIMIT 1
+                "#,
+                company.id,
+                tenant_id
+            )
+            .fetch_optional(pool)
+            .await?
+        };
+
+        if let Some(plan) = plan {
+            let state = fetch_and_map_company_state(
+                pool, 
+                plan, 
+                company.company_name, 
+                company.id, 
+                stop_insolvency,
+                include_init,
+                pooling_for_sim_state,
+                &mut error_log
+            ).await?;
+            sim_states.push(state);
+        }
+    }
+
+    if !error_log.is_empty() {
+        return Ok(Json(SimulationResult {
+            errors: Some(error_log),
+            ..Default::default()
+        }));
+    }
+
+    if sim_states.is_empty() {
+        return Err(AppError::ValidationError("No valid financial plans found for companies in this fund.".to_string()));
+    }
+
+    // 3. Run Simulation
+    let months = params.months.unwrap_or(120).clamp(1, 1200);
+
+    // Fetch Stochastic Events (Probabilistic events with no fixed start_month)
+    let stochastic_events = sqlx::query_as!(
+        models::Event,
+        r#"
+        SELECT 
+            id as "id!", 
+            plan_id, 
+            fund_ids, 
+            company_ids,
+            event_name as "event_name!", 
+            start_month, 
+            event_category, 
+            impact_type, 
+            impact_value, 
+            duration_months, 
+            likelihood_annual_pct, 
+            magnitude, 
+            direction, 
+            duration_category,
+            is_counter_cyclic,
+            created_at as "created_at!"
+        FROM events
+        WHERE ($1 = ANY(fund_ids) OR company_ids && $2)
+          AND start_month IS NULL
+        "#,
+        fund_id,
+        &company_ids
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Initialize FundOrchestrator with 499 iterations (Portfolio Mode for Fund Simulation)
+    // Move ownership of heavy data into the blocking thread
+    let result = tokio::task::spawn_blocking(move || {
+        let orchestrator = FundOrchestrator::<PortfolioMode>::new(
+            499, 
+            sim_states, 
+            months, 
+            stop_insolvency, 
+            events_active, 
+            stochastic_events, 
+            pooling_for_orchestrator
+        );
+        orchestrator.run()
+    })
+    .await
+    .map_err(|e| AppError::InternalServerError(format!("Simulation task failed: {}", e)))?;
+
+    Ok(Json(result))
+}
+
+/// Helper to fetch all related data for a plan and map it to the Engine's SimState.
+async fn fetch_and_map_company_state(
+    pool: &Pool<Postgres>,
+    plan: models::FinancialPlan,
+    company_name: String,
+    company_id: Uuid,
+    stop_insolvency: bool,
+    include_init: bool,
+    fund_pooling_rate: Decimal,
+    error_log: &mut Vec<String>,
+) -> Result<SimState, AppError> {
+    
+    // Fetch Revenue Items
+    let revenue_items = sqlx::query_as!(
+        DbRevenueItem,
+        r#"
+        SELECT 
+            id, revenue_name, start_month, end_month, 
+            initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator
+        FROM revenue_items
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Revenue Phases
+    let revenue_phases = sqlx::query_as!(
+        DbRevenuePhase,
+        r#"
+        SELECT 
+            p.id, p.revenue_item_id, p.phase_sequence, 
+            p.trigger_month, p.trigger_threshold, p.trigger_operator, 
+            p.growth_rate_percent, p.cost_of_revenue_percent,
+            p.baseline_increment
+        FROM revenue_item_phases p
+        JOIN revenue_items i ON i.id = p.revenue_item_id
+        WHERE i.plan_id = $1
+        ORDER BY p.phase_sequence ASC
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Expense Items
+    let expense_items = sqlx::query_as!(
+        DbExpenseItem,
+        r#"
+        SELECT 
+            id, expense_name, category, start_month, end_month, 
+            initial_amount, frequency, trigger_strategy,
+            trigger_threshold, trigger_operator
+        FROM expense_items
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Expense Phases
+    let expense_phases = sqlx::query_as!(
+        DbExpensePhase,
+        r#"
+        SELECT 
+            p.id, p.expense_item_id, p.phase_sequence, 
+            p.trigger_month, p.trigger_threshold, p.trigger_operator, 
+            p.growth_rate_percent, p.pct_of_revenue,
+            p.baseline_increment
+        FROM expense_item_phases p
+        JOIN expense_items i ON i.id = p.expense_item_id
+        WHERE i.plan_id = $1
+        ORDER BY p.phase_sequence ASC
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Revenue Policies
+    let revenue_policies = sqlx::query!(
+        r#"
+        SELECT 
+            p.id, p.revenue_item_phase_id as "phase_id!", p.mode_name, p.volatility_type, 
+            p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, 
+            p.vol_freedom, p.vol_alpha, p.vol_beta
+        FROM revenue_item_volatility_policies p
+        JOIN revenue_item_phases ph ON ph.id = p.revenue_item_phase_id
+        JOIN revenue_items i ON i.id = ph.revenue_item_id
+        WHERE i.plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let rev_policies_data: Vec<VolatilityPolicyData> = revenue_policies.into_iter().map(|p| VolatilityPolicyData {
+        phase_id: p.phase_id,
+        mode_name: p.mode_name,
+        volatility_type: Some(p.volatility_type),
+        vol_min: p.vol_min,
+        vol_max: p.vol_max,
+        vol_intervals: p.vol_intervals,
+        vol_mean: p.vol_mean,
+        vol_scale: p.vol_scale,
+        vol_freedom: p.vol_freedom,
+        vol_alpha: p.vol_alpha,
+        vol_beta: p.vol_beta,
+    }).collect();
+
+    // Fetch Expense Policies
+    let expense_policies = sqlx::query!(
+        r#"
+        SELECT 
+            p.id, p.expense_item_phase_id as "phase_id!", p.mode_name, p.volatility_type, 
+            p.vol_min, p.vol_max, p.vol_intervals, p.vol_mean, p.vol_scale, 
+            p.vol_freedom, p.vol_alpha, p.vol_beta
+        FROM expense_item_volatility_policies p
+        JOIN expense_item_phases ph ON ph.id = p.expense_item_phase_id
+        JOIN expense_items i ON i.id = ph.expense_item_id
+        WHERE i.plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let exp_policies_data: Vec<VolatilityPolicyData> = expense_policies.into_iter().map(|p| VolatilityPolicyData {
+        phase_id: p.phase_id,
+        mode_name: p.mode_name,
+        volatility_type: Some(p.volatility_type),
+        vol_min: p.vol_min,
+        vol_max: p.vol_max,
+        vol_intervals: p.vol_intervals,
+        vol_mean: p.vol_mean,
+        vol_scale: p.vol_scale,
+        vol_freedom: p.vol_freedom,
+        vol_alpha: p.vol_alpha,
+        vol_beta: p.vol_beta,
+    }).collect();
+
+    // Fetch Capital Injections
+    let capital_injections = sqlx::query_as!(
+        models::CapitalInjection,
+        r#"
+        SELECT id, plan_id, injection_name, amount, month, created_at
+        FROM capital_injections
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Dividend Policy
+    let dividend_policy = sqlx::query_as!(
+        models::DividendPolicy,
+        r#"
+        SELECT id, plan_id, is_enabled, safety_threshold, payout_ratio, created_at, tracking_enabled as "tracking_enabled!"
+        FROM dividend_policies
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    // Fetch Credit Facility
+    let credit_facility = sqlx::query_as!(
+        models::CreditFacility,
+        r#"
+        SELECT id, plan_id, facility_limit, interest_rate, is_annual_rate, created_at
+        FROM credit_facilities
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    // Fetch Valuation Assumption
+    let valuation_assumption = sqlx::query_as!(
+        models::ValuationAssumption,
+        r#"
+        SELECT id, plan_id, valuation_name, method, multiplier, date_applied, created_at
+        FROM valuation_assumptions
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    // Fetch Events (Renamed from Shocks)
+    // UPDATED: Fetch events linked to Plan OR Company OR Fund
+    let events = sqlx::query_as!(
+        models::Event,
+        r#"
+        SELECT 
+            e.id as "id!", 
+            e.plan_id, 
+            e.fund_ids, 
+            e.company_ids, 
+            e.event_name as "event_name!", 
+            e.start_month, 
+            e.event_category, 
+            e.impact_type, 
+            e.impact_value, 
+            e.duration_months, 
+            e.likelihood_annual_pct, 
+            e.magnitude, 
+            e.direction, 
+            e.duration_category, 
+            e.is_counter_cyclic,
+            e.created_at as "created_at!"
+        FROM events e
+        JOIN financial_plans p ON p.id = $1
+        JOIN companies c ON c.id = p.company_id
+        WHERE (e.plan_id = $1 OR c.id = ANY(e.company_ids) OR c.fund_id = ANY(e.fund_ids))
+        AND e.start_month IS NOT NULL
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Staffing
+    let staffing_roles = sqlx::query_as!(
+        models::StaffingRole,
+        r#"
+        SELECT 
+            id, plan_id, role_name, annual_salary, start_month, 
+            target_count, hiring_plan, hiring_rate, annual_increase_percent, created_at
+        FROM staffing_roles
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Fetch Capital Growth Policy
+    let capital_growth_policy = sqlx::query_as!(
+        models::CapitalGrowthPolicy,
+        r#"
+        SELECT 
+            id, plan_id, volatility_type, vol_min, vol_max, vol_intervals, 
+            vol_mean, vol_scale, vol_freedom, vol_alpha, vol_beta, 
+            target_mean, vol_mu, vol_input_mode, vol_fatness_level, vol_skew_level, vol_width_level,
+            created_at, growth_rate_percent
+        FROM capital_growth_policies
+        WHERE plan_id = $1
+        "#,
+        plan.id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    // --- NRIG Validation & Policy Check ---
+    for r in &revenue_items {
+        let item_phase_ids: Vec<Uuid> = revenue_phases.iter().filter(|ph| ph.revenue_item_id == r.id).map(|ph| ph.id).collect();
+        for p in &rev_policies_data {
+            if item_phase_ids.contains(&p.phase_id) {
+                if let Some(vt) = &p.volatility_type {
+                    if vt == "NRIG" {
+                        let alpha = p.vol_alpha.unwrap_or(Decimal::ZERO);
+                        let beta = p.vol_beta.unwrap_or(Decimal::ZERO);
+                        if alpha * alpha <= beta * beta {
+                            error_log.push(format!("Company '{}': Revenue '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, r.revenue_name));
+                        }
+                    }
+                }
             }
-          });
-          return cleaned;
+        }
+    }
+
+    for e in &expense_items {
+        let item_phase_ids: Vec<Uuid> = expense_phases.iter().filter(|ph| ph.expense_item_id == e.id).map(|ph| ph.id).collect();
+        for p in &exp_policies_data {
+            if item_phase_ids.contains(&p.phase_id) {
+                if let Some(vt) = &p.volatility_type {
+                    if vt == "NRIG" {
+                        let alpha = p.vol_alpha.unwrap_or(Decimal::ZERO);
+                        let beta = p.vol_beta.unwrap_or(Decimal::ZERO);
+                        if alpha * alpha <= beta * beta {
+                            error_log.push(format!("Company '{}': Expense '{}' has invalid NRIG parameters (alpha^2 <= beta^2).", company_name, e.expense_name));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(g) = &capital_growth_policy {
+        if let Some(vt) = &g.volatility_type {
+            if vt == "NRIG" {
+                let alpha = g.vol_alpha.unwrap_or(Decimal::ZERO);
+                let beta = g.vol_beta.unwrap_or(Decimal::ZERO);
+                if alpha * alpha <= beta * beta {
+                    error_log.push(format!("Company '{}': Capital Growth Policy has invalid NRIG parameters (alpha^2 <= beta^2).", company_name));
+                }
+            }
+        }
+    }
+    // -----------------------
+
+    // Map to Engine State
+    Ok(map_to_sim_state(
+        company_id,
+        plan,
+        company_name,
+        revenue_items,
+        expense_items,
+        revenue_phases,
+        expense_phases,
+        rev_policies_data,
+        exp_policies_data,
+        capital_injections,
+        dividend_policy,
+        credit_facility,
+        valuation_assumption,
+        events,
+        staffing_roles,
+        capital_growth_policy,
+        stop_insolvency,
+        include_init,
+        pooling_rate_override
+    ))
+}
+
+/// Pure function to map DB models to Engine Domain models.
+fn map_to_sim_state(
+    company_id: Uuid,
+    plan: models::FinancialPlan,
+    company_name: String,
+    revenue_items: Vec<DbRevenueItem>,
+    expense_items: Vec<DbExpenseItem>,
+    revenue_phases: Vec<DbRevenuePhase>,
+    expense_phases: Vec<DbExpensePhase>,
+    revenue_policies: Vec<VolatilityPolicyData>,
+    expense_policies: Vec<VolatilityPolicyData>,
+    capital_injections: Vec<models::CapitalInjection>,
+    dividend_policy: Option<models::DividendPolicy>,
+    credit_facility: Option<models::CreditFacility>,
+    valuation_assumption: Option<models::ValuationAssumption>,
+    events: Vec<models::Event>,
+    staffing_roles: Vec<models::StaffingRole>,
+    capital_growth_policy: Option<models::CapitalGrowthPolicy>,
+    stop_insolvency: bool,
+    include_init: bool,
+    pooling_rate_override: Decimal,
+) -> SimState {
+    
+    let mut revenue_states = Vec::with_capacity(revenue_items.len());
+    let engine_revenues: Vec<domain::Revenue> = revenue_items.into_iter().map(|r| {
+        let mut item_phases = Vec::new();
+        for ph in revenue_phases.iter().filter(|p| p.revenue_item_id == r.id) {
+            let mut compounding_growth_sampler = None;
+            let mut transient_noise_sampler = None;
+
+            for p in revenue_policies.iter().filter(|p| p.phase_id == ph.id) {
+                let sampler = create_sampler_from_db(
+                    p.volatility_type.clone(),
+                    p.vol_mean,
+                    p.vol_scale,
+                    p.vol_min,
+                    p.vol_max,
+                    p.vol_intervals,
+                    p.vol_freedom,
+                    p.vol_alpha,
+                    p.vol_beta
+                );
+                if p.mode_name == "compounding_growth" {
+                    compounding_growth_sampler = Some(sampler);
+                } else if p.mode_name == "transient_noise" {
+                    transient_noise_sampler = Some(sampler);
+                }
+            }
+
+            item_phases.push(domain::Phase {
+                phase_sequence: ph.phase_sequence,
+                trigger_month: ph.trigger_month,
+                trigger_threshold: ph.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+                trigger_operator: ph.trigger_operator.clone(),
+                growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
+                variable_pct: ph.cost_of_revenue_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                baseline_increment: ph.baseline_increment.and_then(|d| d.to_f64()),
+                compounding_growth_sampler,
+                transient_noise_sampler,
+            });
+        }
+
+        item_phases.sort_by_key(|p| p.phase_sequence);
+
+        revenue_states.push(ItemState {
+            current_value: r.initial_amount.to_f64().unwrap_or(0.0),
+            is_active: false,
+            has_fired: false,
+            active_phase_idx: None,
         });
 
-        const isValueBased = phase.trigger_strategy === 'value_based';
-        const composedOperator = phase.trigger_metric_basis === 'ytd' 
-          ? `ytd_revenue_${phase.trigger_comparison_operator}` 
-          : phase.trigger_comparison_operator;
+        domain::Revenue {
+            name: r.revenue_name,
+            start_month: r.start_month,
+            end_month: r.end_month,
+            initial_amount: r.initial_amount.to_f64().unwrap_or(0.0),
+            frequency: r.frequency,
+            trigger_strategy: r.trigger_strategy,
+            trigger_threshold: r.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+            trigger_operator: r.trigger_operator,
+            phases: item_phases,
+        }
+    }).collect();
 
-        let formattedIncrement = null;
-        if (phase.baseline_increment !== null && phase.baseline_increment !== undefined && phase.baseline_increment !== '') {
-          const parsedInc = parseFloat(phase.baseline_increment);
-          if (!isNaN(parsedInc)) {
-            formattedIncrement = parsedInc.toFixed(2);
-          }
+    let mut expense_states = Vec::with_capacity(expense_items.len());
+    let engine_expenses: Vec<domain::Expense> = expense_items.into_iter().map(|e| {
+        let mut item_phases = Vec::new();
+        for ph in expense_phases.iter().filter(|p| p.expense_item_id == e.id) {
+            let mut compounding_growth_sampler = None;
+            let mut transient_noise_sampler = None;
+
+            for p in expense_policies.iter().filter(|p| p.phase_id == ph.id) {
+                let sampler = create_sampler_from_db(
+                    p.volatility_type.clone(),
+                    p.vol_mean,
+                    p.vol_scale,
+                    p.vol_min,
+                    p.vol_max,
+                    p.vol_intervals,
+                    p.vol_freedom,
+                    p.vol_alpha,
+                    p.vol_beta
+                );
+                if p.mode_name == "compounding_growth" {
+                    compounding_growth_sampler = Some(sampler);
+                } else if p.mode_name == "transient_noise" {
+                    transient_noise_sampler = Some(sampler);
+                }
+            }
+
+            item_phases.push(domain::Phase {
+                phase_sequence: ph.phase_sequence,
+                trigger_month: ph.trigger_month,
+                trigger_threshold: ph.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+                trigger_operator: ph.trigger_operator.clone(),
+                growth_rate: ph.growth_rate_percent.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)).unwrap_or(0.0) / 100.0,
+                variable_pct: ph.pct_of_revenue.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0) / 100.0),
+                baseline_increment: ph.baseline_increment.and_then(|d| d.to_f64()),
+                compounding_growth_sampler,
+                transient_noise_sampler,
+            });
         }
 
-        return {
-          id: phase.id, // Retain ID for safe backend updates
-          phase_sequence: idx + 1,
-          trigger_month: (!isValueBased && idx > 0) ? (phase.trigger_month !== null && phase.trigger_month !== '' ? Number(phase.trigger_month) : null) : null,
-          trigger_threshold: isValueBased ? (phase.trigger_threshold !== null && phase.trigger_threshold !== '' ? parseFloat(phase.trigger_threshold).toFixed(2) : null) : null,
-          trigger_operator: isValueBased ? (composedOperator ? String(composedOperator).toLowerCase() : null) : null,
-          growth_rate_percent: localGrowth,
-          pct_of_revenue: phase.pct_of_revenue ? String(phase.pct_of_revenue) : null,
-          baseline_increment: formattedIncrement,
-          volatility_configs: cleanConfigs
-        };
-      });
+        item_phases.sort_by_key(|p| p.phase_sequence);
 
-      const parentTriggerStrategy = phases.some(p => p.trigger_strategy === 'value_based') ? 'value_based' : 'time_based';
+        expense_states.push(ItemState {
+            current_value: e.initial_amount.to_f64().unwrap_or(0.0),
+            is_active: false,
+            has_fired: false,
+            active_phase_idx: None,
+        });
 
-      const payload = {
-        plan_id: planId,
-        expense_name: name,
-        category: category,
-        initial_amount: String(amount),
-        start_month: Number(startMonth),
-        end_month: endMonth ? Number(endMonth) : undefined,
-        frequency: freq.toLowerCase(),
-        trigger_strategy: parentTriggerStrategy,
-        phases: processedPhases
-      };
+        domain::Expense {
+            name: e.expense_name,
+            category: e.category,
+            start_month: e.start_month,
+            end_month: e.end_month,
+            initial_amount: e.initial_amount.to_f64().unwrap_or(0.0),
+            frequency: e.frequency,
+            trigger_strategy: e.trigger_strategy,
+            trigger_threshold: e.trigger_threshold.as_ref().map(|s| s.parse::<Decimal>().unwrap_or_default().to_f64().unwrap_or(0.0)),
+            trigger_operator: e.trigger_operator,
+            phases: item_phases,
+        }
+    }).collect();
 
-      if (itemToEdit) {
-        await api.updateExpenseItem(itemToEdit.id, payload as any);
-      } else {
-        await api.createExpenseItem(payload as any);
-      }
+    let engine_injections: Vec<domain::CapitalInjection> = capital_injections.into_iter().map(|c| {
+        domain::CapitalInjection {
+            name: c.injection_name,
+            amount: c.amount.to_f64().unwrap_or(0.0),
+            month: c.month,
+        }
+    }).collect();
 
-      clearForm();
-      onSuccess();
-    } catch (err: any) {
-      console.error(err);
-      const status = err.response?.status;
-      const errMsg = err.response?.data?.message || err.message || '';
-      if (status === 400) {
-        setErrors([errMsg || "Validation Error: Please check your inputs. Ensure all required distribution fields are valid."]);
-      } else {
-        setErrors([errMsg || "Failed to save item. Please check your inputs."]);
-      }
+    let engine_dividend = dividend_policy.map(|d| domain::DividendPolicy {
+        is_enabled: d.is_enabled,
+        safety_threshold: d.safety_threshold.to_f64().unwrap_or(0.0),
+        payout_ratio: d.payout_ratio.to_f64().unwrap_or(0.0),
+    });
+
+    let engine_credit = credit_facility.map(|c| domain::CreditFacility {
+        facility_limit: c.facility_limit.to_f64().unwrap_or(0.0),
+        interest_rate: c.interest_rate.to_f64().unwrap_or(0.0) / 100.0,
+        is_annual_rate: c.is_annual_rate,
+    });
+
+    let engine_valuation = valuation_assumption.map(|v| domain::ValuationAssumption {
+        name: v.valuation_name,
+        method: v.method,
+        multiplier: v.multiplier.to_f64().unwrap_or(0.0),
+        date_applied: v.date_applied,
+    });
+
+    // Map Events to Shocks, filtering out incomplete definitions
+    let engine_shocks: Vec<domain::Shock> = events.into_iter().filter_map(|s| {
+        if let (Some(month), Some(imp_type), Some(imp_val)) = (s.start_month, s.impact_type, s.impact_value) {
+            Some(domain::Shock {
+                name: s.event_name,
+                month: month,
+                impact_type: imp_type,
+                impact_value: imp_val.to_f64().unwrap_or(0.0),
+                duration_months: s.duration_months,
+                target_company_id: None, // Deterministic shocks apply to self
+            })
+        } else {
+            None
+        }
+    }).collect();
+
+    let engine_staffing: Vec<domain::Staffing> = staffing_roles.into_iter().map(|s| {
+        domain::Staffing {
+            name: s.role_name,
+            annual_salary: s.annual_salary.to_f64().unwrap_or(0.0),
+            start_month: s.start_month,
+            target_count: s.target_count,
+            hiring_plan: s.hiring_plan,
+            hiring_rate: s.hiring_rate,
+            annual_increase: s.annual_increase_percent.to_f64().unwrap_or(0.0) / 100.0,
+        }
+    }).collect();
+
+    let mut cap_growth_sampler = None;
+    let engine_growth = capital_growth_policy.map(|g| {
+        cap_growth_sampler = Some(create_sampler_from_db(
+            g.volatility_type,
+            g.vol_mean,
+            g.vol_scale,
+            g.vol_min,
+            g.vol_max,
+            g.vol_intervals,
+            g.vol_mean, // Note: Using mean as freedom placeholder if needed, but create_sampler handles it
+            g.vol_alpha,
+            g.vol_beta
+        ));
+        
+        domain::CapitalGrowthPolicy {
+            growth_rate: g.growth_rate_percent.to_f64().unwrap_or(0.0) / 100.0,
+        }
+    });
+
+    let initial_cash = plan.initial_cash.to_f64().unwrap_or(0.0);
+    let starting_investment = if include_init { initial_cash } else { 0.0 };
+
+    SimState {
+        id: company_id,
+        company_name,
+        currency: plan.currency_code,
+        pooling_fraction: pooling_rate_override.to_f64().unwrap_or(0.0),
+        current_cash: plan.initial_cash.to_f64().unwrap_or(0.0),
+        insolvency_threshold: plan.insolvency_threshold.to_f64().unwrap_or(100.0),
+        is_solvent: true,
+        stop_on_insolvency: stop_insolvency,
+        cum_external_cap: starting_investment,
+        cum_dividends: 0.0,
+        cum_pool_received: 0.0,
+        cap_growth_sampler,
+        
+        soft_limit_active: plan.soft_limit_active,
+        soft_limit_threshold: plan.soft_limit_threshold.to_f64().unwrap_or(10000000000.0),
+        soft_limit_fraction: plan.soft_limit_fraction.to_f64().unwrap_or(0.70),
+
+        revenues: engine_revenues,
+        expenses: engine_expenses,
+        injections: engine_injections,
+        dividend_policy: engine_dividend,
+        credit_facility: engine_credit,
+        valuation: engine_valuation,
+        shocks: engine_shocks,
+        staffing: engine_staffing,
+        capital_growth: engine_growth,
+        
+        revenue_states,
+        expense_states,
+        history: Vec::new(),
+        ytd_revenue: 0.0,
     }
-  };
+}
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded border">
-      <div className="flex justify-between items-center mb-1">
-         <h3 className="font-bold text-gray-700">{itemToEdit ? 'Edit Expense' : 'Add Expense'}</h3>
-      </div>
-      <p className="text-xs text-gray-500 mb-4">* = Required Field. (Model uses Cash Basis accounting)</p>
-
-      {errors.length > 0 && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative text-sm">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{errors.join(", ")}</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs text-gray-500">Name *</label>
-          <input className="w-full border p-2 rounded text-sm" placeholder="e.g. Salaries" value={name} onChange={e => setName(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Category</label>
-          <select className="w-full border p-2 rounded text-sm" value={category} onChange={e => setCategory(e.target.value)}>
-            <option value="opex">OpEx</option>
-            <option value="capex">CapEx</option>
-            <option value="payroll">Payroll</option>
-            <option value="marketing">Marketing</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        <div>
-          <label className="text-xs text-gray-500 flex items-center gap-1">
-            Initial Monthly Amount ({currencySymbol}) *
-            <Tooltip content="Initial amount of monthly expense in Starting Month" />
-          </label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="text-xs text-gray-500">Frequency of Volatility</label>
-          <select className="w-full border p-2 rounded text-sm" value={freq} onChange={e => setFreq(e.target.value)}>
-            <option value="monthly">Monthly</option>
-            <option value="one-time">One-time</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="annually">Annually</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Start Month *</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" value={startMonth} onChange={e => handleStartMonthChange(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">End Month</label>
-          <input type="number" className="w-full border p-2 rounded text-sm" placeholder="Optional" value={endMonth} onChange={e => setEndMonth(e.target.value)} />
-        </div>
-      </div>
-
-      {/* PROGRESSIVE MULTI-PHASE UI VIEW */}
-      <div className="space-y-6 my-4">
-        {phases.map((phase, index) => {
-          const isFirst = index === 0;
-          
-          let phaseSummary = '';
-          if (isFirst) {
-            phaseSummary = '(Baseline)';
-          } else {
-            if (phase.trigger_strategy === 'time_based') {
-              if (phase.trigger_month) {
-                phaseSummary = `(Month ${phase.trigger_month})`;
-              }
-            } else if (phase.trigger_strategy === 'value_based') {
-              if (phase.trigger_threshold) {
-                const opSymbol = getOperatorSymbol(phase.trigger_comparison_operator);
-                const isYtd = phase.trigger_metric_basis === 'ytd';
-                const prefix = isYtd ? 'YTD ' : '';
-                const formattedThreshold = Number(phase.trigger_threshold).toLocaleString(undefined, { maximumFractionDigits: 0 });
-                phaseSummary = `(${prefix}${opSymbol} ${currencySymbol}${formattedThreshold})`;
-              }
-            }
-          }
-
-          return (
-            <div key={index} className="space-y-6">
-              <div className="border border-gray-200 rounded p-4 bg-white shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b pb-2">
-                  <h4 className="font-bold text-sm text-gray-800">Phase {index + 1} {phaseSummary}</h4>
-                  {!isFirst && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhase(index)}
-                      className="text-xs text-red-600 hover:text-red-800 font-semibold"
-                    >
-                      Remove Phase
-                    </button>
-                  )}
-                </div>
-
-                {/* Trigger Conditions Block */}
-                <div className="bg-gray-50 p-3 rounded border border-dashed space-y-3">
-                  <p className="text-xs font-semibold text-gray-600">Trigger Conditions</p>
-                  
-                  <div className="mb-3">
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Trigger Strategy *</label>
-                    <select
-                      className="w-full border p-2 rounded text-sm bg-white"
-                      value={phase.trigger_strategy || 'time_based'}
-                      onChange={e => handlePhaseFieldChange(index, 'trigger_strategy', e.target.value)}
-                    >
-                      <option value="time_based">Time-based</option>
-                      <option value="value_based">Value-based</option>
-                    </select>
-                  </div>
-
-                  {phase.trigger_strategy === 'time_based' && (
-                    isFirst ? (
-                      <p className="text-xs text-gray-500 italic">Activation uses the root Start Month.</p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs text-gray-500 block mb-1 font-medium">enter the absolute month *</label>
-                          <input
-                            type="number"
-                            className="w-full border p-2 rounded text-sm bg-white"
-                            placeholder="e.g. 12"
-                            value={phase.trigger_month ?? ''}
-                            onChange={e => handleTimeFieldChange(index, 'trigger_month', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-500 block mb-1 font-medium">the offset in months vs the previous phase, and I'll calculate the absolute month *</label>
-                          <input
-                            type="number"
-                            className="w-full border p-2 rounded text-sm bg-white"
-                            placeholder="e.g. 6"
-                            value={phase.trigger_offset ?? ''}
-                            onChange={e => handleTimeFieldChange(index, 'trigger_offset', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {phase.trigger_strategy === 'value_based' && (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Metric Basis *</label>
-                        <select
-                          className="w-full border p-2 rounded text-sm bg-white"
-                          value={phase.trigger_metric_basis || 'monthly'}
-                          onChange={e => handlePhaseFieldChange(index, 'trigger_metric_basis', e.target.value)}
-                        >
-                          <option value="monthly">Monthly Revenue</option>
-                          <option value="ytd">Calendar YTD Revenue</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Comparison Operator *</label>
-                        <select
-                          className="w-full border p-2 rounded text-sm bg-white"
-                          value={phase.trigger_comparison_operator || 'greater_than'}
-                          onChange={e => handlePhaseFieldChange(index, 'trigger_comparison_operator', e.target.value)}
-                        >
-                          <option value="greater_than">Greater than (&gt;)</option>
-                          <option value="less_than">Less than (&lt;)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Threshold Amount ({currencySymbol}) *</label>
-                        <input
-                          type="number"
-                          step="any"
-                          className="w-full border p-2 rounded text-sm bg-white"
-                          placeholder="e.g. 100000"
-                          value={phase.trigger_threshold || ''}
-                          onChange={e => handlePhaseFieldChange(index, 'trigger_threshold', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Growth Parameters */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                      % of Revenue
-                      <Tooltip content="Percentage of revenue tied to expense in this phase." />
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full border p-2 rounded text-sm"
-                      placeholder="Optional"
-                      value={phase.pct_of_revenue ?? ''}
-                      onChange={e => handlePhaseFieldChange(index, 'pct_of_revenue', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-                      Baseline Increment / Structural Jump
-                      <Tooltip content="Optional fixed amount to add or subtract from the baseline when this phase triggers." />
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="w-full border p-2 rounded text-sm"
-                      placeholder="e.g. 5000.00 or -1500.00"
-                      value={phase.baseline_increment || ''}
-                      onChange={e => handlePhaseFieldChange(index, 'baseline_increment', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Dedicated Phase Volatility Inputs */}
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-start gap-2 bg-gray-50 p-3 rounded border">
-                    <input
-                      type="checkbox"
-                      id={`fixed-stream-exp-${index}`}
-                      checked={phase.is_fixed_stream || false}
-                      onChange={e => handlePhaseFieldChange(index, 'is_fixed_stream', e.target.checked)}
-                      className="mt-0.5"
-                    />
-                    <div>
-                      <label htmlFor={`fixed-stream-exp-${index}`} className="text-sm font-bold text-gray-700 cursor-pointer">
-                        Fixed Stream (No Volatility)
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Only choose this if you are certain that there cannot be any volatility.
-                      </p>
-                    </div>
-                  </div>
-
-                  {!phase.is_fixed_stream && (
-                    <VolatilityInputs
-                      configs={phase.volatility_configs}
-                      onChange={(updated) => handlePhaseConfigsChange(index, updated)}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Action Button Layout */}
-      <div className="my-4">
-        {phases.length < 4 ? (
-          <button
-            type="button"
-            onClick={handleAddPhase}
-            className="w-full py-2 px-4 border border-dashed border-blue-400 text-blue-600 hover:bg-blue-50 rounded text-sm font-semibold transition-colors"
-          >
-            + Do you want to add another phase?
-          </button>
-        ) : (
-          <div className="w-full py-2 px-4 bg-gray-100 border border-gray-300 text-gray-500 rounded text-sm text-center font-semibold">
-            You have reached the maximum of four phases
-          </div>
-        )}
-      </div>
-
-      <div className="flex gap-4">
-        {itemToEdit && (
-            <button 
-                type="button" 
-                onClick={onCancel} 
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded flex-1"
-            >
-                Cancel Edit
-            </button>
-        )}
-        <button 
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1"
-        >
-            {itemToEdit ? 'Update Expense' : 'Add Expense'}
-        </button>
-      </div>
-    </form>
-  );
+// Helper to bridge DB Decimals to Engine GrowthSampler
+fn create_sampler_from_db(
+    vol_type: Option<String>,
+    mean: Option<rust_decimal::Decimal>,
+    scale: Option<rust_decimal::Decimal>,
+    min: Option<rust_decimal::Decimal>,
+    max: Option<rust_decimal::Decimal>,
+    intervals: Option<i32>,
+    freedom: Option<rust_decimal::Decimal>,
+    alpha: Option<rust_decimal::Decimal>,
+    beta: Option<rust_decimal::Decimal>,
+) -> GrowthSampler {
+    distributions::create_sampler(
+        vol_type.as_deref(),
+        mean.and_then(|d| d.to_f64()),
+        scale.and_then(|d| d.to_f64()),
+        min.and_then(|d| d.to_f64()),
+        max.and_then(|d| d.to_f64()),
+        intervals,
+        freedom.and_then(|d| d.to_f64()),
+        alpha.and_then(|d| d.to_f64()),
+        beta.and_then(|d| d.to_f64()),
+    )
 }
 </file>
-```
 

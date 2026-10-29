@@ -424,7 +424,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1">
             Initial Monthly Amount ({currencySymbol}) *
-            <Tooltip content="Initial amount of monthly expense in Starting Month" />
+            <Tooltip content="Initial amount of monthly expense (fixed costs, see percentage cell to add in variable costs) in Starting Month" />
           </label>
           <input type="number" className="w-full border p-2 rounded text-sm" value={amount} onChange={e => setAmount(e.target.value)} />
         </div>
@@ -579,7 +579,7 @@ export default function ExpenseForm({ planId, onSuccess, itemToEdit, onCancel, c
                   <div>
                     <label className="text-xs text-gray-500 flex items-center gap-1">
                       % of Revenue
-                      <Tooltip content="Percentage of revenue tied to expense in this phase." />
+                      <Tooltip content="Additional variable cost as a percentage of revenue tied to expense in this phase." />
                     </label>
                     <input
                       type="number"
